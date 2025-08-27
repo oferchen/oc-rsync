@@ -2,7 +2,8 @@
 
 The `rsync-rs` binary aims to mirror the familiar `rsync` experience. An
 overview of project goals and features is available in the
-[README](../README.md#in-scope-features).
+[README](../README.md#in-scope-features), and a high-level summary of CLI goals
+lives in the [README's CLI section](../README.md#cli).
 
 ## Usage
 
@@ -24,6 +25,10 @@ rsync-rs [OPTIONS] <SRC> <DEST>
   ```sh
   rsync-rs -n --stats ./src remote:/dst
   ```
+- Sync using an explicit config file:
+  ```sh
+  rsync-rs --config ./rsync-rs.toml ./src remote:/dst
+  ```
 
 ## Flags
 
@@ -32,6 +37,7 @@ rsync-rs [OPTIONS] <SRC> <DEST>
 - `-v, --verbose` – increase logging verbosity.
 - `--delete` – remove extraneous files from the destination.
 - `--checksum` – use full checksums to determine file changes.
+- `--stats` – display transfer statistics on completion.
 - `--config <FILE>` – supply a custom configuration file.
 
 ## Configuration precedence
