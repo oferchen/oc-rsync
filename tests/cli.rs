@@ -16,7 +16,7 @@ fn client_local_sync() {
         src_dir.to_str().unwrap(),
         dst_dir.to_str().unwrap(),
     ]);
-    cmd.assert().success();
+    cmd.assert().success().stdout("").stderr("");
 
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, b"hello world");
