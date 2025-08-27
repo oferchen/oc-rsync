@@ -25,13 +25,20 @@ pub struct Mux {
 impl Mux {
     /// Create a new multiplexer with the specified keepalive interval.
     pub fn new(keepalive: Duration) -> Self {
-        Mux { keepalive, channels: HashMap::new() }
+        Mux {
+            keepalive,
+            channels: HashMap::new(),
+        }
     }
 
     /// Register a new channel and return a [`Sender`] for queuing messages.
     pub fn register_channel(&mut self, id: u16) -> Sender<Message> {
         let (tx, rx) = mpsc::channel();
-        let ch = Channel { sender: tx.clone(), receiver: rx, last_sent: Instant::now() };
+        let ch = Channel {
+            sender: tx.clone(),
+            receiver: rx,
+            last_sent: Instant::now(),
+        };
         self.channels.insert(id, ch);
         tx
     }
@@ -55,12 +62,12 @@ impl Mux {
             match ch.receiver.try_recv() {
                 Ok(msg) => {
                     ch.last_sent = now;
-                    return Some(msg.to_frame(id));
+                    return Some(msg.into_frame(id));
                 }
                 Err(TryRecvError::Empty) => {
                     if now.duration_since(ch.last_sent) >= self.keepalive {
                         ch.last_sent = now;
-                        return Some(Message::KeepAlive.to_frame(id));
+                        return Some(Message::KeepAlive.into_frame(id));
                     }
                 }
                 Err(TryRecvError::Disconnected) => {
@@ -68,7 +75,7 @@ impl Mux {
                     // keepalives until the channel is dropped.
                     if now.duration_since(ch.last_sent) >= self.keepalive {
                         ch.last_sent = now;
-                        return Some(Message::KeepAlive.to_frame(id));
+                        return Some(Message::KeepAlive.into_frame(id));
                     }
                 }
             }
@@ -77,4 +84,3 @@ impl Mux {
         None
     }
 }
-
