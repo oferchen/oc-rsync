@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use anyhow::Result;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
@@ -154,9 +154,13 @@ pub fn sync(src: &Path, dst: &Path) -> Result<()> {
     let mut receiver = Receiver::new();
     sender.start();
     for path in walk(src) {
-        let rel: PathBuf = path.strip_prefix(src).unwrap().to_path_buf();
-        let dest_path = dst.join(rel);
-        sender.process_file(&path, &dest_path, &mut receiver)?;
+        if let Some(rel) = path.strip_prefix(src).ok() {
+            let dest_path = dst.join(rel);
+            sender.process_file(&path, &dest_path, &mut receiver)?;
+        } else {
+            // Path lies outside of the source directory, skip it.
+            continue;
+        }
     }
     sender.finish();
     Ok(())
@@ -165,7 +169,6 @@ pub fn sync(src: &Path, dst: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
     use tempfile::tempdir;
 
     #[test]
@@ -190,5 +193,34 @@ mod tests {
         sync(&src, &dst).unwrap();
         assert_eq!(fs::read(dst.join("a/file1.txt")).unwrap(), b"hello");
         assert_eq!(fs::read(dst.join("file2.txt")).unwrap(), b"world");
+    }
+
+    #[test]
+    fn sync_skips_outside_paths() {
+        let tmp = tempdir().unwrap();
+        let src = tmp.path().join("src");
+        let dst = tmp.path().join("dst");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(src.join("inside.txt"), b"inside").unwrap();
+
+        // Create a file outside the source tree.
+        let outside = tmp.path().join("outside.txt");
+        fs::write(&outside, b"outside").unwrap();
+
+        let mut sender = Sender::new(1024);
+        let mut receiver = Receiver::new();
+        sender.start();
+        for path in [src.join("inside.txt"), outside.clone()] {
+            if let Some(rel) = path.strip_prefix(&src).ok() {
+                let dest_path = dst.join(rel);
+                sender
+                    .process_file(&path, &dest_path, &mut receiver)
+                    .unwrap();
+            }
+        }
+        sender.finish();
+
+        assert_eq!(fs::read(dst.join("inside.txt")).unwrap(), b"inside");
+        assert!(!dst.join("outside.txt").exists());
     }
 }

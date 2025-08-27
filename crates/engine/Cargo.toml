@@ -7,3 +7,6 @@ edition = "2021"
 anyhow = "1"
 checksums = { path = "../checksums" }
 walk = { path = "../walk" }
+
+[dev-dependencies]
+tempfile = "3"
