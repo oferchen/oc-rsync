@@ -139,3 +139,4 @@ mod tests {
         assert_eq!(msg2, Message::KeepAlive);
     }
 }
+}

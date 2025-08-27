@@ -2,8 +2,8 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::Result;
-use checksums::{rolling_checksum, strong_digest};
-use protocol::{negotiate_version, Message, LATEST_VERSION};
+use checksums::checksums::{rolling_checksum, strong_digest};
+use protocol::protocol::{negotiate_version, Message, LATEST_VERSION};
 
 /// Synchronize a single file from `src` to `dst` using the local protocol.
 pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
