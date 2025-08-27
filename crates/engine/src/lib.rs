@@ -58,10 +58,23 @@ fn compute_delta<R1: Read, R2: Read>(
         if n < block_size {
             break;
         }
+
+/// algorithm driven by the checksum crate.
+fn compute_delta(cfg: &ChecksumConfig, basis: &[u8], target: &[u8], block_size: usize) -> Vec<Op> {
+    let mut map: HashMap<u32, Vec<(Vec<u8>, usize)>> = HashMap::new();
+    let mut off = 0;
+    while off < basis.len() {
+        let end = usize::min(off + block_size, basis.len());
+        let block = &basis[off..end];
+        let sum = cfg.checksum(block);
+        map.entry(sum.weak).or_default().push((sum.strong, off));
+        off = end;
+
     }
 
     let mut ops = Vec::new();
     let mut lit = Vec::new();
+
     let mut window = Vec::new();
     let mut byte = [0u8; 1];
     loop {
@@ -86,6 +99,15 @@ fn compute_delta<R1: Read, R2: Read>(
                     });
                     window.drain(..block_size);
                     continue;
+    let mut i = 0;
+    while i < target.len() {
+        let end = usize::min(i + block_size, target.len());
+        let block = &target[i..end];
+        let sum = cfg.checksum(block);
+        if let Some(candidates) = map.get(&sum.weak) {
+            if let Some((_, off)) = candidates.iter().find(|(strong, _)| *strong == sum.strong) {
+                if !lit.is_empty() {
+                    ops.push(Op::Data(std::mem::take(&mut lit)));
                 }
             }
             lit.push(window.remove(0));
