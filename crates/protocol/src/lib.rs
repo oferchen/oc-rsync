@@ -192,11 +192,11 @@ pub enum Message {
 }
 
 impl Message {
-    pub fn to_frame(&self, channel: u16) -> Frame {
+    pub fn into_frame(self, channel: u16) -> Frame {
         match self {
             Message::Version(v) => {
                 let mut payload = Vec::new();
-                payload.write_u32::<BigEndian>(*v).unwrap();
+                payload.write_u32::<BigEndian>(v).unwrap();
                 let header = FrameHeader {
                     channel,
                     tag: Tag::Message,
@@ -205,8 +205,7 @@ impl Message {
                 };
                 Frame { header, payload }
             }
-            Message::Data(data) => {
-                let payload = data.clone();
+            Message::Data(payload) => {
                 let header = FrameHeader {
                     channel,
                     tag: Tag::Message,
@@ -236,6 +235,10 @@ impl Message {
                 Frame { header, payload }
             }
         }
+    }
+
+    pub fn to_frame(&self, channel: u16) -> Frame {
+        self.clone().into_frame(channel)
     }
 
     pub fn from_frame(f: Frame) -> io::Result<Self> {
@@ -297,7 +300,7 @@ mod tests {
     #[test]
     fn keepalive_frame() {
         let msg = Message::KeepAlive;
-        let frame = msg.to_frame(0);
+        let frame = msg.into_frame(0);
         let mut buf = Vec::new();
         frame.encode(&mut buf).unwrap();
         let decoded = Frame::decode(&buf[..]).unwrap();
