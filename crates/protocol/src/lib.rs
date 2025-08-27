@@ -5,17 +5,37 @@ use std::io::{self, Read, Write};
 
 /// Latest protocol version supported by this implementation.
 pub const LATEST_VERSION: u32 = 31;
+/// Oldest protocol version we support.
+pub const MIN_VERSION: u32 = 29;
 
-/// Negotiate protocol version with peer. Returns agreed version or `None`
-/// if there is no overlap.
-pub fn negotiate_version(peer: u32) -> Option<u32> {
+/// Error returned when there is no version overlap during negotiation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VersionError(pub u32);
+
+impl fmt::Display for VersionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "unsupported version {}", self.0)
+    }
+}
+
+impl std::error::Error for VersionError {}
+
+impl From<VersionError> for io::Error {
+    fn from(e: VersionError) -> Self {
+        io::Error::new(io::ErrorKind::InvalidData, e)
+    }
+}
+
+/// Negotiate protocol version with peer.
+///
+/// Returns the agreed version or [`VersionError`] if there is no overlap.
+pub fn negotiate_version(peer: u32) -> Result<u32, VersionError> {
     if peer >= LATEST_VERSION {
-        Some(LATEST_VERSION)
-    } else if peer >= 29 {
-        // minimum we support
-        Some(peer)
+        Ok(LATEST_VERSION)
+    } else if peer >= MIN_VERSION {
+        Ok(peer)
     } else {
-        None
+        Err(VersionError(peer))
     }
 }
 
@@ -33,24 +53,30 @@ pub enum Tag {
 
 /// Error returned when attempting to convert from an unknown tag value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Error(pub u8);
+pub struct UnknownTag(pub u8);
 
-impl fmt::Display for Error {
+impl fmt::Display for UnknownTag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "unknown tag {}", self.0)
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for UnknownTag {}
+
+impl From<UnknownTag> for io::Error {
+    fn from(e: UnknownTag) -> Self {
+        io::Error::new(io::ErrorKind::InvalidData, e)
+    }
+}
 
 impl TryFrom<u8> for Tag {
-    type Error = Error;
+    type Error = UnknownTag;
 
     fn try_from(v: u8) -> Result<Self, Self::Error> {
         match v {
             0 => Ok(Tag::Message),
             1 => Ok(Tag::KeepAlive),
-            other => Err(Error(other)),
+            other => Err(UnknownTag(other)),
         }
     }
 }
@@ -75,41 +101,60 @@ impl From<u8> for Msg {
     }
 }
 
-/// A frame of data sent over the wire.
+/// Header for a [`Frame`].
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Frame {
+pub struct FrameHeader {
     pub channel: u16,
     pub tag: Tag,
     /// Identifier for the contained [`Message`]. This allows payloads of any
     /// length (including 4 bytes) without ambiguity between [`Message::Version`]
     /// and [`Message::Data`].
     pub msg: Msg,
+    pub len: u32,
+}
+
+impl FrameHeader {
+    fn encode<W: Write>(&self, mut w: W) -> io::Result<()> {
+        w.write_u16::<BigEndian>(self.channel)?;
+        w.write_u8(self.tag as u8)?;
+        w.write_u8(self.msg as u8)?;
+        w.write_u32::<BigEndian>(self.len)?;
+        Ok(())
+    }
+
+    fn decode<R: Read>(mut r: R) -> io::Result<Self> {
+        let channel = r.read_u16::<BigEndian>()?;
+        let tag_byte = r.read_u8()?;
+        let tag = Tag::try_from(tag_byte).map_err(io::Error::from)?;
+        let msg = Msg::from(r.read_u8()?);
+        let len = r.read_u32::<BigEndian>()?;
+        Ok(FrameHeader {
+            channel,
+            tag,
+            msg,
+            len,
+        })
+    }
+}
+
+/// A frame of data sent over the wire.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Frame {
+    pub header: FrameHeader,
     pub payload: Vec<u8>,
 }
 
 impl Frame {
     pub fn encode<W: Write>(&self, mut w: W) -> io::Result<()> {
-        w.write_u16::<BigEndian>(self.channel)?;
-        w.write_u8(self.tag as u8)?;
-        w.write_u8(self.msg as u8)?;
-        w.write_u32::<BigEndian>(self.payload.len() as u32)?;
+        self.header.encode(&mut w)?;
         w.write_all(&self.payload)
     }
 
     pub fn decode<R: Read>(mut r: R) -> io::Result<Self> {
-        let channel = r.read_u16::<BigEndian>()?;
-        let tag = Tag::try_from(r.read_u8()?)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        let msg = Msg::from(r.read_u8()?);
-        let len = r.read_u32::<BigEndian>()? as usize;
-        let mut payload = vec![0; len];
+        let header = FrameHeader::decode(&mut r)?;
+        let mut payload = vec![0; header.len as usize];
         r.read_exact(&mut payload)?;
-        Ok(Frame {
-            channel,
-            tag,
-            msg,
-            payload,
-        })
+        Ok(Frame { header, payload })
     }
 }
 
@@ -128,38 +173,51 @@ impl Message {
             Message::Version(v) => {
                 let mut payload = Vec::new();
                 payload.write_u32::<BigEndian>(*v).unwrap();
-                Frame {
+                let header = FrameHeader {
                     channel,
                     tag: Tag::Message,
                     msg: Msg::Version,
-                    payload,
-                }
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
             }
-            Message::Data(data) => Frame {
-                channel,
-                tag: Tag::Message,
-                msg: Msg::Data,
-                payload: data.clone(),
-            },
-            Message::Done => Frame {
-                channel,
-                tag: Tag::Message,
-                msg: Msg::Done,
-                payload: vec![],
-            },
-            Message::KeepAlive => Frame {
-                channel,
-                tag: Tag::KeepAlive,
-                msg: Msg::Data, // value unused for keepalives
-                payload: vec![],
-            },
+            Message::Data(data) => {
+                let payload = data.clone();
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::Data,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::Done => {
+                let payload = Vec::new();
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::Done,
+                    len: 0,
+                };
+                Frame { header, payload }
+            }
+            Message::KeepAlive => {
+                let payload = Vec::new();
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::KeepAlive,
+                    msg: Msg::Data, // unused
+                    len: 0,
+                };
+                Frame { header, payload }
+            }
         }
     }
 
     pub fn from_frame(f: Frame) -> io::Result<Self> {
-        match f.tag {
+        match f.header.tag {
             Tag::KeepAlive => Ok(Message::KeepAlive),
-            Tag::Message => match f.msg {
+            Tag::Message => match f.header.msg {
                 Msg::Version => {
                     let mut rdr = &f.payload[..];
                     let v = rdr.read_u32::<BigEndian>()?;
@@ -178,10 +236,10 @@ mod tests {
 
     #[test]
     fn version_negotiation() {
-        assert_eq!(negotiate_version(40), Some(31));
-        assert_eq!(negotiate_version(31), Some(31));
-        assert_eq!(negotiate_version(30), Some(30));
-        assert_eq!(negotiate_version(28), None);
+        assert_eq!(negotiate_version(40), Ok(31));
+        assert_eq!(negotiate_version(31), Ok(31));
+        assert_eq!(negotiate_version(30), Ok(30));
+        assert!(negotiate_version(28).is_err());
     }
 
     #[test]
