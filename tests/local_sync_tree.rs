@@ -40,7 +40,9 @@ fn sync_directory_tree() {
             dst.to_str().unwrap(),
         ])
         .assert()
-        .success();
+        .success()
+        .stdout("")
+        .stderr("");
 
     assert_eq!(collect(&src), collect(&dst));
 }
