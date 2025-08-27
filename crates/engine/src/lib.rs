@@ -44,8 +44,9 @@ fn compute_delta<R1: Read, R2: Read>(
     target: &mut R2,
     block_size: usize,
 ) -> Result<Vec<Op>> {
+    // Build a map of rolling checksum -> (strong hash, offset, len) for the basis file.
     let mut map: HashMap<u32, Vec<(Vec<u8>, usize, usize)>> = HashMap::new();
-    let mut off = 0;
+    let mut off = 0usize;
     let mut buf = vec![0u8; block_size];
     loop {
         let n = basis.read(&mut buf)?;
@@ -58,18 +59,6 @@ fn compute_delta<R1: Read, R2: Read>(
         if n < block_size {
             break;
         }
-
-/// algorithm driven by the checksum crate.
-fn compute_delta(cfg: &ChecksumConfig, basis: &[u8], target: &[u8], block_size: usize) -> Vec<Op> {
-    let mut map: HashMap<u32, Vec<(Vec<u8>, usize)>> = HashMap::new();
-    let mut off = 0;
-    while off < basis.len() {
-        let end = usize::min(off + block_size, basis.len());
-        let block = &basis[off..end];
-        let sum = cfg.checksum(block);
-        map.entry(sum.weak).or_default().push((sum.strong, off));
-        off = end;
-
     }
 
     let mut ops = Vec::new();
@@ -78,43 +67,48 @@ fn compute_delta(cfg: &ChecksumConfig, basis: &[u8], target: &[u8], block_size: 
     let mut window = Vec::new();
     let mut byte = [0u8; 1];
     loop {
-        let n = target.read(&mut byte)?;
-        if n == 0 {
+        // Fill the window up to block_size bytes.
+        while window.len() < block_size {
+            let n = target.read(&mut byte)?;
+            if n == 0 {
+                break;
+            }
+            window.push(byte[0]);
+        }
+        if window.is_empty() {
             break;
         }
-        window.push(byte[0]);
-        if window.len() >= block_size {
-            let sum = cfg.checksum(&window[..block_size]);
-            if let Some(candidates) = map.get(&sum.weak) {
-                if let Some((_, off, len)) = candidates
-                    .iter()
-                    .find(|(s, _, l)| *s == sum.strong && *l == block_size)
-                {
-                    if !lit.is_empty() {
-                        ops.push(Op::Data(std::mem::take(&mut lit)));
-                    }
-                    ops.push(Op::Copy {
-                        offset: *off,
-                        len: *len,
-                    });
-                    window.drain(..block_size);
-                    continue;
-    let mut i = 0;
-    while i < target.len() {
-        let end = usize::min(i + block_size, target.len());
-        let block = &target[i..end];
-        let sum = cfg.checksum(block);
+
+        let len = usize::min(window.len(), block_size);
+        let sum = cfg.checksum(&window[..len]);
         if let Some(candidates) = map.get(&sum.weak) {
-            if let Some((_, off)) = candidates.iter().find(|(strong, _)| *strong == sum.strong) {
+            if let Some((_, off, blen)) = candidates
+                .iter()
+                .find(|(s, _, l)| *s == sum.strong && *l == len)
+            {
                 if !lit.is_empty() {
                     ops.push(Op::Data(std::mem::take(&mut lit)));
                 }
+                ops.push(Op::Copy {
+                    offset: *off,
+                    len: *blen,
+                });
+                window.drain(..len);
+                continue;
             }
-            lit.push(window.remove(0));
+        }
+
+        // No match: emit first byte as literal and slide the window.
+        lit.push(window.remove(0));
+        if window.is_empty() {
+            // if we've consumed everything, attempt to read more before next iteration
+            continue;
         }
     }
 
-    lit.extend(window);
+    if !window.is_empty() {
+        lit.extend(window);
+    }
     if !lit.is_empty() {
         ops.push(Op::Data(lit));
     }
@@ -289,6 +283,30 @@ mod tests {
         let mut out = Vec::new();
         apply_delta(&mut basis_reader, &delta, &mut out).unwrap();
         assert_eq!(out, basis);
+    }
+
+    #[test]
+    fn emits_literal_for_new_data() {
+        let cfg = ChecksumConfigBuilder::new().build();
+        let mut basis = Cursor::new(Vec::new());
+        let mut target = Cursor::new(b"abc".to_vec());
+        let delta = compute_delta(&cfg, &mut basis, &mut target, 4).unwrap();
+        assert_eq!(delta, vec![Op::Data(b"abc".to_vec())]);
+    }
+
+    #[test]
+    fn matches_partial_blocks() {
+        let cfg = ChecksumConfigBuilder::new().build();
+        let mut basis = Cursor::new(b"hello".to_vec());
+        let mut target = Cursor::new(b"hello".to_vec());
+        let delta = compute_delta(&cfg, &mut basis, &mut target, 4).unwrap();
+        assert_eq!(
+            delta,
+            vec![
+                Op::Copy { offset: 0, len: 4 },
+                Op::Copy { offset: 4, len: 1 },
+            ]
+        );
     }
 
     #[test]
