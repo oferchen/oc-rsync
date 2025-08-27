@@ -100,6 +100,7 @@ impl Frame {
         let channel = r.read_u16::<BigEndian>()?;
         let tag = Tag::try_from(r.read_u8()?)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let msg = Msg::from(r.read_u8()?);
         let len = r.read_u32::<BigEndian>()? as usize;
         let mut payload = vec![0; len];
         r.read_exact(&mut payload)?;

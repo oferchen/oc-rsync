@@ -1,5 +1,4 @@
-use std::fs;
-use std::path::Path;
+use std::{fs, io::Write, path::Path};
 
 use anyhow::Result;
 use checksums::{rolling_checksum, strong_digest};
@@ -20,18 +19,22 @@ pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
 
     // receiver side: process frames
     let mut wrote = false;
+    let mut file = fs::File::create(dst)?;
     for f in frames {
         match Message::from_frame(f)? {
             Message::Version(v) => {
                 negotiate_version(v).ok_or_else(|| anyhow::anyhow!("version"))?;
             }
             Message::Data(d) => {
-                fs::write(dst, &d)?;
+                file.write_all(&d)?;
                 assert_eq!(rolling_checksum(&d), weak);
                 assert_eq!(strong_digest(&d), strong);
                 wrote = true;
             }
-            Message::Done => break,
+            Message::Done => {
+                drop(file);
+                break;
+            }
             Message::KeepAlive => {}
         }
     }
