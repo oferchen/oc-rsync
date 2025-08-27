@@ -1,3 +1,4 @@
+pub mod checksums {
 use md5::{Digest, Md5};
 
 /// Compute the rsync rolling checksum for a block of data.

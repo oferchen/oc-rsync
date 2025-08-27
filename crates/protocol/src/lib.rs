@@ -1,3 +1,6 @@
+
+pub mod protocol {
+    // Placeholder for the protocol crate.
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{self, Read, Write};
 

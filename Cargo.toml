@@ -1,4 +1,18 @@
 [workspace]
+members = [
+    "crates/protocol",
+    "crates/checksums",
+    "crates/filters",
+    "crates/walk",
+    "crates/meta",
+    "crates/compress",
+    "crates/engine",
+    "crates/transport",
+    "crates/cli",
+    "crates/fuzz",
+    "bin/rsync-rs",
+]
+resolver = "2"
 members = ["crates/protocol", "crates/checksums"]
 
 [package]

@@ -1,1 +1,14 @@
-target/
+# Rust build artifacts
+/target/
+/Cargo.lock
+**/*.rs.bk
+
+# Fuzzing artifacts
+/fuzz/artifacts/
+/fuzz/corpus/
+
+# Build outputs
+*.dll
+*.exe
+*.so
+*.dylib
