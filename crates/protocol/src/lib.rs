@@ -93,13 +93,33 @@ pub enum Msg {
     Done = 2,
 }
 
-impl From<u8> for Msg {
-    fn from(v: u8) -> Self {
+/// Error returned when attempting to convert from an unknown message value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UnknownMsg(pub u8);
+
+impl fmt::Display for UnknownMsg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "unknown message {}", self.0)
+    }
+}
+
+impl std::error::Error for UnknownMsg {}
+
+impl From<UnknownMsg> for io::Error {
+    fn from(e: UnknownMsg) -> Self {
+        io::Error::new(io::ErrorKind::InvalidData, e)
+    }
+}
+
+impl TryFrom<u8> for Msg {
+    type Error = UnknownMsg;
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
         match v {
-            0 => Msg::Version,
-            1 => Msg::Data,
-            2 => Msg::Done,
-            _ => Msg::Data,
+            0 => Ok(Msg::Version),
+            1 => Ok(Msg::Data),
+            2 => Ok(Msg::Done),
+            other => Err(UnknownMsg(other)),
         }
     }
 }
@@ -129,7 +149,8 @@ impl FrameHeader {
         let channel = r.read_u16::<BigEndian>()?;
         let tag_byte = r.read_u8()?;
         let tag = Tag::try_from(tag_byte).map_err(io::Error::from)?;
-        let msg = Msg::from(r.read_u8()?);
+        let msg_byte = r.read_u8()?;
+        let msg = Msg::try_from(msg_byte).map_err(io::Error::from)?;
         let len = r.read_u32::<BigEndian>()?;
         Ok(FrameHeader {
             channel,
@@ -282,6 +303,13 @@ mod tests {
     fn unknown_tag_errors() {
         // channel:0, tag:99 (invalid), len:0
         let buf = [0u8, 0, 99, 0, 0, 0, 0];
+        assert!(Frame::decode(&buf[..]).is_err());
+    }
+
+    #[test]
+    fn unknown_msg_errors() {
+        // channel:0, tag:0 (message), msg:99 (invalid), len:0
+        let buf = [0u8, 0, 0, 99, 0, 0, 0, 0];
         assert!(Frame::decode(&buf[..]).is_err());
     }
 }
