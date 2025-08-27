@@ -38,12 +38,15 @@ pub enum Op {
 /// Compute a delta from `basis` to `target` using a simple block matching
 /// algorithm driven by the checksum crate. The computation is performed using
 /// streaming readers to avoid loading entire files into memory.
-fn compute_delta<R1: Read, R2: Read>(
+fn compute_delta<R1: Read + Seek, R2: Read + Seek>(
     cfg: &ChecksumConfig,
     basis: &mut R1,
     target: &mut R2,
     block_size: usize,
 ) -> Result<Vec<Op>> {
+    // Start from the beginning of both streams.
+    basis.seek(SeekFrom::Start(0))?;
+    target.seek(SeekFrom::Start(0))?;
     // Build a map of rolling checksum -> (strong hash, offset, len) for the basis file.
     let mut map: HashMap<u32, Vec<(Vec<u8>, usize, usize)>> = HashMap::new();
     let mut off = 0usize;
@@ -164,7 +167,7 @@ impl Sender {
     fn process_file(&mut self, path: &Path, dest: &Path, recv: &mut Receiver) -> Result<()> {
         let src = File::open(path)?;
         let mut src_reader = BufReader::new(src);
-        let mut basis_reader: Box<dyn Read> = match File::open(dest) {
+        let mut basis_reader: Box<dyn ReadSeek> = match File::open(dest) {
             Ok(f) => Box::new(BufReader::new(f)),
             Err(_) => Box::new(Cursor::new(Vec::new())),
         };
@@ -292,6 +295,24 @@ mod tests {
         let mut target = Cursor::new(b"abc".to_vec());
         let delta = compute_delta(&cfg, &mut basis, &mut target, 4).unwrap();
         assert_eq!(delta, vec![Op::Data(b"abc".to_vec())]);
+    }
+
+    #[test]
+    fn empty_target_yields_no_ops() {
+        let cfg = ChecksumConfigBuilder::new().build();
+        let mut basis = Cursor::new(b"hello".to_vec());
+        let mut target = Cursor::new(Vec::new());
+        let delta = compute_delta(&cfg, &mut basis, &mut target, 4).unwrap();
+        assert!(delta.is_empty());
+    }
+
+    #[test]
+    fn small_basis_matches() {
+        let cfg = ChecksumConfigBuilder::new().build();
+        let mut basis = Cursor::new(b"abc".to_vec());
+        let mut target = Cursor::new(b"abc".to_vec());
+        let delta = compute_delta(&cfg, &mut basis, &mut target, 4).unwrap();
+        assert_eq!(delta, vec![Op::Copy { offset: 0, len: 3 }]);
     }
 
     #[test]
