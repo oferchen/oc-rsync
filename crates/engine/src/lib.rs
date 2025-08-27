@@ -33,21 +33,14 @@ pub enum Op {
 
 /// Compute a delta from `basis` to `target` using a simple block matching
 /// algorithm driven by the checksum crate.
-fn compute_delta(
-    cfg: &ChecksumConfig,
-    basis: &[u8],
-    target: &[u8],
-    block_size: usize,
-) -> Vec<Op> {
+fn compute_delta(cfg: &ChecksumConfig, basis: &[u8], target: &[u8], block_size: usize) -> Vec<Op> {
     let mut map: HashMap<u32, Vec<(Vec<u8>, usize)>> = HashMap::new();
     let mut off = 0;
     while off < basis.len() {
         let end = usize::min(off + block_size, basis.len());
         let block = &basis[off..end];
         let sum = cfg.checksum(block);
-        map.entry(sum.weak)
-            .or_default()
-            .push((sum.strong, off));
+        map.entry(sum.weak).or_default().push((sum.strong, off));
         off = end;
     }
 
@@ -59,13 +52,9 @@ fn compute_delta(
         let block = &target[i..end];
         let sum = cfg.checksum(block);
         if let Some(candidates) = map.get(&sum.weak) {
-            if let Some((_, off)) = candidates
-                .iter()
-                .find(|(strong, _)| *strong == sum.strong)
-            {
+            if let Some((_, off)) = candidates.iter().find(|(strong, _)| *strong == sum.strong) {
                 if !lit.is_empty() {
-                    ops.push(Op::Data(lit.clone()));
-                    lit.clear();
+                    ops.push(Op::Data(std::mem::take(&mut lit)));
                 }
                 ops.push(Op::Copy {
                     offset: *off,
