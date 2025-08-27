@@ -3,6 +3,9 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::io::{self, Read, Write};
 
+pub mod mux;
+pub mod demux;
+
 /// Latest protocol version supported by this implementation.
 pub const LATEST_VERSION: u32 = 31;
 /// Oldest protocol version we support.
