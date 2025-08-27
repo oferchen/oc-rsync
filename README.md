@@ -1,6 +1,6 @@
 # rsync-rs
 
-rsync-rs aims to provide a Rust reimplementation of the classic `rsync` utility. The project seeks feature parity with the original while embracing Rust's safety and concurrency advantages.
+rsync-rs is a modular reimplementation of the classic `rsync` utility in Rust. It develops the protocol, transport and synchronization engine as a collection of reusable crates and aims for eventual compatibility with existing rsync deployments while leveraging Rust's safety and concurrency strengths.
 
 ## Mission
 - Deliver fast, reliable file synchronization.
@@ -10,14 +10,14 @@ rsync-rs aims to provide a Rust reimplementation of the classic `rsync` utility.
 ## Non-negotiable Constraints
 - **Correctness**: Data integrity is paramount; transfers must faithfully mirror source files.
 - **Security**: Safe defaults and careful parsing to prevent memory and protocol vulnerabilities.
-- **Cross-platform**: Support Linux, macOS, and Windows from day one.
+- **Cross-platform**: Aim to support Linux, macOS, and Windows.
 - **Open source**: Dual-licensed under MIT and Apache-2.0.
 
 ## In-Scope Features
 - Local and remote file synchronization.
 - Delta-transfer algorithm with rolling checksum.
 - Progress reporting and dry-run mode.
-- Extensible crate design for future transports and compressors.
+- Modular crate design covering protocol, checksums, filters, file walking, compression, transport, and CLI components.
 
 ## Out-of-Scope Features
 - Graphical user interfaces.
@@ -25,9 +25,16 @@ rsync-rs aims to provide a Rust reimplementation of the classic `rsync` utility.
 - Scheduling/daemonization; external tools should orchestrate recurring jobs.
 
 ## Crate Layout
-- `rsync-core`: core algorithms and data structures.
-- `rsync-cli`: command-line interface and argument parsing.
-- `rsync-utils`: shared utilities and helper functionality.
+- `protocol`: wire-level message encoding and negotiation.
+- `checksums`: rolling and strong checksum algorithms.
+- `filters`: include/exclude rule parsing.
+- `walk`: directory traversal and file list generation.
+- `meta`: file metadata types and helpers.
+- `compress`: compression traits and implementations.
+- `engine`: synchronization engine orchestrating delta transfer.
+- `transport`: I/O abstraction for local and remote transports.
+- `cli`: command-line interface and argument parsing.
+- `fuzz`: fuzz testing targets for parser and protocol components.
 
 ## Milestone Roadmap
 1. **Bootstrap** – basic file scanning and checksum generation.
