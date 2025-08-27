@@ -35,3 +35,20 @@ rsync-rs aims to provide a Rust reimplementation of the classic `rsync` utility.
 3. **Networking** – add remote transport over SSH and TCP.
 4. **CLI Parity** – mirror key rsync flags and behaviors.
 5. **Stabilization** – cross-platform polish and documentation.
+
+## Testing
+Run the full test suite with:
+
+```
+cargo test
+```
+
+## Fuzzing
+The project includes fuzz targets under `crates/fuzz`. To run them, install [`cargo-fuzz`](https://github.com/rust-fuzz/cargo-fuzz) and execute:
+
+```
+cargo install cargo-fuzz
+cd crates/fuzz
+cargo fuzz run protocol_frame_decode_fuzz
+cargo fuzz run filters_parse_fuzz
+```

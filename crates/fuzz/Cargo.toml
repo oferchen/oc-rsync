@@ -2,3 +2,24 @@
 name = "fuzz"
 version = "0.1.0"
 edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+protocol = { path = "../protocol" }
+filters = { path = "../filters" }
+
+[[bin]]
+name = "protocol_frame_decode_fuzz"
+path = "fuzz_targets/protocol_frame_decode_fuzz.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "filters_parse_fuzz"
+path = "fuzz_targets/filters_parse_fuzz.rs"
+test = false
+doc = false
