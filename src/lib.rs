@@ -2,8 +2,8 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::Result;
-use checksums::checksums::{rolling_checksum, strong_digest};
-use protocol::protocol::{negotiate_version, Message, LATEST_VERSION};
+use checksums::{rolling_checksum, strong_digest};
+use protocol::{negotiate_version, Message, LATEST_VERSION};
 
 /// Synchronize a single file from `src` to `dst` using the local protocol.
 pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
@@ -22,7 +22,9 @@ pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
     let mut wrote = false;
     for f in frames {
         match Message::from_frame(f)? {
-            Message::Version(v) => { negotiate_version(v).ok_or_else(|| anyhow::anyhow!("version"))?; }
+            Message::Version(v) => {
+                negotiate_version(v).ok_or_else(|| anyhow::anyhow!("version"))?;
+            }
             Message::Data(d) => {
                 fs::write(dst, &d)?;
                 assert_eq!(rolling_checksum(&d), weak);
@@ -30,7 +32,7 @@ pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
                 wrote = true;
             }
             Message::Done => break,
-            Message::KeepAlive => {},
+            Message::KeepAlive => {}
         }
     }
     if !wrote {
@@ -42,15 +44,18 @@ pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
     use std::io::Write;
+    use tempfile::tempdir;
 
     #[test]
     fn sync_local() {
         let dir = tempdir().unwrap();
         let src = dir.path().join("src.txt");
         let dst = dir.path().join("dst.txt");
-        fs::File::create(&src).unwrap().write_all(b"hello world").unwrap();
+        fs::File::create(&src)
+            .unwrap()
+            .write_all(b"hello world")
+            .unwrap();
         synchronize(&src, &dst).unwrap();
         let out = fs::read(&dst).unwrap();
         assert_eq!(out, b"hello world");

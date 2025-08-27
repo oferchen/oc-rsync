@@ -9,7 +9,12 @@ fn client_local_sync() {
     std::fs::write(&src, b"hello world").unwrap();
 
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
-    cmd.args(["client", "--local", src.to_str().unwrap(), dst.to_str().unwrap()]);
+    cmd.args([
+        "client",
+        "--local",
+        src.to_str().unwrap(),
+        dst.to_str().unwrap(),
+    ]);
     cmd.assert().success();
 
     let out = std::fs::read(&dst).unwrap();

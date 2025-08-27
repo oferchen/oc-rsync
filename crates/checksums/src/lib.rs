@@ -1,4 +1,3 @@
-pub mod checksums {
 use md5::{Digest, Md5};
 
 /// Compute the rsync rolling checksum for a block of data.
@@ -23,7 +22,11 @@ pub struct Rolling {
 
 impl Rolling {
     pub fn new(block: &[u8]) -> Self {
-        let mut r = Rolling { len: block.len(), s1: 0, s2: 0 };
+        let mut r = Rolling {
+            len: block.len(),
+            s1: 0,
+            s2: 0,
+        };
         for (i, b) in block.iter().enumerate() {
             r.s1 = r.s1.wrapping_add(*b as u32);
             r.s2 = r.s2.wrapping_add((block.len() - i) as u32 * (*b as u32));
@@ -33,7 +36,10 @@ impl Rolling {
 
     pub fn roll(&mut self, out: u8, inp: u8) {
         self.s1 = self.s1.wrapping_sub(out as u32).wrapping_add(inp as u32);
-        self.s2 = self.s2.wrapping_sub(self.len as u32 * out as u32).wrapping_add(self.s1);
+        self.s2 = self
+            .s2
+            .wrapping_sub(self.len as u32 * out as u32)
+            .wrapping_add(self.s1);
     }
 
     pub fn digest(&self) -> u32 {
@@ -73,5 +79,4 @@ mod tests {
         let digest = strong_digest(b"hello world");
         assert_eq!(hex::encode(digest), "5eb63bbbe01eeed093cb22bb8f5acdc3");
     }
-}
 }

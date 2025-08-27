@@ -1,6 +1,3 @@
-
-pub mod protocol {
-    // Placeholder for the protocol crate.
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{self, Read, Write};
 
@@ -12,7 +9,8 @@ pub const LATEST_VERSION: u32 = 31;
 pub fn negotiate_version(peer: u32) -> Option<u32> {
     if peer >= LATEST_VERSION {
         Some(LATEST_VERSION)
-    } else if peer >= 29 { // minimum we support
+    } else if peer >= 29 {
+        // minimum we support
         Some(peer)
     } else {
         None
@@ -59,7 +57,11 @@ impl Frame {
         let len = r.read_u32::<BigEndian>()? as usize;
         let mut payload = vec![0; len];
         r.read_exact(&mut payload)?;
-        Ok(Frame { channel, tag, payload })
+        Ok(Frame {
+            channel,
+            tag,
+            payload,
+        })
     }
 }
 
@@ -78,11 +80,27 @@ impl Message {
             Message::Version(v) => {
                 let mut payload = Vec::new();
                 payload.write_u32::<BigEndian>(*v).unwrap();
-                Frame { channel, tag: Tag::Message, payload }
+                Frame {
+                    channel,
+                    tag: Tag::Message,
+                    payload,
+                }
             }
-            Message::Data(data) => Frame { channel, tag: Tag::Message, payload: data.clone() },
-            Message::Done => Frame { channel, tag: Tag::Message, payload: vec![] },
-            Message::KeepAlive => Frame { channel, tag: Tag::KeepAlive, payload: vec![] },
+            Message::Data(data) => Frame {
+                channel,
+                tag: Tag::Message,
+                payload: data.clone(),
+            },
+            Message::Done => Frame {
+                channel,
+                tag: Tag::Message,
+                payload: vec![],
+            },
+            Message::KeepAlive => Frame {
+                channel,
+                tag: Tag::KeepAlive,
+                payload: vec![],
+            },
         }
     }
 
@@ -138,5 +156,4 @@ mod tests {
         let msg2 = Message::from_frame(decoded).unwrap();
         assert_eq!(msg2, Message::KeepAlive);
     }
-}
 }
