@@ -21,8 +21,9 @@ edition = "2021"
 [dependencies]
 protocol = { path = "crates/protocol" }
 checksums = { path = "crates/checksums" }
-clap = { version = "4", features = ["derive"] }
 anyhow = "1"
+cli = { path = "crates/cli" }
+engine = { path = "crates/engine" }
 
 [dev-dependencies]
 tempfile = "3"
