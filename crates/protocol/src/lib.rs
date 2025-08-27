@@ -18,6 +18,10 @@ pub fn negotiate_version(peer: u32) -> Option<u32> {
 }
 
 /// Tags used to multiplex streams.
+///
+/// `Tag` differentiates between control frames such as keepalive messages and
+/// regular protocol messages.  Individual message variants are further
+/// identified by [`Msg`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Tag {
@@ -35,11 +39,35 @@ impl From<u8> for Tag {
     }
 }
 
+/// Identifier for the type of [`Message`] contained in a frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Msg {
+    Version = 0,
+    Data = 1,
+    Done = 2,
+}
+
+impl From<u8> for Msg {
+    fn from(v: u8) -> Self {
+        match v {
+            0 => Msg::Version,
+            1 => Msg::Data,
+            2 => Msg::Done,
+            _ => Msg::Data,
+        }
+    }
+}
+
 /// A frame of data sent over the wire.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Frame {
     pub channel: u16,
     pub tag: Tag,
+    /// Identifier for the contained [`Message`]. This allows payloads of any
+    /// length (including 4 bytes) without ambiguity between [`Message::Version`]
+    /// and [`Message::Data`].
+    pub msg: Msg,
     pub payload: Vec<u8>,
 }
 
@@ -47,6 +75,7 @@ impl Frame {
     pub fn encode<W: Write>(&self, mut w: W) -> io::Result<()> {
         w.write_u16::<BigEndian>(self.channel)?;
         w.write_u8(self.tag as u8)?;
+        w.write_u8(self.msg as u8)?;
         w.write_u32::<BigEndian>(self.payload.len() as u32)?;
         w.write_all(&self.payload)
     }
@@ -54,12 +83,14 @@ impl Frame {
     pub fn decode<R: Read>(mut r: R) -> io::Result<Self> {
         let channel = r.read_u16::<BigEndian>()?;
         let tag = Tag::from(r.read_u8()?);
+        let msg = Msg::from(r.read_u8()?);
         let len = r.read_u32::<BigEndian>()? as usize;
         let mut payload = vec![0; len];
         r.read_exact(&mut payload)?;
         Ok(Frame {
             channel,
             tag,
+            msg,
             payload,
         })
     }
@@ -83,22 +114,26 @@ impl Message {
                 Frame {
                     channel,
                     tag: Tag::Message,
+                    msg: Msg::Version,
                     payload,
                 }
             }
             Message::Data(data) => Frame {
                 channel,
                 tag: Tag::Message,
+                msg: Msg::Data,
                 payload: data.clone(),
             },
             Message::Done => Frame {
                 channel,
                 tag: Tag::Message,
+                msg: Msg::Done,
                 payload: vec![],
             },
             Message::KeepAlive => Frame {
                 channel,
                 tag: Tag::KeepAlive,
+                msg: Msg::Data, // value unused for keepalives
                 payload: vec![],
             },
         }
@@ -107,17 +142,15 @@ impl Message {
     pub fn from_frame(f: Frame) -> io::Result<Self> {
         match f.tag {
             Tag::KeepAlive => Ok(Message::KeepAlive),
-            Tag::Message => {
-                if f.payload.is_empty() {
-                    Ok(Message::Done)
-                } else if f.payload.len() == 4 {
+            Tag::Message => match f.msg {
+                Msg::Version => {
                     let mut rdr = &f.payload[..];
                     let v = rdr.read_u32::<BigEndian>()?;
                     Ok(Message::Version(v))
-                } else {
-                    Ok(Message::Data(f.payload))
                 }
-            }
+                Msg::Data => Ok(Message::Data(f.payload)),
+                Msg::Done => Ok(Message::Done),
+            },
         }
     }
 }
@@ -144,6 +177,16 @@ mod tests {
         assert_eq!(decoded, frame);
         let msg2 = Message::from_frame(decoded).unwrap();
         assert_eq!(msg2, msg);
+
+        // A 4-byte payload should not be interpreted as a version message
+        let msg4 = Message::Data(b"1234".to_vec());
+        let frame4 = msg4.to_frame(3);
+        let mut buf4 = Vec::new();
+        frame4.encode(&mut buf4).unwrap();
+        let decoded4 = Frame::decode(&buf4[..]).unwrap();
+        assert_eq!(decoded4, frame4);
+        let msg4_round = Message::from_frame(decoded4).unwrap();
+        assert_eq!(msg4_round, msg4);
     }
 
     #[test]
