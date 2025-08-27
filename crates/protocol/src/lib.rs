@@ -1,4 +1,6 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use std::convert::TryFrom;
+use std::fmt;
 use std::io::{self, Read, Write};
 
 /// Latest protocol version supported by this implementation.
@@ -29,12 +31,26 @@ pub enum Tag {
     KeepAlive = 1,
 }
 
-impl From<u8> for Tag {
-    fn from(v: u8) -> Self {
+/// Error returned when attempting to convert from an unknown tag value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Error(pub u8);
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "unknown tag {}", self.0)
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl TryFrom<u8> for Tag {
+    type Error = Error;
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
         match v {
-            0 => Tag::Message,
-            1 => Tag::KeepAlive,
-            _ => Tag::Message,
+            0 => Ok(Tag::Message),
+            1 => Ok(Tag::KeepAlive),
+            other => Err(Error(other)),
         }
     }
 }
@@ -82,8 +98,8 @@ impl Frame {
 
     pub fn decode<R: Read>(mut r: R) -> io::Result<Self> {
         let channel = r.read_u16::<BigEndian>()?;
-        let tag = Tag::from(r.read_u8()?);
-        let msg = Msg::from(r.read_u8()?);
+        let tag = Tag::try_from(r.read_u8()?)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         let len = r.read_u32::<BigEndian>()? as usize;
         let mut payload = vec![0; len];
         r.read_exact(&mut payload)?;
@@ -198,5 +214,12 @@ mod tests {
         let decoded = Frame::decode(&buf[..]).unwrap();
         let msg2 = Message::from_frame(decoded).unwrap();
         assert_eq!(msg2, Message::KeepAlive);
+    }
+
+    #[test]
+    fn unknown_tag_errors() {
+        // channel:0, tag:99 (invalid), len:0
+        let buf = [0u8, 0, 99, 0, 0, 0, 0];
+        assert!(Frame::decode(&buf[..]).is_err());
     }
 }
