@@ -2,6 +2,12 @@
 
 rsync-rs is a modular reimplementation of the classic `rsync` utility in Rust. It develops the protocol, transport and synchronization engine as a collection of reusable crates and aims for eventual compatibility with existing rsync deployments while leveraging Rust's safety and concurrency strengths.
 
+## Summary
+
+**Mission**: Deliver fast, reliable file synchronization with eventual compatibility with the original `rsync`.
+
+**Non‑negotiable constraints**: correctness, security, cross‑platform support, and open‑source dual licensing.
+
 ## Mission
 - Deliver fast, reliable file synchronization.
 - Maintain compatibility with existing rsync deployments.
@@ -12,6 +18,9 @@ rsync-rs is a modular reimplementation of the classic `rsync` utility in Rust. I
 - **Security**: Safe defaults and careful parsing to prevent memory and protocol vulnerabilities.
 - **Cross-platform**: Aim to support Linux, macOS, and Windows.
 - **Open source**: Dual-licensed under MIT and Apache-2.0.
+
+## Compatibility
+Platform support status is tracked in the [compatibility matrix](docs/compat_matrix.md).
 
 ## In-Scope Features
 - Local and remote file synchronization.
@@ -24,24 +33,28 @@ rsync-rs is a modular reimplementation of the classic `rsync` utility in Rust. I
 - Cloud-specific integration or storage backends.
 - Scheduling/daemonization; external tools should orchestrate recurring jobs.
 
-## Crate Layout
-- `protocol`: wire-level message encoding and negotiation.
-- `checksums`: rolling and strong checksum algorithms.
-- `filters`: include/exclude rule parsing.
-- `walk`: directory traversal and file list generation.
-- `meta`: file metadata types and helpers.
-- `compress`: compression traits and implementations.
-- `engine`: synchronization engine orchestrating delta transfer.
-- `transport`: I/O abstraction for local and remote transports.
-- `cli`: command-line interface and argument parsing.
-- `fuzz`: fuzz testing targets for parser and protocol components.
+## Architecture
+The project is organized as a set of focused crates:
+
+- `protocol` – defines frame formats, negotiates versions, and encodes/decodes messages on the wire.
+- `checksums` – implements rolling and strong checksum algorithms for block matching.
+- `filters` – parses include/exclude rules that control which files participate in a transfer.
+- `walk` – traverses directories and produces the file list handed to the engine.
+- `meta` – models file metadata (permissions, timestamps, ownership) and provides helper utilities.
+- `compress` – offers traits and implementations for optional compression of file data during transfer.
+- `engine` – orchestrates scanning, delta calculation, and application of differences between sender and receiver.
+- `transport` – abstracts local and remote I/O, multiplexing channels over SSH, TCP, or other transports.
+- `cli` – exposes a user-facing command line built on top of the engine and transport layers.
+- `fuzz` – houses fuzz targets that stress protocol and parser logic for robustness.
 
 ## Milestone Roadmap
-1. **Bootstrap** – basic file scanning and checksum generation.
-2. **Transfer Engine** – implement block matching and delta encoding.
-3. **Networking** – add remote transport over SSH and TCP.
-4. **CLI Parity** – mirror key rsync flags and behaviors.
-5. **Stabilization** – cross-platform polish and documentation.
+1. **M1—Bootstrap** – repository builds; `walk` and `checksums` crates produce file signatures.
+2. **M2—Transfer Engine** – `engine` performs block matching and delta encoding for local sync.
+3. **M3—Networking** – `transport` enables SSH/TCP remotes with version negotiation.
+4. **M4—CLI Parity** – CLI exposes core rsync flags with end-to-end tests passing.
+5. **M5—Filters & Compression** – `filters` and `compress` crates integrate with engine and CLI.
+6. **M6—Fuzzing & Performance** – fuzz targets run in CI; basic benchmarks meet performance goals.
+7. **M7—Stabilization** – documentation complete, cross-platform builds green, and compatibility matrix up to date.
 
 ## Testing
 Run the full test suite with:
@@ -59,3 +72,6 @@ cd crates/fuzz
 cargo fuzz run protocol_frame_decode_fuzz
 cargo fuzz run filters_parse_fuzz
 ```
+
+## License
+This project is dual-licensed under the terms of the [MIT](LICENSE-MIT) and [Apache-2.0](LICENSE-APACHE) licenses.
