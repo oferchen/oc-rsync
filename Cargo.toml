@@ -1,0 +1,17 @@
+[workspace]
+members = ["crates/protocol", "crates/checksums"]
+
+[package]
+name = "rsync-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+protocol = { path = "crates/protocol" }
+checksums = { path = "crates/checksums" }
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+
+[dev-dependencies]
+tempfile = "3"
+assert_cmd = "2"
