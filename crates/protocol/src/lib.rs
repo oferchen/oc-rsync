@@ -91,6 +91,7 @@ pub enum Msg {
     Version = 0,
     Data = 1,
     Done = 2,
+    KeepAlive = 3,
 }
 
 /// Error returned when attempting to convert from an unknown message value.
@@ -119,6 +120,7 @@ impl TryFrom<u8> for Msg {
             0 => Ok(Msg::Version),
             1 => Ok(Msg::Data),
             2 => Ok(Msg::Done),
+            3 => Ok(Msg::KeepAlive),
             other => Err(UnknownMsg(other)),
         }
     }
@@ -229,7 +231,7 @@ impl Message {
                 let header = FrameHeader {
                     channel,
                     tag: Tag::KeepAlive,
-                    msg: Msg::Data, // unused
+                    msg: Msg::KeepAlive,
                     len: 0,
                 };
                 Frame { header, payload }
@@ -249,7 +251,13 @@ impl Message {
             ));
         }
         match f.header.tag {
-            Tag::KeepAlive => Ok(Message::KeepAlive),
+            Tag::KeepAlive => match f.header.msg {
+                Msg::KeepAlive => Ok(Message::KeepAlive),
+                _ => Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "invalid keepalive message",
+                )),
+            },
             Tag::Message => match f.header.msg {
                 Msg::Version => {
                     let mut rdr = &f.payload[..];
@@ -258,6 +266,10 @@ impl Message {
                 }
                 Msg::Data => Ok(Message::Data(f.payload)),
                 Msg::Done => Ok(Message::Done),
+                Msg::KeepAlive => Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "unexpected keepalive message",
+                )),
             },
         }
     }
@@ -301,6 +313,8 @@ mod tests {
     fn keepalive_frame() {
         let msg = Message::KeepAlive;
         let frame = msg.into_frame(0);
+        assert_eq!(frame.header.tag, Tag::KeepAlive);
+        assert_eq!(frame.header.msg, Msg::KeepAlive);
         let mut buf = Vec::new();
         frame.encode(&mut buf).unwrap();
         let decoded = Frame::decode(&buf[..]).unwrap();

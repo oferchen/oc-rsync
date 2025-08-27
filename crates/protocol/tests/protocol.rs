@@ -1,4 +1,4 @@
-use protocol::{negotiate_version, Frame, Message};
+use protocol::{negotiate_version, Frame, Message, Msg, Tag};
 
 #[test]
 fn frame_roundtrip() {
@@ -20,6 +20,20 @@ fn frame_roundtrip() {
     assert_eq!(decoded4, frame4);
     let msg4_round = Message::from_frame(decoded4).unwrap();
     assert_eq!(msg4_round, msg4);
+}
+
+#[test]
+fn keepalive_roundtrip() {
+    let msg = Message::KeepAlive;
+    let frame = msg.to_frame(0);
+    assert_eq!(frame.header.tag, Tag::KeepAlive);
+    assert_eq!(frame.header.msg, Msg::KeepAlive);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    let decoded = Frame::decode(&buf[..]).unwrap();
+    assert_eq!(decoded, frame);
+    let msg2 = Message::from_frame(decoded).unwrap();
+    assert_eq!(msg2, Message::KeepAlive);
 }
 
 #[test]
