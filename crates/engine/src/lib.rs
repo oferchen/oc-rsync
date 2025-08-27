@@ -153,10 +153,29 @@ pub fn sync(src: &Path, dst: &Path) -> Result<()> {
     let mut sender = Sender::new(1024);
     let mut receiver = Receiver::new();
     sender.start();
-    for path in walk(src) {
+    for (path, file_type) in walk(src) {
         if let Some(rel) = path.strip_prefix(src).ok() {
             let dest_path = dst.join(rel);
-            sender.process_file(&path, &dest_path, &mut receiver)?;
+            if file_type.is_file() {
+                sender.process_file(&path, &dest_path, &mut receiver)?;
+            } else if file_type.is_dir() {
+                fs::create_dir_all(&dest_path)?;
+            } else if file_type.is_symlink() {
+                let target = fs::read_link(&path)?;
+                if let Some(parent) = dest_path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                #[cfg(unix)]
+                std::os::unix::fs::symlink(&target, &dest_path)?;
+                #[cfg(windows)]
+                {
+                    if target.is_dir() {
+                        std::os::windows::fs::symlink_dir(&target, &dest_path)?;
+                    } else {
+                        std::os::windows::fs::symlink_file(&target, &dest_path)?;
+                    }
+                }
+            }
         } else {
             // Path lies outside of the source directory, skip it.
             continue;
