@@ -33,14 +33,21 @@ pub enum Op {
 
 /// Compute a delta from `basis` to `target` using a simple block matching
 /// algorithm driven by the checksum crate.
-fn compute_delta(cfg: &ChecksumConfig, basis: &[u8], target: &[u8], block_size: usize) -> Vec<Op> {
-    let mut map: HashMap<u32, (Vec<u8>, usize)> = HashMap::new();
+fn compute_delta(
+    cfg: &ChecksumConfig,
+    basis: &[u8],
+    target: &[u8],
+    block_size: usize,
+) -> Vec<Op> {
+    let mut map: HashMap<u32, Vec<(Vec<u8>, usize)>> = HashMap::new();
     let mut off = 0;
     while off < basis.len() {
         let end = usize::min(off + block_size, basis.len());
         let block = &basis[off..end];
         let sum = cfg.checksum(block);
-        map.insert(sum.weak, (sum.strong, off));
+        map.entry(sum.weak)
+            .or_default()
+            .push((sum.strong, off));
         off = end;
     }
 
@@ -51,8 +58,11 @@ fn compute_delta(cfg: &ChecksumConfig, basis: &[u8], target: &[u8], block_size: 
         let end = usize::min(i + block_size, target.len());
         let block = &target[i..end];
         let sum = cfg.checksum(block);
-        if let Some((strong, off)) = map.get(&sum.weak) {
-            if &sum.strong == strong {
+        if let Some(candidates) = map.get(&sum.weak) {
+            if let Some((_, off)) = candidates
+                .iter()
+                .find(|(strong, _)| *strong == sum.strong)
+            {
                 if !lit.is_empty() {
                     ops.push(Op::Data(lit.clone()));
                     lit.clear();
@@ -188,6 +198,7 @@ pub fn sync(src: &Path, dst: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use checksums::rolling_checksum;
     use tempfile::tempdir;
 
     #[test]
@@ -198,6 +209,25 @@ mod tests {
         let delta = compute_delta(&cfg, basis, target, 4);
         let out = apply_delta(basis, &delta);
         assert_eq!(out, target);
+    }
+
+    #[test]
+    fn weak_checksum_collision() {
+        let cfg = ChecksumConfigBuilder::new().build();
+        let block1 = b"\x01\x00\x01";
+        let block2 = b"\x00\x02\x00";
+        assert_eq!(rolling_checksum(block1), rolling_checksum(block2));
+        let basis: Vec<u8> = [block1.as_ref(), block2.as_ref()].concat();
+        let delta = compute_delta(&cfg, &basis, &basis, 3);
+        assert_eq!(
+            delta,
+            vec![
+                Op::Copy { offset: 0, len: 3 },
+                Op::Copy { offset: 3, len: 3 },
+            ]
+        );
+        let out = apply_delta(&basis, &delta);
+        assert_eq!(out, basis);
     }
 
     #[test]
