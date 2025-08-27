@@ -21,3 +21,19 @@ fn client_local_sync() {
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, b"hello world");
 }
+
+#[test]
+fn unsupported_subcommand() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+
+    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    cmd.args([
+        "client",
+        src_dir.to_str().unwrap(),
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().failure();
+}
