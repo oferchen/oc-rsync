@@ -42,6 +42,18 @@ mod tests {
     }
 
     #[test]
+    fn parses_daemon_subcommand() {
+        let cli = Cli::try_parse_from(["rsync-rs", "daemon"]).unwrap();
+        assert!(matches!(cli.command, Commands::Daemon));
+    }
+
+    #[test]
+    fn parses_probe_subcommand() {
+        let cli = Cli::try_parse_from(["rsync-rs", "probe"]).unwrap();
+        assert!(matches!(cli.command, Commands::Probe));
+    }
+
+    #[test]
     fn help_mentions_subcommands() {
         let mut cmd = Cli::command();
         let help = cmd.render_long_help().to_string();
