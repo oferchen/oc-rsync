@@ -31,10 +31,14 @@ enum Commands {
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Client { local: true, src, dst } => {
+        Commands::Client {
+            local: true,
+            src,
+            dst,
+        } => {
             sync(&src, &dst)?;
         }
-        _ => eprintln!("Only local client mode is implemented"),
+        _ => anyhow::bail!("Only local client mode is implemented"),
     }
     Ok(())
 }
