@@ -26,7 +26,11 @@ enum Commands {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Client { local: true, src, dst } => {
+        Commands::Client {
+            local: true,
+            src,
+            dst,
+        } => {
             rsync_rs::synchronize(&src, &dst)?;
         }
         _ => {
