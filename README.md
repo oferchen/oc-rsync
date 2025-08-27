@@ -33,8 +33,14 @@ Platform support status is tracked in the [compatibility matrix](docs/compat_mat
 - Cloud-specific integration or storage backends.
 - Scheduling/daemonization; external tools should orchestrate recurring jobs.
 
+## CLI
+Documentation for invoking the command line interface, available flags, and
+configuration precedence lives in [docs/cli.md](docs/cli.md).
+
 ## Architecture
-The project is organized as a set of focused crates:
+See [docs/architecture.md](docs/architecture.md) for a deeper overview of crate
+boundaries, data flow, and key algorithms. The project is organized as a set of
+focused crates:
 
 - `protocol` – defines frame formats, negotiates versions, and encodes/decodes messages on the wire.
 - `checksums` – implements rolling and strong checksum algorithms for block matching.
