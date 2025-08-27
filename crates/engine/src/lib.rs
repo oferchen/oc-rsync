@@ -1,10 +1,14 @@
 use std::collections::HashMap;
-use std::fs;
+use std::fs::{self, File};
+use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 use anyhow::Result;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 use walk::walk;
+
+trait ReadSeek: Read + Seek {}
+impl<T: Read + Seek> ReadSeek for T {}
 
 /// Sender state machine.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,6 +36,29 @@ pub enum Op {
 }
 
 /// Compute a delta from `basis` to `target` using a simple block matching
+/// algorithm driven by the checksum crate. The computation is performed using
+/// streaming readers to avoid loading entire files into memory.
+fn compute_delta<R1: Read, R2: Read>(
+    cfg: &ChecksumConfig,
+    basis: &mut R1,
+    target: &mut R2,
+    block_size: usize,
+) -> Result<Vec<Op>> {
+    let mut map: HashMap<u32, Vec<(Vec<u8>, usize, usize)>> = HashMap::new();
+    let mut off = 0;
+    let mut buf = vec![0u8; block_size];
+    loop {
+        let n = basis.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        let sum = cfg.checksum(&buf[..n]);
+        map.entry(sum.weak).or_default().push((sum.strong, off, n));
+        off += n;
+        if n < block_size {
+            break;
+        }
+
 /// algorithm driven by the checksum crate.
 fn compute_delta(cfg: &ChecksumConfig, basis: &[u8], target: &[u8], block_size: usize) -> Vec<Op> {
     let mut map: HashMap<u32, Vec<(Vec<u8>, usize)>> = HashMap::new();
@@ -42,10 +69,36 @@ fn compute_delta(cfg: &ChecksumConfig, basis: &[u8], target: &[u8], block_size: 
         let sum = cfg.checksum(block);
         map.entry(sum.weak).or_default().push((sum.strong, off));
         off = end;
+
     }
 
     let mut ops = Vec::new();
     let mut lit = Vec::new();
+
+    let mut window = Vec::new();
+    let mut byte = [0u8; 1];
+    loop {
+        let n = target.read(&mut byte)?;
+        if n == 0 {
+            break;
+        }
+        window.push(byte[0]);
+        if window.len() >= block_size {
+            let sum = cfg.checksum(&window[..block_size]);
+            if let Some(candidates) = map.get(&sum.weak) {
+                if let Some((_, off, len)) = candidates
+                    .iter()
+                    .find(|(s, _, l)| *s == sum.strong && *l == block_size)
+                {
+                    if !lit.is_empty() {
+                        ops.push(Op::Data(std::mem::take(&mut lit)));
+                    }
+                    ops.push(Op::Copy {
+                        offset: *off,
+                        len: *len,
+                    });
+                    window.drain(..block_size);
+                    continue;
     let mut i = 0;
     while i < target.len() {
         let end = usize::min(i + block_size, target.len());
@@ -56,38 +109,37 @@ fn compute_delta(cfg: &ChecksumConfig, basis: &[u8], target: &[u8], block_size: 
                 if !lit.is_empty() {
                     ops.push(Op::Data(std::mem::take(&mut lit)));
                 }
-                ops.push(Op::Copy {
-                    offset: *off,
-                    len: block.len(),
-                });
-                i += block.len();
-                continue;
             }
+            lit.push(window.remove(0));
         }
-        lit.push(target[i]);
-        i += 1;
     }
+
+    lit.extend(window);
     if !lit.is_empty() {
         ops.push(Op::Data(lit));
     }
-    ops
+    Ok(ops)
 }
 
-/// Apply a delta to `basis` returning the reconstructed data.
-fn apply_delta(basis: &[u8], ops: &[Op]) -> Vec<u8> {
-    let mut out = Vec::new();
+/// Apply a delta to `basis` writing the reconstructed data into `out`.
+fn apply_delta<R: Read + Seek, W: Write>(basis: &mut R, ops: &[Op], out: &mut W) -> Result<()> {
+    let mut buf = vec![0u8; 8192];
     for op in ops {
         match op {
-            Op::Data(d) => out.extend_from_slice(d),
+            Op::Data(d) => out.write_all(d)?,
             Op::Copy { offset, len } => {
-                let end = offset + len;
-                if end <= basis.len() {
-                    out.extend_from_slice(&basis[*offset..end]);
+                basis.seek(SeekFrom::Start(*offset as u64))?;
+                let mut remaining = *len;
+                while remaining > 0 {
+                    let to_read = remaining.min(buf.len());
+                    basis.read_exact(&mut buf[..to_read])?;
+                    out.write_all(&buf[..to_read])?;
+                    remaining -= to_read;
                 }
             }
         }
     }
-    out
+    Ok(())
 }
 
 /// Sender responsible for walking the source tree and generating deltas.
@@ -116,10 +168,19 @@ impl Sender {
 
     /// Generate a delta for `path` against `dest` and ask the receiver to apply it.
     fn process_file(&mut self, path: &Path, dest: &Path, recv: &mut Receiver) -> Result<()> {
-        let src_data = fs::read(path)?;
-        let basis = fs::read(dest).unwrap_or_default();
-        let delta = compute_delta(&self.cfg, &basis, &src_data, self.block_size);
-        recv.apply(dest, &basis, delta)
+        let src = File::open(path)?;
+        let mut src_reader = BufReader::new(src);
+        let mut basis_reader: Box<dyn Read> = match File::open(dest) {
+            Ok(f) => Box::new(BufReader::new(f)),
+            Err(_) => Box::new(Cursor::new(Vec::new())),
+        };
+        let delta = compute_delta(
+            &self.cfg,
+            &mut basis_reader,
+            &mut src_reader,
+            self.block_size,
+        )?;
+        recv.apply(dest, delta)
     }
 }
 
@@ -135,13 +196,18 @@ impl Receiver {
         }
     }
 
-    fn apply(&mut self, dest: &Path, basis: &[u8], delta: Vec<Op>) -> Result<()> {
+    fn apply(&mut self, dest: &Path, delta: Vec<Op>) -> Result<()> {
         self.state = ReceiverState::Applying;
-        let data = apply_delta(basis, &delta);
+        let mut basis: Box<dyn ReadSeek> = match File::open(dest) {
+            Ok(f) => Box::new(f),
+            Err(_) => Box::new(Cursor::new(Vec::new())),
+        };
         if let Some(parent) = dest.parent() {
             fs::create_dir_all(parent)?;
         }
-        fs::write(dest, data)?;
+        let mut out = BufWriter::new(File::create(dest)?);
+        apply_delta(&mut basis, &delta, &mut out)?;
+        out.flush()?;
         self.state = ReceiverState::Finished;
         Ok(())
     }
@@ -193,11 +259,13 @@ mod tests {
     #[test]
     fn delta_roundtrip() {
         let cfg = ChecksumConfigBuilder::new().build();
-        let basis = b"hello world";
-        let target = b"hello brave new world";
-        let delta = compute_delta(&cfg, basis, target, 4);
-        let out = apply_delta(basis, &delta);
-        assert_eq!(out, target);
+        let mut basis = Cursor::new(b"hello world".to_vec());
+        let mut target = Cursor::new(b"hello brave new world".to_vec());
+        let delta = compute_delta(&cfg, &mut basis, &mut target, 4).unwrap();
+        let mut basis = Cursor::new(b"hello world".to_vec());
+        let mut out = Vec::new();
+        apply_delta(&mut basis, &delta, &mut out).unwrap();
+        assert_eq!(out, b"hello brave new world");
     }
 
     #[test]
@@ -207,7 +275,9 @@ mod tests {
         let block2 = b"\x00\x02\x00";
         assert_eq!(rolling_checksum(block1), rolling_checksum(block2));
         let basis: Vec<u8> = [block1.as_ref(), block2.as_ref()].concat();
-        let delta = compute_delta(&cfg, &basis, &basis, 3);
+        let mut basis_reader = Cursor::new(basis.clone());
+        let mut target_reader = Cursor::new(basis.clone());
+        let delta = compute_delta(&cfg, &mut basis_reader, &mut target_reader, 3).unwrap();
         assert_eq!(
             delta,
             vec![
@@ -215,7 +285,9 @@ mod tests {
                 Op::Copy { offset: 3, len: 3 },
             ]
         );
-        let out = apply_delta(&basis, &delta);
+        let mut basis_reader = Cursor::new(basis.clone());
+        let mut out = Vec::new();
+        apply_delta(&mut basis_reader, &delta, &mut out).unwrap();
         assert_eq!(out, basis);
     }
 
