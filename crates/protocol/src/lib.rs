@@ -3,8 +3,8 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::io::{self, Read, Write};
 
-pub mod mux;
 pub mod demux;
+pub mod mux;
 
 /// Latest protocol version supported by this implementation.
 pub const LATEST_VERSION: u32 = 31;
@@ -239,6 +239,12 @@ impl Message {
     }
 
     pub fn from_frame(f: Frame) -> io::Result<Self> {
+        if f.header.len as usize != f.payload.len() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "frame length mismatch",
+            ));
+        }
         match f.header.tag {
             Tag::KeepAlive => Ok(Message::KeepAlive),
             Tag::Message => match f.header.msg {
@@ -297,6 +303,34 @@ mod tests {
         let decoded = Frame::decode(&buf[..]).unwrap();
         let msg2 = Message::from_frame(decoded).unwrap();
         assert_eq!(msg2, Message::KeepAlive);
+    }
+
+    #[test]
+    fn too_short_payload_errors() {
+        let frame = Frame {
+            header: FrameHeader {
+                channel: 0,
+                tag: Tag::Message,
+                msg: Msg::Data,
+                len: 10,
+            },
+            payload: vec![0; 5],
+        };
+        assert!(Message::from_frame(frame).is_err());
+    }
+
+    #[test]
+    fn too_long_payload_errors() {
+        let frame = Frame {
+            header: FrameHeader {
+                channel: 0,
+                tag: Tag::Message,
+                msg: Msg::Data,
+                len: 1,
+            },
+            payload: vec![0; 5],
+        };
+        assert!(Message::from_frame(frame).is_err());
     }
 
     #[test]
