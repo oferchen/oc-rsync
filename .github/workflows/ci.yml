@@ -56,6 +56,9 @@ jobs:
           else
             cargo test --all --target ${{ matrix.target }}
           fi
+      - name: Golden parity tests
+        if: matrix.use-cross == false
+        run: make test-golden
       - name: Fuzz smoke test
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: timeout 30s cargo +nightly fuzz run filters_parse_fuzz -- -max_total_time=10
