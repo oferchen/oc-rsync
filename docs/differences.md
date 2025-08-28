@@ -10,9 +10,9 @@ below highlights how common flags map to current support and how the
 | `-z`, `--compress` | ✅ uses zlib by default | negotiates zstd if both peers support it |
 | `--compress-level` | ✅ maps numeric levels | applies to zlib or zstd |
 | `-c`, `--checksum` | ❌ parsed but not implemented | would switch to BLAKE3 when available |
-| `-a`, `--archive` | ⚠️ parsed but exits with message | n/a |
-| `-R`, `--relative` | ⚠️ parsed but exits with message | n/a |
-| `-P` | ⚠️ parsed but exits with message | n/a |
-| `--numeric-ids` | ⚠️ parsed but exits with message | n/a |
+| `-a`, `--archive` | ✅ sets perms, times, owner, group, links, devices, specials | n/a |
+| `-R`, `--relative` | ✅ preserves ancestor directories | n/a |
+| `-P` | ✅ keeps partial files and shows progress | n/a |
+| `--numeric-ids` | ✅ uses numeric uid/gid values | n/a |
 | `--modern` | rsync-rs only | enables zstd compression and BLAKE3 checksums |
 

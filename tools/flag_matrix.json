@@ -26,8 +26,8 @@
   },
   {
     "flag": "--archive",
-    "status": "Error",
-    "notes": "flag -a/--archive is not supported; see docs/differences.md"
+    "status": "Supported",
+    "notes": "sets perms, times, owner, group, links, devices, specials"
   },
   {
     "flag": "--atimes",
@@ -441,8 +441,8 @@
   },
   {
     "flag": "--numeric-ids",
-    "status": "Error",
-    "notes": "flag --numeric-ids is not supported; see docs/differences.md"
+    "status": "Supported",
+    "notes": "use numeric uid/gid values"
   },
   {
     "flag": "--old-args",
@@ -561,8 +561,8 @@
   },
   {
     "flag": "--relative",
-    "status": "Error",
-    "notes": "flag -R/--relative is not supported; see docs/differences.md"
+    "status": "Supported",
+    "notes": "use relative path names"
   },
   {
     "flag": "--remote-option",
@@ -806,13 +806,13 @@
   },
   {
     "flag": "-P",
-    "status": "Error",
-    "notes": "same as --partial --progress; flag -P is not supported; see docs/differences.md"
+    "status": "Supported",
+    "notes": "same as --partial --progress"
   },
   {
     "flag": "-R",
-    "status": "Error",
-    "notes": "alias for --relative; flag -R/--relative is not supported; see docs/differences.md"
+    "status": "Alias",
+    "notes": "alias for --relative"
   },
   {
     "flag": "-S",
@@ -846,8 +846,8 @@
   },
   {
     "flag": "-a",
-    "status": "Error",
-    "notes": "alias for --archive; flag -a/--archive is not supported; see docs/differences.md"
+    "status": "Alias",
+    "notes": "alias for --archive"
   },
   {
     "flag": "-b",

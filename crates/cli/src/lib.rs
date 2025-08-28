@@ -332,27 +332,6 @@ fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
 fn run_client(opts: ClientOpts) -> Result<()> {
     let matcher = build_matcher(&opts)?;
 
-    if opts.archive {
-        return Err(EngineError::Other(
-            "flag -a/--archive is not supported; see docs/differences.md".into(),
-        ));
-    }
-    if opts.relative {
-        return Err(EngineError::Other(
-            "flag -R/--relative is not supported; see docs/differences.md".into(),
-        ));
-    }
-    if opts.partial {
-        return Err(EngineError::Other(
-            "flag -P is not supported; see docs/differences.md".into(),
-        ));
-    }
-    if opts.numeric_ids {
-        return Err(EngineError::Other(
-            "flag --numeric-ids is not supported; see docs/differences.md".into(),
-        ));
-    }
-
     if let Some(cfg) = &opts.config {
         if !opts.quiet {
             println!("using config file {}", cfg.display());
@@ -381,12 +360,27 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         RemoteSpec::Local(p) => p.trailing_slash,
         RemoteSpec::Remote { path, .. } => path.trailing_slash,
     };
-    if !src_trailing {
-        let name = match &src {
-            RemoteSpec::Local(p) => p.path.file_name().map(|s| s.to_owned()),
-            RemoteSpec::Remote { path, .. } => path.path.file_name().map(|s| s.to_owned()),
+    let src_path = match &src {
+        RemoteSpec::Local(p) => &p.path,
+        RemoteSpec::Remote { path, .. } => &path.path,
+    };
+    if opts.relative {
+        let rel = if src_path.is_absolute() {
+            src_path
+                .strip_prefix(Path::new("/"))
+                .unwrap_or(src_path)
+        } else {
+            src_path
+        };
+        match &mut dst {
+            RemoteSpec::Local(p) => p.path.push(rel),
+            RemoteSpec::Remote { path, .. } => path.path.push(rel),
         }
-        .ok_or_else(|| EngineError::Other("source path missing file name".into()))?;
+    } else if !src_trailing {
+        let name = src_path
+            .file_name()
+            .map(|s| s.to_owned())
+            .ok_or_else(|| EngineError::Other("source path missing file name".into()))?;
         match &mut dst {
             RemoteSpec::Local(p) => p.path.push(&name),
             RemoteSpec::Remote { path, .. } => path.path.push(&name),
@@ -404,7 +398,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         owner: opts.owner || opts.archive,
         group: opts.group || opts.archive,
         links: opts.links || opts.archive,
-        hard_links: opts.hard_links || opts.archive,
+        hard_links: opts.hard_links,
         devices: opts.devices || opts.archive,
         specials: opts.specials || opts.archive,
         xattrs: opts.xattrs,
@@ -412,6 +406,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         sparse: false,
         strong: if opts.modern { StrongHash::Blake3 } else { StrongHash::Md5 },
         compress_level: opts.compress_level,
+        partial: opts.partial,
+        progress: opts.partial,
+        numeric_ids: opts.numeric_ids,
     };
     let stats = if opts.local {
         match (src, dst) {

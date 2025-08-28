@@ -12,6 +12,7 @@ compress = { path = "../compress" }
 filetime = "0.2"
 nix = { version = "0.27", features = ["user", "fs"] }
 xattr = "1.3"
+users = "0.11"
 
 [dev-dependencies]
 tempfile = "3"

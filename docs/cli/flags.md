@@ -15,7 +15,7 @@
 |  | --fake-super | store/recover privileged attrs using xattrs | no |  | no |
 | -g | --group | preserve group | no |  | no |
 |  | --groupmap=STRING | custom groupname mapping | no |  | no |
-|  | --numeric-ids | don't map uid/gid values by user/group name | no | Errors out; see differences.md | no |
+|  | --numeric-ids | don't map uid/gid values by user/group name | yes |  | no |
 | -O | --omit-dir-times | omit directories from --times | no |  | no |
 | -J | --omit-link-times | omit symlinks from --times | no |  | no |
 |  | --open-noatime | avoid changing the atime on opened files | no |  | no |
@@ -93,7 +93,7 @@
 |  | --stop-at=y-m-dTh:m | Stop rsync at the specified point in time | no |  | no |
 |  | --write-batch=FILE | write a batched update to FILE | no |  | no |
 | -D |  | same as --devices --specials | no |  | no |
-| -P |  | same as --partial --progress | no | Errors out; see differences.md | no |
+| -P |  | same as --partial --progress | yes |  | no |
 
 ## Network
 
@@ -145,7 +145,7 @@
 | --- | --- | --- | :---: | --- | :---: |
 |  | --append | append data onto shorter files | no |  | no |
 |  | --append-verify | --append w/old data in file checksum | no |  | no |
-| -a | --archive | archive mode is -rlptgoD (no -A,-X,-U,-N,-H) | no |  | no |
+| -a | --archive | archive mode is -rlptgoD (no -A,-X,-U,-N,-H) | yes |  | no |
 | -b | --backup | make backups (see --suffix & --backup-dir) | no |  | no |
 |  | --backup-dir=DIR | make backups into hierarchy based in DIR | no |  | no |
 | -B | --block-size=SIZE | force a fixed checksum block-size | no |  | no |
@@ -184,7 +184,7 @@
 |  | --preallocate | allocate dest files before writing them | no |  | no |
 | -m | --prune-empty-dirs | prune empty directory chains from file-list | no |  | no |
 | -r | --recursive | recurse into directories | yes |  | no |
-| -R | --relative | use relative path names | no |  | no |
+| -R | --relative | use relative path names | yes |  | no |
 |  | --remove-source-files | sender removes synchronized files (non-dir) | no |  | no |
 |  | --safe-links | ignore symlinks that point outside the tree | no |  | no |
 |  | --size-only | skip files that match in size | no |  | no |
