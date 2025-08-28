@@ -37,6 +37,18 @@ impl Demux {
         rx
     }
 
+    /// Unregister a previously registered channel.
+    ///
+    /// Dropping the channel discards any messages that have been queued but not yet
+    /// received. Any subsequent frames targeting this channel will be rejected by
+    /// [`Demux::ingest`].
+    pub fn unregister_channel(&mut self, id: u16) {
+        if let Some(ch) = self.channels.remove(&id) {
+            // Dropping the sender ensures pending messages are not delivered.
+            drop(ch);
+        }
+    }
+
     /// Process an incoming [`Frame`]. Keep-alive frames simply refresh the
     /// channel's activity timestamp while other messages are forwarded to the
     /// appropriate receiver.

@@ -1,6 +1,6 @@
+use std::fs;
 use tempfile::tempdir;
 use walk::walk;
-use std::fs;
 
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
@@ -20,10 +20,18 @@ fn walk_includes_files_dirs_and_symlinks() {
     #[cfg(windows)]
     symlink_file(root.join("top.txt"), &link_path).unwrap();
 
-    let entries: Vec<_> = walk(root).collect();
+    let entries: Vec<_> = walk(root).collect::<Result<Vec<_>, _>>().unwrap();
     assert!(entries.iter().any(|(p, t)| p == &root && t.is_dir()));
-    assert!(entries.iter().any(|(p, t)| p == &root.join("dir") && t.is_dir()));
-    assert!(entries.iter().any(|(p, t)| p == &root.join("dir/file.txt") && t.is_file()));
-    assert!(entries.iter().any(|(p, t)| p == &root.join("top.txt") && t.is_file()));
-    assert!(entries.iter().any(|(p, t)| p == &link_path && t.is_symlink()));
+    assert!(entries
+        .iter()
+        .any(|(p, t)| p == &root.join("dir") && t.is_dir()));
+    assert!(entries
+        .iter()
+        .any(|(p, t)| p == &root.join("dir/file.txt") && t.is_file()));
+    assert!(entries
+        .iter()
+        .any(|(p, t)| p == &root.join("top.txt") && t.is_file()));
+    assert!(entries
+        .iter()
+        .any(|(p, t)| p == &link_path && t.is_symlink()));
 }
