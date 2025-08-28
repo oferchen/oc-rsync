@@ -66,6 +66,9 @@ jobs:
       - name: Interop tests
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: bash scripts/interop.sh
+      - name: Interop matrix tests
+        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false && env.INTEROP_MATRIX == '1'
+        run: bash tests/interop/run_matrix.sh
       - name: Fuzz smoke test
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: |
