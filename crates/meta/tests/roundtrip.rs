@@ -1,7 +1,7 @@
 use std::fs;
 
 use filetime::FileTime;
-use meta::Metadata;
+use meta::{Metadata, Options};
 use nix::unistd::{chown, Gid, Uid};
 use tempfile::tempdir;
 
@@ -35,9 +35,10 @@ fn roundtrip_basic_metadata() -> std::io::Result<()> {
     filetime::set_file_mtime(&dst, FileTime::from_unix_time(1, 0))?;
     chown(&dst, Some(Uid::from_raw(1)), Some(Gid::from_raw(1)))?;
 
-    let meta = Metadata::from_path(&src)?;
-    meta.apply(&dst)?;
-    let applied = Metadata::from_path(&dst)?;
+    let opts = Options::default();
+    let meta = Metadata::from_path(&src, opts)?;
+    meta.apply(&dst, opts)?;
+    let applied = Metadata::from_path(&dst, opts)?;
 
     assert_eq!(meta.uid, applied.uid);
     assert_eq!(meta.gid, applied.gid);
@@ -59,9 +60,13 @@ fn roundtrip_xattrs() -> std::io::Result<()> {
 
     xattr::set(&src, "user.test", b"value")?;
 
-    let meta = Metadata::from_path(&src)?;
-    meta.apply(&dst)?;
-    let applied = Metadata::from_path(&dst)?;
+    let opts = Options {
+        xattrs: true,
+        ..Default::default()
+    };
+    let meta = Metadata::from_path(&src, opts)?;
+    meta.apply(&dst, opts)?;
+    let applied = Metadata::from_path(&dst, opts)?;
     let filter = |xs: &[(std::ffi::OsString, Vec<u8>)]| {
         xs.iter()
             .filter(|(n, _)| n != "system.posix_acl_access")
@@ -108,9 +113,13 @@ fn roundtrip_acl() -> std::io::Result<()> {
         }
     })?;
 
-    let meta = Metadata::from_path(&src)?;
-    meta.apply(&dst)?;
-    let applied = Metadata::from_path(&dst)?;
+    let opts = Options {
+        acl: true,
+        ..Default::default()
+    };
+    let meta = Metadata::from_path(&src, opts)?;
+    meta.apply(&dst, opts)?;
+    let applied = Metadata::from_path(&dst, opts)?;
 
     assert_eq!(meta.acl, applied.acl);
     Ok(())
