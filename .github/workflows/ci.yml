@@ -63,6 +63,9 @@ jobs:
       - name: Golden parity tests
         if: matrix.use-cross == false
         run: make test-golden
+      - name: Interop tests
+        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
+        run: bash scripts/interop.sh
       - name: Fuzz smoke test
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: timeout 30s cargo +nightly fuzz run filters_parse_fuzz -- -max_total_time=10
