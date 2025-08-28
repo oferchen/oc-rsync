@@ -1,4 +1,5 @@
 use filters::Matcher;
+use proptest::prelude::*;
 use std::fs;
 use tempfile::tempdir;
 
@@ -34,4 +35,24 @@ fn nested_filters_apply_in_order() {
     assert!(matcher.is_included("dir/debug.log").unwrap());
     assert!(!matcher.is_included("dir/sub/debug.log").unwrap());
     assert!(!matcher.is_included("dir/info.log").unwrap());
+}
+
+proptest! {
+    #[test]
+    fn include_overrides_parent_exclude_prop(subdir in "[a-z]{1,8}", keep in "[a-z]{1,8}\\.tmp") {
+        let tmp = tempdir().unwrap();
+        let root = tmp.path();
+        fs::write(root.join(".rsync-filter"), "- *.tmp\n").unwrap();
+        let sub = root.join(&subdir);
+        fs::create_dir_all(&sub).unwrap();
+        fs::write(sub.join(".rsync-filter"), format!("+ {}\n", keep)).unwrap();
+
+        let matcher = Matcher::new(Vec::new()).with_root(root);
+
+        prop_assert!(!matcher.is_included("other.tmp").unwrap());
+        let keep_path = format!("{}/{}", subdir, keep);
+        prop_assert!(matcher.is_included(&keep_path).unwrap());
+        let other_path = format!("{}/{}", subdir, "other.tmp");
+        prop_assert!(!matcher.is_included(&other_path).unwrap());
+    }
 }
