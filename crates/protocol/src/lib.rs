@@ -12,6 +12,8 @@ use std::io::{self, Read, Write};
 
 pub mod demux;
 pub mod mux;
+pub use demux::Demux;
+pub use mux::Mux;
 
 /// Latest protocol version supported by this implementation.
 pub const LATEST_VERSION: u32 = 31;
@@ -138,6 +140,92 @@ impl TryFrom<u8> for Msg {
             7 => Ok(Msg::Progress),
             other => Err(UnknownMsg(other)),
         }
+    }
+}
+
+/// Exit codes returned by rsync processes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum ExitCode {
+    Ok = 0,
+    SyntaxOrUsage = 1,
+    Protocol = 2,
+    FileSelect = 3,
+    Unsupported = 4,
+    StartClient = 5,
+    SocketIo = 10,
+    FileIo = 11,
+    StreamIo = 12,
+    MessageIo = 13,
+    Ipc = 14,
+    Crashed = 15,
+    Terminated = 16,
+    Signal1 = 19,
+    Signal = 20,
+    WaitChild = 21,
+    Malloc = 22,
+    Partial = 23,
+    Vanished = 24,
+    DelLimit = 25,
+    Timeout = 30,
+    ConnTimeout = 35,
+    CmdFailed = 124,
+    CmdKilled = 125,
+    CmdRun = 126,
+    CmdNotFound = 127,
+}
+
+/// Error returned when converting from an unknown exit code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UnknownExit(pub u8);
+
+impl fmt::Display for UnknownExit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "unknown exit code {}", self.0)
+    }
+}
+
+impl std::error::Error for UnknownExit {}
+
+impl TryFrom<u8> for ExitCode {
+    type Error = UnknownExit;
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        match v {
+            0 => Ok(ExitCode::Ok),
+            1 => Ok(ExitCode::SyntaxOrUsage),
+            2 => Ok(ExitCode::Protocol),
+            3 => Ok(ExitCode::FileSelect),
+            4 => Ok(ExitCode::Unsupported),
+            5 => Ok(ExitCode::StartClient),
+            10 => Ok(ExitCode::SocketIo),
+            11 => Ok(ExitCode::FileIo),
+            12 => Ok(ExitCode::StreamIo),
+            13 => Ok(ExitCode::MessageIo),
+            14 => Ok(ExitCode::Ipc),
+            15 => Ok(ExitCode::Crashed),
+            16 => Ok(ExitCode::Terminated),
+            19 => Ok(ExitCode::Signal1),
+            20 => Ok(ExitCode::Signal),
+            21 => Ok(ExitCode::WaitChild),
+            22 => Ok(ExitCode::Malloc),
+            23 => Ok(ExitCode::Partial),
+            24 => Ok(ExitCode::Vanished),
+            25 => Ok(ExitCode::DelLimit),
+            30 => Ok(ExitCode::Timeout),
+            35 => Ok(ExitCode::ConnTimeout),
+            124 => Ok(ExitCode::CmdFailed),
+            125 => Ok(ExitCode::CmdKilled),
+            126 => Ok(ExitCode::CmdRun),
+            127 => Ok(ExitCode::CmdNotFound),
+            other => Err(UnknownExit(other)),
+        }
+    }
+}
+
+impl From<ExitCode> for u8 {
+    fn from(e: ExitCode) -> Self {
+        e as u8
     }
 }
 
