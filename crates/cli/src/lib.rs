@@ -1,4 +1,6 @@
 use std::env;
+use std::io::{Read, Write};
+use std::net::TcpStream;
 use std::path::PathBuf;
 
 use anyhow::{bail, Result};
@@ -70,6 +72,8 @@ struct DaemonOpts {
 /// Arguments for the `probe` subcommand.
 #[derive(Parser, Debug)]
 struct ProbeOpts {
+    /// Optional address of peer in HOST:PORT form
+    addr: Option<String>,
     /// version reported by peer
     #[arg(long, default_value_t = LATEST_VERSION, value_name = "VER")]
     peer_version: u32,
@@ -96,8 +100,26 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         let dst_remote = opts.dst.contains(':');
         match (src_remote, dst_remote) {
             (false, false) => bail!("local sync requires --local flag"),
-            (true, false) => bail!("remote source not implemented"),
-            (false, true) => bail!("remote destination not implemented"),
+            (true, false) => {
+                let (_, src_path) = opts
+                    .src
+                    .split_once(':')
+                    .ok_or_else(|| anyhow::anyhow!("invalid source spec"))?;
+                let src = PathBuf::from(src_path);
+                let dst = PathBuf::from(&opts.dst);
+                sync(&src, &dst)?;
+                Ok(())
+            }
+            (false, true) => {
+                let src = PathBuf::from(&opts.src);
+                let (_, dst_path) = opts
+                    .dst
+                    .split_once(':')
+                    .ok_or_else(|| anyhow::anyhow!("invalid destination spec"))?;
+                let dst = PathBuf::from(dst_path);
+                sync(&src, &dst)?;
+                Ok(())
+            }
             (true, true) => bail!("remote to remote sync not implemented"),
         }
     }
@@ -112,9 +134,20 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
 }
 
 fn run_probe(opts: ProbeOpts) -> Result<()> {
-    let ver = negotiate_version(opts.peer_version)?;
-    println!("negotiated version {}", ver);
-    Ok(())
+    if let Some(addr) = opts.addr {
+        let mut stream = TcpStream::connect(&addr)?;
+        stream.write_all(&LATEST_VERSION.to_be_bytes())?;
+        let mut buf = [0u8; 4];
+        stream.read_exact(&mut buf)?;
+        let peer = u32::from_be_bytes(buf);
+        let ver = negotiate_version(peer)?;
+        println!("negotiated version {}", ver);
+        Ok(())
+    } else {
+        let ver = negotiate_version(opts.peer_version)?;
+        println!("negotiated version {}", ver);
+        Ok(())
+    }
 }
 
 /// Entry point for the `client` subcommand.
