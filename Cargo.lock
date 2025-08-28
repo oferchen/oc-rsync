@@ -810,6 +810,7 @@ name = "meta"
 version = "0.1.0"
 dependencies = [
  "filetime",
+ "libc",
  "nix",
  "posix-acl",
  "tempfile",

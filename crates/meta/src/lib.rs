@@ -104,7 +104,11 @@ impl Metadata {
         )
         .map_err(nix_to_io)?;
 
-        let mode = Mode::from_bits_truncate(self.mode.try_into().unwrap());
+        let mode_t: libc::mode_t = self
+            .mode
+            .try_into()
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "mode does not fit into mode_t"))?;
+        let mode = Mode::from_bits_truncate(mode_t);
         stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink).map_err(nix_to_io)?;
 
         filetime::set_file_mtime(path, self.mtime)?;
