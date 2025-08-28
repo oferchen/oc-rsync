@@ -36,7 +36,7 @@ rsync-rs [OPTIONS] <SRC> <DEST>
 - `-n, --dry-run` – perform a trial run with no changes made.
 - `-v, --verbose` – increase logging verbosity.
 - `--delete` – remove extraneous files from the destination.
-- `--checksum` – use full checksums to determine file changes.
+- `-c, --checksum` – use full checksums to determine file changes.
 - `--stats` – display transfer statistics on completion.
 - `--config <FILE>` – supply a custom configuration file.
 
