@@ -1,5 +1,5 @@
 [package]
-name = "rsync-rs"
+name = "rsync-rs-bin"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,5 +10,3 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1"
 cli = { path = "../../crates/cli" }
-
-[workspace]

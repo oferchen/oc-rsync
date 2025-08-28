@@ -6,6 +6,7 @@ Thank you for your interest in contributing to rsync_rs!
 - Format code with `cargo fmt --all`.
 - Lint with `cargo clippy --all-targets --all-features -- -D warnings` before committing.
 - Keep contributions focused and document any new functionality.
+- Use the workspace `Cargo.lock` at the repository root; do not commit lockfiles in individual crates.
 
 ## Pull Request Process
 1. Fork the repository and create a topic branch.
