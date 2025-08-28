@@ -115,11 +115,10 @@
 | --relative | Supported |  |
 | --remote-option | Error |  |
 | --remove-source-files | Error |  |
-| --rsh | Error |  |
-| --rsync-path | Error |  |
+| --rsh | Supported |  |
+| --rsync-path | Supported |  |
 | --safe-links | Error |  |
 | --secluded-args | Error |  |
-| --secrets-file | Supported |  |
 | --size-only | Error |  |
 | --skip-compress | Error |  |
 | --sockopts | Error |  |
@@ -174,7 +173,7 @@
 | -b | Error | alias for --backup |
 | -c | Alias | alias for --checksum |
 | -d | Error | alias for --dirs |
-| -e | Error | alias for --rsh |
+| -e | Alias | alias for --rsh |
 | -f | Error | alias for --filter |
 | -g | Error | alias for --group |
 | -h | Alias | alias for --help |

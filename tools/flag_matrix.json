@@ -576,12 +576,12 @@
   },
   {
     "flag": "--rsh",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--rsync-path",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -592,11 +592,6 @@
   {
     "flag": "--secluded-args",
     "status": "Error",
-    "notes": ""
-  },
-  {
-    "flag": "--secrets-file",
-    "status": "Supported",
     "notes": ""
   },
   {
@@ -871,7 +866,7 @@
   },
   {
     "flag": "-e",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --rsh"
   },
   {
