@@ -10,20 +10,20 @@
 |  | --chown=USER:GROUP | simple username/groupname mapping | no |  | no |
 |  | --copy-devices | copy device contents as a regular file | no |  | no |
 | -N | --crtimes | preserve create times (newness) | no |  | no |
-|  | --devices | preserve device files (super-user only) | no |  | no |
+|  | --devices | preserve device files (super-user only) | yes |  | no |
 | -E | --executability | preserve executability | no |  | no |
 |  | --fake-super | store/recover privileged attrs using xattrs | no |  | no |
-| -g | --group | preserve group | no |  | no |
+|  | --group | preserve group | yes |  | no |
 |  | --groupmap=STRING | custom groupname mapping | no |  | no |
 |  | --numeric-ids | don't map uid/gid values by user/group name | yes |  | no |
 | -O | --omit-dir-times | omit directories from --times | no |  | no |
 | -J | --omit-link-times | omit symlinks from --times | no |  | no |
 |  | --open-noatime | avoid changing the atime on opened files | no |  | no |
-| -o | --owner | preserve owner (super-user only) | no |  | no |
-| -p | --perms | preserve permissions | no |  | no |
-|  | --specials | preserve special files | no |  | no |
+|  | --owner | preserve owner (super-user only) | yes |  | no |
+|  | --perms | preserve permissions | yes |  | no |
+|  | --specials | preserve special files | yes |  | no |
 |  | --super | receiver attempts super-user activities | no |  | no |
-| -t | --times | preserve modification times | no |  | no |
+|  | --times | preserve modification times | yes |  | no |
 |  | --usermap=STRING | custom username mapping | no |  | no |
 |  | --write-devices | write to devices as files (implies --inplace) | no |  | no |
 | -X | --xattrs | preserve extended attributes | no |  | no |
@@ -133,7 +133,7 @@
 |  | --log-file=FILE | log what we're doing to the specified FILE | no |  | no |
 |  | --no-motd | suppress daemon-mode MOTD | no |  | no |
 |  | --out-format=FORMAT | output updates using the specified FORMAT | no |  | no |
-|  | --progress | show progress during transfer | no |  | no |
+|  | --progress | show progress during transfer | yes |  | no |
 | -q | --quiet | suppress non-error messages | yes |  | no |
 |  | --stats | give some file-transfer stats | yes |  | no |
 |  | --stderr=e\|a\|c | change stderr output mode (default: errors) | no |  | no |
@@ -163,13 +163,13 @@
 | -d | --dirs | transfer directories without recursing | no |  | no |
 |  | --existing | skip creating new files on receiver | no |  | no |
 | -y | --fuzzy | find similar file for basis if no dest file | no |  | no |
-| -H | --hard-links | preserve hard links | no |  | no |
+|  | --hard-links | preserve hard links | yes |  | no |
 |  | --ignore-existing | skip updating files that exist on receiver | no |  | no |
 | -I | --ignore-times | don't skip files that match size and time | no |  | no |
 |  | --inplace | update destination files in-place | no |  | no |
 | -K | --keep-dirlinks | treat symlinked dir on receiver as dir | no |  | no |
 |  | --link-dest=DIR | hardlink to files in DIR when unchanged | no |  | no |
-| -l | --links | copy symlinks as symlinks | no |  | no |
+|  | --links | copy symlinks as symlinks | yes |  | no |
 |  | --max-alloc=SIZE | change a limit relating to memory alloc | no |  | no |
 |  | --max-size=SIZE | don't transfer any file larger than SIZE | no |  | no |
 |  | --min-size=SIZE | don't transfer any file smaller than SIZE | no |  | no |
@@ -180,8 +180,8 @@
 |  | --no-implied-dirs | don't send implied dirs with --relative | no |  | no |
 | --old-d | --old-dirs | works like --dirs when talking to old rsync | no |  | no |
 | -x | --one-file-system | don't cross filesystem boundaries | no |  | no |
-|  | --partial | keep partially transferred files | no |  | no |
-|  | --partial-dir=DIR | put a partially transferred file into DIR | no |  | no |
+|  | --partial | keep partially transferred files | yes |  | no |
+|  | --partial-dir=DIR | put a partially transferred file into DIR | yes |  | no |
 |  | --preallocate | allocate dest files before writing them | no |  | no |
 | -m | --prune-empty-dirs | prune empty directory chains from file-list | no |  | no |
 | -r | --recursive | recurse into directories | yes |  | no |
