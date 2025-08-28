@@ -10,21 +10,23 @@
 
 ## Sync Modes
 
-| Mode            | Status | Notes |
-|-----------------|--------|-------|
-| Local → Local   | ✅ Basic directory sync |
-| Remote          | ❌ Not yet implemented |
+| Mode                     | Status | Notes |
+|--------------------------|--------|-------|
+| Local → Local            | ✅ Basic directory sync |
+| Local → Remote (SSH)     | ⚠️ Early interoperability |
+| Local → Remote (daemon)  | ⚠️ Early interoperability |
+| Remote → Remote          | ❌ Not yet implemented |
 
-## rsync Interoperability
+## Remote Feature Coverage
 
-| rsync Version | Transport | Filters | Hardlinks | Sparse | xattrs | ACLs | zlib | zstd |
-|---------------|-----------|---------|-----------|--------|--------|------|------|------|
-| 3.1.x         | SSH       | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 3.1.x         | rsync://  | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 3.2.x         | SSH       | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 3.2.x         | rsync://  | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Transport | Filters | Hardlinks | Sparse | xattrs | ACLs | zlib | zstd |
+|-----------|---------|-----------|--------|--------|------|------|------|
+| SSH       | ✅ | ❌ | ✅ | ⚠️* | ⚠️* | ✅ | ✅ |
+| rsync://  | ✅ | ❌ | ✅ | ⚠️* | ⚠️* | ✅ | ✅ |
 
 This matrix will be kept up to date by automated interoperability tests as
 additional transports and feature flags are implemented.
+
+* xattrs and ACLs require the corresponding `xattr` and `acl` feature gates.
 
 Additional environments and modes may be evaluated in the future.
