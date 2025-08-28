@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use clap::{ArgAction, Parser};
 use compress::{available_codecs, Codec};
-use engine::{sync, EngineError, Result, Stats, StrongHash, SyncOptions};
+use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
 use transport::{SshStdioTransport, TcpTransport, Transport};
@@ -47,6 +47,18 @@ struct ClientOpts {
     /// remove extraneous files from the destination
     #[arg(long, help_heading = "Delete")]
     delete: bool,
+    /// receiver deletes before transfer, not during
+    #[arg(long = "delete-before", help_heading = "Delete")]
+    delete_before: bool,
+    /// receiver deletes during the transfer
+    #[arg(long = "delete-during", help_heading = "Delete", alias = "del")]
+    delete_during: bool,
+    /// receiver deletes after transfer, not during
+    #[arg(long = "delete-after", help_heading = "Delete")]
+    delete_after: bool,
+    /// find deletions during, delete after
+    #[arg(long = "delete-delay", help_heading = "Delete")]
+    delete_delay: bool,
     /// use full checksums to determine file changes
     #[arg(short = 'c', long, help_heading = "Attributes")]
     checksum: bool,
@@ -372,9 +384,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
     };
     if opts.relative {
         let rel = if src_path.is_absolute() {
-            src_path
-                .strip_prefix(Path::new("/"))
-                .unwrap_or(src_path)
+            src_path.strip_prefix(Path::new("/")).unwrap_or(src_path)
         } else {
             src_path
         };
@@ -394,8 +404,17 @@ fn run_client(opts: ClientOpts) -> Result<()> {
     }
 
     let compress = opts.modern || opts.compress || opts.compress_level.map_or(false, |l| l > 0);
+    let delete_mode = if opts.delete_before {
+        Some(DeleteMode::Before)
+    } else if opts.delete_after || opts.delete_delay {
+        Some(DeleteMode::After)
+    } else if opts.delete_during || opts.delete {
+        Some(DeleteMode::During)
+    } else {
+        None
+    };
     let sync_opts = SyncOptions {
-        delete: opts.delete,
+        delete: delete_mode,
         checksum: opts.checksum,
         compress,
         perms: opts.perms || opts.archive,
