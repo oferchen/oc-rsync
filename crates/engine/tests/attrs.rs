@@ -131,6 +131,7 @@ fn hard_links_roundtrip() {
     assert_eq!(m1.ino(), m2.ino());
 }
 
+#[cfg(feature = "xattr")]
 #[test]
 fn xattrs_roundtrip() {
     let tmp = tempdir().unwrap();
@@ -153,6 +154,7 @@ fn xattrs_roundtrip() {
     assert_eq!(&val[..], b"val");
 }
 
+#[cfg(feature = "acl")]
 #[test]
 fn acls_roundtrip() {
     let tmp = tempdir().unwrap();
