@@ -6,14 +6,14 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 
 | Option | Supported | Behavior Parity | Tests | Notes |
 |-------|-----------|-----------------|-------|-------|
-| `--verbose, -v` | ✅ |  |  |  |
+| `--verbose, -v` | ✅ |  | [tests/cli.rs](../tests/cli.rs) |  |
 | `--info=FLAGS` |  |  |  |  |
 | `--debug=FLAGS` |  |  |  |  |
 | `--stderr=e|a|c` |  |  |  |  |
-| `--quiet, -q` | ✅ |  |  |  |
+| `--quiet, -q` | ✅ |  | [tests/cli.rs](../tests/cli.rs) |  |
 | `--no-motd` |  |  |  |  |
-| `--checksum, -c` | ✅ |  |  |  |
-| `--archive, -a` | ✅ |  |  |  |
+| `--checksum, -c` | ✅ |  | [tests/cli.rs](../tests/cli.rs) |  |
+| `--archive, -a` | ✅ |  | [tests/cli.rs](../tests/cli.rs) |  |
 | `--no-OPTION` |  |  |  |  |
 | `--recursive, -r` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  |
 | `--relative, -R` | ✅ |  | [tests/cli.rs](../tests/cli.rs) |  |
@@ -58,7 +58,7 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--fake-super` |  |  |  |  |
 | `--sparse, -S` | ✅ |  | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  |
 | `--preallocate` |  |  |  |  |
-| `--dry-run, -n` | ✅ |  |  |  |
+| `--dry-run, -n` | ✅ |  | [tests/cli.rs](../tests/cli.rs) |  |
 | `--whole-file, -W` |  |  |  |  |
 | `--checksum-choice=STR` |  |  |  |  |
 | `--one-file-system, -x` |  |  |  |  |
@@ -103,7 +103,7 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--link-dest=DIR` |  |  |  |  |
 | `--compress, -z` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh) |  |
 | `--compress-choice=STR` |  |  |  |  |
-| `--compress-level=NUM` | ✅ |  |  |  |
+| `--compress-level=NUM` | ✅ |  | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh)<br>[tests/cli.rs](../tests/cli.rs) |  |
 | `--skip-compress=LIST` |  |  |  |  |
 | `--cvs-exclude, -C` |  |  |  |  |
 | `--filter=RULE, -f` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  |
@@ -119,11 +119,11 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--trust-sender` |  |  |  |  |
 | `--copy-as=USER[:GROUP]` |  |  |  |  |
 | `--address=ADDRESS` |  |  |  |  |
-| `--port=PORT` | ✅ |  |  |  |
+| `--port=PORT` | ✅ |  | [tests/daemon.rs](../tests/daemon.rs)<br>[tests/cli.rs](../tests/cli.rs) |  |
 | `--sockopts=OPTIONS` |  |  |  |  |
 | `--blocking-io` |  |  |  |  |
 | `--outbuf=N|L|B` |  |  |  |  |
-| `--stats` | ✅ |  |  |  |
+| `--stats` | ✅ |  | [tests/cli.rs](../tests/cli.rs) |  |
 | `--8-bit-output, -8` |  |  |  |  |
 | `--human-readable, -h` |  |  |  |  |
 | `--progress` |  |  |  |  |
@@ -151,7 +151,7 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--version, -V` |  |  |  |  |
 | `--help, -h (*)` |  |  |  |  |
 | `--daemon` | ✅ |  | [tests/daemon.rs](../tests/daemon.rs) |  |
-| `--config=FILE` | ✅ |  |  |  |
+| `--config=FILE` | ✅ |  | [tests/cli.rs](../tests/cli.rs) |  |
 | `--dparam=OVERRIDE, -M` |  |  |  |  |
 | `--no-detach` |  |  |  |  |
 | `--help, -h` |  |  |  |  |
