@@ -8,6 +8,22 @@ use nix::unistd::{self, Gid, Uid};
 #[cfg(feature = "xattr")]
 use std::ffi::OsString;
 
+#[cfg(all(test, feature = "xattr"))]
+mod xattr {
+    use ::xattr as real_xattr;
+    pub use real_xattr::{get, set};
+    use std::ffi::OsString;
+    use std::path::Path;
+
+    pub fn list(path: &Path) -> std::io::Result<Vec<OsString>> {
+        let attrs: Vec<OsString> = real_xattr::list(path)?.collect();
+        if attrs.iter().any(|a| a == "user.disappearing") {
+            let _ = real_xattr::remove(path, "user.disappearing");
+        }
+        Ok(attrs)
+    }
+}
+
 /// Serialized file metadata.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
@@ -40,8 +56,9 @@ impl Metadata {
         let xattrs = {
             let mut attrs = Vec::new();
             for attr in xattr::list(path)? {
-                let value = xattr::get(path, &attr)?.unwrap_or_default();
-                attrs.push((attr, value));
+                if let Some(value) = xattr::get(path, &attr)? {
+                    attrs.push((attr, value));
+                }
             }
             attrs
         };
@@ -110,5 +127,27 @@ fn acl_to_io(err: posix_acl::ACLError) -> io::Error {
         }
     } else {
         io::Error::new(io::ErrorKind::Other, err)
+    }
+}
+
+#[cfg(all(test, feature = "xattr"))]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn missing_xattr_between_list_and_get() -> io::Result<()> {
+        let dir = tempdir()?;
+        let path = dir.path().join("file");
+        fs::write(&path, b"hello")?;
+        xattr::set(&path, "user.disappearing", b"value")?;
+
+        let meta = Metadata::from_path(&path)?;
+        assert!(meta
+            .xattrs
+            .iter()
+            .all(|(name, _)| name != "user.disappearing"));
+        Ok(())
     }
 }
