@@ -43,3 +43,62 @@ fn version_negotiation() {
     assert_eq!(negotiate_version(30), Ok(30));
     assert!(negotiate_version(28).is_err());
 }
+
+#[test]
+fn captured_frames_roundtrip() {
+    // File list entry
+    const FILE_LIST: [u8; 16] = [
+        0, 0, 0, 4, 0, 0, 0, 8, b'f', b'i', b'l', b'e', b'.', b't', b'x', b't',
+    ];
+    let frame = Frame::decode(&FILE_LIST[..]).unwrap();
+    assert_eq!(frame.header.msg, Msg::FileListEntry);
+    let msg = Message::from_frame(frame.clone()).unwrap();
+    assert_eq!(msg, Message::FileListEntry(b"file.txt".to_vec()));
+    let mut buf = Vec::new();
+    Message::FileListEntry(b"file.txt".to_vec())
+        .into_frame(0)
+        .encode(&mut buf)
+        .unwrap();
+    assert_eq!(buf, FILE_LIST);
+
+    // Attributes
+    const ATTRS: [u8; 16] = [
+        0, 0, 0, 5, 0, 0, 0, 8, b'm', b'o', b'd', b'e', b'=', b'7', b'5', b'5',
+    ];
+    let frame = Frame::decode(&ATTRS[..]).unwrap();
+    assert_eq!(frame.header.msg, Msg::Attributes);
+    let msg = Message::from_frame(frame.clone()).unwrap();
+    assert_eq!(msg, Message::Attributes(b"mode=755".to_vec()));
+    let mut buf = Vec::new();
+    Message::Attributes(b"mode=755".to_vec())
+        .into_frame(0)
+        .encode(&mut buf)
+        .unwrap();
+    assert_eq!(buf, ATTRS);
+
+    // Error
+    const ERR: [u8; 12] = [0, 0, 0, 6, 0, 0, 0, 4, b'o', b'o', b'p', b's'];
+    let frame = Frame::decode(&ERR[..]).unwrap();
+    assert_eq!(frame.header.msg, Msg::Error);
+    let msg = Message::from_frame(frame.clone()).unwrap();
+    assert_eq!(msg, Message::Error("oops".to_string()));
+    let mut buf = Vec::new();
+    Message::Error("oops".to_string())
+        .into_frame(0)
+        .encode(&mut buf)
+        .unwrap();
+    assert_eq!(buf, ERR);
+
+    // Progress
+    const PROG: [u8; 16] = [0, 0, 0, 7, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0x30, 0x39];
+    let frame = Frame::decode(&PROG[..]).unwrap();
+    assert_eq!(frame.header.msg, Msg::Progress);
+    let msg = Message::from_frame(frame.clone()).unwrap();
+    assert_eq!(msg, Message::Progress(0x3039));
+    let mut buf = Vec::new();
+    Message::Progress(0x3039)
+        .into_frame(0)
+        .encode(&mut buf)
+        .unwrap();
+    assert_eq!(buf, PROG);
+}
