@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 nix = { version = "0.27", features = ["fs", "user"] }
 filetime = "0.2"
+libc = "0.2"
 
 [dependencies.xattr]
 version = "1.5"
