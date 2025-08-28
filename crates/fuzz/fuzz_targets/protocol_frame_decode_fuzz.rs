@@ -1,8 +1,9 @@
 #![no_main]
+use fuzz::helpers;
 use libfuzzer_sys::fuzz_target;
 use protocol::Frame;
-use std::io::Cursor;
 
 fuzz_target!(|data: &[u8]| {
-    let _ = Frame::decode(&mut Cursor::new(data));
+    let mut reader = helpers::cursor(data);
+    let _ = Frame::decode(&mut reader);
 });

@@ -83,14 +83,9 @@ cargo test
 ```
 
 ## Fuzzing
-The project includes fuzz targets under `crates/fuzz`. To run them, install [`cargo-fuzz`](https://github.com/rust-fuzz/cargo-fuzz) and execute:
-
-```
-cargo install cargo-fuzz
-cd crates/fuzz
-cargo fuzz run protocol_frame_decode_fuzz
-cargo fuzz run filters_parse_fuzz
-```
+The project includes fuzz targets under `crates/fuzz`.
+See [docs/fuzzing.md](docs/fuzzing.md) for instructions on installing the
+tooling and running the fuzzers.
 
 ## License
 This project is dual-licensed under the terms of the [MIT](LICENSE-MIT) and [Apache-2.0](LICENSE-APACHE) licenses.
