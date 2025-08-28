@@ -37,7 +37,8 @@ impl<R, W> LocalPipeTransport<R, W> {
 
 impl<R: Read, W: Write> Transport for LocalPipeTransport<R, W> {
     fn send(&mut self, data: &[u8]) -> io::Result<()> {
-        self.writer.write_all(data)
+        self.writer.write_all(data)?;
+        self.writer.flush()
     }
 
     fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
