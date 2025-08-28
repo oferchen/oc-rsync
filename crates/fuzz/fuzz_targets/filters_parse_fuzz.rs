@@ -1,5 +1,4 @@
 #![no_main]
-use filters::filters;
 use fuzz::helpers;
 use libfuzzer_sys::fuzz_target;
 

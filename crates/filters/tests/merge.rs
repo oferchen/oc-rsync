@@ -1,4 +1,4 @@
-use filters::filters::{parse, Matcher};
+use filters::{parse, Matcher};
 
 #[test]
 fn rsync_filter_merge() {

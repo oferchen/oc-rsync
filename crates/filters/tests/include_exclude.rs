@@ -1,4 +1,4 @@
-use filters::filters::{parse, Matcher};
+use filters::{parse, Matcher};
 
 #[test]
 fn include_and_exclude() {
