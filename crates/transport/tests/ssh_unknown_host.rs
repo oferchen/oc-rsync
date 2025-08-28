@@ -23,22 +23,19 @@ fn refuses_unknown_host_key() {
     // Use an empty known_hosts file to ensure the host key is unknown.
     let tmp = NamedTempFile::new().expect("tmp known_hosts");
 
-    let transport = SshStdioTransport::spawn_server(
-        "localhost",
-        ["/"],
-        Some(tmp.path()),
-        true,
-    )
-    .expect("spawn ssh");
+    let transport = SshStdioTransport::spawn_server("localhost", ["/"], Some(tmp.path()), true)
+        .expect("spawn ssh");
 
     // Give the ssh process time to emit its failure message.
     thread::sleep(Duration::from_millis(500));
 
-    let stderr = transport.stderr();
+    let (stderr, truncated) = transport.stderr();
+    assert!(!truncated);
     let msg = String::from_utf8_lossy(&stderr);
-    assert!(msg.contains("Host key verification failed"), "stderr: {msg}");
+    assert!(
+        msg.contains("Host key verification failed"),
+        "stderr: {msg}"
+    );
 
     let _ = sshd.kill();
 }
-
-

@@ -449,7 +449,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
                 let codecs = handshake_with_peer(&mut session)?;
-                let err = session.stderr();
+                let (err, _) = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
                 }
@@ -464,7 +464,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
                 let codecs = handshake_with_peer(&mut session)?;
-                let err = session.stderr();
+                let (err, _) = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
                 }
@@ -504,11 +504,11 @@ fn run_client(opts: ClientOpts) -> Result<()> {
 
                 pipe_transports(&mut src_session, &mut dst_session)
                     .map_err(|e| EngineError::Other(e.to_string()))?;
-                let src_err = src_session.stderr();
+                let (src_err, _) = src_session.stderr();
                 if !src_err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&src_err).into()));
                 }
-                let dst_err = dst_session.stderr();
+                let (dst_err, _) = dst_session.stderr();
                 if !dst_err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&dst_err).into()));
                 }
