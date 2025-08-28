@@ -1,6 +1,7 @@
+use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File};
-use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
+use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Path, PathBuf};
@@ -195,42 +196,37 @@ pub fn compute_delta<'a, R1: Read + Seek, R2: Read + Seek>(
     })
 }
 
-/// Apply a delta to `basis` writing the reconstructed data into `out`.
-fn apply_op<R: Read + Seek, W: Write + Seek>(
+fn write_sparse(file: &mut File, data: &[u8]) -> Result<()> {
+    let mut i = 0;
+    while i < data.len() {
+        if data[i] == 0 {
+            let mut j = i + 1;
+            while j < data.len() && data[j] == 0 {
+                j += 1;
+            }
+            file.seek(SeekFrom::Current((j - i) as i64))?;
+            i = j;
+        } else {
+            let mut j = i + 1;
+            while j < data.len() && data[j] != 0 {
+                j += 1;
+            }
+            file.write_all(&data[i..j])?;
+            i = j;
+        }
+    }
+    Ok(())
+}
+
+fn apply_op_plain<R: Read + Seek, W: Write + Seek>(
     basis: &mut R,
     op: Op,
     out: &mut W,
-    opts: &SyncOptions,
     buf: &mut [u8],
 ) -> Result<()> {
-    fn write_sparse<W: Write + Seek>(out: &mut W, data: &[u8]) -> Result<()> {
-        let mut i = 0;
-        while i < data.len() {
-            if data[i] == 0 {
-                let mut j = i + 1;
-                while j < data.len() && data[j] == 0 {
-                    j += 1;
-                }
-                out.seek(SeekFrom::Current((j - i) as i64))?;
-                i = j;
-            } else {
-                let mut j = i + 1;
-                while j < data.len() && data[j] != 0 {
-                    j += 1;
-                }
-                out.write_all(&data[i..j])?;
-                i = j;
-            }
-        }
-        Ok(())
-    }
     match op {
         Op::Data(d) => {
-            if opts.sparse {
-                write_sparse(out, &d)?;
-            } else {
-                out.write_all(&d)?;
-            }
+            out.write_all(&d)?;
         }
         Op::Copy { offset, len } => {
             basis.seek(SeekFrom::Start(offset as u64))?;
@@ -238,11 +234,31 @@ fn apply_op<R: Read + Seek, W: Write + Seek>(
             while remaining > 0 {
                 let to_read = remaining.min(buf.len());
                 basis.read_exact(&mut buf[..to_read])?;
-                if opts.sparse {
-                    write_sparse(out, &buf[..to_read])?;
-                } else {
-                    out.write_all(&buf[..to_read])?;
-                }
+                out.write_all(&buf[..to_read])?;
+                remaining -= to_read;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn apply_op_sparse<R: Read + Seek>(
+    basis: &mut R,
+    op: Op,
+    out: &mut File,
+    buf: &mut [u8],
+) -> Result<()> {
+    match op {
+        Op::Data(d) => {
+            write_sparse(out, &d)?;
+        }
+        Op::Copy { offset, len } => {
+            basis.seek(SeekFrom::Start(offset as u64))?;
+            let mut remaining = len;
+            while remaining > 0 {
+                let to_read = remaining.min(buf.len());
+                basis.read_exact(&mut buf[..to_read])?;
+                write_sparse(out, &buf[..to_read])?;
                 remaining -= to_read;
             }
         }
@@ -251,7 +267,7 @@ fn apply_op<R: Read + Seek, W: Write + Seek>(
 }
 
 /// Apply a delta to `basis` writing the reconstructed data into `out`.
-fn apply_delta<R: Read + Seek, W: Write + Seek, I>(
+fn apply_delta<R: Read + Seek, W: Write + Seek + Any, I>(
     basis: &mut R,
     ops: I,
     out: &mut W,
@@ -261,9 +277,19 @@ where
     I: IntoIterator<Item = Result<Op>>,
 {
     let mut buf = vec![0u8; 8192];
-    for op in ops {
-        let op = op?;
-        apply_op(basis, op, out, opts, &mut buf)?;
+    if opts.sparse {
+        let file = (&mut *out as &mut dyn Any)
+            .downcast_mut::<File>()
+            .ok_or_else(|| EngineError::Other("sparse output must be a File".into()))?;
+        for op in ops {
+            let op = op?;
+            apply_op_sparse(basis, op, file, &mut buf)?;
+        }
+    } else {
+        for op in ops {
+            let op = op?;
+            apply_op_plain(basis, op, out, &mut buf)?;
+        }
     }
     Ok(())
 }
@@ -443,7 +469,7 @@ impl Receiver {
             fs::create_dir_all(parent)?;
         }
 
-        let mut out = BufWriter::new(File::create(tmp_dest)?);
+        let mut out = File::create(tmp_dest)?;
         let ops = delta.into_iter().map(|op_res| {
             let mut op = op_res?;
             if let Some(codec) = self.codec {
@@ -468,18 +494,7 @@ impl Receiver {
         });
         apply_delta(&mut basis, ops, &mut out, &self.opts)?;
         let len = out.seek(SeekFrom::Current(0))?;
-        // Ensure the file is extended without eagerly allocating blocks so that
-        // sparse regions remain holes on filesystems like APFS.  Truncating
-        // with `set_len` can preallocate on some platforms which defeats
-        // sparseness, so we only write a single zero byte if the final position
-        // is beyond the current length.
-        out.flush()?;
-        let file = out.get_mut();
-        let current = file.metadata()?.len();
-        if current < len {
-            file.seek(SeekFrom::Start(len - 1))?;
-            file.write_all(&[0])?;
-        }
+        out.set_len(len)?;
         if self.opts.partial {
             fs::rename(tmp_dest, dest)?;
         }
