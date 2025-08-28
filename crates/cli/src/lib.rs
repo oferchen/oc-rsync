@@ -1,11 +1,13 @@
 use std::env;
+use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::net::TcpStream;
-use std::path::PathBuf;
+use std::net::{TcpListener, TcpStream};
+use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
 use engine::{sync, EngineError, Result};
 use protocol::{negotiate_version, LATEST_VERSION};
+use transport::{TcpTransport, Transport};
 
 /// Command line interface for rsync-rs.
 #[derive(Parser)]
@@ -160,10 +162,55 @@ fn run_client(opts: ClientOpts) -> Result<()> {
 }
 
 fn run_daemon(opts: DaemonOpts) -> Result<()> {
-    println!("starting daemon with {} module(s)", opts.module.len());
-    for m in &opts.module {
-        println!("{} => {}", m.name, m.path.display());
+    let mut modules = HashMap::new();
+    for m in opts.module {
+        modules.insert(m.name, m.path);
     }
+
+    let listener = TcpListener::bind("127.0.0.1:873")?;
+
+    loop {
+        let (stream, _) = listener.accept()?;
+        let modules = modules.clone();
+        std::thread::spawn(move || {
+            let mut transport = TcpTransport::from_stream(stream);
+            if let Err(e) = handle_connection(&mut transport, &modules) {
+                eprintln!("connection error: {}", e);
+            }
+        });
+    }
+}
+
+fn handle_connection(transport: &mut TcpTransport, modules: &HashMap<String, PathBuf>) -> Result<()> {
+    let mut buf = [0u8; 4];
+    let n = transport.receive(&mut buf)?;
+    if n == 0 {
+        return Ok(());
+    }
+    let peer = u32::from_be_bytes(buf);
+    transport.send(&LATEST_VERSION.to_be_bytes())?;
+    negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
+
+    authenticate(transport)?;
+
+    let mut name_buf = [0u8; 256];
+    let n = transport.receive(&mut name_buf)?;
+    let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
+    if let Some(path) = modules.get(&name) {
+        #[cfg(unix)]
+        {
+            use nix::unistd::{chdir, chroot, setgid, setuid, Gid, Uid};
+            let _ = chroot(path);
+            let _ = chdir("/");
+            let _ = setgid(Gid::from_raw(65534));
+            let _ = setuid(Uid::from_raw(65534));
+        }
+        let _ = sync(Path::new("."), Path::new("."));
+    }
+    Ok(())
+}
+
+fn authenticate(_t: &mut TcpTransport) -> std::io::Result<()> {
     Ok(())
 }
 
