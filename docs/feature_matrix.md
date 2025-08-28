@@ -138,7 +138,7 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--trust-sender` | ❌ | — | — |  |
 | `--update` | ❌ | — | — |  |
 | `--usermap` | ❌ | — | — |  |
-| `--verbose` | ❌ | — | — |  |
+| `--verbose` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  |
 | `--version` | ❌ | — | — |  |
 | `--whole-file` | ❌ | — | — |  |
 | `--write-batch` | ❌ | — | — |  |

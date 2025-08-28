@@ -279,6 +279,30 @@ fn checksum_forces_transfer_cli() {
     assert_eq!(std::fs::read(&dst_file).unwrap(), b"aaaa");
 }
 
+#[cfg(unix)]
+#[test]
+fn perms_flag_preserves_permissions() {
+    use std::fs;
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    let file = src_dir.join("a.txt");
+    fs::write(&file, b"hi").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o741)).unwrap();
+
+    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args(["--local", "--perms", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.assert().success();
+
+    let mode = fs::metadata(dst_dir.join("a.txt"))
+        .unwrap()
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o777, 0o741);
+}
+
 #[test]
 fn stats_are_printed() {
     let dir = tempdir().unwrap();

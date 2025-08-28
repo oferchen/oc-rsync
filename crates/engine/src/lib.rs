@@ -593,13 +593,7 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     if !opts.compress || opts.compress_level == Some(0) {
         return None;
     }
-    if remote.contains(&Codec::Zstd) && available_codecs().contains(&Codec::Zstd) {
-        Some(Codec::Zstd)
-    } else if remote.contains(&Codec::Zlib) && available_codecs().contains(&Codec::Zlib) {
-        Some(Codec::Zlib)
-    } else {
-        None
-    }
+    compress::negotiate_codec(available_codecs(), remote)
 }
 
 fn delete_extraneous(src: &Path, dst: &Path, matcher: &Matcher, stats: &mut Stats) -> Result<()> {
