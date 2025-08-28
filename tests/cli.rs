@@ -23,7 +23,7 @@ fn client_local_sync() {
 }
 
 #[test]
-fn unsupported_subcommand() {
+fn local_sync_without_flag_fails() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
@@ -39,17 +39,23 @@ fn unsupported_subcommand() {
 }
 
 #[test]
-fn remote_destination_is_unsupported() {
+fn remote_destination_syncs() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("remote_dst");
     std::fs::create_dir_all(&src_dir).unwrap();
     std::fs::write(src_dir.join("file.txt"), b"hello").unwrap();
+
+    let dst_spec = format!("remote:{}", dst_dir.to_str().unwrap());
 
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
     cmd.args([
         "client",
         src_dir.to_str().unwrap(),
-        "remote:/dest",
+        &dst_spec,
     ]);
-    cmd.assert().failure();
+    cmd.assert().success();
+
+    let out = std::fs::read(dst_dir.join("file.txt")).unwrap();
+    assert_eq!(out, b"hello");
 }
