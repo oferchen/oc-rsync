@@ -127,7 +127,7 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--size-only` | ❌ | — | — |  | |
 | `--skip-compress` | ❌ | — | — |  | |
 | `--sockopts` | ❌ | — | — |  | |
-| `--sparse` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | |
+| `--sparse` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | creates holes for long zero runs | |
 | `--specials` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | |
 | `--stats` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | |
 | `--stderr` | ❌ | — | — |  | |

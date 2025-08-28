@@ -2,12 +2,12 @@ use assert_cmd::Command;
 use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
 use nix::unistd::{chown, mkfifo, Gid, Uid};
+use std::io::{Seek, SeekFrom, Write};
+#[cfg(unix)]
+use std::os::unix::fs::symlink;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use tempfile::tempdir;
-#[cfg(unix)]
-use std::os::unix::fs::symlink;
-use std::io::{Seek, SeekFrom, Write};
 
 #[test]
 fn client_local_sync() {
@@ -617,6 +617,33 @@ fn sparse_files_preserved() {
 
 #[cfg(unix)]
 #[test]
+fn sparse_files_created() {
+    use std::fs::File;
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(&dst).unwrap();
+    let zs = src.join("zeros");
+    let mut f = File::create(&zs).unwrap();
+    f.write_all(&vec![0u8; 1 << 20]).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args(["--local", "--sparse", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let src_meta = std::fs::metadata(&zs).unwrap();
+    let dst_meta = std::fs::metadata(dst.join("zeros")).unwrap();
+    assert_eq!(src_meta.len(), dst_meta.len());
+    assert!(dst_meta.blocks() < src_meta.blocks());
+    assert!(dst_meta.blocks() * 512 < dst_meta.len());
+}
+
+#[cfg(unix)]
+#[test]
 fn specials_preserve_fifo() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
@@ -649,7 +676,13 @@ fn delete_delay_removes_extraneous_files() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("rsync-rs")
         .unwrap()
-        .args(["--local", "--recursive", "--delete-delay", &src_arg, dst.to_str().unwrap()])
+        .args([
+            "--local",
+            "--recursive",
+            "--delete-delay",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
         .assert()
         .success();
 

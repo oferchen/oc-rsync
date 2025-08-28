@@ -203,27 +203,31 @@ fn apply_op<R: Read + Seek, W: Write + Seek>(
     opts: &SyncOptions,
     buf: &mut [u8],
 ) -> Result<()> {
+    fn write_sparse<W: Write + Seek>(out: &mut W, data: &[u8]) -> Result<()> {
+        let mut i = 0;
+        while i < data.len() {
+            if data[i] == 0 {
+                let mut j = i + 1;
+                while j < data.len() && data[j] == 0 {
+                    j += 1;
+                }
+                out.seek(SeekFrom::Current((j - i) as i64))?;
+                i = j;
+            } else {
+                let mut j = i + 1;
+                while j < data.len() && data[j] != 0 {
+                    j += 1;
+                }
+                out.write_all(&data[i..j])?;
+                i = j;
+            }
+        }
+        Ok(())
+    }
     match op {
         Op::Data(d) => {
             if opts.sparse {
-                let mut i = 0;
-                while i < d.len() {
-                    if d[i] == 0 {
-                        let mut j = i;
-                        while j < d.len() && d[j] == 0 {
-                            j += 1;
-                        }
-                        out.seek(SeekFrom::Current((j - i) as i64))?;
-                        i = j;
-                    } else {
-                        let mut j = i;
-                        while j < d.len() && d[j] != 0 {
-                            j += 1;
-                        }
-                        out.write_all(&d[i..j])?;
-                        i = j;
-                    }
-                }
+                write_sparse(out, &d)?;
             } else {
                 out.write_all(&d)?;
             }
@@ -234,7 +238,11 @@ fn apply_op<R: Read + Seek, W: Write + Seek>(
             while remaining > 0 {
                 let to_read = remaining.min(buf.len());
                 basis.read_exact(&mut buf[..to_read])?;
-                out.write_all(&buf[..to_read])?;
+                if opts.sparse {
+                    write_sparse(out, &buf[..to_read])?;
+                } else {
+                    out.write_all(&buf[..to_read])?;
+                }
                 remaining -= to_read;
             }
         }
@@ -459,6 +467,8 @@ impl Receiver {
             Ok(op)
         });
         apply_delta(&mut basis, ops, &mut out, &self.opts)?;
+        let len = out.seek(SeekFrom::Current(0))?;
+        out.get_ref().set_len(len)?;
         out.flush()?;
         if self.opts.partial {
             fs::rename(tmp_dest, dest)?;
