@@ -84,6 +84,10 @@ These flags mirror `rsync(1)` features that fine‑tune how data is copied.
 - `--partial-dir <DIR>` – place partial files in `DIR`.
 - `--append` / `--append-verify` – append data to existing files rather than
   replacing them.
+- `--sparse` – convert long sequences of zero bytes into holes and preserve
+  holes in sparse source files. The destination filesystem must support sparse
+  files. See `tests/cli.rs::sparse_files_created` and
+  `tests/cli.rs::sparse_files_preserved` for examples.
 - `--bwlimit <RATE>` – throttle I/O bandwidth to `RATE` bytes per second.
 - `--link-dest <DIR>` / `--copy-dest <DIR>` – hard‑link or copy unchanged
   files from `DIR`.
