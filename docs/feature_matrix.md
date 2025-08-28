@@ -104,7 +104,7 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--owner` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  |
 | `--partial` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  |
 | `--partial-dir` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  |
-| `--password-file` | ❌ | — | — |  |
+| `--password-file` | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  |
 | `--perms` | ✅ | ❌ | — |  |
 | `--port` | ❌ | — | — |  |
 | `--preallocate` | ❌ | — | — |  |
@@ -121,6 +121,7 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--rsync-path` | ❌ | — | — |  |
 | `--safe-links` | ❌ | — | — |  |
 | `--secluded-args` | ❌ | — | — |  |
+| `--secrets-file` | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  |
 | `--size-only` | ❌ | — | — |  |
 | `--skip-compress` | ❌ | — | — |  |
 | `--sockopts` | ❌ | — | — |  |

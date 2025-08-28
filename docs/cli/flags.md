@@ -45,6 +45,7 @@
 |  | --daemon | run as an rsync daemon | yes |  | no |
 | -M | --dparam=OVERRIDE | override global daemon config parameter | no |  | no |
 |  | --no-detach | do not detach from the parent | no |  | no |
+|  | --secrets-file=FILE | path to secrets file for authentication | yes |  | no |
 
 ## Delete
 
@@ -108,7 +109,7 @@
 | -4 | --ipv4 | prefer IPv4 | no |  | no |
 | -6 | --ipv6 | prefer IPv6 | no |  | no |
 |  | --outbuf=N\|L\|B | set out buffering to None, Line, or Block | no |  | no |
-|  | --password-file=FILE | read daemon-access password from FILE | no |  | no |
+|  | --password-file=FILE | read daemon-access password from FILE | yes |  | no |
 |  | --port=PORT | specify double-colon alternate port number | yes |  | no |
 |  | --protocol=NUM | force an older protocol version to be used | no |  | no |
 | -M | --remote-option=OPT | send OPTION to the remote side only | no |  | no |

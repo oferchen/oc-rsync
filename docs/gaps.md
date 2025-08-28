@@ -5,7 +5,6 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
 ## Missing rsync behaviors
 - Filter rules are incomplete and do not yet match `rsync`'s full include/exclude syntax.
 - Compression negotiation between peers is unimplemented.
-- Daemon authentication support is missing.
 - Many command-line options remain absent or lack parity; see `docs/feature_matrix.md` for the full matrix.
 
 ## Unreachable code
@@ -22,4 +21,4 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
 ## Continuous integration deficiencies
 - Coverage is collected on Linux and Windows using `cargo-llvm-cov`, but no thresholds are enforced.
 - Nightly jobs fuzz all targets for longer runs, yet pull requests still rely on brief smoke tests.
-- Remote-to-remote transfers, filter rules, compression negotiation, and daemon authentication lack dedicated CI coverage.
+- Remote-to-remote transfers, filter rules, and compression negotiation lack dedicated CI coverage.

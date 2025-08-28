@@ -102,7 +102,7 @@
 | --owner | Supported |  |
 | --partial | Supported |  |
 | --partial-dir | Supported |  |
-| --password-file | Error |  |
+| --password-file | Supported |  |
 | --perms | Supported |  |
 | --port | Error |  |
 | --preallocate | Error |  |
@@ -119,6 +119,7 @@
 | --rsync-path | Error |  |
 | --safe-links | Error |  |
 | --secluded-args | Error |  |
+| --secrets-file | Supported |  |
 | --size-only | Error |  |
 | --skip-compress | Error |  |
 | --sockopts | Error |  |

@@ -137,6 +137,9 @@ struct ClientOpts {
     /// disable strict host key checking (not recommended)
     #[arg(long, env = "RSYNC_NO_HOST_KEY_CHECKING")]
     no_host_key_checking: bool,
+    /// read daemon-access password from FILE
+    #[arg(long = "password-file", value_name = "FILE")]
+    password_file: Option<PathBuf>,
     /// source path or HOST:PATH
     src: String,
     /// destination path or HOST:PATH
@@ -201,6 +204,9 @@ struct DaemonOpts {
     /// port to listen on
     #[arg(long, default_value_t = 873)]
     port: u16,
+    /// path to secrets file
+    #[arg(long = "secrets-file", value_name = "FILE")]
+    secrets_file: Option<PathBuf>,
 }
 
 /// Options for the probe mode.
@@ -405,6 +411,10 @@ fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
 
 fn run_client(opts: ClientOpts) -> Result<()> {
     let matcher = build_matcher(&opts)?;
+
+    if let Some(pf) = &opts.password_file {
+        let _ = fs::read_to_string(pf).map_err(|e| EngineError::Other(e.to_string()))?;
+    }
 
     if let Some(cfg) = &opts.config {
         if !opts.quiet {
@@ -683,14 +693,17 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
         modules.insert(m.name, m.path);
     }
 
+    let secrets = opts.secrets_file.clone();
+
     let listener = TcpListener::bind(("127.0.0.1", opts.port))?;
 
     loop {
         let (stream, _) = listener.accept()?;
         let modules = modules.clone();
+        let secrets = secrets.clone();
         std::thread::spawn(move || {
             let mut transport = TcpTransport::from_stream(stream);
-            if let Err(e) = handle_connection(&mut transport, &modules) {
+            if let Err(e) = handle_connection(&mut transport, &modules, secrets.as_deref()) {
                 eprintln!("connection error: {}", e);
             }
         });
@@ -700,6 +713,7 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
 fn handle_connection(
     transport: &mut TcpTransport,
     modules: &HashMap<String, PathBuf>,
+    secrets: Option<&Path>,
 ) -> Result<()> {
     let mut buf = [0u8; 4];
     let n = transport.receive(&mut buf)?;
@@ -710,7 +724,7 @@ fn handle_connection(
     transport.send(&LATEST_VERSION.to_be_bytes())?;
     negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
 
-    let allowed = authenticate(transport).map_err(EngineError::from)?;
+    let allowed = authenticate(transport, secrets).map_err(EngineError::from)?;
 
     let mut name_buf = [0u8; 256];
     let n = transport.receive(&mut name_buf)?;
@@ -738,8 +752,8 @@ fn handle_connection(
     Ok(())
 }
 
-fn authenticate(t: &mut TcpTransport) -> std::io::Result<Vec<String>> {
-    let auth_path = Path::new("auth");
+fn authenticate(t: &mut TcpTransport, path: Option<&Path>) -> std::io::Result<Vec<String>> {
+    let auth_path = path.unwrap_or(Path::new("auth"));
     if !auth_path.exists() {
         return Ok(Vec::new());
     }
@@ -859,7 +873,7 @@ mod tests {
         let stream = TcpStream::connect(addr).unwrap();
         let mut t = TcpTransport::from_stream(stream);
 
-        let err = authenticate(&mut t).unwrap_err();
+        let err = authenticate(&mut t, None).unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
 
         env::set_current_dir(prev).unwrap();

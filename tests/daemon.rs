@@ -3,11 +3,14 @@ use assert_cmd::Command;
 use protocol::LATEST_VERSION;
 use serial_test::serial;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::process::{Child, Command as StdCommand};
 use std::thread::sleep;
 use std::time::Duration;
+use transport::{TcpTransport, Transport};
 
 fn spawn_daemon() -> (Child, u16) {
     let port = TcpListener::bind("127.0.0.1:0")
@@ -79,9 +82,12 @@ fn probe_rejects_old_version() {
 
 #[test]
 #[serial]
-fn daemon_rejects_unauthorized_client() {
+fn daemon_rejects_invalid_token() {
     let dir = tempfile::tempdir().unwrap();
-    fs::write(dir.path().join("auth"), "secret data\n").unwrap();
+    let secrets = dir.path().join("auth");
+    fs::write(&secrets, "secret data\n").unwrap();
+    #[cfg(unix)]
+    fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
         .local_addr()
@@ -95,23 +101,117 @@ fn daemon_rejects_unauthorized_client() {
             &format!("data={}", dir.path().display()),
             "--port",
             &port.to_string(),
+            "--secrets-file",
+            secrets.to_str().unwrap(),
         ])
         .current_dir(dir.path())
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
-    stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}")).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
-    stream.read_exact(&mut buf).unwrap();
+    t.receive(&mut buf).unwrap();
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
 
-    stream.write_all(b"bad\n").unwrap();
-    stream
-        .set_read_timeout(Some(Duration::from_millis(500)))
+    t.authenticate(Some("bad")).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(500)))
         .unwrap();
-    let n = stream.read(&mut buf).unwrap_or(0);
-    assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR"),);
+    let n = t.receive(&mut buf).unwrap_or(0);
+    assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).starts_with("@ERR"));
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_rejects_unauthorized_module() {
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = dir.path().join("auth");
+    fs::write(&secrets, "secret other\n").unwrap();
+    #[cfg(unix)]
+    fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let mut child = StdCommand::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            &format!("data={}", dir.path().display()),
+            "--port",
+            &port.to_string(),
+            "--secrets-file",
+            secrets.to_str().unwrap(),
+        ])
+        .current_dir(dir.path())
+        .spawn()
+        .unwrap();
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}")).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
+
+    t.authenticate(Some("secret")).unwrap();
+    t.send(b"data\n").unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(500)))
+        .unwrap();
+    let n = t.receive(&mut buf).unwrap_or(0);
+    assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).starts_with("@ERR"));
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_accepts_authorized_client() {
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = dir.path().join("auth");
+    fs::write(&secrets, "secret data\n").unwrap();
+    #[cfg(unix)]
+    fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let mut child = StdCommand::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            &format!("data={}", dir.path().display()),
+            "--port",
+            &port.to_string(),
+            "--secrets-file",
+            secrets.to_str().unwrap(),
+        ])
+        .current_dir(dir.path())
+        .spawn()
+        .unwrap();
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}")).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
+
+    t.authenticate(Some("secret")).unwrap();
+    t.send(b"data\n").unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200)))
+        .unwrap();
+    let res = t.receive(&mut buf);
+    match res {
+        Ok(0) => {}
+        Ok(n) => assert!(!String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR")),
+        Err(e) if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut => {}
+        Err(e) => panic!("unexpected error: {e}"),
+    }
     let _ = child.kill();
     let _ = child.wait();
 }
