@@ -603,22 +603,28 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
 }
 
 fn delete_extraneous(src: &Path, dst: &Path, matcher: &Matcher, stats: &mut Stats) -> Result<()> {
-    for entry in walk(dst) {
-        let (path, file_type) = entry.map_err(|e| EngineError::Other(e.to_string()))?;
-        if let Ok(rel) = path.strip_prefix(dst) {
-            if !matcher
-                .is_included(rel)
-                .map_err(|e| EngineError::Other(format!("{:?}", e)))?
-            {
-                continue;
-            }
-            if !src.join(rel).exists() {
-                if file_type.is_dir() {
-                    fs::remove_dir_all(&path)?;
-                } else {
-                    fs::remove_file(&path)?;
+    let mut walker = walk(dst, 1024);
+    let mut state = String::new();
+    while let Some(batch) = walker.next() {
+        let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
+        for entry in batch {
+            let path = entry.apply(&mut state);
+            let file_type = entry.file_type;
+            if let Ok(rel) = path.strip_prefix(dst) {
+                if !matcher
+                    .is_included(rel)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?
+                {
+                    continue;
                 }
-                stats.files_deleted += 1;
+                if !src.join(rel).exists() {
+                    if file_type.is_dir() {
+                        fs::remove_dir_all(&path)?;
+                    } else {
+                        fs::remove_file(&path)?;
+                    }
+                    stats.files_deleted += 1;
+                }
             }
         }
     }
@@ -647,75 +653,83 @@ pub fn sync(
     sender.start();
     #[cfg(unix)]
     let mut hard_links: HashMap<(u64, u64), std::path::PathBuf> = HashMap::new();
-    for entry in walk(src) {
-        let (path, file_type) = entry.map_err(|e| EngineError::Other(e.to_string()))?;
-        if let Ok(rel) = path.strip_prefix(src) {
-            if !matcher
-                .is_included(rel)
-                .map_err(|e| EngineError::Other(format!("{:?}", e)))?
-            {
-                continue;
-            }
-            let dest_path = dst.join(rel);
-            if file_type.is_file() {
-                #[cfg(unix)]
-                if opts.hard_links {
-                    use std::os::unix::fs::MetadataExt;
-                    let meta = fs::metadata(&path)?;
-                    let key = (meta.dev(), meta.ino());
-                    if let Some(existing) = hard_links.get(&key) {
-                        fs::hard_link(existing, &dest_path)?;
-                        continue;
-                    } else {
-                        hard_links.insert(key, dest_path.clone());
-                    }
-                }
-                if sender.process_file(&path, &dest_path, &mut receiver)? {
-                    stats.files_transferred += 1;
-                    stats.bytes_transferred += fs::metadata(&path)?.len();
-                }
-            } else if file_type.is_dir() {
-                fs::create_dir_all(&dest_path)?;
-            } else if file_type.is_symlink() && opts.links {
-                let target = fs::read_link(&path)?;
-                if let Some(parent) = dest_path.parent() {
-                    fs::create_dir_all(parent)?;
-                }
-                #[cfg(unix)]
-                std::os::unix::fs::symlink(&target, &dest_path)?;
-                #[cfg(windows)]
+    let mut walker = walk(src, 1024);
+    let mut state = String::new();
+    while let Some(batch) = walker.next() {
+        let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
+        for entry in batch {
+            let path = entry.apply(&mut state);
+            let file_type = entry.file_type;
+            if let Ok(rel) = path.strip_prefix(src) {
+                if !matcher
+                    .is_included(rel)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?
                 {
-                    if target.is_dir() {
-                        std::os::windows::fs::symlink_dir(&target, &dest_path)?;
-                    } else {
-                        std::os::windows::fs::symlink_file(&target, &dest_path)?;
+                    continue;
+                }
+                let dest_path = dst.join(rel);
+                if file_type.is_file() {
+                    #[cfg(unix)]
+                    if opts.hard_links {
+                        use std::os::unix::fs::MetadataExt;
+                        let meta = fs::metadata(&path)?;
+                        let key = (meta.dev(), meta.ino());
+                        if let Some(existing) = hard_links.get(&key) {
+                            fs::hard_link(existing, &dest_path)?;
+                            continue;
+                        } else {
+                            hard_links.insert(key, dest_path.clone());
+                        }
+                    }
+                    if sender.process_file(&path, &dest_path, &mut receiver)? {
+                        stats.files_transferred += 1;
+                        stats.bytes_transferred += fs::metadata(&path)?.len();
+                    }
+                } else if file_type.is_dir() {
+                    fs::create_dir_all(&dest_path)?;
+                } else if file_type.is_symlink() && opts.links {
+                    let target = fs::read_link(&path)?;
+                    if let Some(parent) = dest_path.parent() {
+                        fs::create_dir_all(parent)?;
+                    }
+                    #[cfg(unix)]
+                    std::os::unix::fs::symlink(&target, &dest_path)?;
+                    #[cfg(windows)]
+                    {
+                        if target.is_dir() {
+                            std::os::windows::fs::symlink_dir(&target, &dest_path)?;
+                        } else {
+                            std::os::windows::fs::symlink_file(&target, &dest_path)?;
+                        }
+                    }
+                } else {
+                    #[cfg(unix)]
+                    {
+                        if (file_type.is_char_device() || file_type.is_block_device())
+                            && opts.devices
+                        {
+                            use nix::sys::stat::{mknod, Mode, SFlag};
+                            let meta = fs::symlink_metadata(&path)?;
+                            let kind = if file_type.is_char_device() {
+                                SFlag::S_IFCHR
+                            } else {
+                                SFlag::S_IFBLK
+                            };
+                            let perm = Mode::from_bits_truncate(meta.mode() & 0o777);
+                            mknod(&dest_path, kind, perm, meta.rdev())
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                        } else if file_type.is_fifo() && opts.specials {
+                            use nix::sys::stat::Mode;
+                            use nix::unistd::mkfifo;
+                            mkfifo(&dest_path, Mode::from_bits_truncate(0o644))
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                        }
                     }
                 }
             } else {
-                #[cfg(unix)]
-                {
-                    if (file_type.is_char_device() || file_type.is_block_device()) && opts.devices {
-                        use nix::sys::stat::{mknod, Mode, SFlag};
-                        let meta = fs::symlink_metadata(&path)?;
-                        let kind = if file_type.is_char_device() {
-                            SFlag::S_IFCHR
-                        } else {
-                            SFlag::S_IFBLK
-                        };
-                        let perm = Mode::from_bits_truncate(meta.mode() & 0o777);
-                        mknod(&dest_path, kind, perm, meta.rdev())
-                            .map_err(|e| EngineError::Other(e.to_string()))?;
-                    } else if file_type.is_fifo() && opts.specials {
-                        use nix::sys::stat::Mode;
-                        use nix::unistd::mkfifo;
-                        mkfifo(&dest_path, Mode::from_bits_truncate(0o644))
-                            .map_err(|e| EngineError::Other(e.to_string()))?;
-                    }
-                }
+                // Path lies outside of the source directory, skip it.
+                continue;
             }
-        } else {
-            // Path lies outside of the source directory, skip it.
-            continue;
         }
     }
     sender.finish();
