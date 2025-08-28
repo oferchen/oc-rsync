@@ -7,6 +7,8 @@ pub enum Codec {
     Zlib,
     /// Zstandard compression.
     Zstd,
+    /// LZ4 compression.
+    Lz4,
 }
 
 /// Compresses a buffer of bytes.
@@ -64,5 +66,21 @@ impl Decompressor for Zstd {
         let mut out = Vec::new();
         decoder.read_to_end(&mut out)?;
         Ok(out)
+    }
+}
+
+/// LZ4 codec adapter.
+pub struct Lz4;
+
+impl Compressor for Lz4 {
+    fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
+        Ok(lz4_flex::block::compress_prepend_size(data))
+    }
+}
+
+impl Decompressor for Lz4 {
+    fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
+        lz4_flex::block::decompress_size_prepended(data)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
     }
 }
