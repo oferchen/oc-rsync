@@ -29,3 +29,9 @@ name = "filters"
 path = "fuzz_targets/filters.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "filters_merge_fuzz"
+path = "fuzz_targets/filters_merge_fuzz.rs"
+test = false
+doc = false

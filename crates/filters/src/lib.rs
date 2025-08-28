@@ -117,7 +117,9 @@ impl Matcher {
                         } else {
                             continue;
                         };
-                        let new_pat = if pat.contains('/') {
+                        let new_pat = if pat.starts_with('/') {
+                            pat.to_string()
+                        } else if pat.contains('/') {
                             format!("{}/{}", rel_str, pat)
                         } else {
                             format!("{}/**/{}", rel_str, pat)
@@ -182,17 +184,33 @@ pub fn parse(input: &str) -> Result<Vec<Rule>, ParseError> {
             return Err(ParseError::InvalidRule(raw_line.to_string()));
         }
 
-        let pat = if pattern.contains('/') {
-            pattern.to_string()
+        // Track whether the pattern is anchored to the root (starts with '/')
+        // or targets a directory (ends with '/'). These affect how we
+        // transform the glob to match rsync's semantics.
+        let anchored = pattern.starts_with('/');
+        let dir_only = pattern.ends_with('/');
+
+        let mut base = pattern.trim_start_matches('/').to_string();
+        if dir_only {
+            base = base.trim_end_matches('/').to_string();
+        }
+
+        if !anchored && !base.contains('/') {
+            base = format!("**/{}", base);
+        }
+
+        let pats = if dir_only {
+            vec![base.clone(), format!("{}/**", base)]
         } else {
-            format!("**/{}", pattern)
+            vec![base]
         };
 
-        let matcher = Glob::new(&pat)?.compile_matcher();
-
-        match kind {
-            RuleKind::Include => rules.push(Rule::Include(matcher)),
-            RuleKind::Exclude => rules.push(Rule::Exclude(matcher)),
+        for pat in pats {
+            let matcher = Glob::new(&pat)?.compile_matcher();
+            match kind {
+                RuleKind::Include => rules.push(Rule::Include(matcher)),
+                RuleKind::Exclude => rules.push(Rule::Exclude(matcher)),
+            }
         }
     }
 

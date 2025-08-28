@@ -19,6 +19,7 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
 - Many CLI options listed in `docs/feature_matrix.md` have no associated tests.
 
 ## Continuous integration deficiencies
-- Coverage is collected on Linux and Windows using `cargo-llvm-cov`, but no thresholds are enforced.
+- Coverage is collected on Linux and Windows using `cargo-llvm-cov` with `--fail-under-lines 80` and `--fail-under-functions 80` thresholds.
+  Raise these thresholds as the test suite stabilizes.
 - Nightly jobs fuzz all targets for longer runs, yet pull requests still rely on brief smoke tests.
 - Remote-to-remote transfers, filter rules, and compression negotiation lack dedicated CI coverage.

@@ -1,10 +1,13 @@
 use assert_cmd::Command;
 use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
-use nix::unistd::{chown, Gid, Uid};
+use nix::unistd::{chown, mkfifo, Gid, Uid};
 #[cfg(unix)]
-use std::os::unix::fs::MetadataExt;
+use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use tempfile::tempdir;
+#[cfg(unix)]
+use std::os::unix::fs::symlink;
+use std::io::{Seek, SeekFrom, Write};
 
 #[test]
 fn client_local_sync() {
@@ -276,6 +279,30 @@ fn checksum_forces_transfer_cli() {
     assert_eq!(std::fs::read(&dst_file).unwrap(), b"aaaa");
 }
 
+#[cfg(unix)]
+#[test]
+fn perms_flag_preserves_permissions() {
+    use std::fs;
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    let file = src_dir.join("a.txt");
+    fs::write(&file, b"hi").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o741)).unwrap();
+
+    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args(["--local", "--perms", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.assert().success();
+
+    let mode = fs::metadata(dst_dir.join("a.txt"))
+        .unwrap()
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o777, 0o741);
+}
+
 #[test]
 fn stats_are_printed() {
     let dir = tempdir().unwrap();
@@ -331,4 +358,300 @@ fn invalid_compress_level_fails() {
         .args(["--compress-level", "foo"])
         .assert()
         .failure();
+}
+
+#[test]
+fn help_flag_prints_usage() {
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("Usage:"));
+}
+
+#[test]
+fn exclude_pattern_skips_files() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("keep.txt"), b"k").unwrap();
+    std::fs::write(src.join("skip.log"), b"s").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--exclude",
+            "*.log",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep.txt").exists());
+    assert!(!dst.join("skip.log").exists());
+}
+
+#[test]
+fn exclude_from_file_skips_patterns() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("keep.txt"), b"k").unwrap();
+    std::fs::write(src.join("skip.log"), b"s").unwrap();
+    let list = dir.path().join("exclude.txt");
+    std::fs::write(&list, "*.log\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--exclude-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep.txt").exists());
+    assert!(!dst.join("skip.log").exists());
+}
+
+#[test]
+fn include_pattern_allows_file() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("keep.txt"), b"k").unwrap();
+    std::fs::write(src.join("skip.txt"), b"s").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--include",
+            "keep.txt",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep.txt").exists());
+    assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
+fn include_from_file_allows_patterns() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("keep.txt"), b"k").unwrap();
+    std::fs::write(src.join("skip.txt"), b"s").unwrap();
+    let inc = dir.path().join("include.txt");
+    std::fs::write(&inc, "keep.txt\n").unwrap();
+    let exc = dir.path().join("exclude.txt");
+    std::fs::write(&exc, "*\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--include-from",
+            inc.to_str().unwrap(),
+            "--exclude-from",
+            exc.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep.txt").exists());
+    assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
+fn files_from_zero_separated_list() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("keep.txt"), b"k").unwrap();
+    std::fs::write(src.join("skip.txt"), b"s").unwrap();
+    let list = dir.path().join("files.lst");
+    std::fs::write(&list, b"keep.txt\0").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--from0",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep.txt").exists());
+    assert!(!dst.join("skip.txt").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn links_preserve_symlinks() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("file"), b"hi").unwrap();
+    symlink("file", src.join("link")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let meta = std::fs::symlink_metadata(dst.join("link")).unwrap();
+    assert!(meta.file_type().is_symlink());
+    let target = std::fs::read_link(dst.join("link")).unwrap();
+    assert_eq!(target, std::path::PathBuf::from("file"));
+}
+
+#[cfg(unix)]
+#[test]
+fn perms_preserve_permissions() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    let file = src.join("file");
+    std::fs::write(&file, b"hi").unwrap();
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o640)).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args(["--local", "--perms", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let meta = std::fs::metadata(dst.join("file")).unwrap();
+    assert_eq!(meta.permissions().mode() & 0o777, 0o640);
+}
+
+#[cfg(unix)]
+#[test]
+fn times_preserve_mtime() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    let file = src.join("file");
+    std::fs::write(&file, b"hi").unwrap();
+    let mtime = FileTime::from_unix_time(1_000_000, 0);
+    set_file_mtime(&file, mtime).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args(["--local", "--times", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let meta = std::fs::metadata(dst.join("file")).unwrap();
+    let dst_mtime = FileTime::from_last_modification_time(&meta);
+    assert_eq!(dst_mtime, mtime);
+}
+
+#[cfg(unix)]
+#[test]
+fn sparse_files_preserved() {
+    use std::fs::File;
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(&dst).unwrap();
+    let sp = src.join("sparse");
+    let mut f = File::create(&sp).unwrap();
+    f.seek(SeekFrom::Start(1 << 20)).unwrap();
+    f.write_all(b"end").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args(["--local", "--sparse", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let src_meta = std::fs::metadata(&sp).unwrap();
+    let dst_meta = std::fs::metadata(dst.join("sparse")).unwrap();
+    assert_eq!(src_meta.len(), dst_meta.len());
+    assert_eq!(src_meta.blocks(), dst_meta.blocks());
+    assert!(dst_meta.blocks() * 512 < dst_meta.len());
+}
+
+#[cfg(unix)]
+#[test]
+fn specials_preserve_fifo() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(&dst).unwrap();
+    let fifo = src.join("pipe");
+    mkfifo(&fifo, nix::sys::stat::Mode::from_bits_truncate(0o600)).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args(["--local", "--specials", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let meta = std::fs::symlink_metadata(dst.join("pipe")).unwrap();
+    assert!(meta.file_type().is_fifo());
+}
+
+#[test]
+fn delete_delay_removes_extraneous_files() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(&dst).unwrap();
+    std::fs::write(dst.join("old.txt"), b"old").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args(["--local", "--recursive", "--delete-delay", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    assert!(!dst.join("old.txt").exists());
 }

@@ -1,0 +1,15 @@
+use compress::{negotiate_codec, Codec};
+
+#[test]
+fn negotiate_zlib_only() {
+    let local = [Codec::Zlib, Codec::Zstd];
+    let remote = [Codec::Zlib];
+    assert_eq!(negotiate_codec(&local, &remote), Some(Codec::Zlib));
+}
+
+#[test]
+fn negotiate_zstd_only() {
+    let local = [Codec::Zlib, Codec::Zstd];
+    let remote = [Codec::Zstd];
+    assert_eq!(negotiate_codec(&local, &remote), Some(Codec::Zstd));
+}
