@@ -1,5 +1,11 @@
 use std::io::{self, Read, Write};
 
+pub mod ssh;
+pub mod tcp;
+
+pub use ssh::SshStdioTransport;
+pub use tcp::TcpTransport;
+
 /// Trait representing a blocking transport.
 pub trait Transport {
     /// Send data over the transport.
