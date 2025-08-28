@@ -188,7 +188,7 @@
 |  | --remove-source-files | sender removes synchronized files (non-dir) | no |  | no |
 |  | --safe-links | ignore symlinks that point outside the tree | no |  | no |
 |  | --size-only | skip files that match in size | no |  | no |
-| -S | --sparse | turn sequences of nulls into sparse blocks | no |  | no |
+| -S | --sparse | turn sequences of nulls into sparse blocks | yes |  | no |
 |  | --suffix=SUFFIX | backup suffix (default ~ w/o --backup-dir) | no |  | no |
 | -T | --temp-dir=DIR | create temporary files in directory DIR | no |  | no |
 |  | --timeout=SECONDS | set I/O timeout in seconds | no |  | no |

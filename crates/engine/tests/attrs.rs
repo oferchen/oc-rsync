@@ -8,7 +8,7 @@ use compress::available_codecs;
 use engine::{sync, SyncOptions};
 use filetime::{set_file_mtime, FileTime};
 use filters::Matcher;
-use nix::sys::stat::{mknod, makedev, Mode, SFlag};
+use nix::sys::stat::{makedev, mknod, Mode, SFlag};
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 use tempfile::tempdir;
 use xattr;
@@ -28,7 +28,10 @@ fn perms_roundtrip() {
         &dst,
         &Matcher::default(),
         available_codecs(),
-        &SyncOptions { perms: true, ..Default::default() },
+        &SyncOptions {
+            perms: true,
+            ..Default::default()
+        },
     )
     .unwrap();
     let meta = fs::metadata(dst.join("file")).unwrap();
@@ -51,7 +54,10 @@ fn times_roundtrip() {
         &dst,
         &Matcher::default(),
         available_codecs(),
-        &SyncOptions { times: true, ..Default::default() },
+        &SyncOptions {
+            times: true,
+            ..Default::default()
+        },
     )
     .unwrap();
     let meta = fs::metadata(dst.join("file")).unwrap();
@@ -74,7 +80,11 @@ fn owner_group_roundtrip() {
         &dst,
         &Matcher::default(),
         available_codecs(),
-        &SyncOptions { owner: true, group: true, ..Default::default() },
+        &SyncOptions {
+            owner: true,
+            group: true,
+            ..Default::default()
+        },
     )
     .unwrap();
     let meta = fs::metadata(dst.join("file")).unwrap();
@@ -96,7 +106,10 @@ fn links_roundtrip() {
         &dst,
         &Matcher::default(),
         available_codecs(),
-        &SyncOptions { links: true, ..Default::default() },
+        &SyncOptions {
+            links: true,
+            ..Default::default()
+        },
     )
     .unwrap();
     let meta = fs::symlink_metadata(dst.join("link")).unwrap();
@@ -123,7 +136,10 @@ fn hard_links_roundtrip() {
         &dst,
         &Matcher::default(),
         available_codecs(),
-        &SyncOptions { hard_links: true, ..Default::default() },
+        &SyncOptions {
+            hard_links: true,
+            ..Default::default()
+        },
     )
     .unwrap();
     let m1 = fs::metadata(dst.join("f1")).unwrap();
@@ -147,7 +163,10 @@ fn xattrs_roundtrip() {
         &dst,
         &Matcher::default(),
         available_codecs(),
-        &SyncOptions { xattrs: true, ..Default::default() },
+        &SyncOptions {
+            xattrs: true,
+            ..Default::default()
+        },
     )
     .unwrap();
     let val = xattr::get(dst.join("file"), "user.test").unwrap().unwrap();
@@ -170,10 +189,15 @@ fn acls_roundtrip() {
         &dst,
         &Matcher::default(),
         available_codecs(),
-        &SyncOptions { acls: true, ..Default::default() },
+        &SyncOptions {
+            acls: true,
+            ..Default::default()
+        },
     )
     .unwrap();
-    let val = xattr::get(dst.join("file"), "user.acltest").unwrap().unwrap();
+    let val = xattr::get(dst.join("file"), "user.acltest")
+        .unwrap()
+        .unwrap();
     assert_eq!(&val[..], b"acl");
 }
 
@@ -197,7 +221,10 @@ fn devices_roundtrip() {
         &dst,
         &Matcher::default(),
         available_codecs(),
-        &SyncOptions { devices: true, ..Default::default() },
+        &SyncOptions {
+            devices: true,
+            ..Default::default()
+        },
     )
     .unwrap();
     let meta = fs::symlink_metadata(dst.join("null")).unwrap();
@@ -219,7 +246,10 @@ fn specials_roundtrip() {
         &dst,
         &Matcher::default(),
         available_codecs(),
-        &SyncOptions { specials: true, ..Default::default() },
+        &SyncOptions {
+            specials: true,
+            ..Default::default()
+        },
     )
     .unwrap();
     let meta = fs::symlink_metadata(dst.join("fifo")).unwrap();
@@ -244,11 +274,16 @@ fn sparse_roundtrip() {
         &dst,
         &Matcher::default(),
         available_codecs(),
-        &SyncOptions { sparse: true, ..Default::default() },
+        &SyncOptions {
+            sparse: true,
+            ..Default::default()
+        },
     )
     .unwrap();
     let src_meta = fs::metadata(&sp).unwrap();
     let dst_meta = fs::metadata(dst.join("sparse")).unwrap();
     assert_eq!(src_meta.len(), dst_meta.len());
     assert_eq!(src_meta.blocks(), dst_meta.blocks());
+    assert!(src_meta.blocks() * 512 < src_meta.len());
+    assert!(dst_meta.blocks() * 512 < dst_meta.len());
 }

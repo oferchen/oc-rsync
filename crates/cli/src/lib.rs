@@ -38,6 +38,9 @@ struct ClientOpts {
     /// perform a trial run with no changes made
     #[arg(short = 'n', long, help_heading = "Selection")]
     dry_run: bool,
+    /// turn sequences of nulls into sparse blocks
+    #[arg(short = 'S', long, help_heading = "Selection")]
+    sparse: bool,
     /// increase logging verbosity
     #[arg(short, long, action = ArgAction::Count, help_heading = "Output")]
     verbose: u8,
@@ -436,7 +439,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         specials: opts.specials || opts.archive,
         xattrs: opts.xattrs,
         acls: opts.acls,
-        sparse: false,
+        sparse: opts.sparse,
         strong: if opts.modern {
             StrongHash::Blake3
         } else {
