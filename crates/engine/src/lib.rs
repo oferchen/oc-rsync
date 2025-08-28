@@ -1,12 +1,12 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
-use compress::{available_codecs, negotiate_codec, Codec, Compressor, Decompressor, Zlib, Zstd};
 #[cfg(feature = "lz4")]
 use compress::Lz4;
+use compress::{available_codecs, negotiate_codec, Codec, Compressor, Decompressor, Zlib, Zstd};
 use filters::Matcher;
 use thiserror::Error;
 
@@ -51,20 +51,31 @@ pub enum Op {
     Copy { offset: usize, len: usize },
 }
 
+/// Default number of blocks from the basis file to keep indexed when
+/// computing a delta. This bounds memory usage to roughly
+/// `DEFAULT_BASIS_WINDOW * block_size` bytes.
+const DEFAULT_BASIS_WINDOW: usize = 8 * 1024; // 8k blocks
+
 /// Compute a delta from `basis` to `target` using a simple block matching
 /// algorithm driven by the checksum crate. The computation is performed using
-/// streaming readers to avoid loading entire files into memory.
-fn compute_delta<R1: Read + Seek, R2: Read + Seek>(
+/// streaming readers to avoid loading entire files into memory. The caller can
+/// limit memory usage by constraining the number of blocks from the basis file
+/// that are kept in memory at any given time via `basis_window`.
+pub fn compute_delta<R1: Read + Seek, R2: Read + Seek>(
     cfg: &ChecksumConfig,
     basis: &mut R1,
     target: &mut R2,
     block_size: usize,
+    basis_window: usize,
 ) -> Result<Vec<Op>> {
     // Start from the beginning of both streams.
     basis.seek(SeekFrom::Start(0))?;
     target.seek(SeekFrom::Start(0))?;
-    // Build a map of rolling checksum -> (strong hash, offset, len) for the basis file.
+    // Build a map of rolling checksum -> (strong hash, offset, len) for the
+    // basis file. Only the most recent `basis_window` blocks are kept to bound
+    // memory usage.
     let mut map: HashMap<u32, Vec<(Vec<u8>, usize, usize)>> = HashMap::new();
+    let mut order: VecDeque<(u32, Vec<u8>, usize, usize)> = VecDeque::new();
     let mut off = 0usize;
     let mut buf = vec![0u8; block_size];
     loop {
@@ -73,7 +84,25 @@ fn compute_delta<R1: Read + Seek, R2: Read + Seek>(
             break;
         }
         let sum = cfg.checksum(&buf[..n]);
-        map.entry(sum.weak).or_default().push((sum.strong, off, n));
+        map.entry(sum.weak)
+            .or_default()
+            .push((sum.strong.clone(), off, n));
+        order.push_back((sum.weak, sum.strong, off, n));
+        if order.len() > basis_window {
+            if let Some((w, s, o, l)) = order.pop_front() {
+                if let Some(v) = map.get_mut(&w) {
+                    if let Some(pos) = v
+                        .iter()
+                        .position(|(ss, oo, ll)| *oo == o && *ll == l && *ss == s)
+                    {
+                        v.remove(pos);
+                    }
+                    if v.is_empty() {
+                        map.remove(&w);
+                    }
+                }
+            }
+        }
         off += n;
         if n < block_size {
             break;
@@ -216,6 +245,7 @@ impl Sender {
             &mut basis_reader,
             &mut src_reader,
             self.block_size,
+            DEFAULT_BASIS_WINDOW,
         )?;
         if let Some(codec) = self.codec {
             for op in &mut delta {
@@ -410,7 +440,7 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(b"hello world".to_vec());
         let mut target = Cursor::new(b"hello brave new world".to_vec());
-        let delta = compute_delta(&cfg, &mut basis, &mut target, 4).unwrap();
+        let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
         let mut basis = Cursor::new(b"hello world".to_vec());
         let mut out = Vec::new();
         apply_delta(&mut basis, &delta, &mut out).unwrap();
@@ -426,7 +456,8 @@ mod tests {
         let basis: Vec<u8> = [block1.as_ref(), block2.as_ref()].concat();
         let mut basis_reader = Cursor::new(basis.clone());
         let mut target_reader = Cursor::new(basis.clone());
-        let delta = compute_delta(&cfg, &mut basis_reader, &mut target_reader, 3).unwrap();
+        let delta =
+            compute_delta(&cfg, &mut basis_reader, &mut target_reader, 3, usize::MAX).unwrap();
         assert_eq!(
             delta,
             vec![
@@ -445,7 +476,7 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(Vec::new());
         let mut target = Cursor::new(b"abc".to_vec());
-        let delta = compute_delta(&cfg, &mut basis, &mut target, 4).unwrap();
+        let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
         assert_eq!(delta, vec![Op::Data(b"abc".to_vec())]);
     }
 
@@ -454,7 +485,7 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(b"hello".to_vec());
         let mut target = Cursor::new(Vec::new());
-        let delta = compute_delta(&cfg, &mut basis, &mut target, 4).unwrap();
+        let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
         assert!(delta.is_empty());
     }
 
@@ -463,7 +494,7 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(b"abc".to_vec());
         let mut target = Cursor::new(b"abc".to_vec());
-        let delta = compute_delta(&cfg, &mut basis, &mut target, 4).unwrap();
+        let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
         assert_eq!(delta, vec![Op::Copy { offset: 0, len: 3 }]);
     }
 
@@ -472,7 +503,7 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(b"hello".to_vec());
         let mut target = Cursor::new(b"hello".to_vec());
-        let delta = compute_delta(&cfg, &mut basis, &mut target, 4).unwrap();
+        let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
         assert_eq!(
             delta,
             vec![
@@ -530,5 +561,42 @@ mod tests {
 
         assert_eq!(fs::read(dst.join("inside.txt")).unwrap(), b"inside");
         assert!(!dst.join("outside.txt").exists());
+    }
+
+    fn mem_usage_kb() -> u64 {
+        use std::fs;
+        let status = fs::read_to_string("/proc/self/status").unwrap();
+        for line in status.lines() {
+            if line.starts_with("VmRSS:") {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                return parts[1].parse().unwrap();
+            }
+        }
+        0
+    }
+
+    #[test]
+    fn large_file_windowed_delta_memory() {
+        let cfg = ChecksumConfigBuilder::new().build();
+        let block_size = 1024;
+        let window = 64; // keep at most 64 blocks in memory
+        let data = vec![42u8; block_size * 1024]; // 1 MiB file
+        let mut basis = Cursor::new(data.clone());
+        let mut target = Cursor::new(data.clone());
+
+        let before = mem_usage_kb();
+        let delta = compute_delta(&cfg, &mut basis, &mut target, block_size, window).unwrap();
+        let after = mem_usage_kb();
+        // delta should reconstruct target
+        let mut basis = Cursor::new(data.clone());
+        let mut out = Vec::new();
+        apply_delta(&mut basis, &delta, &mut out).unwrap();
+        assert_eq!(out, data);
+        // Memory usage should stay under ~10MB
+        assert!(
+            after - before < 10 * 1024,
+            "memory grew too much: {}KB",
+            after - before
+        );
     }
 }
