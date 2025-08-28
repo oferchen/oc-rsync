@@ -1,4 +1,6 @@
 use std::env;
+use std::fs;
+use std::io::{Read, Write};
 use std::collections::HashMap;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -6,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
 use engine::{sync, EngineError, Result};
+use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
 use transport::{TcpTransport, Transport};
 
@@ -38,6 +41,12 @@ struct ClientOpts {
     src: String,
     /// destination path or HOST:PATH
     dst: String,
+    /// filter rules provided directly
+    #[arg(long, value_name = "RULE")]
+    filter: Vec<String>,
+    /// files containing filter rules
+    #[arg(long, value_name = "FILE")]
+    filter_file: Vec<PathBuf>,
 }
 
 /// A module exported by the daemon.
@@ -147,12 +156,13 @@ where
 }
 
 fn run_client(opts: ClientOpts) -> Result<()> {
+    let matcher = build_matcher(&opts)?;
     let src = parse_remote_spec(&opts.src)?;
     let dst = parse_remote_spec(&opts.dst)?;
     if opts.local {
         match (src, dst) {
             (RemoteSpec::Local(src), RemoteSpec::Local(dst)) => {
-                sync(&src, &dst)?;
+                sync(&src, &dst, &matcher)?;
                 Ok(())
             }
             _ => Err(EngineError::Other("local sync requires local paths".into())),
@@ -163,11 +173,11 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 "local sync requires --local flag".into(),
             )),
             (RemoteSpec::Remote { path: src, .. }, RemoteSpec::Local(dst)) => {
-                sync(&src, &dst)?;
+                sync(&src, &dst, &matcher)?;
                 Ok(())
             }
             (RemoteSpec::Local(src), RemoteSpec::Remote { path: dst, .. }) => {
-                sync(&src, &dst)?;
+                sync(&src, &dst, &matcher)?;
                 Ok(())
             }
             (
@@ -204,6 +214,22 @@ fn run_client(opts: ClientOpts) -> Result<()> {
             }
         }
     }
+}
+
+fn build_matcher(opts: &ClientOpts) -> Result<Matcher> {
+    let mut rules = Vec::new();
+    for rule in &opts.filter {
+        rules.extend(
+            parse_filters(rule).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+        );
+    }
+    for file in &opts.filter_file {
+        let content = fs::read_to_string(file)?;
+        rules.extend(
+            parse_filters(&content).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+        );
+    }
+    Ok(Matcher::new(rules))
 }
 
 fn run_daemon(opts: DaemonOpts) -> Result<()> {

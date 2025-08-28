@@ -7,6 +7,7 @@ edition = "2021"
 thiserror = "1"
 checksums = { path = "../checksums" }
 walk = { path = "../walk" }
+filters = { path = "../filters" }
 
 [dev-dependencies]
 tempfile = "3"

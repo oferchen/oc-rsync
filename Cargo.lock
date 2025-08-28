@@ -234,6 +234,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "engine",
+ "filters",
  "nix",
  "protocol",
  "transport",
@@ -328,6 +329,7 @@ name = "engine"
 version = "0.1.0"
 dependencies = [
  "checksums",
+ "filters",
  "tempfile",
  "thiserror",
  "walk",
@@ -861,6 +863,7 @@ dependencies = [
  "checksums",
  "cli",
  "engine",
+ "filters",
  "predicates",
  "protocol",
  "serial_test",
