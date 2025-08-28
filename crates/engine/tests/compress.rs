@@ -1,7 +1,7 @@
 use std::fs;
 
 use compress::Codec;
-use engine::sync;
+use engine::{sync, SyncOptions};
 use filters::Matcher;
 use tempfile::tempdir;
 
@@ -12,7 +12,14 @@ fn zlib_roundtrip() {
     let dst = tmp.path().join("dst");
     fs::create_dir_all(&src).unwrap();
     fs::write(src.join("file.txt"), b"hello world").unwrap();
-    sync(&src, &dst, &Matcher::default(), &[Codec::Zlib]).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &[Codec::Zlib],
+        &SyncOptions { compress: true, ..Default::default() },
+    )
+    .unwrap();
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
 }
 
@@ -23,7 +30,14 @@ fn zstd_roundtrip() {
     let dst = tmp.path().join("dst");
     fs::create_dir_all(&src).unwrap();
     fs::write(src.join("file.txt"), b"hello world").unwrap();
-    sync(&src, &dst, &Matcher::default(), &[Codec::Zstd]).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &[Codec::Zstd],
+        &SyncOptions { compress: true, ..Default::default() },
+    )
+    .unwrap();
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
 }
 
@@ -34,6 +48,13 @@ fn lz4_roundtrip() {
     let dst = tmp.path().join("dst");
     fs::create_dir_all(&src).unwrap();
     fs::write(src.join("file.txt"), b"hello world").unwrap();
-    sync(&src, &dst, &Matcher::default(), &[Codec::Lz4]).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &[Codec::Lz4],
+        &SyncOptions { compress: true, ..Default::default() },
+    )
+    .unwrap();
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
 }

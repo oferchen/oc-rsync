@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use clap::{ArgAction, Parser};
 use compress::available_codecs;
-use engine::{sync, EngineError, Result};
+use engine::{sync, EngineError, Result, SyncOptions, Stats};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
 use transport::{SshStdioTransport, TcpTransport, Transport};
@@ -187,18 +187,6 @@ fn run_client(opts: ClientOpts) -> Result<()> {
     if opts.verbose > 0 {
         println!("verbose level set to {}", opts.verbose);
     }
-    if opts.delete {
-        println!("delete mode enabled (not yet implemented)");
-    }
-    if opts.checksum {
-        println!("checksum mode enabled (not yet implemented)");
-    }
-    if opts.compress {
-        println!("compression enabled (not yet implemented)");
-    }
-    if opts.stats {
-        println!("stats will be displayed after sync (not yet implemented)");
-    }
     if opts.recursive {
         println!("recursive mode enabled");
     }
@@ -209,26 +197,28 @@ fn run_client(opts: ClientOpts) -> Result<()> {
 
     let src = parse_remote_spec(&opts.src)?;
     let dst = parse_remote_spec(&opts.dst)?;
-    if opts.local {
+    let sync_opts = SyncOptions {
+        delete: opts.delete,
+        checksum: opts.checksum,
+        compress: opts.compress,
+    };
+    let stats = if opts.local {
         match (src, dst) {
             (RemoteSpec::Local(src), RemoteSpec::Local(dst)) => {
-                sync(&src, &dst, &matcher, available_codecs())?;
-                Ok(())
+                sync(&src, &dst, &matcher, available_codecs(), &sync_opts)?
             }
-            _ => Err(EngineError::Other("local sync requires local paths".into())),
+            _ => return Err(EngineError::Other("local sync requires local paths".into())),
         }
     } else {
         match (src, dst) {
-            (RemoteSpec::Local(_), RemoteSpec::Local(_)) => Err(EngineError::Other(
-                "local sync requires --local flag".into(),
-            )),
+            (RemoteSpec::Local(_), RemoteSpec::Local(_)) => {
+                return Err(EngineError::Other("local sync requires --local flag".into()))
+            }
             (RemoteSpec::Remote { path: src, .. }, RemoteSpec::Local(dst)) => {
-                sync(&src, &dst, &matcher, available_codecs())?;
-                Ok(())
+                sync(&src, &dst, &matcher, available_codecs(), &sync_opts)?
             }
             (RemoteSpec::Local(src), RemoteSpec::Remote { path: dst, .. }) => {
-                sync(&src, &dst, &matcher, available_codecs())?;
-                Ok(())
+                sync(&src, &dst, &matcher, available_codecs(), &sync_opts)?
             }
             (
                 RemoteSpec::Remote {
@@ -254,10 +244,16 @@ fn run_client(opts: ClientOpts) -> Result<()> {
 
                 pipe_transports(src_session, dst_session)
                     .map_err(|e| EngineError::Other(e.to_string()))?;
-                Ok(())
+                Stats::default()
             }
         }
+    };
+    if opts.stats {
+        println!("files transferred: {}", stats.files_transferred);
+        println!("files deleted: {}", stats.files_deleted);
+        println!("bytes transferred: {}", stats.bytes_transferred);
     }
+    Ok(())
 }
 
 fn build_matcher(opts: &ClientOpts) -> Result<Matcher> {
@@ -319,7 +315,13 @@ fn handle_connection(
             let _ = setgid(Gid::from_raw(65534));
             let _ = setuid(Uid::from_raw(65534));
         }
-        let _ = sync(Path::new("."), Path::new("."), &Matcher::default(), available_codecs());
+        let _ = sync(
+            Path::new("."),
+            Path::new("."),
+            &Matcher::default(),
+            available_codecs(),
+            &SyncOptions::default(),
+        );
     }
     Ok(())
 }

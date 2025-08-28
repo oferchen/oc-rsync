@@ -1,5 +1,5 @@
 use compress::available_codecs;
-use engine::sync;
+use engine::{sync, SyncOptions};
 use filters::Matcher;
 use std::fs;
 use tempfile::tempdir;
@@ -17,7 +17,14 @@ fn sync_large_file_streaming() {
     }
     fs::write(src.join("file.bin"), &data).unwrap();
 
-    sync(&src, &dst, &Matcher::default(), available_codecs()).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        available_codecs(),
+        &SyncOptions::default(),
+    )
+    .unwrap();
     let out = fs::read(dst.join("file.bin")).unwrap();
     assert_eq!(out, data);
 }
