@@ -12,8 +12,10 @@ use std::io::{self, Read, Write};
 
 pub mod demux;
 pub mod mux;
+pub mod server;
 pub use demux::Demux;
 pub use mux::Mux;
+pub use server::Server;
 
 /// Latest protocol version supported by this implementation.
 pub const LATEST_VERSION: u32 = 31;
