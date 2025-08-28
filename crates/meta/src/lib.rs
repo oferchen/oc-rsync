@@ -1,5 +1,6 @@
 use std::io;
 use std::path::Path;
+use std::convert::TryInto;
 
 use filetime::{self, FileTime};
 use nix::sys::stat::{self, FchmodatFlags, Mode};
@@ -103,7 +104,7 @@ impl Metadata {
         )
         .map_err(nix_to_io)?;
 
-        let mode = Mode::from_bits_truncate(self.mode);
+        let mode = Mode::from_bits_truncate(self.mode.try_into().unwrap());
         stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink).map_err(nix_to_io)?;
 
         filetime::set_file_mtime(path, self.mtime)?;
