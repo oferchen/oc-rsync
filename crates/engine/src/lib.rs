@@ -454,77 +454,20 @@ impl Receiver {
 
 impl Receiver {
     fn copy_metadata(&self, src: &Path, dest: &Path) -> Result<()> {
-        let meta = fs::symlink_metadata(src)?;
-        if self.opts.perms {
-            fs::set_permissions(dest, meta.permissions())?;
-        }
-        if self.opts.times {
-            #[cfg(unix)]
-            {
-                use filetime::{set_file_times, FileTime};
-                let mtime = FileTime::from_last_modification_time(&meta);
-                let atime = FileTime::from_last_access_time(&meta);
-                set_file_times(dest, atime, mtime).map_err(EngineError::from)?;
-            }
-        }
         #[cfg(unix)]
         {
-            if self.opts.owner || self.opts.group {
-                use nix::unistd::{chown, Gid, Uid};
-                  let uid = if self.opts.owner {
-                      if self.opts.numeric_ids {
-                          Some(Uid::from_raw(meta.uid()))
-                      } else {
-                          use users::{get_user_by_name, get_user_by_uid};
-                          let mapped = get_user_by_uid(meta.uid())
-                              .and_then(|u| {
-                                  u.name()
-                                      .to_str()
-                                      .and_then(|n| get_user_by_name(n))
-                                      .map(|u2| u2.uid())
-                              })
-                              .unwrap_or(meta.uid());
-                          Some(Uid::from_raw(mapped))
-                      }
-                  } else {
-                      None
-                  };
-                  let gid = if self.opts.group {
-                      if self.opts.numeric_ids {
-                          Some(Gid::from_raw(meta.gid()))
-                      } else {
-                          use users::{get_group_by_gid, get_group_by_name};
-                          let mapped = get_group_by_gid(meta.gid())
-                              .and_then(|g| {
-                                  g.name()
-                                      .to_str()
-                                      .and_then(|n| get_group_by_name(n))
-                                      .map(|g2| g2.gid())
-                              })
-                              .unwrap_or(meta.gid());
-                          Some(Gid::from_raw(mapped))
-                      }
-                  } else {
-                      None
-                  };
-                chown(dest, uid, gid).map_err(|e| EngineError::Other(e.to_string()))?;
-            }
-            if self.opts.xattrs || self.opts.acls {
-                let attrs = xattr::list(src).map_err(|e| EngineError::Other(e.to_string()))?;
-                for name in attrs {
-                    let name_str = name.to_string_lossy();
-                    if !self.opts.acls && name_str.starts_with("system.posix_acl") {
-                        continue;
-                    }
-                    if let Some(val) =
-                        xattr::get(src, &name).map_err(|e| EngineError::Other(e.to_string()))?
-                    {
-                        xattr::set(dest, &name, &val)
-                            .map_err(|e| EngineError::Other(e.to_string()))?;
-                    }
-                }
+            if self.opts.perms
+                || self.opts.times
+                || self.opts.owner
+                || self.opts.group
+                || self.opts.xattrs
+                || self.opts.acls
+            {
+                let meta = meta::Metadata::from_path(src).map_err(EngineError::from)?;
+                meta.apply(dest).map_err(EngineError::from)?;
             }
         }
+        let _ = (src, dest);
         Ok(())
     }
 }

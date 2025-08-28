@@ -10,3 +10,8 @@ path = "src/main.rs"
 [dependencies]
 cli = { path = "../../crates/cli" }
 engine = { path = "../../crates/engine" }
+
+[features]
+default = []
+xattr = ["engine/xattr", "cli/xattr"]
+acl = ["engine/acl", "cli/acl"]
