@@ -1,6 +1,6 @@
 use std::env;
 use std::collections::HashMap;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 
@@ -130,6 +130,22 @@ fn parse_remote_spec(s: &str) -> Result<RemoteSpec> {
     Ok(RemoteSpec::Local(PathBuf::from(s)))
 }
 
+fn pipe_transports<S, D>(mut src: S, mut dst: D) -> io::Result<()>
+where
+    S: Transport,
+    D: Transport,
+{
+    let mut buf = [0u8; 8192];
+    loop {
+        let n = src.receive(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        dst.send(&buf[..n])?;
+    }
+    Ok(())
+}
+
 fn run_client(opts: ClientOpts) -> Result<()> {
     let src = parse_remote_spec(&opts.src)?;
     let dst = parse_remote_spec(&opts.dst)?;
@@ -154,9 +170,38 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 sync(&src, &dst)?;
                 Ok(())
             }
-            (RemoteSpec::Remote { .. }, RemoteSpec::Remote { .. }) => Err(EngineError::Other(
-                "remote to remote sync not implemented".into(),
-            )),
+            (
+                RemoteSpec::Remote {
+                    host: src_host,
+                    path: src_path,
+                },
+                RemoteSpec::Remote {
+                    host: dst_host,
+                    path: dst_path,
+                },
+            ) => {
+                if src_host.is_empty() || dst_host.is_empty() {
+                    return Err(EngineError::Other(
+                        "remote host missing".to_string(),
+                    ));
+                }
+                if src_path.as_os_str().is_empty() || dst_path.as_os_str().is_empty() {
+                    return Err(EngineError::Other(
+                        "remote path missing".to_string(),
+                    ));
+                }
+
+                let src_session =
+                    SshStdioTransport::spawn(&src_host, [src_path.as_os_str()])
+                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                let dst_session =
+                    SshStdioTransport::spawn(&dst_host, [dst_path.as_os_str()])
+                        .map_err(|e| EngineError::Other(e.to_string()))?;
+
+                pipe_transports(src_session, dst_session)
+                    .map_err(|e| EngineError::Other(e.to_string()))?;
+                Ok(())
+            }
         }
     }
 }
