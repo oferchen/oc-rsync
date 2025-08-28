@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use clap::{ArgAction, Parser};
 use compress::{available_codecs, Codec};
-use engine::{sync, EngineError, Result, Stats, SyncOptions, StrongHash};
+use engine::{sync, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
 use transport::{SshStdioTransport, TcpTransport, Transport};
@@ -82,7 +82,11 @@ struct ClientOpts {
     #[arg(short = 'z', long, help_heading = "Compression")]
     compress: bool,
     /// explicitly set compression level
-    #[arg(long = "compress-level", value_name = "NUM", help_heading = "Compression")]
+    #[arg(
+        long = "compress-level",
+        value_name = "NUM",
+        help_heading = "Compression"
+    )]
     compress_level: Option<i32>,
     /// enable modern zstd compression and BLAKE3 checksums
     #[arg(long, help_heading = "Compression")]
@@ -393,8 +397,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         }
     }
 
-    let compress =
-        opts.modern || opts.compress || opts.compress_level.map_or(false, |l| l > 0);
+    let compress = opts.modern || opts.compress || opts.compress_level.map_or(false, |l| l > 0);
     let sync_opts = SyncOptions {
         delete: opts.delete,
         checksum: opts.checksum,
@@ -410,7 +413,11 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         xattrs: opts.xattrs,
         acls: opts.acls,
         sparse: false,
-        strong: if opts.modern { StrongHash::Blake3 } else { StrongHash::Md5 },
+        strong: if opts.modern {
+            StrongHash::Blake3
+        } else {
+            StrongHash::Md5
+        },
         compress_level: opts.compress_level,
     };
     let stats = if opts.local {
@@ -438,9 +445,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
-                    .map_err(|e| EngineError::Other(e.to_string()))?;
+                .map_err(|e| EngineError::Other(e.to_string()))?;
                 let codecs = handshake_with_peer(&mut session)?;
-                let err = session.stderr();
+                let (err, _) = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
                 }
@@ -453,9 +460,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
-                    .map_err(|e| EngineError::Other(e.to_string()))?;
+                .map_err(|e| EngineError::Other(e.to_string()))?;
                 let codecs = handshake_with_peer(&mut session)?;
-                let err = session.stderr();
+                let (err, _) = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
                 }
@@ -495,11 +502,11 @@ fn run_client(opts: ClientOpts) -> Result<()> {
 
                 pipe_transports(&mut src_session, &mut dst_session)
                     .map_err(|e| EngineError::Other(e.to_string()))?;
-                let src_err = src_session.stderr();
+                let (src_err, _) = src_session.stderr();
                 if !src_err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&src_err).into()));
                 }
-                let dst_err = dst_session.stderr();
+                let (dst_err, _) = dst_session.stderr();
                 if !dst_err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&dst_err).into()));
                 }
