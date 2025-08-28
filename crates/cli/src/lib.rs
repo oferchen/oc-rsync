@@ -99,6 +99,12 @@ struct ClientOpts {
     /// supply a custom configuration file
     #[arg(long, value_name = "FILE")]
     config: Option<PathBuf>,
+    /// path to SSH known hosts file
+    #[arg(long, value_name = "FILE", env = "RSYNC_KNOWN_HOSTS")]
+    known_hosts: Option<PathBuf>,
+    /// disable strict host key checking (not recommended)
+    #[arg(long, env = "RSYNC_NO_HOST_KEY_CHECKING")]
+    no_host_key_checking: bool,
     /// source path or HOST:PATH
     src: String,
     /// destination path or HOST:PATH
@@ -368,6 +374,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
     let src = parse_remote_spec(&opts.src)?;
     let mut dst = parse_remote_spec(&opts.dst)?;
 
+    let known_hosts = opts.known_hosts.clone();
+    let strict_host_key_checking = !opts.no_host_key_checking;
+
     let src_trailing = match &src {
         RemoteSpec::Local(p) => p.trailing_slash,
         RemoteSpec::Remote { path, .. } => path.trailing_slash,
@@ -423,7 +432,12 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 ))
             }
             (RemoteSpec::Remote { host, path: src }, RemoteSpec::Local(dst)) => {
-                let mut session = SshStdioTransport::spawn_server(&host, [src.path.as_os_str()])
+                let mut session = SshStdioTransport::spawn_server(
+                    &host,
+                    [src.path.as_os_str()],
+                    known_hosts.as_deref(),
+                    strict_host_key_checking,
+                )
                     .map_err(|e| EngineError::Other(e.to_string()))?;
                 let codecs = handshake_with_peer(&mut session)?;
                 let err = session.stderr();
@@ -433,7 +447,12 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 sync(&src.path, &dst.path, &matcher, &codecs, &sync_opts)?
             }
             (RemoteSpec::Local(src), RemoteSpec::Remote { host, path: dst }) => {
-                let mut session = SshStdioTransport::spawn_server(&host, [dst.path.as_os_str()])
+                let mut session = SshStdioTransport::spawn_server(
+                    &host,
+                    [dst.path.as_os_str()],
+                    known_hosts.as_deref(),
+                    strict_host_key_checking,
+                )
                     .map_err(|e| EngineError::Other(e.to_string()))?;
                 let codecs = handshake_with_peer(&mut session)?;
                 let err = session.stderr();
@@ -459,12 +478,20 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     return Err(EngineError::Other("remote path missing".to_string()));
                 }
 
-                let mut src_session =
-                    SshStdioTransport::spawn_server(&src_host, [src_path.path.as_os_str()])
-                        .map_err(|e| EngineError::Other(e.to_string()))?;
-                let mut dst_session =
-                    SshStdioTransport::spawn_server(&dst_host, [dst_path.path.as_os_str()])
-                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                let mut src_session = SshStdioTransport::spawn_server(
+                    &src_host,
+                    [src_path.path.as_os_str()],
+                    known_hosts.as_deref(),
+                    strict_host_key_checking,
+                )
+                .map_err(|e| EngineError::Other(e.to_string()))?;
+                let mut dst_session = SshStdioTransport::spawn_server(
+                    &dst_host,
+                    [dst_path.path.as_os_str()],
+                    known_hosts.as_deref(),
+                    strict_host_key_checking,
+                )
+                .map_err(|e| EngineError::Other(e.to_string()))?;
 
                 pipe_transports(&mut src_session, &mut dst_session)
                     .map_err(|e| EngineError::Other(e.to_string()))?;
