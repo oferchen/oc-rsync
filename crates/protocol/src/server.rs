@@ -1,7 +1,7 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
-use crate::{negotiate_version, Demux, Frame, Message, Mux};
+use crate::{negotiate_version, Demux, Frame, Mux};
 
 /// Server-side protocol state machine.
 ///
