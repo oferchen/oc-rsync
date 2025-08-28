@@ -53,7 +53,7 @@ impl Matcher {
     /// directory-specific `.rsync-filter` files along the way. Rules discovered
     /// later in the walk take precedence over earlier ones, mirroring rsync's
     /// evaluation order.
-    pub fn is_included<P: AsRef<Path>>(&self, path: P) -> bool {
+    pub fn is_included<P: AsRef<Path>>(&self, path: P) -> Result<bool, ParseError> {
         let path = path.as_ref();
         let mut active = Vec::new();
 
@@ -68,7 +68,7 @@ impl Matcher {
                 }
             }
             for d in dirs.iter().rev() {
-                active.extend(self.dir_rules(d));
+                active.extend(self.dir_rules(d)?);
             }
         }
 
@@ -77,10 +77,10 @@ impl Matcher {
 
         for rule in &active {
             if rule.matches(path) {
-                return rule.is_include();
+                return Ok(rule.is_include());
             }
         }
-        true
+        Ok(true)
     }
 
     /// Merge additional global rules, as when reading a top-level filter file.
@@ -89,10 +89,10 @@ impl Matcher {
     }
 
     /// Load cached rules for `dir`, reading its `.rsync-filter` file if needed.
-    fn dir_rules(&self, dir: &Path) -> Vec<Rule> {
+    fn dir_rules(&self, dir: &Path) -> Result<Vec<Rule>, ParseError> {
         let mut cache = self.cached.borrow_mut();
         if let Some(r) = cache.get(dir) {
-            return r.clone();
+            return Ok(r.clone());
         }
         let file = dir.join(".rsync-filter");
         let rules = match fs::read_to_string(&file) {
@@ -131,12 +131,12 @@ impl Matcher {
                 } else {
                     content
                 };
-                parse(&adjusted).unwrap_or_default()
+                parse(&adjusted)?
             }
             Err(_) => Vec::new(),
         };
         cache.insert(dir.to_path_buf(), rules.clone());
-        rules
+        Ok(rules)
     }
 }
 

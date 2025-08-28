@@ -13,9 +13,9 @@ fn include_overrides_parent_exclude() {
 
     let matcher = Matcher::new(Vec::new()).with_root(root);
 
-    assert!(!matcher.is_included("other.tmp"));
-    assert!(matcher.is_included("sub/keep.tmp"));
-    assert!(!matcher.is_included("sub/other.tmp"));
+    assert!(!matcher.is_included("other.tmp").unwrap());
+    assert!(matcher.is_included("sub/keep.tmp").unwrap());
+    assert!(!matcher.is_included("sub/other.tmp").unwrap());
 }
 
 #[test]
@@ -31,7 +31,7 @@ fn nested_filters_apply_in_order() {
 
     let matcher = Matcher::new(Vec::new()).with_root(root);
 
-    assert!(matcher.is_included("dir/debug.log"));
-    assert!(!matcher.is_included("dir/sub/debug.log"));
-    assert!(!matcher.is_included("dir/info.log"));
+    assert!(matcher.is_included("dir/debug.log").unwrap());
+    assert!(!matcher.is_included("dir/sub/debug.log").unwrap());
+    assert!(!matcher.is_included("dir/info.log").unwrap());
 }

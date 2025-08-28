@@ -6,6 +6,6 @@ fn comments_and_blank_lines_are_ignored() {
     let rules = parse("# initial comment\n\n+ keep.log\n- *.log\n").expect("parse");
     let matcher = Matcher::new(rules);
 
-    assert!(matcher.is_included("keep.log"));
-    assert!(!matcher.is_included("debug.log"));
+    assert!(matcher.is_included("keep.log").unwrap());
+    assert!(!matcher.is_included("debug.log").unwrap());
 }
