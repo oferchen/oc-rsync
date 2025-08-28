@@ -88,46 +88,73 @@ pub fn run() -> Result<()> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum RemoteSpec {
+    Local(PathBuf),
+    Remote { host: String, path: PathBuf },
+}
+
+fn parse_remote_spec(s: &str) -> Result<RemoteSpec> {
+    if let Some(rest) = s.strip_prefix('[') {
+        if let Some(end) = rest.find(']') {
+            let host = &rest[..end];
+            if let Some(path) = rest[end + 1..].strip_prefix(':') {
+                return Ok(RemoteSpec::Remote {
+                    host: host.to_string(),
+                    path: PathBuf::from(path),
+                });
+            }
+        }
+        return Ok(RemoteSpec::Local(PathBuf::from(s)));
+    }
+    if let Some(idx) = s.find(':') {
+        if idx == 1 {
+            let bytes = s.as_bytes();
+            if bytes[0].is_ascii_alphabetic()
+                && bytes
+                    .get(2)
+                    .map(|c| *c == b'/' || *c == b'\\')
+                    .unwrap_or(false)
+            {
+                return Ok(RemoteSpec::Local(PathBuf::from(s)));
+            }
+        }
+        let (host, path) = s.split_at(idx);
+        return Ok(RemoteSpec::Remote {
+            host: host.to_string(),
+            path: PathBuf::from(&path[1..]),
+        });
+    }
+    Ok(RemoteSpec::Local(PathBuf::from(s)))
+}
+
 fn run_client(opts: ClientOpts) -> Result<()> {
+    let src = parse_remote_spec(&opts.src)?;
+    let dst = parse_remote_spec(&opts.dst)?;
     if opts.local {
-        let src = PathBuf::from(&opts.src);
-        let dst = PathBuf::from(&opts.dst);
-        sync(&src, &dst)?;
-        Ok(())
+        match (src, dst) {
+            (RemoteSpec::Local(src), RemoteSpec::Local(dst)) => {
+                sync(&src, &dst)?;
+                Ok(())
+            }
+            _ => Err(EngineError::Other("local sync requires local paths".into())),
+        }
     } else {
-        let src_remote = opts.src.contains(':');
-        let dst_remote = opts.dst.contains(':');
-        match (src_remote, dst_remote) {
-            (false, false) => {
-                return Err(EngineError::Other(
-                    "local sync requires --local flag".into(),
-                ))
-            }
-            (true, false) => {
-                let (_, src_path) = opts
-                    .src
-                    .split_once(':')
-                    .ok_or_else(|| EngineError::Other("invalid source spec".into()))?;
-                let src = PathBuf::from(src_path);
-                let dst = PathBuf::from(&opts.dst);
+        match (src, dst) {
+            (RemoteSpec::Local(_), RemoteSpec::Local(_)) => Err(EngineError::Other(
+                "local sync requires --local flag".into(),
+            )),
+            (RemoteSpec::Remote { path: src, .. }, RemoteSpec::Local(dst)) => {
                 sync(&src, &dst)?;
                 Ok(())
             }
-            (false, true) => {
-                let src = PathBuf::from(&opts.src);
-                let (_, dst_path) = opts
-                    .dst
-                    .split_once(':')
-                    .ok_or_else(|| EngineError::Other("invalid destination spec".into()))?;
-                let dst = PathBuf::from(dst_path);
+            (RemoteSpec::Local(src), RemoteSpec::Remote { path: dst, .. }) => {
                 sync(&src, &dst)?;
                 Ok(())
             }
-            (true, true) => {
-                return Err(EngineError::Other(
-                    "remote to remote sync not implemented".into(),
-                ))
-            }
+            (RemoteSpec::Remote { .. }, RemoteSpec::Remote { .. }) => Err(EngineError::Other(
+                "remote to remote sync not implemented".into(),
+            )),
         }
     }
 }
@@ -151,8 +178,8 @@ fn run_probe(opts: ProbeOpts) -> Result<()> {
         println!("negotiated version {}", ver);
         Ok(())
     } else {
-        let ver = negotiate_version(opts.peer_version)
-            .map_err(|e| EngineError::Other(e.to_string()))?;
+        let ver =
+            negotiate_version(opts.peer_version).map_err(|e| EngineError::Other(e.to_string()))?;
         println!("negotiated version {}", ver);
         Ok(())
     }
@@ -177,4 +204,27 @@ pub fn probe() -> Result<()> {
     let args = env::args().skip(2);
     let opts = ProbeOpts::parse_from(std::iter::once("probe".to_string()).chain(args));
     run_probe(opts)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn windows_paths_are_local() {
+        let spec = parse_remote_spec("C:/tmp/foo").unwrap();
+        assert!(matches!(spec, RemoteSpec::Local(_)));
+    }
+
+    #[test]
+    fn ipv6_specs_are_remote() {
+        let spec = parse_remote_spec("[::1]:/tmp").unwrap();
+        match spec {
+            RemoteSpec::Remote { host, path } => {
+                assert_eq!(host, "::1");
+                assert_eq!(path, PathBuf::from("/tmp"));
+            }
+            _ => panic!("expected remote spec"),
+        }
+    }
 }
