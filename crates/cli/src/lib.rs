@@ -354,12 +354,11 @@ fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
     negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
 
     let codecs = available_codecs();
+    let payload = compress::encode_codecs(codecs);
     transport
-        .send(&[codecs.len() as u8])
+        .send(&[payload.len() as u8])
         .map_err(EngineError::from)?;
-    for c in codecs {
-        transport.send(&[*c as u8]).map_err(EngineError::from)?;
-    }
+    transport.send(&payload).map_err(EngineError::from)?;
 
     let mut len_buf = [0u8; 1];
     let mut read = 0;
@@ -387,20 +386,7 @@ fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
         off += n;
     }
 
-    let mut remote = Vec::new();
-    for b in buf {
-        let codec = match b {
-            0 => Codec::Zlib,
-            1 => Codec::Zstd,
-            2 => Codec::Lz4,
-            other => {
-                return Err(EngineError::Other(format!("unknown codec {}", other)));
-            }
-        };
-        remote.push(codec);
-    }
-
-    Ok(remote)
+    compress::decode_codecs(&buf).map_err(EngineError::from)
 }
 
 fn run_client(opts: ClientOpts) -> Result<()> {

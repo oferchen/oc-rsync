@@ -11,6 +11,30 @@ pub enum Codec {
     Lz4,
 }
 
+impl Codec {
+    /// Convert a codec to its wire representation.
+    pub fn to_byte(self) -> u8 {
+        match self {
+            Codec::Zlib => 0,
+            Codec::Zstd => 1,
+            Codec::Lz4 => 2,
+        }
+    }
+
+    /// Parse a codec from its wire representation.
+    pub fn from_byte(b: u8) -> io::Result<Self> {
+        match b {
+            0 => Ok(Codec::Zlib),
+            1 => Ok(Codec::Zstd),
+            2 => Ok(Codec::Lz4),
+            other => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("unknown codec {other}"),
+            )),
+        }
+    }
+}
+
 /// Return codecs supported by this crate in preference order.
 ///
 /// LZ4 is not advertised unless the `lz4` feature is enabled.
@@ -43,6 +67,16 @@ pub trait Decompressor {
 /// only codecs enabled in this build are considered.
 pub fn negotiate_codec(local: &[Codec], remote: &[Codec]) -> Option<Codec> {
     local.iter().copied().find(|c| remote.contains(c))
+}
+
+/// Serialize a list of codecs to their wire representation.
+pub fn encode_codecs(codecs: &[Codec]) -> Vec<u8> {
+    codecs.iter().map(|c| c.to_byte()).collect()
+}
+
+/// Deserialize a list of codecs from their wire representation.
+pub fn decode_codecs(data: &[u8]) -> io::Result<Vec<Codec>> {
+    data.iter().map(|b| Codec::from_byte(*b)).collect()
 }
 
 /// Zlib/Deflate codec adapter.

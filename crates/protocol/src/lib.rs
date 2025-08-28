@@ -105,6 +105,7 @@ pub enum Msg {
     Attributes = 5,
     Error = 6,
     Progress = 7,
+    Codecs = 8,
 }
 
 /// Error returned when attempting to convert from an unknown message value.
@@ -304,6 +305,7 @@ pub enum Message {
     Attributes(Vec<u8>),
     Error(String),
     Progress(u64),
+    Codecs(Vec<u8>),
 }
 
 impl Message {
@@ -388,6 +390,15 @@ impl Message {
                 };
                 Frame { header, payload }
             }
+            Message::Codecs(payload) => {
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::Codecs,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
         }
     }
 
@@ -436,6 +447,7 @@ impl Message {
                     let v = rdr.read_u64::<BigEndian>()?;
                     Ok(Message::Progress(v))
                 }
+                Msg::Codecs => Ok(Message::Codecs(f.payload)),
                 Msg::KeepAlive => Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "unexpected keepalive message",
@@ -477,6 +489,16 @@ mod tests {
         assert_eq!(decoded4, frame4);
         let msg4_round = Message::from_frame(decoded4).unwrap();
         assert_eq!(msg4_round, msg4);
+
+        // Codec list roundtrip
+        let msgc = Message::Codecs(vec![0, 1]);
+        let framec = msgc.to_frame(1);
+        let mut bufc = Vec::new();
+        framec.encode(&mut bufc).unwrap();
+        let decodedc = Frame::decode(&bufc[..]).unwrap();
+        assert_eq!(decodedc, framec);
+        let msgc_round = Message::from_frame(decodedc).unwrap();
+        assert_eq!(msgc_round, msgc);
     }
 
     #[test]
