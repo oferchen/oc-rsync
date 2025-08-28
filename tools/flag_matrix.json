@@ -27,7 +27,7 @@
   {
     "flag": "--archive",
     "status": "Supported",
-    "notes": "sets perms, times, owner, group, links, devices, specials"
+    "notes": ""
   },
   {
     "flag": "--atimes",
@@ -101,7 +101,7 @@
   },
   {
     "flag": "--compress-level",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -171,22 +171,22 @@
   },
   {
     "flag": "--delete-after",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--delete-before",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--delete-delay",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--delete-during",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -201,7 +201,7 @@
   },
   {
     "flag": "--devices",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -221,12 +221,12 @@
   },
   {
     "flag": "--exclude",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--exclude-from",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -246,7 +246,7 @@
   },
   {
     "flag": "--files-from",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -261,7 +261,7 @@
   },
   {
     "flag": "--from0",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -276,7 +276,7 @@
   },
   {
     "flag": "--group",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -286,7 +286,7 @@
   },
   {
     "flag": "--hard-links",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -326,12 +326,12 @@
   },
   {
     "flag": "--include",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--include-from",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -371,7 +371,7 @@
   },
   {
     "flag": "--links",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -442,7 +442,7 @@
   {
     "flag": "--numeric-ids",
     "status": "Supported",
-    "notes": "use numeric uid/gid values"
+    "notes": ""
   },
   {
     "flag": "--old-args",
@@ -496,17 +496,17 @@
   },
   {
     "flag": "--owner",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--partial",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--partial-dir",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -516,7 +516,7 @@
   },
   {
     "flag": "--perms",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -531,7 +531,7 @@
   },
   {
     "flag": "--progress",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -562,7 +562,7 @@
   {
     "flag": "--relative",
     "status": "Supported",
-    "notes": "use relative path names"
+    "notes": ""
   },
   {
     "flag": "--remote-option",
@@ -611,12 +611,12 @@
   },
   {
     "flag": "--sparse",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--specials",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -661,7 +661,7 @@
   },
   {
     "flag": "--times",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -816,7 +816,7 @@
   },
   {
     "flag": "-S",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --sparse"
   },
   {
