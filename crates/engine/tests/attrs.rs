@@ -176,6 +176,8 @@ fn xattrs_roundtrip() {
 #[cfg(feature = "acl")]
 #[test]
 fn acls_roundtrip() {
+    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -183,7 +185,11 @@ fn acls_roundtrip() {
     fs::create_dir_all(&dst).unwrap();
     let file = src.join("file");
     fs::write(&file, b"hi").unwrap();
-    xattr::set(&file, "user.acltest", b"acl").unwrap();
+
+    let mut acl = PosixACL::read_acl(&file).unwrap();
+    acl.set(Qualifier::User(12345), ACL_READ);
+    acl.write_acl(&file).unwrap();
+
     sync(
         &src,
         &dst,
@@ -195,10 +201,10 @@ fn acls_roundtrip() {
         },
     )
     .unwrap();
-    let val = xattr::get(dst.join("file"), "user.acltest")
-        .unwrap()
-        .unwrap();
-    assert_eq!(&val[..], b"acl");
+
+    let acl_src = PosixACL::read_acl(&file).unwrap();
+    let acl_dst = PosixACL::read_acl(&dst.join("file")).unwrap();
+    assert_eq!(acl_src.entries(), acl_dst.entries());
 }
 
 #[test]

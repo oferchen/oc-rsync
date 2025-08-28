@@ -24,6 +24,15 @@ mod xattr {
     }
 }
 
+/// Options controlling which metadata to capture and apply.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Options {
+    /// Include extended attributes.
+    pub xattrs: bool,
+    /// Include POSIX ACL entries.
+    pub acl: bool,
+}
+
 /// Serialized file metadata.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
@@ -44,8 +53,8 @@ pub struct Metadata {
 }
 
 impl Metadata {
-    /// Read metadata from `path`.
-    pub fn from_path(path: &Path) -> io::Result<Self> {
+    /// Read metadata from `path` using `opts`.
+    pub fn from_path(path: &Path, opts: Options) -> io::Result<Self> {
         let st = stat::stat(path).map_err(nix_to_io)?;
         let uid = st.st_uid;
         let gid = st.st_gid;
@@ -53,7 +62,7 @@ impl Metadata {
         let mtime = FileTime::from_unix_time(st.st_mtime, st.st_mtime_nsec as u32);
 
         #[cfg(feature = "xattr")]
-        let xattrs = {
+        let xattrs = if opts.xattrs {
             let mut attrs = Vec::new();
             for attr in xattr::list(path)? {
                 if let Some(value) = xattr::get(path, &attr)? {
@@ -61,12 +70,16 @@ impl Metadata {
                 }
             }
             attrs
+        } else {
+            Vec::new()
         };
 
         #[cfg(feature = "acl")]
-        let acl = {
+        let acl = if opts.acl {
             let acl = posix_acl::PosixACL::read_acl(path).map_err(acl_to_io)?;
             acl.entries()
+        } else {
+            Vec::new()
         };
 
         Ok(Metadata {
@@ -81,8 +94,8 @@ impl Metadata {
         })
     }
 
-    /// Apply metadata to `path`.
-    pub fn apply(&self, path: &Path) -> io::Result<()> {
+    /// Apply metadata to `path` using `opts`.
+    pub fn apply(&self, path: &Path, opts: Options) -> io::Result<()> {
         unistd::chown(
             path,
             Some(Uid::from_raw(self.uid)),
@@ -96,12 +109,14 @@ impl Metadata {
         filetime::set_file_mtime(path, self.mtime)?;
 
         #[cfg(feature = "xattr")]
-        for (name, value) in &self.xattrs {
-            xattr::set(path, name, value)?;
+        if opts.xattrs {
+            for (name, value) in &self.xattrs {
+                xattr::set(path, name, value)?;
+            }
         }
 
         #[cfg(feature = "acl")]
-        {
+        if opts.acl {
             let mut acl = posix_acl::PosixACL::empty();
             for entry in &self.acl {
                 acl.set(entry.qual, entry.perm);
@@ -143,7 +158,13 @@ mod tests {
         fs::write(&path, b"hello")?;
         xattr::set(&path, "user.disappearing", b"value")?;
 
-        let meta = Metadata::from_path(&path)?;
+        let meta = Metadata::from_path(
+            &path,
+            Options {
+                xattrs: true,
+                acl: false,
+            },
+        )?;
         assert!(meta
             .xattrs
             .iter()

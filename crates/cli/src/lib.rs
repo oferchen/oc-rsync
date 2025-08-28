@@ -90,9 +90,11 @@ struct ClientOpts {
     #[arg(long, help_heading = "Attributes")]
     specials: bool,
     /// preserve extended attributes
+    #[cfg(feature = "xattr")]
     #[arg(long, help_heading = "Attributes")]
     xattrs: bool,
     /// preserve ACLs
+    #[cfg(feature = "acl")]
     #[arg(long, help_heading = "Attributes")]
     acls: bool,
     /// compress file data during the transfer
@@ -455,7 +457,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         hard_links: opts.hard_links,
         devices: opts.devices || opts.archive,
         specials: opts.specials || opts.archive,
+        #[cfg(feature = "xattr")]
         xattrs: opts.xattrs,
+        #[cfg(feature = "acl")]
         acls: opts.acls,
         sparse: opts.sparse,
         strong: if opts.modern {

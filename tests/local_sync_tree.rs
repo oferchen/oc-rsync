@@ -1,10 +1,10 @@
 use assert_cmd::Command;
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::{Path, PathBuf};
-use tempfile::tempdir;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
+use std::path::{Path, PathBuf};
+use tempfile::tempdir;
 
 fn collect(dir: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
     fn visit(base: &Path, root: &Path, map: &mut BTreeMap<PathBuf, Vec<u8>>) {
@@ -48,6 +48,7 @@ fn sync_directory_tree() {
 #[cfg(all(unix, feature = "xattr"))]
 #[test]
 fn sync_preserves_xattrs() {
+    // Ensure extended attributes survive a local sync when the feature is enabled.
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -74,6 +75,8 @@ fn sync_preserves_xattrs() {
 #[test]
 fn sync_preserves_acls() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};
+
+    // Ensure POSIX ACLs survive a local sync when the feature is enabled.
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -104,7 +107,7 @@ fn sync_preserves_acls() {
 #[cfg(unix)]
 #[test]
 fn sync_preserves_device_nodes() {
-    use nix::sys::stat::{mknod, makedev, Mode, SFlag};
+    use nix::sys::stat::{makedev, mknod, Mode, SFlag};
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");

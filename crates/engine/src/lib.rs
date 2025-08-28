@@ -477,15 +477,38 @@ impl Receiver {
     fn copy_metadata(&self, src: &Path, dest: &Path) -> Result<()> {
         #[cfg(unix)]
         {
+            let meta_opts = meta::Options {
+                xattrs: {
+                    #[cfg(feature = "xattr")]
+                    {
+                        self.opts.xattrs
+                    }
+                    #[cfg(not(feature = "xattr"))]
+                    {
+                        false
+                    }
+                },
+                acl: {
+                    #[cfg(feature = "acl")]
+                    {
+                        self.opts.acls
+                    }
+                    #[cfg(not(feature = "acl"))]
+                    {
+                        false
+                    }
+                },
+            };
+
             if self.opts.perms
                 || self.opts.times
                 || self.opts.owner
                 || self.opts.group
-                || self.opts.xattrs
-                || self.opts.acls
+                || meta_opts.xattrs
+                || meta_opts.acl
             {
-                let meta = meta::Metadata::from_path(src).map_err(EngineError::from)?;
-                meta.apply(dest).map_err(EngineError::from)?;
+                let meta = meta::Metadata::from_path(src, meta_opts).map_err(EngineError::from)?;
+                meta.apply(dest, meta_opts).map_err(EngineError::from)?;
             }
         }
         let _ = (src, dest);
@@ -515,7 +538,9 @@ pub struct SyncOptions {
     pub hard_links: bool,
     pub devices: bool,
     pub specials: bool,
+    #[cfg(feature = "xattr")]
     pub xattrs: bool,
+    #[cfg(feature = "acl")]
     pub acls: bool,
     pub sparse: bool,
     pub strong: StrongHash,
@@ -540,7 +565,9 @@ impl Default for SyncOptions {
             hard_links: false,
             devices: false,
             specials: false,
+            #[cfg(feature = "xattr")]
             xattrs: false,
+            #[cfg(feature = "acl")]
             acls: false,
             sparse: false,
             strong: StrongHash::Md5,
