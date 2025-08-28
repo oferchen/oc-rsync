@@ -3,9 +3,8 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::path::PathBuf;
 
-use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
-use engine::sync;
+use engine::{sync, EngineError, Result};
 use protocol::{negotiate_version, LATEST_VERSION};
 
 /// Command line interface for rsync-rs.
@@ -46,7 +45,7 @@ struct Module {
     path: PathBuf,
 }
 
-fn parse_module(s: &str) -> Result<Module, String> {
+fn parse_module(s: &str) -> std::result::Result<Module, String> {
     let mut parts = s.splitn(2, '=');
     let name = parts
         .next()
@@ -99,12 +98,16 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         let src_remote = opts.src.contains(':');
         let dst_remote = opts.dst.contains(':');
         match (src_remote, dst_remote) {
-            (false, false) => bail!("local sync requires --local flag"),
+            (false, false) => {
+                return Err(EngineError::Other(
+                    "local sync requires --local flag".into(),
+                ))
+            }
             (true, false) => {
                 let (_, src_path) = opts
                     .src
                     .split_once(':')
-                    .ok_or_else(|| anyhow::anyhow!("invalid source spec"))?;
+                    .ok_or_else(|| EngineError::Other("invalid source spec".into()))?;
                 let src = PathBuf::from(src_path);
                 let dst = PathBuf::from(&opts.dst);
                 sync(&src, &dst)?;
@@ -115,12 +118,16 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 let (_, dst_path) = opts
                     .dst
                     .split_once(':')
-                    .ok_or_else(|| anyhow::anyhow!("invalid destination spec"))?;
+                    .ok_or_else(|| EngineError::Other("invalid destination spec".into()))?;
                 let dst = PathBuf::from(dst_path);
                 sync(&src, &dst)?;
                 Ok(())
             }
-            (true, true) => bail!("remote to remote sync not implemented"),
+            (true, true) => {
+                return Err(EngineError::Other(
+                    "remote to remote sync not implemented".into(),
+                ))
+            }
         }
     }
 }
@@ -140,11 +147,12 @@ fn run_probe(opts: ProbeOpts) -> Result<()> {
         let mut buf = [0u8; 4];
         stream.read_exact(&mut buf)?;
         let peer = u32::from_be_bytes(buf);
-        let ver = negotiate_version(peer)?;
+        let ver = negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
         println!("negotiated version {}", ver);
         Ok(())
     } else {
-        let ver = negotiate_version(opts.peer_version)?;
+        let ver = negotiate_version(opts.peer_version)
+            .map_err(|e| EngineError::Other(e.to_string()))?;
         println!("negotiated version {}", ver);
         Ok(())
     }

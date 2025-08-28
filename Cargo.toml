@@ -22,7 +22,6 @@ edition = "2021"
 [dependencies]
 protocol = { path = "crates/protocol" }
 checksums = { path = "crates/checksums" }
-anyhow = "1"
 cli = { path = "crates/cli" }
 engine = { path = "crates/engine" }
 

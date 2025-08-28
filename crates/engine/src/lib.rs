@@ -3,8 +3,22 @@ use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
-use anyhow::Result;
-use checksums::{ChecksumConfig, ChecksumConfigBuilder};
+use checksums::{ChecksumConfig, ChecksumConfigBuilder, ChecksumError};
+use thiserror::Error;
+
+/// Error type for engine operations.
+#[derive(Debug, Error)]
+pub enum EngineError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Checksum(#[from] ChecksumError),
+    #[error("{0}")]
+    Other(String),
+}
+
+/// Result type for engine operations.
+pub type Result<T> = std::result::Result<T, EngineError>;
 use walk::walk;
 
 trait ReadSeek: Read + Seek {}

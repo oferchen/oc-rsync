@@ -1,6 +1,5 @@
 use std::path::Path;
-
-use anyhow::Result;
+use engine::Result;
 
 /// Re-export engine synchronization for convenience.
 pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
