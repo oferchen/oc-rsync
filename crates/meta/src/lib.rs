@@ -1,5 +1,6 @@
 use std::io;
 use std::path::Path;
+use std::convert::TryInto;
 
 use filetime::{self, FileTime};
 use nix::sys::stat::{self, FchmodatFlags, Mode};
