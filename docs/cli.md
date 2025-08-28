@@ -40,6 +40,9 @@ rsync-rs [OPTIONS] <SRC> <DEST>
 - `--stats` – display transfer statistics on completion.
 - `--config <FILE>` – supply a custom configuration file.
 
+For a comprehensive list of available flags and their current support status,
+see the [CLI flag reference](cli/flags.md).
+
 ## Configuration precedence
 
 1. Command-line flags
