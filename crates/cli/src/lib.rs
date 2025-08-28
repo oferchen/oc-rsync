@@ -25,15 +25,24 @@ struct ClientOpts {
     /// perform a local sync
     #[arg(long)]
     local: bool,
+    /// archive mode
+    #[arg(short = 'a', long, help_heading = "Selection")]
+    archive: bool,
     /// copy directories recursively
     #[arg(short, long, help_heading = "Selection")]
     recursive: bool,
+    /// use relative path names
+    #[arg(short = 'R', long, help_heading = "Selection")]
+    relative: bool,
     /// perform a trial run with no changes made
     #[arg(short = 'n', long, help_heading = "Selection")]
     dry_run: bool,
     /// increase logging verbosity
     #[arg(short, long, action = ArgAction::Count, help_heading = "Output")]
     verbose: u8,
+    /// suppress non-error messages
+    #[arg(short, long, help_heading = "Output")]
+    quiet: bool,
     /// remove extraneous files from the destination
     #[arg(long, help_heading = "Delete")]
     delete: bool,
@@ -43,6 +52,12 @@ struct ClientOpts {
     /// compress file data during the transfer
     #[arg(short = 'z', long, help_heading = "Compression")]
     compress: bool,
+    /// keep partially transferred files and show progress
+    #[arg(short = 'P', help_heading = "Misc")]
+    partial: bool,
+    /// don't map uid/gid values by user/group name
+    #[arg(long, help_heading = "Attributes")]
+    numeric_ids: bool,
     /// display transfer statistics on completion
     #[arg(long, help_heading = "Output")]
     stats: bool,
@@ -122,24 +137,41 @@ pub fn run() -> Result<()> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum RemoteSpec {
-    Local(PathBuf),
-    Remote { host: String, path: PathBuf },
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PathSpec {
+    path: PathBuf,
+    trailing_slash: bool,
 }
 
-fn parse_remote_spec(s: &str) -> Result<RemoteSpec> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum RemoteSpec {
+    Local(PathSpec),
+    Remote { host: String, path: PathSpec },
+}
+
+fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
+    let (trailing_slash, s) = if input != "/" && input.ends_with('/') {
+        (true, &input[..input.len() - 1])
+    } else {
+        (false, input)
+    };
     if let Some(rest) = s.strip_prefix('[') {
         if let Some(end) = rest.find(']') {
             let host = &rest[..end];
             if let Some(path) = rest[end + 1..].strip_prefix(':') {
                 return Ok(RemoteSpec::Remote {
                     host: host.to_string(),
-                    path: PathBuf::from(path),
+                    path: PathSpec {
+                        path: PathBuf::from(path),
+                        trailing_slash,
+                    },
                 });
             }
         }
-        return Ok(RemoteSpec::Local(PathBuf::from(s)));
+        return Ok(RemoteSpec::Local(PathSpec {
+            path: PathBuf::from(input),
+            trailing_slash,
+        }));
     }
     if let Some(idx) = s.find(':') {
         if idx == 1 {
@@ -150,16 +182,25 @@ fn parse_remote_spec(s: &str) -> Result<RemoteSpec> {
                     .map(|c| *c == b'/' || *c == b'\\')
                     .unwrap_or(false)
             {
-                return Ok(RemoteSpec::Local(PathBuf::from(s)));
+                return Ok(RemoteSpec::Local(PathSpec {
+                    path: PathBuf::from(s),
+                    trailing_slash,
+                }));
             }
         }
         let (host, path) = s.split_at(idx);
         return Ok(RemoteSpec::Remote {
             host: host.to_string(),
-            path: PathBuf::from(&path[1..]),
+            path: PathSpec {
+                path: PathBuf::from(&path[1..]),
+                trailing_slash,
+            },
         });
     }
-    Ok(RemoteSpec::Local(PathBuf::from(s)))
+    Ok(RemoteSpec::Local(PathSpec {
+        path: PathBuf::from(s),
+        trailing_slash,
+    }))
 }
 
 fn pipe_transports<S, D>(src: &mut S, dst: &mut D) -> io::Result<()>
@@ -250,22 +291,64 @@ fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
 fn run_client(opts: ClientOpts) -> Result<()> {
     let matcher = build_matcher(&opts)?;
 
-    if let Some(cfg) = &opts.config {
-        println!("using config file {}", cfg.display());
+    if opts.archive {
+        return Err(EngineError::Other(
+            "flag -a/--archive is not supported; see docs/differences.md".into(),
+        ));
     }
-    if opts.verbose > 0 {
+    if opts.relative {
+        return Err(EngineError::Other(
+            "flag -R/--relative is not supported; see docs/differences.md".into(),
+        ));
+    }
+    if opts.partial {
+        return Err(EngineError::Other(
+            "flag -P is not supported; see docs/differences.md".into(),
+        ));
+    }
+    if opts.numeric_ids {
+        return Err(EngineError::Other(
+            "flag --numeric-ids is not supported; see docs/differences.md".into(),
+        ));
+    }
+
+    if let Some(cfg) = &opts.config {
+        if !opts.quiet {
+            println!("using config file {}", cfg.display());
+        }
+    }
+    if opts.verbose > 0 && !opts.quiet {
         println!("verbose level set to {}", opts.verbose);
     }
-    if opts.recursive {
+    if opts.recursive && !opts.quiet {
         println!("recursive mode enabled");
     }
     if opts.dry_run {
-        println!("dry run: skipping synchronization");
+        if !opts.quiet {
+            println!("dry run: skipping synchronization");
+        }
         return Ok(());
     }
 
     let src = parse_remote_spec(&opts.src)?;
-    let dst = parse_remote_spec(&opts.dst)?;
+    let mut dst = parse_remote_spec(&opts.dst)?;
+
+    let src_trailing = match &src {
+        RemoteSpec::Local(p) => p.trailing_slash,
+        RemoteSpec::Remote { path, .. } => path.trailing_slash,
+    };
+    if !src_trailing {
+        let name = match &src {
+            RemoteSpec::Local(p) => p.path.file_name().map(|s| s.to_owned()),
+            RemoteSpec::Remote { path, .. } => path.path.file_name().map(|s| s.to_owned()),
+        }
+        .ok_or_else(|| EngineError::Other("source path missing file name".into()))?;
+        match &mut dst {
+            RemoteSpec::Local(p) => p.path.push(&name),
+            RemoteSpec::Remote { path, .. } => path.path.push(&name),
+        }
+    }
+
     let sync_opts = SyncOptions {
         delete: opts.delete,
         checksum: opts.checksum,
@@ -273,9 +356,13 @@ fn run_client(opts: ClientOpts) -> Result<()> {
     };
     let stats = if opts.local {
         match (src, dst) {
-            (RemoteSpec::Local(src), RemoteSpec::Local(dst)) => {
-                sync(&src, &dst, &matcher, available_codecs(), &sync_opts)?
-            }
+            (RemoteSpec::Local(src), RemoteSpec::Local(dst)) => sync(
+                &src.path,
+                &dst.path,
+                &matcher,
+                available_codecs(),
+                &sync_opts,
+            )?,
             _ => return Err(EngineError::Other("local sync requires local paths".into())),
         }
     } else {
@@ -286,24 +373,24 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 ))
             }
             (RemoteSpec::Remote { host, path: src }, RemoteSpec::Local(dst)) => {
-                let mut session = SshStdioTransport::spawn_server(&host, [src.as_os_str()])
+                let mut session = SshStdioTransport::spawn_server(&host, [src.path.as_os_str()])
                     .map_err(|e| EngineError::Other(e.to_string()))?;
                 let codecs = handshake_with_peer(&mut session)?;
                 let err = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
                 }
-                sync(&src, &dst, &matcher, &codecs, &sync_opts)?
+                sync(&src.path, &dst.path, &matcher, &codecs, &sync_opts)?
             }
             (RemoteSpec::Local(src), RemoteSpec::Remote { host, path: dst }) => {
-                let mut session = SshStdioTransport::spawn_server(&host, [dst.as_os_str()])
+                let mut session = SshStdioTransport::spawn_server(&host, [dst.path.as_os_str()])
                     .map_err(|e| EngineError::Other(e.to_string()))?;
                 let codecs = handshake_with_peer(&mut session)?;
                 let err = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
                 }
-                sync(&src, &dst, &matcher, &codecs, &sync_opts)?
+                sync(&src.path, &dst.path, &matcher, &codecs, &sync_opts)?
             }
             (
                 RemoteSpec::Remote {
@@ -318,15 +405,15 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 if src_host.is_empty() || dst_host.is_empty() {
                     return Err(EngineError::Other("remote host missing".to_string()));
                 }
-                if src_path.as_os_str().is_empty() || dst_path.as_os_str().is_empty() {
+                if src_path.path.as_os_str().is_empty() || dst_path.path.as_os_str().is_empty() {
                     return Err(EngineError::Other("remote path missing".to_string()));
                 }
 
                 let mut src_session =
-                    SshStdioTransport::spawn_server(&src_host, [src_path.as_os_str()])
+                    SshStdioTransport::spawn_server(&src_host, [src_path.path.as_os_str()])
                         .map_err(|e| EngineError::Other(e.to_string()))?;
                 let mut dst_session =
-                    SshStdioTransport::spawn_server(&dst_host, [dst_path.as_os_str()])
+                    SshStdioTransport::spawn_server(&dst_host, [dst_path.path.as_os_str()])
                         .map_err(|e| EngineError::Other(e.to_string()))?;
 
                 pipe_transports(&mut src_session, &mut dst_session)
@@ -343,7 +430,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
             }
         }
     };
-    if opts.stats {
+    if opts.stats && !opts.quiet {
         println!("files transferred: {}", stats.files_transferred);
         println!("files deleted: {}", stats.files_deleted);
         println!("bytes transferred: {}", stats.bytes_transferred);

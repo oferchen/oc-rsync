@@ -15,7 +15,7 @@
 |  | --fake-super | store/recover privileged attrs using xattrs | no |  | no |
 | -g | --group | preserve group | no |  | no |
 |  | --groupmap=STRING | custom groupname mapping | no |  | no |
-|  | --numeric-ids | don't map uid/gid values by user/group name | no |  | no |
+|  | --numeric-ids | don't map uid/gid values by user/group name | no | Errors out; see differences.md | no |
 | -O | --omit-dir-times | omit directories from --times | no |  | no |
 | -J | --omit-link-times | omit symlinks from --times | no |  | no |
 |  | --open-noatime | avoid changing the atime on opened files | no |  | no |
@@ -32,7 +32,7 @@
 
 | short | long | summary | implemented? | notes | enhanced? |
 | --- | --- | --- | :---: | --- | :---: |
-| -z | --compress | compress file data during the transfer | no | Parsed but not implemented | no |
+| -z | --compress | compress file data during the transfer | yes |  | no |
 |  | --compress-choice=STR | choose the compression algorithm (aka --zc) | no |  | no |
 |  | --compress-level=NUM | explicitly set compression level (aka --zl) | no |  | no |
 |  | --skip-compress=LIST | skip compressing files with suffix in LIST | no |  | no |
@@ -50,7 +50,7 @@
 | short | long | summary | implemented? | notes | enhanced? |
 | --- | --- | --- | :---: | --- | :---: |
 |  | --del | an alias for --delete-during | no |  | no |
-|  | --delete | delete extraneous files from dest dirs | no | Parsed but not implemented | no |
+|  | --delete | delete extraneous files from dest dirs | yes |  | no |
 |  | --delete-after | receiver deletes after transfer, not during | no |  | no |
 |  | --delete-before | receiver deletes before xfer, not during | no |  | no |
 |  | --delete-delay | find deletions during, delete after | no |  | no |
@@ -92,7 +92,7 @@
 |  | --stop-at=y-m-dTh:m | Stop rsync at the specified point in time | no |  | no |
 |  | --write-batch=FILE | write a batched update to FILE | no |  | no |
 | -D |  | same as --devices --specials | no |  | no |
-| -P |  | same as --partial --progress | no |  | no |
+| -P |  | same as --partial --progress | no | Errors out; see differences.md | no |
 
 ## Network
 
@@ -132,8 +132,8 @@
 |  | --no-motd | suppress daemon-mode MOTD | no |  | no |
 |  | --out-format=FORMAT | output updates using the specified FORMAT | no |  | no |
 |  | --progress | show progress during transfer | no |  | no |
-| -q | --quiet | suppress non-error messages | no |  | no |
-|  | --stats | give some file-transfer stats | no | Parsed but not implemented | no |
+| -q | --quiet | suppress non-error messages | yes |  | no |
+|  | --stats | give some file-transfer stats | yes |  | no |
 |  | --stderr=e\|a\|c | change stderr output mode (default: errors) | no |  | no |
 | -v | --verbose | increase verbosity | yes |  | no |
 | -V | --version | print the version + other info and exit | no |  | no |
