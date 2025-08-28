@@ -4,27 +4,33 @@ rsync-rs is a modular reimplementation of the classic `rsync` utility in Rust. I
 
 ## Summary
 
-**Mission**: Deliver fast, reliable file synchronization with eventual compatibility with the original `rsync`.
+**Mission**: Implement a pure-Rust rsync replacement compatible with stock rsync v31 over SSH and `rsync://`.
 
-**Non‑negotiable constraints**: correctness, security, cross‑platform support, and open‑source dual licensing.
+**Non‑negotiable constraints**: correctness with full metadata fidelity, security, robust I/O with resumable transfers, cross‑platform support, and open‑source dual licensing.
 
 ## Mission
+- Implement a pure-Rust rsync replacement compatible with stock rsync v31 over SSH and `rsync://`.
 - Deliver fast, reliable file synchronization.
-- Maintain compatibility with existing rsync deployments.
 - Provide a welcoming platform for contributors building the next generation of sync tooling.
 
 ## Non-negotiable Constraints
-- **Correctness**: Data integrity is paramount; transfers must faithfully mirror source files.
+- **Correctness**: Transfers must faithfully mirror source files and metadata, preserving permissions, timestamps, ownership, symlinks, hard links, sparse files, and xattrs/ACLs.
 - **Security**: Safe defaults and careful parsing to prevent memory and protocol vulnerabilities.
 - **Cross-platform**: Aim to support Linux, macOS, and Windows.
+- **Robust I/O**: Resume partial transfers and recover cleanly from interruptions.
 - **Open source**: Dual-licensed under MIT and Apache-2.0.
 
 ## Compatibility
 Platform support status is tracked in the [compatibility matrix](docs/compat_matrix.md).
 
 ## In-Scope Features
-- Local and remote file synchronization.
+- Local and remote file synchronization over SSH and `rsync://`.
 - Delta-transfer algorithm with rolling checksum.
+- Preservation of permissions, symlinks, hard links, sparse files, extended attributes, and ACLs.
+- Flexible include/exclude filtering.
+- Compression negotiation between peers.
+- Resume of interrupted transfers and handling of partial files.
+- Robust I/O and durable writes.
 - Progress reporting and dry-run mode.
 - Modular crate design covering protocol, checksums, filters, file walking, compression, transport, and CLI components.
 
@@ -67,13 +73,13 @@ The project is organized as a set of focused crates:
 - `fuzz` – houses fuzz targets that stress protocol and parser logic for robustness.
 
 ## Milestone Roadmap
-1. **M1—Bootstrap** – repository builds; `walk` and `checksums` crates produce file signatures.
-2. **M2—Transfer Engine** – `engine` performs block matching and delta encoding for local sync.
-3. **M3—Networking** – `transport` enables SSH/TCP remotes with version negotiation.
-4. **M4—CLI Parity** – CLI exposes core rsync flags with end-to-end tests passing.
-5. **M5—Filters & Compression** – `filters` and `compress` crates integrate with engine and CLI.
-6. **M6—Fuzzing & Performance** – fuzz targets run in CI; basic benchmarks meet performance goals.
-7. **M7—Stabilization** – documentation complete, cross-platform builds green, and compatibility matrix up to date.
+1. **M1—Bootstrap** – repository builds; `walk` and `checksums` crates generate file signatures.
+2. **M2—Delta Engine** – `engine` drives local delta transfers with metadata preservation.
+3. **M3—Remote Protocol** – rsync protocol v31 over SSH and `rsync://` implemented.
+4. **M4—Metadata Fidelity** – permissions, symlinks, hard links, sparse files, and xattrs/ACLs handled.
+5. **M5—Filters & Compression** – include/exclude rules and compression negotiation wired through engine and CLI.
+6. **M6—Robust Transfers** – resume partials, verify checksums, and harden I/O against interruptions.
+7. **M7—Stabilization** – cross-platform builds, performance tuning, documentation, and compatibility matrix complete.
 
 ## Testing
 Run the full test suite with:
