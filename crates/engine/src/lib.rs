@@ -3,7 +3,7 @@ use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
-use checksums::{ChecksumConfig, ChecksumConfigBuilder, ChecksumError};
+use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 use thiserror::Error;
 
 /// Error type for engine operations.
@@ -11,8 +11,6 @@ use thiserror::Error;
 pub enum EngineError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
-    #[error(transparent)]
-    Checksum(#[from] ChecksumError),
     #[error("{0}")]
     Other(String),
 }
@@ -236,7 +234,7 @@ pub fn sync(src: &Path, dst: &Path) -> Result<()> {
     let mut receiver = Receiver::new();
     sender.start();
     for entry in walk(src) {
-        let (path, file_type) = entry?;
+        let (path, file_type) = entry.map_err(|e| EngineError::Other(e.to_string()))?;
         if let Ok(rel) = path.strip_prefix(src) {
             let dest_path = dst.join(rel);
             if file_type.is_file() {
