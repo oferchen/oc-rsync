@@ -511,7 +511,7 @@
   },
   {
     "flag": "--password-file",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -592,6 +592,11 @@
   {
     "flag": "--secluded-args",
     "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--secrets-file",
+    "status": "Supported",
     "notes": ""
   },
   {

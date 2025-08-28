@@ -14,7 +14,7 @@ The integration tests spawn a daemon in exactly this manner when negotiating pro
 
 ## Secrets-file authentication
 
-If the daemon finds an `auth` file in its working directory, clients must supply a matching token. The file must be readable only by the daemon user (mode `0600` on Unix) and may list optional modules a token is permitted to access:
+If the daemon finds an `auth` file in its working directory, clients must supply a matching token. The secrets file path can be overridden with `--secrets-file`. The file must be readable only by the daemon user (mode `0600` on Unix) and may list optional modules a token is permitted to access:
 
 ```
 $ cat auth
