@@ -21,6 +21,14 @@ arguments after `--` to libFuzzer.  `-max_total_time` limits the run so
 these can execute in CI without timing out.  For longer fuzzing sessions
 use release mode (`--release`) and a longer time budget.
 
+To simply verify that the harnesses build, the CI pipeline executes each
+fuzzer for a single iteration:
+
+```bash
+cargo run -p fuzz --bin protocol_frame_decode_fuzz -- -runs=1
+cargo run -p fuzz --bin filters_parse_fuzz -- -runs=1
+```
+
 ## Adding a new corpus
 
 Fuzzers expect input corpora in the directory specified on the command

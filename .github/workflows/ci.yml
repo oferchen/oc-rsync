@@ -53,6 +53,7 @@ jobs:
           override: true
 
       - name: Run fuzzers briefly
+        # A single iteration is enough to ensure the harnesses compile and link.
         run: |
           cargo run -p fuzz --bin protocol_frame_decode_fuzz -- -runs=1
           cargo run -p fuzz --bin filters_parse_fuzz -- -runs=1
