@@ -43,7 +43,10 @@ impl Demux {
     /// received. Any subsequent frames targeting this channel will be rejected by
     /// [`Demux::ingest`].
     pub fn unregister_channel(&mut self, id: u16) {
-        if let Some(ch) = self.channels.remove(&id) {
+        // `IndexMap::remove` is deprecated as it invalidates ordering; `swap_remove`
+        // performs removal without shifting all elements and is sufficient here
+        // since channel ordering is not significant.
+        if let Some(ch) = self.channels.swap_remove(&id) {
             // Dropping the sender ensures pending messages are not delivered.
             drop(ch);
         }

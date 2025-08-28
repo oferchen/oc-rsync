@@ -9,8 +9,8 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-protocol = { path = "../protocol" }
-filters = { path = "../filters" }
+protocol = { path = "../crates/protocol" }
+filters = { path = "../crates/filters" }
 
 [[bin]]
 name = "protocol_frame_decode_fuzz"

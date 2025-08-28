@@ -9,7 +9,7 @@ members = [
     "crates/engine",
     "crates/transport",
     "crates/cli",
-    "crates/fuzz",
+    "fuzz",
     "bin/rsync-rs",
 ]
 resolver = "2"
