@@ -23,3 +23,9 @@ name = "filters_parse_fuzz"
 path = "fuzz_targets/filters_parse_fuzz.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "filters"
+path = "fuzz_targets/filters.rs"
+test = false
+doc = false

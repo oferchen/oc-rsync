@@ -68,7 +68,9 @@ jobs:
         run: bash scripts/interop.sh
       - name: Fuzz smoke test
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        run: timeout 30s cargo +nightly fuzz run filters_parse_fuzz -- -max_total_time=10
+        run: |
+          timeout 30s cargo +nightly fuzz run filters_parse_fuzz -- -max_total_time=10
+          timeout 30s cargo +nightly fuzz run filters -- -max_total_time=10
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
