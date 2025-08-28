@@ -7,13 +7,22 @@ pub enum Codec {
     Zlib,
     /// Zstandard compression.
     Zstd,
-    /// LZ4 compression.
+    /// LZ4 compression. Requires the `lz4` feature.
     Lz4,
 }
 
 /// Return codecs supported by this crate in preference order.
+///
+/// LZ4 is not advertised unless the `lz4` feature is enabled.
 pub fn available_codecs() -> &'static [Codec] {
-    &[Codec::Zstd, Codec::Lz4, Codec::Zlib]
+    #[cfg(feature = "lz4")]
+    {
+        &[Codec::Zstd, Codec::Lz4, Codec::Zlib]
+    }
+    #[cfg(not(feature = "lz4"))]
+    {
+        &[Codec::Zstd, Codec::Zlib]
+    }
 }
 
 /// Compresses a buffer of bytes.
@@ -29,6 +38,9 @@ pub trait Decompressor {
 }
 
 /// Select the first codec supported by both peers.
+///
+/// Typically the local list is provided by [`available_codecs`], ensuring that
+/// only codecs enabled in this build are considered.
 pub fn negotiate_codec(local: &[Codec], remote: &[Codec]) -> Option<Codec> {
     local.iter().copied().find(|c| remote.contains(c))
 }
@@ -74,15 +86,18 @@ impl Decompressor for Zstd {
     }
 }
 
+#[cfg(feature = "lz4")]
 /// LZ4 codec adapter.
 pub struct Lz4;
 
+#[cfg(feature = "lz4")]
 impl Compressor for Lz4 {
     fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         Ok(lz4_flex::block::compress_prepend_size(data))
     }
 }
 
+#[cfg(feature = "lz4")]
 impl Decompressor for Lz4 {
     fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         lz4_flex::block::decompress_size_prepended(data)

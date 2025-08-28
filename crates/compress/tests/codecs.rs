@@ -1,4 +1,6 @@
-use compress::{negotiate_codec, Codec, Compressor, Decompressor, Lz4, Zlib, Zstd};
+use compress::{negotiate_codec, Codec, Compressor, Decompressor, Zlib, Zstd};
+#[cfg(feature = "lz4")]
+use compress::Lz4;
 
 const DATA: &[u8] = b"The quick brown fox jumps over the lazy dog";
 
@@ -18,6 +20,7 @@ fn zstd_roundtrip() {
     assert_eq!(DATA, decompressed.as_slice());
 }
 
+#[cfg(feature = "lz4")]
 #[test]
 fn lz4_roundtrip() {
     let codec = Lz4;
