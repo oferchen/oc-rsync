@@ -1,6 +1,7 @@
 # Feature Matrix
 
 This table tracks the implementation status of rsync 3.2.x command-line options.
+See [differences.md](differences.md) for a summary of notable behavioral differences.
 
 | Option | Supported | Parity | Tests | Notes | Enhanced? |
 | --- | --- | --- | --- | --- | --- |
@@ -16,7 +17,7 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--block-size` | ❌ | — | — |  | |
 | `--blocking-io` | ❌ | — | — |  | |
 | `--bwlimit` | ❌ | — | — |  | |
-| `--checksum` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | |
+| `--checksum` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, BLAKE3 | |
 | `--checksum-choice` | ❌ | — | — |  | |
 | `--checksum-seed` | ❌ | — | — |  | |
 | `--chmod` | ❌ | — | — |  | |
