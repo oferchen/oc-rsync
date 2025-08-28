@@ -9,6 +9,8 @@ have been exercised with `rsync-rs`. For a detailed status matrix see
 | Operating system | Notes |
 |------------------|-------|
 | Linux | primary development and CI platform |
+| Linux (armv7) | cross-compiled in CI |
+| FreeBSD | cross-compiled in CI |
 | macOS | builds and basic local sync verified |
 | Windows | under active development; path and permission handling incomplete |
 

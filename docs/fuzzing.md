@@ -4,6 +4,9 @@ This repository includes several fuzz targets under `crates/fuzz`.
 The harnesses are built with [`libFuzzer`](https://llvm.org/docs/LibFuzzer.html)
 via the [`libfuzzer-sys`](https://crates.io/crates/libfuzzer-sys) crate.
 
+Continuous integration runs extended fuzzing sessions for each target on every
+pull request, and the job must pass before merging.
+
 ## Running a fuzzer
 
 1. Install the tooling (once per machine):
