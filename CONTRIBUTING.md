@@ -18,3 +18,14 @@ Thank you for your interest in contributing to rsync_rs!
 - Ensure `cargo test` passes locally.
 - Add or update tests for any new code.
 - Prefer small, focused commits that each pass the test suite.
+
+## Fetching upstream rsync
+Some interop tests require the official rsync sources. Use the helper
+script to download and verify the tarball:
+
+```bash
+./scripts/fetch-rsync.sh
+```
+
+The script checks the tarball's SHA256 digest and extracts it in the
+repository root. Continuous integration runs this script automatically.

@@ -12,3 +12,7 @@
 *.exe
 *.so
 *.dylib
+
+# Upstream rsync sources
+/rsync-*.tar.gz
+/rsync-*/
