@@ -5,7 +5,7 @@
 | --address | Error |  |
 | --append | Error |  |
 | --append-verify | Error |  |
-| --archive | Supported | sets perms, times, owner, group, links, devices, specials |
+| --archive | Supported |  |
 | --atimes | Error |  |
 | --backup | Error |  |
 | --backup-dir | Error |  |
@@ -20,7 +20,7 @@
 | --compare-dest | Error |  |
 | --compress | Supported |  |
 | --compress-choice | Error |  |
-| --compress-level | Error |  |
+| --compress-level | Supported |  |
 | --contimeout | Error |  |
 | --copy-as | Error |  |
 | --copy-dest | Error |  |
@@ -34,30 +34,30 @@
 | --del | Error | an alias for --delete-during |
 | --delay-updates | Error |  |
 | --delete | Supported |  |
-| --delete-after | Error |  |
-| --delete-before | Error |  |
-| --delete-delay | Error |  |
-| --delete-during | Error |  |
+| --delete-after | Supported |  |
+| --delete-before | Supported |  |
+| --delete-delay | Supported |  |
+| --delete-during | Supported |  |
 | --delete-excluded | Error |  |
 | --delete-missing-args | Error |  |
-| --devices | Error |  |
+| --devices | Supported |  |
 | --dirs | Error |  |
 | --dry-run | Supported |  |
 | --early-input | Error |  |
-| --exclude | Error |  |
-| --exclude-from | Error |  |
+| --exclude | Supported |  |
+| --exclude-from | Supported |  |
 | --executability | Error |  |
 | --existing | Error |  |
 | --fake-super | Error |  |
-| --files-from | Error |  |
+| --files-from | Supported |  |
 | --filter | Supported |  |
 | --force | Error |  |
-| --from0 | Error |  |
+| --from0 | Supported |  |
 | --fsync | Error |  |
 | --fuzzy | Error |  |
-| --group | Error |  |
+| --group | Supported |  |
 | --groupmap | Error |  |
-| --hard-links | Error |  |
+| --hard-links | Supported |  |
 | --help | Supported |  |
 | --human-readable | Error |  |
 | --iconv | Error |  |
@@ -65,8 +65,8 @@
 | --ignore-existing | Error |  |
 | --ignore-missing-args | Error |  |
 | --ignore-times | Error |  |
-| --include | Error |  |
-| --include-from | Error |  |
+| --include | Supported |  |
+| --include-from | Supported |  |
 | --info | Error |  |
 | --inplace | Error |  |
 | --ipv4 | Error |  |
@@ -74,7 +74,7 @@
 | --itemize-changes | Error |  |
 | --keep-dirlinks | Error |  |
 | --link-dest | Error |  |
-| --links | Error |  |
+| --links | Supported |  |
 | --list-only | Error |  |
 | --log-file | Error |  |
 | --log-file-format | Error |  |
@@ -88,7 +88,7 @@
 | --no-OPTION | Error |  |
 | --no-implied-dirs | Error |  |
 | --no-motd | Error |  |
-| --numeric-ids | Supported | use numeric uid/gid values |
+| --numeric-ids | Supported |  |
 | --old-args | Error |  |
 | --old-d | Error | alias for --old-dirs |
 | --old-dirs | Error |  |
@@ -99,20 +99,20 @@
 | --open-noatime | Error |  |
 | --out-format | Error |  |
 | --outbuf | Error |  |
-| --owner | Error |  |
-| --partial | Error |  |
-| --partial-dir | Error |  |
+| --owner | Supported |  |
+| --partial | Supported |  |
+| --partial-dir | Supported |  |
 | --password-file | Error |  |
-| --perms | Error |  |
+| --perms | Supported |  |
 | --port | Error |  |
 | --preallocate | Error |  |
-| --progress | Error |  |
+| --progress | Supported |  |
 | --protocol | Error |  |
 | --prune-empty-dirs | Error |  |
 | --quiet | Supported |  |
 | --read-batch | Error |  |
 | --recursive | Supported |  |
-| --relative | Supported | use relative path names |
+| --relative | Supported |  |
 | --remote-option | Error |  |
 | --remove-source-files | Error |  |
 | --rsh | Error |  |
@@ -122,8 +122,8 @@
 | --size-only | Error |  |
 | --skip-compress | Error |  |
 | --sockopts | Error |  |
-| --sparse | Error |  |
-| --specials | Error |  |
+| --sparse | Supported |  |
+| --specials | Supported |  |
 | --stats | Supported |  |
 | --stderr | Error |  |
 | --stop-after | Error |  |
@@ -132,7 +132,7 @@
 | --super | Error |  |
 | --temp-dir | Error |  |
 | --timeout | Error |  |
-| --times | Error |  |
+| --times | Supported |  |
 | --trust-sender | Error |  |
 | --update | Error |  |
 | --usermap | Error |  |
@@ -163,7 +163,7 @@
 | -O | Error | alias for --omit-dir-times |
 | -P | Supported | same as --partial --progress |
 | -R | Alias | alias for --relative |
-| -S | Error | alias for --sparse |
+| -S | Alias | alias for --sparse |
 | -T | Error | alias for --temp-dir |
 | -U | Error | alias for --atimes |
 | -V | Error | alias for --version |
