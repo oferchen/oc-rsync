@@ -1,4 +1,4 @@
-use filters::filters::{parse, Matcher};
+use filters::{parse, Matcher};
 
 #[test]
 fn comments_and_blank_lines_are_ignored() {
