@@ -233,6 +233,9 @@ impl Receiver {
 
 /// Synchronize the contents of directory `src` into `dst`.
 pub fn sync(src: &Path, dst: &Path, matcher: &Matcher) -> Result<()> {
+    // Clone the matcher and attach the source root so per-directory filter files
+    // can be located during the walk.
+    let matcher = matcher.clone().with_root(src.to_path_buf());
     let mut sender = Sender::new(1024, matcher.clone());
     let mut receiver = Receiver::new();
     sender.start();

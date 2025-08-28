@@ -374,6 +374,7 @@ name = "filters"
 version = "0.1.0"
 dependencies = [
  "globset",
+ "tempfile",
 ]
 
 [[package]]

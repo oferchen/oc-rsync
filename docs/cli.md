@@ -47,3 +47,26 @@ rsync-rs [OPTIONS] <SRC> <DEST>
 3. Configuration file (defaults to `~/.config/rsync-rs/config.toml`)
 
 Settings specified earlier in the list override later sources.
+
+## Filters
+
+`rsync-rs` supports include and exclude rules using the same syntax as
+`rsync`. Rules can be supplied on the command line with `--filter` or placed in
+`.rsync-filter` files located throughout the source tree. When walking
+directories the tool automatically loads any `.rsync-filter` files and merges
+their rules with those from parent directories. Rules in deeper directories take
+precedence over rules defined higher up.
+
+### Example
+
+```
+project/
+├── .rsync-filter      # contains: - *.tmp
+└── logs/
+    ├── .rsync-filter  # contains: + keep.tmp
+    ├── keep.tmp
+    └── other.tmp
+```
+
+In this layout, `keep.tmp` is included because the rule in `logs/.rsync-filter`
+overrides the root exclusion. The file `other.tmp` remains excluded.
