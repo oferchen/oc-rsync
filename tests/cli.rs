@@ -614,6 +614,13 @@ fn sparse_files_preserved() {
         .success();
 
     let src_meta = std::fs::metadata(&sp).unwrap();
+    // If the source file is not actually sparse, the underlying filesystem does
+    // not support sparse files; skip the remainder of the test. These tests
+    // require a filesystem with sparse-file support.
+    if src_meta.blocks() * 512 >= src_meta.len() {
+        eprintln!("skipping test: filesystem lacks sparse-file support");
+        return;
+    }
     let dst_meta = std::fs::metadata(dst.join("sparse")).unwrap();
     assert_eq!(src_meta.len(), dst_meta.len());
     assert_eq!(src_meta.blocks(), dst_meta.blocks());
@@ -641,6 +648,12 @@ fn sparse_files_created() {
         .success();
 
     let src_meta = std::fs::metadata(&zs).unwrap();
+    // If the source file occupies as many blocks as its length, the filesystem
+    // does not support sparse files; skip the remainder of the test.
+    if src_meta.blocks() * 512 >= src_meta.len() {
+        eprintln!("skipping test: filesystem lacks sparse-file support");
+        return;
+    }
     let dst_meta = std::fs::metadata(dst.join("zeros")).unwrap();
     assert_eq!(src_meta.len(), dst_meta.len());
     assert!(dst_meta.blocks() < src_meta.blocks());
