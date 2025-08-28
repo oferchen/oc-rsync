@@ -119,7 +119,7 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--trust-sender` |  |  |  |  |
 | `--copy-as=USER[:GROUP]` |  |  |  |  |
 | `--address=ADDRESS` |  |  |  |  |
-| `--port=PORT` |  |  |  |  |
+| `--port=PORT` | ✅ |  |  |  |
 | `--sockopts=OPTIONS` |  |  |  |  |
 | `--blocking-io` |  |  |  |  |
 | `--outbuf=N|L|B` |  |  |  |  |

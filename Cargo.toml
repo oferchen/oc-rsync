@@ -37,6 +37,7 @@ serial_test = "2"
 nix = { version = "0.27", features = ["user", "fs"] }
 xattr = "1.3"
 posix-acl = "1.2"
+transport = { path = "crates/transport" }
 
 [[bin]]
 name = "flag_matrix"

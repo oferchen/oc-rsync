@@ -109,7 +109,7 @@
 | -6 | --ipv6 | prefer IPv6 | no |  | no |
 |  | --outbuf=N\|L\|B | set out buffering to None, Line, or Block | no |  | no |
 |  | --password-file=FILE | read daemon-access password from FILE | no |  | no |
-|  | --port=PORT | specify double-colon alternate port number | no |  | no |
+|  | --port=PORT | specify double-colon alternate port number | yes |  | no |
 |  | --protocol=NUM | force an older protocol version to be used | no |  | no |
 | -M | --remote-option=OPT | send OPTION to the remote side only | no |  | no |
 | -e | --rsh=COMMAND | specify the remote shell to use | no |  | no |

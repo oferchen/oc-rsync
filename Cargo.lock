@@ -437,6 +437,7 @@ dependencies = [
  "filters",
  "meta",
  "nix",
+ "posix-acl",
  "tempfile",
  "thiserror",
  "walk",
@@ -1110,6 +1111,7 @@ dependencies = [
  "serde_json",
  "serial_test",
  "tempfile",
+ "transport",
  "xattr",
 ]
 

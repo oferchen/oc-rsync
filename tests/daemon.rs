@@ -4,22 +4,34 @@ use protocol::LATEST_VERSION;
 use serial_test::serial;
 use std::fs;
 use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream};
 use std::process::{Child, Command as StdCommand};
 use std::thread::sleep;
 use std::time::Duration;
 
-fn spawn_daemon() -> Child {
-    StdCommand::cargo_bin("rsync-rs")
+fn spawn_daemon() -> (Child, u16) {
+    let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
-        .args(["--daemon", "--module", "data=/tmp"])
+        .local_addr()
+        .unwrap()
+        .port();
+    let child = StdCommand::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            "data=/tmp",
+            "--port",
+            &port.to_string(),
+        ])
         .spawn()
-        .unwrap()
+        .unwrap();
+    (child, port)
 }
 
-fn wait_for_daemon() {
+fn wait_for_daemon(port: u16) {
     for _ in 0..20 {
-        if TcpStream::connect("127.0.0.1:873").is_ok() {
+        if TcpStream::connect(("127.0.0.1", port)).is_ok() {
             return;
         }
         sleep(Duration::from_millis(50));
@@ -29,11 +41,10 @@ fn wait_for_daemon() {
 
 #[test]
 #[serial]
-#[ignore]
 fn daemon_negotiates_version_with_client() {
-    let mut child = spawn_daemon();
-    wait_for_daemon();
-    let mut stream = TcpStream::connect("127.0.0.1:873").unwrap();
+    let (mut child, port) = spawn_daemon();
+    wait_for_daemon(port);
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
     stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     stream.read_exact(&mut buf).unwrap();
@@ -44,13 +55,12 @@ fn daemon_negotiates_version_with_client() {
 
 #[test]
 #[serial]
-#[ignore]
 fn probe_connects_to_daemon() {
-    let mut child = spawn_daemon();
-    wait_for_daemon();
+    let (mut child, port) = spawn_daemon();
+    wait_for_daemon(port);
     Command::cargo_bin("rsync-rs")
         .unwrap()
-        .args(["--probe", "127.0.0.1:873"])
+        .args(["--probe", &format!("127.0.0.1:{port}")])
         .assert()
         .success();
     let _ = child.kill();
@@ -59,7 +69,6 @@ fn probe_connects_to_daemon() {
 
 #[test]
 #[serial]
-#[ignore]
 fn probe_rejects_old_version() {
     Command::cargo_bin("rsync-rs")
         .unwrap()
@@ -70,22 +79,28 @@ fn probe_rejects_old_version() {
 
 #[test]
 #[serial]
-#[ignore]
 fn daemon_rejects_unauthorized_client() {
     let dir = tempfile::tempdir().unwrap();
     fs::write(dir.path().join("auth"), "secret data\n").unwrap();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
     let mut child = StdCommand::cargo_bin("rsync-rs")
         .unwrap()
         .args([
             "--daemon",
             "--module",
             &format!("data={}", dir.path().display()),
+            "--port",
+            &port.to_string(),
         ])
         .current_dir(dir.path())
         .spawn()
         .unwrap();
-    wait_for_daemon();
-    let mut stream = TcpStream::connect("127.0.0.1:873").unwrap();
+    wait_for_daemon(port);
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
     stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     stream.read_exact(&mut buf).unwrap();
