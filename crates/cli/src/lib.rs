@@ -1,16 +1,15 @@
+use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::io::{Read, Write};
-use std::collections::HashMap;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
 use engine::{sync, EngineError, Result};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
-use transport::{TcpTransport, Transport};
+use transport::{SshStdioTransport, TcpTransport, Transport};
 
 /// Command line interface for rsync-rs.
 #[derive(Parser)]
@@ -37,6 +36,27 @@ struct ClientOpts {
     /// perform a local sync
     #[arg(long)]
     local: bool,
+    /// copy directories recursively
+    #[arg(short, long)]
+    recursive: bool,
+    /// perform a trial run with no changes made
+    #[arg(short = 'n', long)]
+    dry_run: bool,
+    /// increase logging verbosity
+    #[arg(short, long, action = ArgAction::Count)]
+    verbose: u8,
+    /// remove extraneous files from the destination
+    #[arg(long)]
+    delete: bool,
+    /// use full checksums to determine file changes
+    #[arg(short = 'c', long)]
+    checksum: bool,
+    /// display transfer statistics on completion
+    #[arg(long)]
+    stats: bool,
+    /// supply a custom configuration file
+    #[arg(long, value_name = "FILE")]
+    config: Option<PathBuf>,
     /// source path or HOST:PATH
     src: String,
     /// destination path or HOST:PATH
@@ -157,6 +177,30 @@ where
 
 fn run_client(opts: ClientOpts) -> Result<()> {
     let matcher = build_matcher(&opts)?;
+
+    if let Some(cfg) = &opts.config {
+        println!("using config file {}", cfg.display());
+    }
+    if opts.verbose > 0 {
+        println!("verbose level set to {}", opts.verbose);
+    }
+    if opts.delete {
+        println!("delete mode enabled (not yet implemented)");
+    }
+    if opts.checksum {
+        println!("checksum mode enabled (not yet implemented)");
+    }
+    if opts.stats {
+        println!("stats will be displayed after sync (not yet implemented)");
+    }
+    if opts.recursive {
+        println!("recursive mode enabled");
+    }
+    if opts.dry_run {
+        println!("dry run: skipping synchronization");
+        return Ok(());
+    }
+
     let src = parse_remote_spec(&opts.src)?;
     let dst = parse_remote_spec(&opts.dst)?;
     if opts.local {
@@ -191,22 +235,16 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 },
             ) => {
                 if src_host.is_empty() || dst_host.is_empty() {
-                    return Err(EngineError::Other(
-                        "remote host missing".to_string(),
-                    ));
+                    return Err(EngineError::Other("remote host missing".to_string()));
                 }
                 if src_path.as_os_str().is_empty() || dst_path.as_os_str().is_empty() {
-                    return Err(EngineError::Other(
-                        "remote path missing".to_string(),
-                    ));
+                    return Err(EngineError::Other("remote path missing".to_string()));
                 }
 
-                let src_session =
-                    SshStdioTransport::spawn(&src_host, [src_path.as_os_str()])
-                        .map_err(|e| EngineError::Other(e.to_string()))?;
-                let dst_session =
-                    SshStdioTransport::spawn(&dst_host, [dst_path.as_os_str()])
-                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                let src_session = SshStdioTransport::spawn(&src_host, [src_path.as_os_str()])
+                    .map_err(|e| EngineError::Other(e.to_string()))?;
+                let dst_session = SshStdioTransport::spawn(&dst_host, [dst_path.as_os_str()])
+                    .map_err(|e| EngineError::Other(e.to_string()))?;
 
                 pipe_transports(src_session, dst_session)
                     .map_err(|e| EngineError::Other(e.to_string()))?;
@@ -219,15 +257,11 @@ fn run_client(opts: ClientOpts) -> Result<()> {
 fn build_matcher(opts: &ClientOpts) -> Result<Matcher> {
     let mut rules = Vec::new();
     for rule in &opts.filter {
-        rules.extend(
-            parse_filters(rule).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-        );
+        rules.extend(parse_filters(rule).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
     }
     for file in &opts.filter_file {
         let content = fs::read_to_string(file)?;
-        rules.extend(
-            parse_filters(&content).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-        );
+        rules.extend(parse_filters(&content).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
     }
     Ok(Matcher::new(rules))
 }
@@ -252,7 +286,10 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     }
 }
 
-fn handle_connection(transport: &mut TcpTransport, modules: &HashMap<String, PathBuf>) -> Result<()> {
+fn handle_connection(
+    transport: &mut TcpTransport,
+    modules: &HashMap<String, PathBuf>,
+) -> Result<()> {
     let mut buf = [0u8; 4];
     let n = transport.receive(&mut buf)?;
     if n == 0 {
@@ -276,7 +313,7 @@ fn handle_connection(transport: &mut TcpTransport, modules: &HashMap<String, Pat
             let _ = setgid(Gid::from_raw(65534));
             let _ = setuid(Uid::from_raw(65534));
         }
-        let _ = sync(Path::new("."), Path::new("."));
+        let _ = sync(Path::new("."), Path::new("."), &Matcher::default());
     }
     Ok(())
 }
@@ -344,5 +381,20 @@ mod tests {
             }
             _ => panic!("expected remote spec"),
         }
+    }
+
+    #[test]
+    fn parses_client_flags() {
+        let opts = ClientOpts::parse_from([
+            "client", "-r", "-n", "-v", "--delete", "-c", "--stats", "--config", "file", "src",
+            "dst",
+        ]);
+        assert!(opts.recursive);
+        assert!(opts.dry_run);
+        assert_eq!(opts.verbose, 1);
+        assert!(opts.delete);
+        assert!(opts.checksum);
+        assert!(opts.stats);
+        assert_eq!(opts.config, Some(PathBuf::from("file")));
     }
 }
