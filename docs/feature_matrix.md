@@ -39,7 +39,7 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--delete` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |
 | `--delete-after` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |
 | `--delete-before` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |
-| `--delete-delay` | ✅ | ❌ | — |  |
+| `--delete-delay` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |
 | `--delete-during` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |
 | `--delete-excluded` | ❌ | — | — |  |
 | `--delete-missing-args` | ❌ | — | — |  |

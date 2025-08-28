@@ -24,3 +24,4 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
   Raise these thresholds as the test suite stabilizes.
 - Nightly jobs fuzz all targets for longer runs, yet pull requests still rely on brief smoke tests.
 - Remote-to-remote transfers, filter rules, compression negotiation, and daemon authentication lack dedicated CI coverage.
+
