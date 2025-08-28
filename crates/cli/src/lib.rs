@@ -18,7 +18,6 @@ use transport::{SshStdioTransport, TcpTransport, Transport};
 /// mode of operation is selected via top level flags such as `--daemon` or
 /// `--probe`.  When neither of those flags are supplied it runs in client mode
 /// and expects positional `SRC` and `DST` arguments.
-
 /// Options for client mode.
 #[derive(Parser, Debug)]
 struct ClientOpts {
@@ -575,7 +574,7 @@ mod tests {
         match spec {
             RemoteSpec::Remote { host, path } => {
                 assert_eq!(host, "::1");
-                assert_eq!(path, PathBuf::from("/tmp"));
+                assert_eq!(path.path, PathBuf::from("/tmp"));
             }
             _ => panic!("expected remote spec"),
         }
@@ -584,7 +583,8 @@ mod tests {
     #[test]
     fn parses_client_flags() {
         let opts = ClientOpts::parse_from([
-            "-r", "-n", "-v", "--delete", "-c", "-z", "--stats", "--config", "file", "src", "dst",
+            "prog", "-r", "-n", "-v", "--delete", "-c", "-z", "--stats", "--config", "file", "src",
+            "dst",
         ]);
         assert!(opts.recursive);
         assert!(opts.dry_run);

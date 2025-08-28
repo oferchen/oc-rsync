@@ -189,7 +189,7 @@ pub struct Sender {
     state: SenderState,
     cfg: ChecksumConfig,
     block_size: usize,
-    matcher: Matcher,
+    _matcher: Matcher,
     codec: Option<Codec>,
     checksum: bool,
 }
@@ -200,7 +200,7 @@ impl Sender {
             state: SenderState::Idle,
             cfg: ChecksumConfigBuilder::new().build(),
             block_size,
-            matcher,
+            _matcher: matcher,
             codec,
             checksum,
         }
@@ -379,7 +379,7 @@ pub fn sync(
             if file_type.is_file() {
                 if sender.process_file(&path, &dest_path, &mut receiver)? {
                     stats.files_transferred += 1;
-                    stats.bytes_transferred += fs::metadata(&path)?.len() as u64;
+                    stats.bytes_transferred += fs::metadata(&path)?.len();
                 }
             } else if file_type.is_dir() {
                 fs::create_dir_all(&dest_path)?;

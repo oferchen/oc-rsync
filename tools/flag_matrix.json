@@ -1,0 +1,967 @@
+[
+  {
+    "flag": "--8-bit-output",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--acls",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--address",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--append",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--append-verify",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--archive",
+    "status": "Error",
+    "notes": "flag -a/--archive is not supported; see docs/differences.md"
+  },
+  {
+    "flag": "--atimes",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--backup",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--backup-dir",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--block-size",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--blocking-io",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--bwlimit",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--checksum",
+    "status": "Supported",
+    "notes": ""
+  },
+  {
+    "flag": "--checksum-choice",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--checksum-seed",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--chmod",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--chown",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--compare-dest",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--compress",
+    "status": "Supported",
+    "notes": ""
+  },
+  {
+    "flag": "--compress-choice",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--compress-level",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--contimeout",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--copy-as",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--copy-dest",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--copy-devices",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--copy-dirlinks",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--copy-links",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--copy-unsafe-links",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--crtimes",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--cvs-exclude",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--debug",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--del",
+    "status": "Error",
+    "notes": "an alias for --delete-during"
+  },
+  {
+    "flag": "--delay-updates",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--delete",
+    "status": "Supported",
+    "notes": ""
+  },
+  {
+    "flag": "--delete-after",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--delete-before",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--delete-delay",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--delete-during",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--delete-excluded",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--delete-missing-args",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--devices",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--dirs",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--dry-run",
+    "status": "Supported",
+    "notes": ""
+  },
+  {
+    "flag": "--early-input",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--exclude",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--exclude-from",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--executability",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--existing",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--fake-super",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--files-from",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--filter",
+    "status": "Supported",
+    "notes": ""
+  },
+  {
+    "flag": "--force",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--from0",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--fsync",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--fuzzy",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--group",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--groupmap",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--hard-links",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--help",
+    "status": "Supported",
+    "notes": ""
+  },
+  {
+    "flag": "--human-readable",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--iconv",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--ignore-errors",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--ignore-existing",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--ignore-missing-args",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--ignore-times",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--include",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--include-from",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--info",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--inplace",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--ipv4",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--ipv6",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--itemize-changes",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--keep-dirlinks",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--link-dest",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--links",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--list-only",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--log-file",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--log-file-format",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--max-alloc",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--max-delete",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--max-size",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--min-size",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--mkpath",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--modify-window",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--munge-links",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--no-OPTION",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--no-implied-dirs",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--no-motd",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--numeric-ids",
+    "status": "Error",
+    "notes": "flag --numeric-ids is not supported; see docs/differences.md"
+  },
+  {
+    "flag": "--old-args",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--old-d",
+    "status": "Error",
+    "notes": "alias for --old-dirs"
+  },
+  {
+    "flag": "--old-dirs",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--omit-dir-times",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--omit-link-times",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--one-file-system",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--only-write-batch",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--open-noatime",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--out-format",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--outbuf",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--owner",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--partial",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--partial-dir",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--password-file",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--perms",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--port",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--preallocate",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--progress",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--protocol",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--prune-empty-dirs",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--quiet",
+    "status": "Supported",
+    "notes": ""
+  },
+  {
+    "flag": "--read-batch",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--recursive",
+    "status": "Supported",
+    "notes": ""
+  },
+  {
+    "flag": "--relative",
+    "status": "Error",
+    "notes": "flag -R/--relative is not supported; see docs/differences.md"
+  },
+  {
+    "flag": "--remote-option",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--remove-source-files",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--rsh",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--rsync-path",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--safe-links",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--secluded-args",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--size-only",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--skip-compress",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--sockopts",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--sparse",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--specials",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--stats",
+    "status": "Supported",
+    "notes": ""
+  },
+  {
+    "flag": "--stderr",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--stop-after",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--stop-at",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--suffix",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--super",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--temp-dir",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--timeout",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--times",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--trust-sender",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--update",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--usermap",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--verbose",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--version",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--whole-file",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--write-batch",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--write-devices",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "--xattrs",
+    "status": "Error",
+    "notes": ""
+  },
+  {
+    "flag": "-0",
+    "status": "Error",
+    "notes": "alias for --from0"
+  },
+  {
+    "flag": "-4",
+    "status": "Error",
+    "notes": "alias for --ipv4"
+  },
+  {
+    "flag": "-6",
+    "status": "Error",
+    "notes": "alias for --ipv6"
+  },
+  {
+    "flag": "-8",
+    "status": "Error",
+    "notes": "alias for --8-bit-output"
+  },
+  {
+    "flag": "-@",
+    "status": "Error",
+    "notes": "alias for --modify-window"
+  },
+  {
+    "flag": "-A",
+    "status": "Error",
+    "notes": "alias for --acls"
+  },
+  {
+    "flag": "-B",
+    "status": "Error",
+    "notes": "alias for --block-size"
+  },
+  {
+    "flag": "-C",
+    "status": "Error",
+    "notes": "alias for --cvs-exclude"
+  },
+  {
+    "flag": "-D",
+    "status": "Error",
+    "notes": "same as --devices --specials"
+  },
+  {
+    "flag": "-E",
+    "status": "Error",
+    "notes": "alias for --executability"
+  },
+  {
+    "flag": "-F",
+    "status": "Error",
+    "notes": "same as --filter='dir-merge /.rsync-filter'"
+  },
+  {
+    "flag": "-H",
+    "status": "Error",
+    "notes": "alias for --hard-links"
+  },
+  {
+    "flag": "-I",
+    "status": "Error",
+    "notes": "alias for --ignore-times"
+  },
+  {
+    "flag": "-J",
+    "status": "Error",
+    "notes": "alias for --omit-link-times"
+  },
+  {
+    "flag": "-K",
+    "status": "Error",
+    "notes": "alias for --keep-dirlinks"
+  },
+  {
+    "flag": "-L",
+    "status": "Error",
+    "notes": "alias for --copy-links"
+  },
+  {
+    "flag": "-M",
+    "status": "Error",
+    "notes": "alias for --remote-option"
+  },
+  {
+    "flag": "-N",
+    "status": "Error",
+    "notes": "alias for --crtimes"
+  },
+  {
+    "flag": "-O",
+    "status": "Error",
+    "notes": "alias for --omit-dir-times"
+  },
+  {
+    "flag": "-P",
+    "status": "Error",
+    "notes": "same as --partial --progress; flag -P is not supported; see docs/differences.md"
+  },
+  {
+    "flag": "-R",
+    "status": "Error",
+    "notes": "alias for --relative; flag -R/--relative is not supported; see docs/differences.md"
+  },
+  {
+    "flag": "-S",
+    "status": "Error",
+    "notes": "alias for --sparse"
+  },
+  {
+    "flag": "-T",
+    "status": "Error",
+    "notes": "alias for --temp-dir"
+  },
+  {
+    "flag": "-U",
+    "status": "Error",
+    "notes": "alias for --atimes"
+  },
+  {
+    "flag": "-V",
+    "status": "Error",
+    "notes": "alias for --version"
+  },
+  {
+    "flag": "-W",
+    "status": "Error",
+    "notes": "alias for --whole-file"
+  },
+  {
+    "flag": "-X",
+    "status": "Error",
+    "notes": "alias for --xattrs"
+  },
+  {
+    "flag": "-a",
+    "status": "Error",
+    "notes": "alias for --archive; flag -a/--archive is not supported; see docs/differences.md"
+  },
+  {
+    "flag": "-b",
+    "status": "Error",
+    "notes": "alias for --backup"
+  },
+  {
+    "flag": "-c",
+    "status": "Alias",
+    "notes": "alias for --checksum"
+  },
+  {
+    "flag": "-d",
+    "status": "Error",
+    "notes": "alias for --dirs"
+  },
+  {
+    "flag": "-e",
+    "status": "Error",
+    "notes": "alias for --rsh"
+  },
+  {
+    "flag": "-f",
+    "status": "Error",
+    "notes": "alias for --filter"
+  },
+  {
+    "flag": "-g",
+    "status": "Error",
+    "notes": "alias for --group"
+  },
+  {
+    "flag": "-h",
+    "status": "Alias",
+    "notes": "alias for --help"
+  },
+  {
+    "flag": "-i",
+    "status": "Error",
+    "notes": "alias for --itemize-changes"
+  },
+  {
+    "flag": "-k",
+    "status": "Error",
+    "notes": "alias for --copy-dirlinks"
+  },
+  {
+    "flag": "-l",
+    "status": "Error",
+    "notes": "alias for --links"
+  },
+  {
+    "flag": "-m",
+    "status": "Error",
+    "notes": "alias for --prune-empty-dirs"
+  },
+  {
+    "flag": "-n",
+    "status": "Alias",
+    "notes": "alias for --dry-run"
+  },
+  {
+    "flag": "-o",
+    "status": "Error",
+    "notes": "alias for --owner"
+  },
+  {
+    "flag": "-p",
+    "status": "Error",
+    "notes": "alias for --perms"
+  },
+  {
+    "flag": "-q",
+    "status": "Alias",
+    "notes": "alias for --quiet"
+  },
+  {
+    "flag": "-r",
+    "status": "Alias",
+    "notes": "alias for --recursive"
+  },
+  {
+    "flag": "-s",
+    "status": "Error",
+    "notes": "alias for --secluded-args"
+  },
+  {
+    "flag": "-t",
+    "status": "Error",
+    "notes": "alias for --times"
+  },
+  {
+    "flag": "-u",
+    "status": "Error",
+    "notes": "alias for --update"
+  },
+  {
+    "flag": "-v",
+    "status": "Alias",
+    "notes": "alias for --verbose"
+  },
+  {
+    "flag": "-x",
+    "status": "Error",
+    "notes": "alias for --one-file-system"
+  },
+  {
+    "flag": "-y",
+    "status": "Error",
+    "notes": "alias for --fuzzy"
+  },
+  {
+    "flag": "-z",
+    "status": "Alias",
+    "notes": "alias for --compress"
+  }
+]

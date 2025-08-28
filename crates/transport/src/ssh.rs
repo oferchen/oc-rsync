@@ -47,15 +47,15 @@ impl SshStdioTransport {
         let stdin = child
             .stdin
             .take()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "missing stdin"))?;
+            .ok_or_else(|| io::Error::other("missing stdin"))?;
         let stdout = child
             .stdout
             .take()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "missing stdout"))?;
+            .ok_or_else(|| io::Error::other("missing stdout"))?;
         let stderr = child
             .stderr
             .take()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "missing stderr"))?;
+            .ok_or_else(|| io::Error::other("missing stderr"))?;
 
         let stderr_buf = Arc::new(Mutex::new(Vec::new()));
         let stderr_buf_clone = Arc::clone(&stderr_buf);
