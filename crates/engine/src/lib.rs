@@ -4,7 +4,9 @@ use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
-use compress::{available_codecs, negotiate_codec, Codec, Compressor, Decompressor, Lz4, Zlib, Zstd};
+use compress::{
+    available_codecs, negotiate_codec, Codec, Compressor, Decompressor, Lz4, Zlib, Zstd,
+};
 use filters::Matcher;
 use thiserror::Error;
 
@@ -189,9 +191,7 @@ impl Sender {
         if self.checksum {
             if let Ok(dst_bytes) = fs::read(dest) {
                 let src_bytes = fs::read(path)?;
-                if self.cfg.checksum(&src_bytes).strong
-                    == self.cfg.checksum(&dst_bytes).strong
-                {
+                if self.cfg.checksum(&src_bytes).strong == self.cfg.checksum(&dst_bytes).strong {
                     return Ok(false);
                 }
             }
@@ -321,7 +321,10 @@ pub fn sync(
     for entry in walk(src) {
         let (path, file_type) = entry.map_err(|e| EngineError::Other(e.to_string()))?;
         if let Ok(rel) = path.strip_prefix(src) {
-            if !matcher.is_included(rel) {
+            if !matcher
+                .is_included(rel)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?
+            {
                 continue;
             }
             let dest_path = dst.join(rel);
@@ -358,7 +361,10 @@ pub fn sync(
         for entry in walk(dst) {
             let (path, file_type) = entry.map_err(|e| EngineError::Other(e.to_string()))?;
             if let Ok(rel) = path.strip_prefix(dst) {
-                if !matcher.is_included(rel) {
+                if !matcher
+                    .is_included(rel)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?
+                {
                     continue;
                 }
                 if !src.join(rel).exists() {
@@ -491,8 +497,7 @@ mod tests {
         let outside = tmp.path().join("outside.txt");
         fs::write(&outside, b"outside").unwrap();
 
-        let mut sender =
-            Sender::new(1024, Matcher::default(), Some(Codec::Zlib), false);
+        let mut sender = Sender::new(1024, Matcher::default(), Some(Codec::Zlib), false);
         let mut receiver = Receiver::new(Some(Codec::Zlib));
         sender.start();
         for path in [src.join("inside.txt"), outside.clone()] {
