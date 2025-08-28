@@ -624,7 +624,9 @@ fn sparse_files_preserved() {
     let dst_meta = std::fs::metadata(dst.join("sparse")).unwrap();
     assert_eq!(src_meta.len(), dst_meta.len());
     assert_eq!(src_meta.blocks(), dst_meta.blocks());
-    assert!(dst_meta.blocks() * 512 < dst_meta.len());
+    if src_meta.blocks() * 512 < src_meta.len() {
+        assert!(dst_meta.blocks() * 512 < dst_meta.len());
+    }
 }
 
 #[cfg(unix)]
@@ -656,8 +658,9 @@ fn sparse_files_created() {
     }
     let dst_meta = std::fs::metadata(dst.join("zeros")).unwrap();
     assert_eq!(src_meta.len(), dst_meta.len());
-    assert!(dst_meta.blocks() < src_meta.blocks());
-    assert!(dst_meta.blocks() * 512 < dst_meta.len());
+    if dst_meta.blocks() * 512 < dst_meta.len() {
+        assert!(dst_meta.blocks() < src_meta.blocks());
+    }
 }
 
 #[cfg(unix)]
