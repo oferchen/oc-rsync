@@ -8,3 +8,6 @@ filesystem trees for interoperability tests.
   `<client>_<server>_<transport>`.
 - `run_matrix.sh` runs a matrix of rsync 3.2.x client/server combinations over
   both SSH and rsync:// transports. Set `UPDATE=1` to regenerate goldens.
+
+The CI workflow executes `run_matrix.sh` as a required status check to ensure
+interoperability across supported rsync versions.
