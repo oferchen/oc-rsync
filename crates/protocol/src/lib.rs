@@ -1,3 +1,10 @@
+//! Core frame and message types for the rsync protocol.
+//!
+//! Messages are exchanged in several phases including version negotiation,
+//! file-list transmission, attribute exchange, progress updates and error
+//! reporting. Each phase corresponds to a [`Message`] variant encoded inside
+//! multiplexed [`Frame`] structures.
+
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::convert::TryFrom;
 use std::fmt;
@@ -92,6 +99,10 @@ pub enum Msg {
     Data = 1,
     Done = 2,
     KeepAlive = 3,
+    FileListEntry = 4,
+    Attributes = 5,
+    Error = 6,
+    Progress = 7,
 }
 
 /// Error returned when attempting to convert from an unknown message value.
@@ -115,12 +126,16 @@ impl From<UnknownMsg> for io::Error {
 impl TryFrom<u8> for Msg {
     type Error = UnknownMsg;
 
-    fn try_from(v: u8) -> Result<Self, Self::Error> {
+    fn try_from(v: u8) -> Result<Self, <Self as TryFrom<u8>>::Error> {
         match v {
             0 => Ok(Msg::Version),
             1 => Ok(Msg::Data),
             2 => Ok(Msg::Done),
             3 => Ok(Msg::KeepAlive),
+            4 => Ok(Msg::FileListEntry),
+            5 => Ok(Msg::Attributes),
+            6 => Ok(Msg::Error),
+            7 => Ok(Msg::Progress),
             other => Err(UnknownMsg(other)),
         }
     }
@@ -185,12 +200,22 @@ impl Frame {
 }
 
 /// High level messages encoded inside frames.
+///
+/// The rsync protocol progresses through a number of phases represented by
+/// these variants: after negotiating a version, peers exchange file list
+/// entries and associated attributes before transferring data blocks. During
+/// transfer, progress and error messages may be sent until a final [`Done`]
+/// message is emitted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
     Version(u32),
     Data(Vec<u8>),
     Done,
     KeepAlive,
+    FileListEntry(Vec<u8>),
+    Attributes(Vec<u8>),
+    Error(String),
+    Progress(u64),
 }
 
 impl Message {
@@ -236,6 +261,45 @@ impl Message {
                 };
                 Frame { header, payload }
             }
+            Message::FileListEntry(payload) => {
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::FileListEntry,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::Attributes(payload) => {
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::Attributes,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::Error(text) => {
+                let payload = text.into_bytes();
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::Error,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::Progress(v) => {
+                let mut payload = Vec::new();
+                payload.write_u64::<BigEndian>(v).unwrap();
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::Progress,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
         }
     }
 
@@ -266,6 +330,24 @@ impl Message {
                 }
                 Msg::Data => Ok(Message::Data(f.payload)),
                 Msg::Done => Ok(Message::Done),
+                Msg::FileListEntry => Ok(Message::FileListEntry(f.payload)),
+                Msg::Attributes => Ok(Message::Attributes(f.payload)),
+                Msg::Error => {
+                    let text = String::from_utf8(f.payload)
+                        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                    Ok(Message::Error(text))
+                }
+                Msg::Progress => {
+                    if f.payload.len() != 8 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "invalid progress payload",
+                        ));
+                    }
+                    let mut rdr = &f.payload[..];
+                    let v = rdr.read_u64::<BigEndian>()?;
+                    Ok(Message::Progress(v))
+                }
                 Msg::KeepAlive => Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "unexpected keepalive message",
