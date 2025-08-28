@@ -317,7 +317,13 @@ impl Sender {
 
         let src = File::open(path)?;
         let mut src_reader = BufReader::new(src);
-        let mut basis_reader: Box<dyn ReadSeek> = match File::open(dest) {
+        let basis_path = if self.opts.partial {
+            let tmp = dest.with_extension("partial");
+            if tmp.exists() { tmp } else { dest.to_path_buf() }
+        } else {
+            dest.to_path_buf()
+        };
+        let mut basis_reader: Box<dyn ReadSeek> = match File::open(&basis_path) {
             Ok(f) => Box::new(BufReader::new(f)),
             Err(_) => Box::new(Cursor::new(Vec::new())),
         };
@@ -388,17 +394,30 @@ impl Receiver {
         I: IntoIterator<Item = Result<Op>>,
     {
         self.state = ReceiverState::Applying;
-        let mut basis: Box<dyn ReadSeek> = match File::open(dest) {
+        let partial = dest.with_extension("partial");
+        let basis_path = if self.opts.partial && partial.exists() {
+            partial.clone()
+        } else {
+            dest.to_path_buf()
+        };
+        let tmp_dest = if self.opts.partial { &partial } else { dest };
+        let mut basis: Box<dyn ReadSeek> = match File::open(&basis_path) {
             Ok(f) => Box::new(f),
             Err(_) => Box::new(Cursor::new(Vec::new())),
         };
-        if let Some(parent) = dest.parent() {
+        if let Some(parent) = tmp_dest.parent() {
             fs::create_dir_all(parent)?;
         }
+
         let mut out = BufWriter::new(File::create(dest)?);
         let ops = delta.into_iter().map(|op_res| {
             let mut op = op_res?;
             if let Some(codec) = self.codec {
+
+        let mut out = BufWriter::new(File::create(tmp_dest)?);
+        if let Some(codec) = self.codec {
+            for op in &mut delta {
+
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
                         Codec::Zlib => Zlib::default().decompress(d).map_err(EngineError::from)?,
@@ -420,7 +439,14 @@ impl Receiver {
         });
         apply_delta(&mut basis, ops, &mut out, &self.opts)?;
         out.flush()?;
+        if self.opts.partial {
+            fs::rename(tmp_dest, dest)?;
+        }
         self.copy_metadata(src, dest)?;
+        if self.opts.progress {
+            let len = fs::metadata(dest)?.len();
+            eprintln!("{}: {} bytes", dest.display(), len);
+        }
         self.state = ReceiverState::Finished;
         Ok(())
     }
@@ -446,12 +472,46 @@ impl Receiver {
             if self.opts.owner || self.opts.group {
                 use nix::unistd::{chown, Gid, Uid};
                 let uid = if self.opts.owner {
+
                     Some(Uid::from_raw(meta.uid()))
+
+                    if self.opts.numeric_ids {
+                        Some(Uid::from_raw(meta.uid()))
+                    } else {
+                        use users::{get_user_by_name, get_user_by_uid};
+                        let mapped = get_user_by_uid(meta.uid())
+                            .and_then(|u| {
+                                u.name()
+                                    .to_str()
+                                    .and_then(|n| get_user_by_name(n))
+                                    .map(|u2| u2.uid())
+                            })
+                            .unwrap_or(meta.uid());
+                        Some(Uid::from_raw(mapped))
+                    }
+
                 } else {
                     None
                 };
                 let gid = if self.opts.group {
+
                     Some(Gid::from_raw(meta.gid()))
+
+                    if self.opts.numeric_ids {
+                        Some(Gid::from_raw(meta.gid()))
+                    } else {
+                        use users::{get_group_by_gid, get_group_by_name};
+                        let mapped = get_group_by_gid(meta.gid())
+                            .and_then(|g| {
+                                g.name()
+                                    .to_str()
+                                    .and_then(|n| get_group_by_name(n))
+                                    .map(|g2| g2.gid())
+                            })
+                            .unwrap_or(meta.gid());
+                        Some(Gid::from_raw(mapped))
+                    }
+
                 } else {
                     None
                 };
@@ -496,6 +556,9 @@ pub struct SyncOptions {
     pub sparse: bool,
     pub strong: StrongHash,
     pub compress_level: Option<i32>,
+    pub partial: bool,
+    pub progress: bool,
+    pub numeric_ids: bool,
 }
 
 impl Default for SyncOptions {
@@ -517,6 +580,9 @@ impl Default for SyncOptions {
             sparse: false,
             strong: StrongHash::Md5,
             compress_level: None,
+            partial: false,
+            progress: false,
+            numeric_ids: false,
         }
     }
 }

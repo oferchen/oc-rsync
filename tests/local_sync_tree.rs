@@ -31,9 +31,10 @@ fn sync_directory_tree() {
     fs::write(src.join("a.txt"), b"alpha").unwrap();
     fs::write(src.join("nested/b.txt"), b"beta").unwrap();
 
+    let src_arg = format!("{}/", src.display());
     Command::cargo_bin("rsync-rs")
         .unwrap()
-        .args(["--local", src.to_str().unwrap(), dst.to_str().unwrap()])
+        .args(["--local", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")

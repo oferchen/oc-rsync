@@ -7,11 +7,18 @@ use std::sync::{Arc, Mutex};
 use crate::{LocalPipeTransport, SshTransport, Transport};
 
 const SSH_IO_BUF_SIZE: usize = 32 * 1024;
+const SSH_STDERR_CAP: usize = 32 * 1024;
 
 /// Transport over the stdio of a spawned `ssh` process.
 pub struct SshStdioTransport {
     inner: LocalPipeTransport<BufReader<ChildStdout>, BufWriter<ChildStdin>>,
-    stderr: Arc<Mutex<Vec<u8>>>,
+    stderr: Arc<Mutex<CapturedStderr>>,
+}
+
+#[derive(Default)]
+struct CapturedStderr {
+    data: Vec<u8>,
+    truncated: bool,
 }
 
 impl SshStdioTransport {
@@ -41,16 +48,19 @@ impl SshStdioTransport {
 
         // Determine the known hosts file. Use the provided path or default to
         // the user's `~/.ssh/known_hosts` if available.
-        let known_hosts_path = known_hosts
-            .map(Path::to_path_buf)
-            .or_else(|| {
-                std::env::var("HOME")
-                    .ok()
-                    .map(|h| PathBuf::from(h).join(".ssh/known_hosts"))
-            });
+        let known_hosts_path = known_hosts.map(Path::to_path_buf).or_else(|| {
+            std::env::var("HOME")
+                .ok()
+                .map(|h| PathBuf::from(h).join(".ssh/known_hosts"))
+        });
 
-        let checking = if strict_host_key_checking { "yes" } else { "no" };
-        cmd.arg("-o").arg(format!("StrictHostKeyChecking={checking}"));
+        let checking = if strict_host_key_checking {
+            "yes"
+        } else {
+            "no"
+        };
+        cmd.arg("-o")
+            .arg(format!("StrictHostKeyChecking={checking}"));
         if let Some(path) = known_hosts_path {
             cmd.arg("-o")
                 .arg(format!("UserKnownHostsFile={}", path.display()));
@@ -82,15 +92,34 @@ impl SshStdioTransport {
             .take()
             .ok_or_else(|| io::Error::other("missing stderr"))?;
 
-        let stderr_buf = Arc::new(Mutex::new(Vec::new()));
+        let stderr_buf = Arc::new(Mutex::new(CapturedStderr::default()));
         let stderr_buf_clone = Arc::clone(&stderr_buf);
         std::thread::spawn(move || {
             let mut reader = BufReader::new(stderr);
             let mut buf = Vec::new();
-            if reader.read_to_end(&mut buf).is_ok() {
-                if let Ok(mut locked) = stderr_buf_clone.lock() {
-                    *locked = buf;
+            let mut chunk = [0u8; SSH_IO_BUF_SIZE];
+            let mut truncated = false;
+            loop {
+                match reader.read(&mut chunk) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        if buf.len() < SSH_STDERR_CAP {
+                            let remaining = SSH_STDERR_CAP - buf.len();
+                            let take = remaining.min(n);
+                            buf.extend_from_slice(&chunk[..take]);
+                            if n > take {
+                                truncated = true;
+                            }
+                        } else {
+                            truncated = true;
+                        }
+                    }
+                    Err(_) => break,
                 }
+            }
+            if let Ok(mut locked) = stderr_buf_clone.lock() {
+                locked.data = buf;
+                locked.truncated = truncated;
             }
         });
 
@@ -103,12 +132,14 @@ impl SshStdioTransport {
         })
     }
 
-    /// Return any data captured from stderr of the spawned process.
-    pub fn stderr(&self) -> Vec<u8> {
-        self.stderr
-            .lock()
-            .map(|buf| buf.clone())
-            .unwrap_or_default()
+    /// Return any data captured from stderr of the spawned process along with
+    /// a flag indicating if the data was truncated.
+    pub fn stderr(&self) -> (Vec<u8>, bool) {
+        if let Ok(buf) = self.stderr.lock() {
+            (buf.data.clone(), buf.truncated)
+        } else {
+            (Vec::new(), false)
+        }
     }
 
     /// Consume the transport returning the buffered reader and writer.

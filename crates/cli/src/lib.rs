@@ -3,11 +3,13 @@ use std::env;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use clap::{ArgAction, Parser};
 use compress::{available_codecs, Codec};
-use engine::{sync, EngineError, Result, Stats, SyncOptions, StrongHash};
+use engine::{sync, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
 use transport::{SshStdioTransport, TcpTransport, Transport};
@@ -82,7 +84,11 @@ struct ClientOpts {
     #[arg(short = 'z', long, help_heading = "Compression")]
     compress: bool,
     /// explicitly set compression level
-    #[arg(long = "compress-level", value_name = "NUM", help_heading = "Compression")]
+    #[arg(
+        long = "compress-level",
+        value_name = "NUM",
+        help_heading = "Compression"
+    )]
     compress_level: Option<i32>,
     /// enable modern zstd compression and BLAKE3 checksums
     #[arg(long, help_heading = "Compression")]
@@ -332,27 +338,6 @@ fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
 fn run_client(opts: ClientOpts) -> Result<()> {
     let matcher = build_matcher(&opts)?;
 
-    if opts.archive {
-        return Err(EngineError::Other(
-            "flag -a/--archive is not supported; see docs/differences.md".into(),
-        ));
-    }
-    if opts.relative {
-        return Err(EngineError::Other(
-            "flag -R/--relative is not supported; see docs/differences.md".into(),
-        ));
-    }
-    if opts.partial {
-        return Err(EngineError::Other(
-            "flag -P is not supported; see docs/differences.md".into(),
-        ));
-    }
-    if opts.numeric_ids {
-        return Err(EngineError::Other(
-            "flag --numeric-ids is not supported; see docs/differences.md".into(),
-        ));
-    }
-
     if let Some(cfg) = &opts.config {
         if !opts.quiet {
             println!("using config file {}", cfg.display());
@@ -381,20 +366,34 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         RemoteSpec::Local(p) => p.trailing_slash,
         RemoteSpec::Remote { path, .. } => path.trailing_slash,
     };
-    if !src_trailing {
-        let name = match &src {
-            RemoteSpec::Local(p) => p.path.file_name().map(|s| s.to_owned()),
-            RemoteSpec::Remote { path, .. } => path.path.file_name().map(|s| s.to_owned()),
+    let src_path = match &src {
+        RemoteSpec::Local(p) => &p.path,
+        RemoteSpec::Remote { path, .. } => &path.path,
+    };
+    if opts.relative {
+        let rel = if src_path.is_absolute() {
+            src_path
+                .strip_prefix(Path::new("/"))
+                .unwrap_or(src_path)
+        } else {
+            src_path
+        };
+        match &mut dst {
+            RemoteSpec::Local(p) => p.path.push(rel),
+            RemoteSpec::Remote { path, .. } => path.path.push(rel),
         }
-        .ok_or_else(|| EngineError::Other("source path missing file name".into()))?;
+    } else if !src_trailing {
+        let name = src_path
+            .file_name()
+            .map(|s| s.to_owned())
+            .ok_or_else(|| EngineError::Other("source path missing file name".into()))?;
         match &mut dst {
             RemoteSpec::Local(p) => p.path.push(&name),
             RemoteSpec::Remote { path, .. } => path.path.push(&name),
         }
     }
 
-    let compress =
-        opts.modern || opts.compress || opts.compress_level.map_or(false, |l| l > 0);
+    let compress = opts.modern || opts.compress || opts.compress_level.map_or(false, |l| l > 0);
     let sync_opts = SyncOptions {
         delete: opts.delete,
         checksum: opts.checksum,
@@ -404,14 +403,21 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         owner: opts.owner || opts.archive,
         group: opts.group || opts.archive,
         links: opts.links || opts.archive,
-        hard_links: opts.hard_links || opts.archive,
+        hard_links: opts.hard_links,
         devices: opts.devices || opts.archive,
         specials: opts.specials || opts.archive,
         xattrs: opts.xattrs,
         acls: opts.acls,
         sparse: false,
-        strong: if opts.modern { StrongHash::Blake3 } else { StrongHash::Md5 },
+        strong: if opts.modern {
+            StrongHash::Blake3
+        } else {
+            StrongHash::Md5
+        },
         compress_level: opts.compress_level,
+        partial: opts.partial,
+        progress: opts.partial,
+        numeric_ids: opts.numeric_ids,
     };
     let stats = if opts.local {
         match (src, dst) {
@@ -438,9 +444,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
-                    .map_err(|e| EngineError::Other(e.to_string()))?;
+                .map_err(|e| EngineError::Other(e.to_string()))?;
                 let codecs = handshake_with_peer(&mut session)?;
-                let err = session.stderr();
+                let (err, _) = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
                 }
@@ -453,9 +459,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
-                    .map_err(|e| EngineError::Other(e.to_string()))?;
+                .map_err(|e| EngineError::Other(e.to_string()))?;
                 let codecs = handshake_with_peer(&mut session)?;
-                let err = session.stderr();
+                let (err, _) = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
                 }
@@ -495,11 +501,11 @@ fn run_client(opts: ClientOpts) -> Result<()> {
 
                 pipe_transports(&mut src_session, &mut dst_session)
                     .map_err(|e| EngineError::Other(e.to_string()))?;
-                let src_err = src_session.stderr();
+                let (src_err, _) = src_session.stderr();
                 if !src_err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&src_err).into()));
                 }
-                let dst_err = dst_session.stderr();
+                let (dst_err, _) = dst_session.stderr();
                 if !dst_err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&dst_err).into()));
                 }
@@ -593,6 +599,16 @@ fn authenticate(t: &mut TcpTransport) -> std::io::Result<Vec<String>> {
     if !auth_path.exists() {
         return Ok(Vec::new());
     }
+    #[cfg(unix)]
+    {
+        let mode = fs::metadata(auth_path)?.permissions().mode();
+        if mode & 0o077 != 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "auth file permissions are too open",
+            ));
+        }
+    }
     let contents = fs::read_to_string(auth_path)?;
     let mut buf = [0u8; 256];
     let n = t.receive(&mut buf)?;
@@ -672,5 +688,37 @@ mod tests {
         assert!(opts.compress);
         assert!(opts.stats);
         assert_eq!(opts.config, Some(PathBuf::from("file")));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn rejects_insecure_auth_file() {
+        use std::net::{TcpListener, TcpStream};
+        use std::os::unix::fs::PermissionsExt;
+        use std::{env, fs};
+        use tempfile::tempdir;
+        use transport::TcpTransport;
+
+        let dir = tempdir().unwrap();
+        let auth_path = dir.path().join("auth");
+        fs::write(&auth_path, "tok user").unwrap();
+        fs::set_permissions(&auth_path, fs::Permissions::from_mode(0o644)).unwrap();
+
+        let prev = env::current_dir().unwrap();
+        env::set_current_dir(dir.path()).unwrap();
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let handle = std::thread::spawn(move || {
+            let (_s, _) = listener.accept().unwrap();
+        });
+        let stream = TcpStream::connect(addr).unwrap();
+        let mut t = TcpTransport::from_stream(stream);
+
+        let err = authenticate(&mut t).unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+
+        env::set_current_dir(prev).unwrap();
+        handle.join().unwrap();
     }
 }
