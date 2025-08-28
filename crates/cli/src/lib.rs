@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use clap::{ArgAction, Parser};
 use compress::{available_codecs, Codec};
-use engine::{sync, EngineError, Result, SyncOptions, Stats};
+use engine::{sync, EngineError, Result, Stats, SyncOptions};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
 use transport::{SshStdioTransport, TcpTransport, Transport};
@@ -186,7 +186,9 @@ fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
     let mut ver_buf = [0u8; 4];
     let mut read = 0;
     while read < ver_buf.len() {
-        let n = transport.receive(&mut ver_buf[read..]).map_err(EngineError::from)?;
+        let n = transport
+            .receive(&mut ver_buf[read..])
+            .map_err(EngineError::from)?;
         if n == 0 {
             return Err(EngineError::Other("failed to read version".into()));
         }
@@ -200,17 +202,19 @@ fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
         .send(&[codecs.len() as u8])
         .map_err(EngineError::from)?;
     for c in codecs {
-        transport
-            .send(&[*c as u8])
-            .map_err(EngineError::from)?;
+        transport.send(&[*c as u8]).map_err(EngineError::from)?;
     }
 
     let mut len_buf = [0u8; 1];
     let mut read = 0;
     while read < 1 {
-        let n = transport.receive(&mut len_buf[read..]).map_err(EngineError::from)?;
+        let n = transport
+            .receive(&mut len_buf[read..])
+            .map_err(EngineError::from)?;
         if n == 0 {
-            return Err(EngineError::Other("failed to read codec list length".into()));
+            return Err(EngineError::Other(
+                "failed to read codec list length".into(),
+            ));
         }
         read += n;
     }
@@ -218,7 +222,9 @@ fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
     let mut buf = vec![0u8; len];
     let mut off = 0;
     while off < len {
-        let n = transport.receive(&mut buf[off..]).map_err(EngineError::from)?;
+        let n = transport
+            .receive(&mut buf[off..])
+            .map_err(EngineError::from)?;
         if n == 0 {
             return Err(EngineError::Other("failed to read codec list".into()));
         }
@@ -275,7 +281,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
     } else {
         match (src, dst) {
             (RemoteSpec::Local(_), RemoteSpec::Local(_)) => {
-                return Err(EngineError::Other("local sync requires --local flag".into()))
+                return Err(EngineError::Other(
+                    "local sync requires --local flag".into(),
+                ))
             }
             (RemoteSpec::Remote { host, path: src }, RemoteSpec::Local(dst)) => {
                 let mut session = SshStdioTransport::spawn_server(&host, [src.as_os_str()])
@@ -314,16 +322,12 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     return Err(EngineError::Other("remote path missing".to_string()));
                 }
 
-                let mut src_session = SshStdioTransport::spawn_server(
-                    &src_host,
-                    [src_path.as_os_str()],
-                )
-                .map_err(|e| EngineError::Other(e.to_string()))?;
-                let mut dst_session = SshStdioTransport::spawn_server(
-                    &dst_host,
-                    [dst_path.as_os_str()],
-                )
-                .map_err(|e| EngineError::Other(e.to_string()))?;
+                let mut src_session =
+                    SshStdioTransport::spawn_server(&src_host, [src_path.as_os_str()])
+                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                let mut dst_session =
+                    SshStdioTransport::spawn_server(&dst_host, [dst_path.as_os_str()])
+                        .map_err(|e| EngineError::Other(e.to_string()))?;
 
                 pipe_transports(&mut src_session, &mut dst_session)
                     .map_err(|e| EngineError::Other(e.to_string()))?;
@@ -392,33 +396,62 @@ fn handle_connection(
     transport.send(&LATEST_VERSION.to_be_bytes())?;
     negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
 
-    authenticate(transport)?;
+    let allowed = authenticate(transport).map_err(EngineError::from)?;
 
     let mut name_buf = [0u8; 256];
     let n = transport.receive(&mut name_buf)?;
     let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
     if let Some(path) = modules.get(&name) {
+        if !allowed.is_empty() && !allowed.iter().any(|m| m == &name) {
+            return Err(EngineError::Other("unauthorized module".into()));
+        }
         #[cfg(unix)]
         {
             use nix::unistd::{chdir, chroot, setgid, setuid, Gid, Uid};
-            let _ = chroot(path);
-            let _ = chdir("/");
-            let _ = setgid(Gid::from_raw(65534));
-            let _ = setuid(Uid::from_raw(65534));
+            chroot(path).map_err(|e| EngineError::Other(e.to_string()))?;
+            chdir("/").map_err(|e| EngineError::Other(e.to_string()))?;
+            setgid(Gid::from_raw(65534)).map_err(|e| EngineError::Other(e.to_string()))?;
+            setuid(Uid::from_raw(65534)).map_err(|e| EngineError::Other(e.to_string()))?;
         }
-        let _ = sync(
+        sync(
             Path::new("."),
             Path::new("."),
             &Matcher::default(),
             available_codecs(),
             &SyncOptions::default(),
-        );
+        )?;
     }
     Ok(())
 }
 
-fn authenticate(_t: &mut TcpTransport) -> std::io::Result<()> {
-    Ok(())
+fn authenticate(t: &mut TcpTransport) -> std::io::Result<Vec<String>> {
+    let auth_path = Path::new("auth");
+    if !auth_path.exists() {
+        return Ok(Vec::new());
+    }
+    let contents = fs::read_to_string(auth_path)?;
+    let mut buf = [0u8; 256];
+    let n = t.receive(&mut buf)?;
+    if n == 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "missing token",
+        ));
+    }
+    let token = String::from_utf8_lossy(&buf[..n]).trim().to_string();
+    for line in contents.lines() {
+        let mut parts = line.split_whitespace();
+        if let Some(tok) = parts.next() {
+            if tok == token {
+                return Ok(parts.map(|s| s.to_string()).collect());
+            }
+        }
+    }
+    let _ = t.send(b"@ERROR: access denied");
+    Err(io::Error::new(
+        io::ErrorKind::PermissionDenied,
+        "unauthorized",
+    ))
 }
 
 fn run_probe(opts: ProbeOpts) -> Result<()> {
