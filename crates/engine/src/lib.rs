@@ -709,8 +709,14 @@ pub fn sync(
                             } else {
                                 SFlag::S_IFBLK
                             };
-                            let perm = Mode::from_bits_truncate(meta.mode() & 0o777);
-                            mknod(&dest_path, kind, perm, meta.rdev())
+                            let perm_bits: u16 = u16::try_from(meta.mode() & 0o777)
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            let perm = Mode::from_bits_truncate(u32::from(perm_bits));
+                            let rdev: i32 = i32::try_from(meta.rdev())
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            let rdev_u64: u64 = u64::try_from(rdev)
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            mknod(&dest_path, kind, perm, rdev_u64)
                                 .map_err(|e| EngineError::Other(e.to_string()))?;
                         } else if file_type.is_fifo() && opts.specials {
                             use nix::sys::stat::Mode;
