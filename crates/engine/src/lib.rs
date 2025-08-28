@@ -292,6 +292,17 @@ impl Sender {
         Ok(self.cfg.checksum(&data).strong)
     }
 
+    fn metadata_unchanged(&self, path: &Path, dest: &Path) -> bool {
+        if let (Ok(src_meta), Ok(dst_meta)) = (fs::metadata(path), fs::metadata(dest)) {
+            if src_meta.len() == dst_meta.len() {
+                if let (Ok(sm), Ok(dm)) = (src_meta.modified(), dst_meta.modified()) {
+                    return sm == dm;
+                }
+            }
+        }
+        false
+    }
+
     fn start(&mut self) {
         self.state = SenderState::Walking;
     }
@@ -309,22 +320,22 @@ impl Sender {
                 if src_sum == dst_sum {
                     return Ok(false);
                 }
+            } else if self.metadata_unchanged(path, dest) {
+                return Ok(false);
             }
-        } else if let (Ok(src_meta), Ok(dst_meta)) = (fs::metadata(path), fs::metadata(dest)) {
-            if src_meta.len() == dst_meta.len() {
-                if let (Ok(sm), Ok(dm)) = (src_meta.modified(), dst_meta.modified()) {
-                    if sm == dm {
-                        return Ok(false);
-                    }
-                }
-            }
+        } else if self.metadata_unchanged(path, dest) {
+            return Ok(false);
         }
 
         let src = File::open(path)?;
         let mut src_reader = BufReader::new(src);
         let basis_path = if self.opts.partial {
             let tmp = dest.with_extension("partial");
-            if tmp.exists() { tmp } else { dest.to_path_buf() }
+            if tmp.exists() {
+                tmp
+            } else {
+                dest.to_path_buf()
+            }
         } else {
             dest.to_path_buf()
         };
