@@ -221,7 +221,8 @@ pub fn sync(src: &Path, dst: &Path) -> Result<()> {
     let mut sender = Sender::new(1024);
     let mut receiver = Receiver::new();
     sender.start();
-    for (path, file_type) in walk(src) {
+    for entry in walk(src) {
+        let (path, file_type) = entry?;
         if let Ok(rel) = path.strip_prefix(src) {
             let dest_path = dst.join(rel);
             if file_type.is_file() {
