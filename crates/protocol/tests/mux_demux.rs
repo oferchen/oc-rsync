@@ -58,6 +58,26 @@ fn keepalive_and_timeout() {
 }
 
 #[test]
+fn round_robin_fairness() {
+    let mut mux = Mux::new(Duration::from_secs(1));
+
+    let tx1 = mux.register_channel(1);
+    let tx2 = mux.register_channel(2);
+
+    tx1.send(Message::Data(b"a1".to_vec())).unwrap();
+    tx1.send(Message::Data(b"a2".to_vec())).unwrap();
+    tx2.send(Message::Data(b"b1".to_vec())).unwrap();
+    tx2.send(Message::Data(b"b2".to_vec())).unwrap();
+
+    let mut order = Vec::new();
+    for _ in 0..4 {
+        let frame = mux.poll().expect("frame");
+        order.push(frame.header.channel);
+    }
+
+    assert_eq!(order, vec![1, 2, 1, 2]);
+}
+
 fn unregister_channel_rejects_frames() {
     let mut demux = Demux::new(Duration::from_millis(100));
 

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
@@ -13,20 +13,26 @@ struct Channel {
 /// liveness.
 pub struct Demux {
     timeout: Duration,
-    channels: HashMap<u16, Channel>,
+    channels: IndexMap<u16, Channel>,
 }
 
 impl Demux {
     /// Create a new demultiplexer with the specified peer timeout.
     pub fn new(timeout: Duration) -> Self {
-        Demux { timeout, channels: HashMap::new() }
+        Demux {
+            timeout,
+            channels: IndexMap::new(),
+        }
     }
 
     /// Register a channel and obtain a [`Receiver`] for reading decoded
     /// messages.
     pub fn register_channel(&mut self, id: u16) -> Receiver<Message> {
         let (tx, rx) = mpsc::channel();
-        let ch = Channel { sender: tx, last_recv: Instant::now() };
+        let ch = Channel {
+            sender: tx,
+            last_recv: Instant::now(),
+        };
         self.channels.insert(id, ch);
         rx
     }
@@ -53,13 +59,16 @@ impl Demux {
         if let Some(ch) = self.channels.get_mut(&id) {
             ch.last_recv = Instant::now();
             if msg != Message::KeepAlive {
-                ch.sender
-                    .send(msg)
-                    .map_err(|_| std::io::Error::new(std::io::ErrorKind::BrokenPipe, "channel closed"))?;
+                ch.sender.send(msg).map_err(|_| {
+                    std::io::Error::new(std::io::ErrorKind::BrokenPipe, "channel closed")
+                })?;
             }
             Ok(())
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "unknown channel"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "unknown channel",
+            ))
         }
     }
 
@@ -78,4 +87,3 @@ impl Demux {
         Ok(())
     }
 }
-

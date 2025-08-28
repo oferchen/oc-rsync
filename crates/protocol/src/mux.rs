@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::time::{Duration, Instant};
 
@@ -19,7 +19,8 @@ struct Channel {
 /// is emitted.
 pub struct Mux {
     keepalive: Duration,
-    channels: HashMap<u16, Channel>,
+    channels: IndexMap<u16, Channel>,
+    next: usize,
 }
 
 impl Mux {
@@ -27,7 +28,8 @@ impl Mux {
     pub fn new(keepalive: Duration) -> Self {
         Mux {
             keepalive,
-            channels: HashMap::new(),
+            channels: IndexMap::new(),
+            next: 0,
         }
     }
 
@@ -58,15 +60,25 @@ impl Mux {
     pub fn poll(&mut self) -> Option<Frame> {
         let now = Instant::now();
 
-        for (&id, ch) in self.channels.iter_mut() {
+        if self.channels.is_empty() {
+            return None;
+        }
+
+        let len = self.channels.len();
+        for offset in 0..len {
+            let idx = (self.next + offset) % len;
+            let (id, ch) = self.channels.get_index_mut(idx).expect("index in range");
+            let id = *id;
             match ch.receiver.try_recv() {
                 Ok(msg) => {
                     ch.last_sent = now;
+                    self.next = (idx + 1) % len;
                     return Some(msg.into_frame(id));
                 }
                 Err(TryRecvError::Empty) => {
                     if now.duration_since(ch.last_sent) >= self.keepalive {
                         ch.last_sent = now;
+                        self.next = (idx + 1) % len;
                         return Some(Message::KeepAlive.into_frame(id));
                     }
                 }
@@ -75,6 +87,7 @@ impl Mux {
                     // keepalives until the channel is dropped.
                     if now.duration_since(ch.last_sent) >= self.keepalive {
                         ch.last_sent = now;
+                        self.next = (idx + 1) % len;
                         return Some(Message::KeepAlive.into_frame(id));
                     }
                 }
