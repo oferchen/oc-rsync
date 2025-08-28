@@ -34,7 +34,8 @@
 | --- | --- | --- | :---: | --- | :---: |
 | -z | --compress | compress file data during the transfer | yes |  | no |
 |  | --compress-choice=STR | choose the compression algorithm (aka --zc) | no |  | no |
-|  | --compress-level=NUM | explicitly set compression level (aka --zl) | no |  | no |
+|  | --compress-level=NUM | explicitly set compression level (aka --zl) | yes |  | no |
+|  | --modern | enable zstd compression and BLAKE3 checksums | yes | rsync has no equivalent | yes |
 |  | --skip-compress=LIST | skip compressing files with suffix in LIST | no |  | no |
 
 ## Daemon

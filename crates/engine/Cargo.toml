@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 thiserror = "1"
-checksums = { path = "../checksums" }
+checksums = { path = "../checksums", features = ["blake3"] }
 walk = { path = "../walk" }
 filters = { path = "../filters" }
 compress = { path = "../compress" }

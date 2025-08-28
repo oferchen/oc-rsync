@@ -17,11 +17,11 @@ pub enum Codec {
 pub fn available_codecs() -> &'static [Codec] {
     #[cfg(feature = "lz4")]
     {
-        &[Codec::Zstd, Codec::Lz4, Codec::Zlib]
+        &[Codec::Zlib, Codec::Zstd, Codec::Lz4]
     }
     #[cfg(not(feature = "lz4"))]
     {
-        &[Codec::Zstd, Codec::Zlib]
+        &[Codec::Zlib, Codec::Zstd]
     }
 }
 
@@ -46,12 +46,29 @@ pub fn negotiate_codec(local: &[Codec], remote: &[Codec]) -> Option<Codec> {
 }
 
 /// Zlib/Deflate codec adapter.
-pub struct Zlib;
+pub struct Zlib {
+    level: i32,
+}
+
+impl Zlib {
+    /// Create a new zlib codec with the given compression level.
+    pub fn new(level: i32) -> Self {
+        Self { level }
+    }
+}
+
+impl Default for Zlib {
+    fn default() -> Self {
+        Self { level: 6 }
+    }
+}
 
 impl Compressor for Zlib {
     fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
-        let mut encoder =
-            flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+        let mut encoder = flate2::write::ZlibEncoder::new(
+            Vec::new(),
+            flate2::Compression::new(self.level as u32),
+        );
         encoder.write_all(data)?;
         encoder.finish()
     }
@@ -67,11 +84,26 @@ impl Decompressor for Zlib {
 }
 
 /// Zstandard codec adapter.
-pub struct Zstd;
+pub struct Zstd {
+    level: i32,
+}
+
+impl Zstd {
+    /// Create a new zstd codec with the given compression level.
+    pub fn new(level: i32) -> Self {
+        Self { level }
+    }
+}
+
+impl Default for Zstd {
+    fn default() -> Self {
+        Self { level: 0 }
+    }
+}
 
 impl Compressor for Zstd {
     fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
-        let mut encoder = zstd::stream::Encoder::new(Vec::new(), 0)?;
+        let mut encoder = zstd::stream::Encoder::new(Vec::new(), self.level)?;
         encoder.write_all(data)?;
         encoder.finish()
     }

@@ -6,9 +6,10 @@ use std::path::Path;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
+pub use checksums::StrongHash;
 #[cfg(feature = "lz4")]
 use compress::Lz4;
-use compress::{available_codecs, negotiate_codec, Codec, Compressor, Decompressor, Zlib, Zstd};
+use compress::{available_codecs, Codec, Compressor, Decompressor, Zlib, Zstd};
 use filters::Matcher;
 use thiserror::Error;
 
@@ -228,7 +229,7 @@ impl Sender {
     pub fn new(block_size: usize, matcher: Matcher, codec: Option<Codec>, opts: SyncOptions) -> Self {
         Self {
             state: SenderState::Idle,
-            cfg: ChecksumConfigBuilder::new().build(),
+            cfg: ChecksumConfigBuilder::new().strong(opts.strong).build(),
             block_size,
             _matcher: matcher,
             codec,
@@ -281,8 +282,14 @@ impl Sender {
             for op in &mut delta {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
-                        Codec::Zlib => Zlib.compress(d).map_err(EngineError::from)?,
-                        Codec::Zstd => Zstd.compress(d).map_err(EngineError::from)?,
+                        Codec::Zlib => {
+                            let lvl = self.opts.compress_level.unwrap_or(6);
+                            Zlib::new(lvl).compress(d).map_err(EngineError::from)?
+                        }
+                        Codec::Zstd => {
+                            let lvl = self.opts.compress_level.unwrap_or(0);
+                            Zstd::new(lvl).compress(d).map_err(EngineError::from)?
+                        }
                         Codec::Lz4 => {
                             #[cfg(feature = "lz4")]
                             {
@@ -338,8 +345,8 @@ impl Receiver {
             for op in &mut delta {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
-                        Codec::Zlib => Zlib.decompress(d).map_err(EngineError::from)?,
-                        Codec::Zstd => Zstd.decompress(d).map_err(EngineError::from)?,
+                        Codec::Zlib => Zlib::default().decompress(d).map_err(EngineError::from)?,
+                        Codec::Zstd => Zstd::default().decompress(d).map_err(EngineError::from)?,
                         Codec::Lz4 => {
                             #[cfg(feature = "lz4")]
                             {
@@ -406,7 +413,7 @@ impl Receiver {
 }
 
 /// Options controlling synchronization behavior.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct SyncOptions {
     pub delete: bool,
     pub checksum: bool,
@@ -422,6 +429,31 @@ pub struct SyncOptions {
     pub xattrs: bool,
     pub acls: bool,
     pub sparse: bool,
+    pub strong: StrongHash,
+    pub compress_level: Option<i32>,
+}
+
+impl Default for SyncOptions {
+    fn default() -> Self {
+        Self {
+            delete: false,
+            checksum: false,
+            compress: false,
+            perms: false,
+            times: false,
+            owner: false,
+            group: false,
+            links: false,
+            hard_links: false,
+            devices: false,
+            specials: false,
+            xattrs: false,
+            acls: false,
+            sparse: false,
+            strong: StrongHash::Md5,
+            compress_level: None,
+        }
+    }
 }
 
 /// Statistics produced during synchronization.
@@ -430,6 +462,20 @@ pub struct Stats {
     pub files_transferred: usize,
     pub files_deleted: usize,
     pub bytes_transferred: u64,
+}
+
+/// Choose the compression codec to use based on local preferences and remote support.
+pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
+    if !opts.compress || opts.compress_level == Some(0) {
+        return None;
+    }
+    if remote.contains(&Codec::Zstd) && available_codecs().contains(&Codec::Zstd) {
+        Some(Codec::Zstd)
+    } else if remote.contains(&Codec::Zlib) && available_codecs().contains(&Codec::Zlib) {
+        Some(Codec::Zlib)
+    } else {
+        None
+    }
 }
 
 /// Synchronize the contents of directory `src` into `dst`.
@@ -441,11 +487,7 @@ pub fn sync(
     opts: &SyncOptions,
 ) -> Result<Stats> {
     // Determine the codec to use by negotiating with the remote peer.
-    let codec = if opts.compress {
-        negotiate_codec(available_codecs(), remote)
-    } else {
-        None
-    };
+    let codec = select_codec(remote, opts);
     // Clone the matcher and attach the source root so per-directory filter files
     // can be located during the walk.
     let matcher = matcher.clone().with_root(src.to_path_buf());

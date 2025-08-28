@@ -1,7 +1,7 @@
 use std::fs;
 
 use compress::Codec;
-use engine::{sync, SyncOptions};
+use engine::{select_codec, sync, SyncOptions};
 use filters::Matcher;
 use tempfile::tempdir;
 
@@ -58,4 +58,13 @@ fn lz4_roundtrip() {
     )
     .unwrap();
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
+}
+
+#[test]
+fn codec_selection_prefers_zstd() {
+    let opts = SyncOptions { compress: true, ..Default::default() };
+    assert_eq!(select_codec(&[Codec::Zlib, Codec::Zstd], &opts), Some(Codec::Zstd));
+    assert_eq!(select_codec(&[Codec::Zlib], &opts), Some(Codec::Zlib));
+    let opts = SyncOptions { compress: true, compress_level: Some(0), ..Default::default() };
+    assert_eq!(select_codec(&[Codec::Zstd], &opts), None);
 }
