@@ -17,6 +17,8 @@ fn remote_to_remote_pipes_data() {
     let (mut src_reader, _) = src_session.into_inner();
     let (_, mut dst_writer) = dst_session.into_inner();
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
+    // Ensure the destination process flushes and exits before reading the file.
+    drop(dst_writer);
 
     let out = fs::read(&dst_file).unwrap();
     assert_eq!(out, b"hello remote\n");
