@@ -105,9 +105,18 @@ struct ClientOpts {
     /// enable modern zstd compression and BLAKE3 checksums
     #[arg(long, help_heading = "Compression")]
     modern: bool,
+    /// keep partially transferred files
+    #[arg(long, help_heading = "Misc")]
+    partial: bool,
+    /// put a partially transferred file into DIR
+    #[arg(long = "partial-dir", value_name = "DIR", help_heading = "Misc")]
+    partial_dir: Option<PathBuf>,
+    /// show progress during transfer
+    #[arg(long, help_heading = "Misc")]
+    progress: bool,
     /// keep partially transferred files and show progress
     #[arg(short = 'P', help_heading = "Misc")]
-    partial: bool,
+    partial_progress: bool,
     /// don't map uid/gid values by user/group name
     #[arg(long, help_heading = "Attributes")]
     numeric_ids: bool,
@@ -434,8 +443,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
             StrongHash::Md5
         },
         compress_level: opts.compress_level,
-        partial: opts.partial,
-        progress: opts.partial,
+        partial: opts.partial || opts.partial_progress,
+        progress: opts.progress || opts.partial_progress,
+        partial_dir: opts.partial_dir.clone(),
         numeric_ids: opts.numeric_ids,
     };
     let stats = if opts.local {
