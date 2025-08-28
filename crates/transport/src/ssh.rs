@@ -1,5 +1,6 @@
 use std::ffi::OsStr;
 use std::io::{self, BufReader, BufWriter, Read};
+use std::path::{Path, PathBuf};
 use std::process::{ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{Arc, Mutex};
 
@@ -26,16 +27,40 @@ impl SshStdioTransport {
     }
 
     /// Spawn a real `ssh` process targeting an rsync server and capture stderr.
-    pub fn spawn_server<I, S>(host: &str, server_args: I) -> io::Result<Self>
+    pub fn spawn_server<I, S>(
+        host: &str,
+        server_args: I,
+        known_hosts: Option<&Path>,
+        strict_host_key_checking: bool,
+    ) -> io::Result<Self>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
         let mut cmd = Command::new("ssh");
+
+        // Determine the known hosts file. Use the provided path or default to
+        // the user's `~/.ssh/known_hosts` if available.
+        let known_hosts_path = known_hosts
+            .map(Path::to_path_buf)
+            .or_else(|| {
+                std::env::var("HOME")
+                    .ok()
+                    .map(|h| PathBuf::from(h).join(".ssh/known_hosts"))
+            });
+
+        let checking = if strict_host_key_checking { "yes" } else { "no" };
+        cmd.arg("-o").arg(format!("StrictHostKeyChecking={checking}"));
+        if let Some(path) = known_hosts_path {
+            cmd.arg("-o")
+                .arg(format!("UserKnownHostsFile={}", path.display()));
+        }
+
         cmd.arg(host);
         cmd.arg("rsync");
         cmd.arg("--server");
         cmd.args(server_args);
+
         Self::spawn_from_command(cmd)
     }
 
