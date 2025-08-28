@@ -10,3 +10,4 @@ protocol = { path = "../protocol" }
 filters = { path = "../filters" }
 transport = { path = "../transport" }
 nix = { version = "0.27", features = ["fs", "user"] }
+compress = { path = "../compress" }

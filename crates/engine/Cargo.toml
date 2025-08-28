@@ -8,6 +8,8 @@ thiserror = "1"
 checksums = { path = "../checksums" }
 walk = { path = "../walk" }
 filters = { path = "../filters" }
+compress = { path = "../compress" }
 
 [dev-dependencies]
 tempfile = "3"
+compress = { path = "../compress" }

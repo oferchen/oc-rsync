@@ -6,6 +6,7 @@ use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 
 use clap::{ArgAction, Parser};
+use compress::available_codecs;
 use engine::{sync, EngineError, Result};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
@@ -211,7 +212,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
     if opts.local {
         match (src, dst) {
             (RemoteSpec::Local(src), RemoteSpec::Local(dst)) => {
-                sync(&src, &dst, &matcher)?;
+                sync(&src, &dst, &matcher, available_codecs())?;
                 Ok(())
             }
             _ => Err(EngineError::Other("local sync requires local paths".into())),
@@ -222,11 +223,11 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 "local sync requires --local flag".into(),
             )),
             (RemoteSpec::Remote { path: src, .. }, RemoteSpec::Local(dst)) => {
-                sync(&src, &dst, &matcher)?;
+                sync(&src, &dst, &matcher, available_codecs())?;
                 Ok(())
             }
             (RemoteSpec::Local(src), RemoteSpec::Remote { path: dst, .. }) => {
-                sync(&src, &dst, &matcher)?;
+                sync(&src, &dst, &matcher, available_codecs())?;
                 Ok(())
             }
             (
@@ -318,7 +319,7 @@ fn handle_connection(
             let _ = setgid(Gid::from_raw(65534));
             let _ = setuid(Uid::from_raw(65534));
         }
-        let _ = sync(Path::new("."), Path::new("."), &Matcher::default());
+        let _ = sync(Path::new("."), Path::new("."), &Matcher::default(), available_codecs());
     }
     Ok(())
 }

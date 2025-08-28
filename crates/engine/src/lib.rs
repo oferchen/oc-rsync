@@ -4,6 +4,7 @@ use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
+use compress::{available_codecs, negotiate_codec, Codec, Compressor, Decompressor, Lz4, Zlib, Zstd};
 use filters::Matcher;
 use thiserror::Error;
 
@@ -158,15 +159,17 @@ pub struct Sender {
     cfg: ChecksumConfig,
     block_size: usize,
     matcher: Matcher,
+    codec: Codec,
 }
 
 impl Sender {
-    pub fn new(block_size: usize, matcher: Matcher) -> Self {
+    pub fn new(block_size: usize, matcher: Matcher, codec: Codec) -> Self {
         Self {
             state: SenderState::Idle,
             cfg: ChecksumConfigBuilder::new().build(),
             block_size,
             matcher,
+            codec,
         }
     }
 
@@ -186,12 +189,21 @@ impl Sender {
             Ok(f) => Box::new(BufReader::new(f)),
             Err(_) => Box::new(Cursor::new(Vec::new())),
         };
-        let delta = compute_delta(
+        let mut delta = compute_delta(
             &self.cfg,
             &mut basis_reader,
             &mut src_reader,
             self.block_size,
         )?;
+        for op in &mut delta {
+            if let Op::Data(ref mut d) = op {
+                *d = match self.codec {
+                    Codec::Zlib => Zlib.compress(d).map_err(EngineError::from)?,
+                    Codec::Zstd => Zstd.compress(d).map_err(EngineError::from)?,
+                    Codec::Lz4 => Lz4.compress(d).map_err(EngineError::from)?,
+                };
+            }
+        }
         recv.apply(dest, delta)
     }
 }
@@ -199,22 +211,24 @@ impl Sender {
 /// Receiver responsible for applying deltas to the destination tree.
 pub struct Receiver {
     state: ReceiverState,
+    codec: Codec,
 }
 
 impl Default for Receiver {
     fn default() -> Self {
-        Self::new()
+        Self::new(Codec::Zlib)
     }
 }
 
 impl Receiver {
-    pub fn new() -> Self {
+    pub fn new(codec: Codec) -> Self {
         Self {
             state: ReceiverState::Idle,
+            codec,
         }
     }
 
-    fn apply(&mut self, dest: &Path, delta: Vec<Op>) -> Result<()> {
+    fn apply(&mut self, dest: &Path, mut delta: Vec<Op>) -> Result<()> {
         self.state = ReceiverState::Applying;
         let mut basis: Box<dyn ReadSeek> = match File::open(dest) {
             Ok(f) => Box::new(f),
@@ -224,6 +238,15 @@ impl Receiver {
             fs::create_dir_all(parent)?;
         }
         let mut out = BufWriter::new(File::create(dest)?);
+        for op in &mut delta {
+            if let Op::Data(ref mut d) = op {
+                *d = match self.codec {
+                    Codec::Zlib => Zlib.decompress(d).map_err(EngineError::from)?,
+                    Codec::Zstd => Zstd.decompress(d).map_err(EngineError::from)?,
+                    Codec::Lz4 => Lz4.decompress(d).map_err(EngineError::from)?,
+                };
+            }
+        }
         apply_delta(&mut basis, &delta, &mut out)?;
         out.flush()?;
         self.state = ReceiverState::Finished;
@@ -232,12 +255,15 @@ impl Receiver {
 }
 
 /// Synchronize the contents of directory `src` into `dst`.
-pub fn sync(src: &Path, dst: &Path, matcher: &Matcher) -> Result<()> {
+pub fn sync(src: &Path, dst: &Path, matcher: &Matcher, remote: &[Codec]) -> Result<()> {
+    // Determine the codec to use by negotiating with the remote peer.
+    let local = available_codecs();
+    let codec = negotiate_codec(local, remote).unwrap_or(Codec::Zlib);
     // Clone the matcher and attach the source root so per-directory filter files
     // can be located during the walk.
     let matcher = matcher.clone().with_root(src.to_path_buf());
-    let mut sender = Sender::new(1024, matcher.clone());
-    let mut receiver = Receiver::new();
+    let mut sender = Sender::new(1024, matcher.clone(), codec);
+    let mut receiver = Receiver::new(codec);
     sender.start();
     for entry in walk(src) {
         let (path, file_type) = entry.map_err(|e| EngineError::Other(e.to_string()))?;
@@ -367,7 +393,7 @@ mod tests {
         fs::write(src.join("a/file1.txt"), b"hello").unwrap();
         fs::write(src.join("file2.txt"), b"world").unwrap();
 
-        sync(&src, &dst, &Matcher::default()).unwrap();
+        sync(&src, &dst, &Matcher::default(), available_codecs()).unwrap();
         assert_eq!(fs::read(dst.join("a/file1.txt")).unwrap(), b"hello");
         assert_eq!(fs::read(dst.join("file2.txt")).unwrap(), b"world");
     }
@@ -384,8 +410,8 @@ mod tests {
         let outside = tmp.path().join("outside.txt");
         fs::write(&outside, b"outside").unwrap();
 
-        let mut sender = Sender::new(1024, Matcher::default());
-        let mut receiver = Receiver::new();
+        let mut sender = Sender::new(1024, Matcher::default(), Codec::Zlib);
+        let mut receiver = Receiver::new(Codec::Zlib);
         sender.start();
         for path in [src.join("inside.txt"), outside.clone()] {
             if let Some(rel) = path.strip_prefix(&src).ok() {

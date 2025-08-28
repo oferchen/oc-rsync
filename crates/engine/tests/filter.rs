@@ -1,3 +1,4 @@
+use compress::available_codecs;
 use engine::sync;
 use filters::{parse, Matcher};
 use std::fs;
@@ -15,7 +16,7 @@ fn excluded_paths_are_skipped() {
     let rules = parse("- skip.txt").unwrap();
     let matcher = Matcher::new(rules);
 
-    sync(&src, &dst, &matcher).unwrap();
+    sync(&src, &dst, &matcher, available_codecs()).unwrap();
 
     assert!(dst.join("include.txt").exists());
     assert!(!dst.join("skip.txt").exists());

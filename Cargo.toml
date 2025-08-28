@@ -25,6 +25,7 @@ checksums = { path = "crates/checksums" }
 cli = { path = "crates/cli" }
 engine = { path = "crates/engine" }
 filters = { path = "crates/filters" }
+compress = { path = "crates/compress" }
 
 [dev-dependencies]
 tempfile = "3"
