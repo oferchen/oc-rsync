@@ -27,11 +27,6 @@ run_case() {
   set -e
   rsync_rs_output=$(echo "$rsync_rs_raw" | grep -v 'recursive mode enabled' || true)
 
-  if [ "$rsync_rs_status" -ne 0 ]; then
-    echo "rsync-rs $flag not implemented; skipping parity check" >&2
-    return
-  fi
-
   if [ "$rsync_status" -ne "$rsync_rs_status" ]; then
     echo "Exit codes differ: rsync=$rsync_status rsync-rs=$rsync_rs_status" >&2
     exit 1
@@ -53,5 +48,6 @@ run_case() {
 run_case --delete
 run_case --delete-before
 run_case --delete-after
+run_case --delete-delay
 run_case --delete-during
 run_case --del
