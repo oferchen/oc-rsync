@@ -56,7 +56,7 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--omit-link-times, -J` |  |  |  |  |
 | `--super` |  |  |  |  |
 | `--fake-super` |  |  |  |  |
-| `--sparse, -S` |  |  |  |  |
+| `--sparse, -S` | ✅ |  | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  |
 | `--preallocate` |  |  |  |  |
 | `--dry-run, -n` | ✅ |  |  |  |
 | `--whole-file, -W` |  |  |  |  |
