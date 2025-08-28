@@ -292,6 +292,7 @@ dependencies = [
  "filters",
  "nix",
  "protocol",
+ "tempfile",
  "transport",
 ]
 
