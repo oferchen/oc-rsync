@@ -4,9 +4,9 @@ use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
-use compress::{
-    available_codecs, negotiate_codec, Codec, Compressor, Decompressor, Lz4, Zlib, Zstd,
-};
+use compress::{available_codecs, negotiate_codec, Codec, Compressor, Decompressor, Zlib, Zstd};
+#[cfg(feature = "lz4")]
+use compress::Lz4;
 use filters::Matcher;
 use thiserror::Error;
 
@@ -223,7 +223,16 @@ impl Sender {
                     *d = match codec {
                         Codec::Zlib => Zlib.compress(d).map_err(EngineError::from)?,
                         Codec::Zstd => Zstd.compress(d).map_err(EngineError::from)?,
-                        Codec::Lz4 => Lz4.compress(d).map_err(EngineError::from)?,
+                        Codec::Lz4 => {
+                            #[cfg(feature = "lz4")]
+                            {
+                                Lz4.compress(d).map_err(EngineError::from)?
+                            }
+                            #[cfg(not(feature = "lz4"))]
+                            {
+                                return Err(EngineError::Other("LZ4 feature not enabled".into()));
+                            }
+                        }
                     };
                 }
             }
@@ -269,7 +278,16 @@ impl Receiver {
                     *d = match codec {
                         Codec::Zlib => Zlib.decompress(d).map_err(EngineError::from)?,
                         Codec::Zstd => Zstd.decompress(d).map_err(EngineError::from)?,
-                        Codec::Lz4 => Lz4.decompress(d).map_err(EngineError::from)?,
+                        Codec::Lz4 => {
+                            #[cfg(feature = "lz4")]
+                            {
+                                Lz4.decompress(d).map_err(EngineError::from)?
+                            }
+                            #[cfg(not(feature = "lz4"))]
+                            {
+                                return Err(EngineError::Other("LZ4 feature not enabled".into()));
+                            }
+                        }
                     };
                 }
             }

@@ -41,6 +41,7 @@ fn zstd_roundtrip() {
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
 }
 
+#[cfg(feature = "lz4")]
 #[test]
 fn lz4_roundtrip() {
     let tmp = tempdir().unwrap();
