@@ -186,6 +186,12 @@ pub struct Receiver {
     state: ReceiverState,
 }
 
+impl Default for Receiver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Receiver {
     pub fn new() -> Self {
         Self {
@@ -216,7 +222,7 @@ pub fn sync(src: &Path, dst: &Path) -> Result<()> {
     let mut receiver = Receiver::new();
     sender.start();
     for (path, file_type) in walk(src) {
-        if let Some(rel) = path.strip_prefix(src).ok() {
+        if let Ok(rel) = path.strip_prefix(src) {
             let dest_path = dst.join(rel);
             if file_type.is_file() {
                 sender.process_file(&path, &dest_path, &mut receiver)?;
