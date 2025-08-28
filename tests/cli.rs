@@ -146,15 +146,20 @@ fn numeric_ids_are_preserved() {
     std::fs::create_dir_all(&src_dir).unwrap();
     let file = src_dir.join("id.txt");
     std::fs::write(&file, b"ids").unwrap();
+    // Changing ownership requires root privileges.  When run without them,
+    // `chown` will fail with `EPERM`, so fall back to using the current
+    // ownership to avoid spurious CI failures.
     #[cfg(unix)]
-    {
-        chown(
-            &file,
-            Some(Uid::from_raw(12345)),
-            Some(Gid::from_raw(12345)),
-        )
-        .unwrap();
-    }
+    let (uid, gid) = {
+        let desired = (Uid::from_raw(12345), Gid::from_raw(12345));
+        match chown(&file, Some(desired.0), Some(desired.1)) {
+            Ok(_) => desired,
+            Err(_) => {
+                let meta = std::fs::metadata(&file).unwrap();
+                (Uid::from_raw(meta.uid()), Gid::from_raw(meta.gid()))
+            }
+        }
+    };
 
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
     let src_arg = format!("{}/", src_dir.display());
@@ -171,8 +176,8 @@ fn numeric_ids_are_preserved() {
     #[cfg(unix)]
     {
         let meta = std::fs::metadata(dst_dir.join("id.txt")).unwrap();
-        assert_eq!(meta.uid(), 12345);
-        assert_eq!(meta.gid(), 12345);
+        assert_eq!(meta.uid(), uid.as_raw());
+        assert_eq!(meta.gid(), gid.as_raw());
     }
 }
 
