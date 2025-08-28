@@ -2,7 +2,9 @@ use assert_cmd::Command;
 use std::collections::BTreeMap;
 use std::fs;
 #[cfg(unix)]
-use std::os::unix::fs::{FileTypeExt, MetadataExt};
+use std::os::unix::fs::MetadataExt;
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::FileTypeExt;
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 
@@ -104,7 +106,7 @@ fn sync_preserves_acls() {
     assert_eq!(acl_src.entries(), acl_dst.entries());
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn sync_preserves_device_nodes() {
     use nix::sys::stat::{makedev, mknod, Mode, SFlag};
