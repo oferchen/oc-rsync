@@ -603,8 +603,13 @@ fn sparse_files_preserved() {
     std::fs::create_dir_all(&dst).unwrap();
     let sp = src.join("sparse");
     let mut f = File::create(&sp).unwrap();
+    // Write non-zero data after an initial hole and then extend the file again
+    // to leave a trailing hole. This ensures that sparse regions at the end of
+    // the file are preserved by the sync engine.
     f.seek(SeekFrom::Start(1 << 20)).unwrap();
     f.write_all(b"end").unwrap();
+    // Create a trailing hole beyond the written data.
+    f.set_len(1 << 21).unwrap();
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("rsync-rs")

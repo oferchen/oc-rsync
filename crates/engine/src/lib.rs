@@ -285,6 +285,11 @@ where
             let op = op?;
             apply_op_sparse(basis, op, file, &mut buf)?;
         }
+        // Ensure the final file length accounts for any trailing holes by
+        // explicitly setting it to the current position. This avoids writing
+        // zeros while still extending the file sparsely.
+        let pos = file.stream_position()?;
+        file.set_len(pos)?;
     } else {
         for op in ops {
             let op = op?;
