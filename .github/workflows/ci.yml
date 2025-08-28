@@ -22,6 +22,12 @@ jobs:
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             use-cross: true
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            use-cross: true
+          - os: ubuntu-latest
+            target: x86_64-unknown-freebsd
+            use-cross: true
           - os: macos-latest
             target: x86_64-apple-darwin
             use-cross: false
@@ -65,27 +71,24 @@ jobs:
           else
             cargo test --all --target ${{ matrix.target }}
           fi
-      - name: Install cargo-tarpaulin
+      - name: Install cargo-llvm-cov
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        run: cargo install cargo-tarpaulin --locked
+        run: cargo install cargo-llvm-cov --locked
       - name: Coverage
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        run: cargo tarpaulin --out Xml --output-dir coverage
+        run: cargo llvm-cov --all-features --workspace --fail-under-lines 80 --fail-under-functions 80 --lcov --output-path lcov.info
       - name: Upload coverage report
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.target }}
-          path: coverage
+          path: lcov.info
       - name: Golden parity tests
         if: matrix.use-cross == false && matrix.os != 'windows-latest'
         run: make test-golden
       - name: Interop tests
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: bash scripts/interop.sh
-      - name: Interop matrix tests
-        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false && env.INTEROP_MATRIX == '1'
-        run: bash tests/interop/run_matrix.sh
       - name: Fuzz smoke test
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: |
@@ -104,6 +107,12 @@ jobs:
             use-cross: false
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
+            use-cross: true
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            use-cross: true
+          - os: ubuntu-latest
+            target: x86_64-unknown-freebsd
             use-cross: true
           - os: macos-latest
             target: x86_64-apple-darwin
@@ -132,8 +141,7 @@ jobs:
           name: rsync-rs-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/rsync-rs
 
-  nightly-fuzz:
-    if: github.event_name == 'schedule'
+  fuzz:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -149,6 +157,13 @@ jobs:
             cargo +nightly fuzz run "$target" -- -max_total_time=600
           done
 
+  interop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run interop matrix
+        run: bash tests/interop/run_matrix.sh
+
   windows-coverage:
     needs: test
     runs-on: windows-latest
@@ -163,7 +178,7 @@ jobs:
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --locked
       - name: Generate coverage report
-        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+        run: cargo llvm-cov --all-features --workspace --fail-under-lines 80 --fail-under-functions 80 --lcov --output-path lcov.info
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
