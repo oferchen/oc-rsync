@@ -33,12 +33,7 @@ fn sync_directory_tree() {
 
     Command::cargo_bin("rsync-rs")
         .unwrap()
-        .args([
-            "client",
-            "--local",
-            src.to_str().unwrap(),
-            dst.to_str().unwrap(),
-        ])
+        .args(["--local", src.to_str().unwrap(), dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")

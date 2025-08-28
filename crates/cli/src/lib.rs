@@ -5,54 +5,45 @@ use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{ArgAction, Parser};
 use engine::{sync, EngineError, Result};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
 use transport::{SshStdioTransport, TcpTransport, Transport};
 
 /// Command line interface for rsync-rs.
-#[derive(Parser)]
-#[command(name = "rsync-rs")]
-#[command(about = "Minimal rsync example in Rust", long_about = None)]
-pub struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
+///
+/// This binary follows the flag based interface of the real `rsync` where the
+/// mode of operation is selected via top level flags such as `--daemon` or
+/// `--probe`.  When neither of those flags are supplied it runs in client mode
+/// and expects positional `SRC` and `DST` arguments.
 
-#[derive(Subcommand)]
-enum Commands {
-    /// Run in client mode
-    Client(ClientOpts),
-    /// Run in daemon mode
-    Daemon(DaemonOpts),
-    /// Probe a remote peer
-    Probe(ProbeOpts),
-}
-
-/// Arguments for the `client` subcommand.
+/// Options for client mode.
 #[derive(Parser, Debug)]
 struct ClientOpts {
     /// perform a local sync
     #[arg(long)]
     local: bool,
     /// copy directories recursively
-    #[arg(short, long)]
+    #[arg(short, long, help_heading = "Selection")]
     recursive: bool,
     /// perform a trial run with no changes made
-    #[arg(short = 'n', long)]
+    #[arg(short = 'n', long, help_heading = "Selection")]
     dry_run: bool,
     /// increase logging verbosity
-    #[arg(short, long, action = ArgAction::Count)]
+    #[arg(short, long, action = ArgAction::Count, help_heading = "Output")]
     verbose: u8,
     /// remove extraneous files from the destination
-    #[arg(long)]
+    #[arg(long, help_heading = "Delete")]
     delete: bool,
     /// use full checksums to determine file changes
-    #[arg(short = 'c', long)]
+    #[arg(short = 'c', long, help_heading = "Attributes")]
     checksum: bool,
+    /// compress file data during the transfer
+    #[arg(short = 'z', long, help_heading = "Compression")]
+    compress: bool,
     /// display transfer statistics on completion
-    #[arg(long)]
+    #[arg(long, help_heading = "Output")]
     stats: bool,
     /// supply a custom configuration file
     #[arg(long, value_name = "FILE")]
@@ -91,17 +82,23 @@ fn parse_module(s: &str) -> std::result::Result<Module, String> {
     })
 }
 
-/// Arguments for the `daemon` subcommand.
+/// Options for daemon mode.
 #[derive(Parser, Debug)]
 struct DaemonOpts {
+    /// run in daemon mode
+    #[arg(long)]
+    daemon: bool,
     /// module declarations of the form NAME=PATH
     #[arg(long, value_parser = parse_module, value_name = "NAME=PATH")]
     module: Vec<Module>,
 }
 
-/// Arguments for the `probe` subcommand.
+/// Options for the probe mode.
 #[derive(Parser, Debug)]
 struct ProbeOpts {
+    /// run in probe mode
+    #[arg(long)]
+    probe: bool,
     /// Optional address of peer in HOST:PORT form
     addr: Option<String>,
     /// version reported by peer
@@ -111,11 +108,16 @@ struct ProbeOpts {
 
 /// Execute the CLI using `std::env::args()`.
 pub fn run() -> Result<()> {
-    let cli = Cli::parse();
-    match cli.command {
-        Commands::Client(opts) => run_client(opts),
-        Commands::Daemon(opts) => run_daemon(opts),
-        Commands::Probe(opts) => run_probe(opts),
+    let args: Vec<String> = env::args().collect();
+    if args.iter().any(|a| a == "--daemon") {
+        let opts = DaemonOpts::parse_from(&args);
+        run_daemon(opts)
+    } else if args.iter().any(|a| a == "--probe") {
+        let opts = ProbeOpts::parse_from(&args);
+        run_probe(opts)
+    } else {
+        let opts = ClientOpts::parse_from(&args);
+        run_client(opts)
     }
 }
 
@@ -189,6 +191,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
     }
     if opts.checksum {
         println!("checksum mode enabled (not yet implemented)");
+    }
+    if opts.compress {
+        println!("compression enabled (not yet implemented)");
     }
     if opts.stats {
         println!("stats will be displayed after sync (not yet implemented)");
@@ -340,27 +345,6 @@ fn run_probe(opts: ProbeOpts) -> Result<()> {
     }
 }
 
-/// Entry point for the `client` subcommand.
-pub fn client() -> Result<()> {
-    let args = env::args().skip(2); // skip binary and subcommand
-    let opts = ClientOpts::parse_from(std::iter::once("client".to_string()).chain(args));
-    run_client(opts)
-}
-
-/// Entry point for the `daemon` subcommand.
-pub fn daemon() -> Result<()> {
-    let args = env::args().skip(2);
-    let opts = DaemonOpts::parse_from(std::iter::once("daemon".to_string()).chain(args));
-    run_daemon(opts)
-}
-
-/// Entry point for the `probe` subcommand.
-pub fn probe() -> Result<()> {
-    let args = env::args().skip(2);
-    let opts = ProbeOpts::parse_from(std::iter::once("probe".to_string()).chain(args));
-    run_probe(opts)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -386,14 +370,14 @@ mod tests {
     #[test]
     fn parses_client_flags() {
         let opts = ClientOpts::parse_from([
-            "client", "-r", "-n", "-v", "--delete", "-c", "--stats", "--config", "file", "src",
-            "dst",
+            "-r", "-n", "-v", "--delete", "-c", "-z", "--stats", "--config", "file", "src", "dst",
         ]);
         assert!(opts.recursive);
         assert!(opts.dry_run);
         assert_eq!(opts.verbose, 1);
         assert!(opts.delete);
         assert!(opts.checksum);
+        assert!(opts.compress);
         assert!(opts.stats);
         assert_eq!(opts.config, Some(PathBuf::from("file")));
     }
