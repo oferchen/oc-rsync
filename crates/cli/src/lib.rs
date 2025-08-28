@@ -145,6 +145,24 @@ struct ClientOpts {
     /// files containing filter rules
     #[arg(long, value_name = "FILE")]
     filter_file: Vec<PathBuf>,
+    /// include files matching PATTERN
+    #[arg(long, value_name = "PATTERN")]
+    include: Vec<String>,
+    /// exclude files matching PATTERN
+    #[arg(long, value_name = "PATTERN")]
+    exclude: Vec<String>,
+    /// read include patterns from FILE
+    #[arg(long, value_name = "FILE")]
+    include_from: Vec<PathBuf>,
+    /// read exclude patterns from FILE
+    #[arg(long, value_name = "FILE")]
+    exclude_from: Vec<PathBuf>,
+    /// read list of files from FILE
+    #[arg(long, value_name = "FILE")]
+    files_from: Vec<PathBuf>,
+    /// treat file lists as null-separated
+    #[arg(long)]
+    from0: bool,
 }
 
 /// A module exported by the daemon.
@@ -554,6 +572,33 @@ fn run_client(opts: ClientOpts) -> Result<()> {
 }
 
 fn build_matcher(opts: &ClientOpts) -> Result<Matcher> {
+    fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
+        if from0 {
+            let content = fs::read(path)?;
+            Ok(content
+                .split(|b| *b == 0)
+                .filter_map(|s| {
+                    if s.is_empty() {
+                        return None;
+                    }
+                    let p = String::from_utf8_lossy(s).trim().to_string();
+                    if p.is_empty() {
+                        None
+                    } else {
+                        Some(p)
+                    }
+                })
+                .collect())
+        } else {
+            let content = fs::read_to_string(path)?;
+            Ok(content
+                .lines()
+                .map(|l| l.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect())
+        }
+    }
+
     let mut rules = Vec::new();
     for rule in &opts.filter {
         rules.extend(parse_filters(rule).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
@@ -561,6 +606,45 @@ fn build_matcher(opts: &ClientOpts) -> Result<Matcher> {
     for file in &opts.filter_file {
         let content = fs::read_to_string(file)?;
         rules.extend(parse_filters(&content).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+    }
+    for pat in &opts.include {
+        rules.extend(
+            parse_filters(&format!("+ {}", pat))
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+        );
+    }
+    for pat in &opts.exclude {
+        rules.extend(
+            parse_filters(&format!("- {}", pat))
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+        );
+    }
+    for file in &opts.include_from {
+        for pat in load_patterns(file, opts.from0)? {
+            rules.extend(
+                parse_filters(&format!("+ {}", pat))
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+            );
+        }
+    }
+    for file in &opts.exclude_from {
+        for pat in load_patterns(file, opts.from0)? {
+            rules.extend(
+                parse_filters(&format!("- {}", pat))
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+            );
+        }
+    }
+    for file in &opts.files_from {
+        for pat in load_patterns(file, opts.from0)? {
+            rules.extend(
+                parse_filters(&format!("+ {}", pat))
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+            );
+        }
+    }
+    if !opts.files_from.is_empty() {
+        rules.extend(parse_filters("- *").map_err(|e| EngineError::Other(format!("{:?}", e)))?);
     }
     Ok(Matcher::new(rules))
 }
