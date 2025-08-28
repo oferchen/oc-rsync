@@ -76,10 +76,15 @@ pub mod filters {
                 continue;
             }
 
-            let (kind, pattern) = match line.chars().next() {
-                Some('+') => (RuleKind::Include, line[1..].trim_start()),
-                Some('-') => (RuleKind::Exclude, line[1..].trim_start()),
-                _ => return Err(ParseError::InvalidRule(raw_line.to_string())),
+            // Determine rule type based on the first character. Using
+            // `strip_prefix` keeps the logic simple and avoids manual
+            // character indexing.
+            let (kind, pattern) = if let Some(rest) = line.strip_prefix('+') {
+                (RuleKind::Include, rest.trim_start())
+            } else if let Some(rest) = line.strip_prefix('-') {
+                (RuleKind::Exclude, rest.trim_start())
+            } else {
+                return Err(ParseError::InvalidRule(raw_line.to_string()));
             };
 
             if pattern.is_empty() {
