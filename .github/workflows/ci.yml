@@ -40,6 +40,10 @@ jobs:
         run: |
           cargo install cargo-fuzz --locked
           rustup toolchain install nightly
+      - name: Generate flag matrix
+        run: |
+          cargo run --bin flag_matrix
+          git diff --exit-code tools/flag_matrix.md tools/flag_matrix.json
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy
