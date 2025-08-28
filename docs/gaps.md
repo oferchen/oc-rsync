@@ -3,11 +3,27 @@
 This document tracks outstanding gaps in `rsync-rs` compared to the reference `rsync` implementation. Update this file as features are implemented.
 
 ## Missing rsync behaviors
+
+### Protocol gaps
 - The `--server` handshake is not implemented, leaving server-mode negotiation incomplete; see the `--protocol` entry in `docs/feature_matrix.md`.
-- Remote shell (`--rsh`) handling is incomplete (see the `--rsh` row in `docs/feature_matrix.md`).
-- Daemon mode achieves only partial feature parity; `--password-file` and `--secrets-file` remain incomplete (see `docs/feature_matrix.md`).
-- Filter rules are incomplete and do not yet match `rsync`'s full include/exclude syntax.
+- Remote shell (`--rsh`) negotiation is incomplete, lacking full `rsh` command parsing and environment handshakes.
+- Partial transfer resumption does not fully match `rsync` semantics; interrupted copies cannot reuse partially transferred data.
 - Compression negotiation between peers is unimplemented.
+
+### Metadata gaps
+- ACL (`--acls`) and extended attribute (`--xattrs`) preservation are unsupported.
+- File time preservation is incomplete; access times (`--atimes`) and creation times (`--crtimes`) are not handled.
+- Enhanced metadata such as permissions, owners, and groups lack full parity with GNU rsync.
+
+### Filter gaps
+- Filter rules are incomplete and do not yet match `rsync`'s full include/exclude syntax.
+- Per-directory `.rsync-filter` handling and `-F` convenience flag semantics are unimplemented.
+
+### Daemon gaps
+- Daemon mode achieves only partial feature parity; `--password-file` and `--secrets-file` remain incomplete (see `docs/feature_matrix.md`).
+- Daemon sessions do not support ACL/xattr preservation.
+- Module options such as `--log-file`, `--log-file-format`, and MOTD control have not been implemented.
+
 - Many command-line options remain absent or lack parity; see `docs/feature_matrix.md` for the full matrix.
 
 ## Unreachable code

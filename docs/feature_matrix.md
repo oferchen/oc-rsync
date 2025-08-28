@@ -17,6 +17,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--block-size` | ❌ | — | — |  | |
 | `--blocking-io` | ❌ | — | — |  | |
 | `--bwlimit` | ❌ | — | — |  | |
+| `--cc` | ❌ | — | [gaps.md](gaps.md) | alias for `--checksum-choice` | |
 | `--checksum` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, BLAKE3 | |
 | `--checksum-choice` | ❌ | — | — |  | |
 | `--checksum-seed` | ❌ | — | — |  | |
@@ -26,6 +27,8 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--compress` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh) |  | |
 | `--compress-choice` | ❌ | — | — |  | |
 | `--compress-level` | ✅ | ❌ | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) |  | |
+| `--zc` | ❌ | — | [gaps.md](gaps.md) | alias for `--compress-choice` | |
+| `--zl` | ❌ | — | [gaps.md](gaps.md) | alias for `--compress-level` | |
 | `--contimeout` | ❌ | — | — |  | |
 | `--copy-as` | ❌ | — | — |  | |
 | `--copy-dest` | ❌ | — | — |  | |
@@ -37,6 +40,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--cvs-exclude` | ❌ | — | — |  | |
 | `--daemon` | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | |
 | `--debug` | ❌ | — | — |  | |
+| `--del` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | alias for `--delete-during` | |
 | `--delay-updates` | ❌ | — | — |  | |
 | `--delete` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | |
 | `--delete-after` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | |
@@ -90,11 +94,13 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--mkpath` | ❌ | — | — |  | |
 | `--modify-window` | ❌ | — | — |  | |
 | `--munge-links` | ❌ | — | — |  | |
+| `--no-D` | ❌ | — | [gaps.md](gaps.md) | alias for `--no-devices --no-specials` | |
 | `--no-OPTION` | ❌ | — | — |  | |
 | `--no-implied-dirs` | ❌ | — | — |  | |
 | `--no-motd` | ❌ | — | — |  | |
 | `--numeric-ids` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | |
 | `--old-args` | ❌ | — | — |  | |
+| `--old-d` | ❌ | — | [gaps.md](gaps.md) | alias for `--old-dirs` | |
 | `--old-dirs` | ❌ | — | — |  | |
 | `--omit-dir-times` | ❌ | — | — |  | |
 | `--omit-link-times` | ❌ | — | — |  | |
