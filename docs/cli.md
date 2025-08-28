@@ -30,6 +30,17 @@ rsync-rs [OPTIONS] <SRC> <DEST>
   rsync-rs --config ./rsync-rs.toml ./src remote:/dst
   ```
 
+### Trailing slash semantics
+
+Just like `rsync`, adding a trailing slash to the source path changes what is
+copied:
+
+- `rsync-rs src/ dest/` copies the *contents* of `src` into `dest`.
+- `rsync-rs src dest/` creates a `dest/src` directory containing the original
+  files.
+- `rsync-rs remote:/src/ local/` pulls the contents of `/src` from the remote
+  host into `local`.
+
 ## Flags
 
 - `-r, --recursive` – copy directories recursively.

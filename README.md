@@ -22,6 +22,8 @@ rsync-rs is a modular reimplementation of the classic `rsync` utility in Rust. I
 
 ## Compatibility
 Platform support status is tracked in the [compatibility matrix](docs/compat_matrix.md).
+An overview of tested operating systems and interoperability notes lives in
+[docs/compatibility.md](docs/compatibility.md).
 
 ## In-Scope Features
 - Local and remote file synchronization over SSH and `rsync://`.
@@ -41,7 +43,9 @@ Platform support status is tracked in the [compatibility matrix](docs/compat_mat
 
 ## CLI
 Documentation for invoking the command line interface, available flags, and
-configuration precedence lives in [docs/cli.md](docs/cli.md).
+configuration precedence lives in [docs/cli.md](docs/cli.md). Differences from
+classic `rsync`, including how `--modern` mode alters behavior, are covered in
+[docs/differences.md](docs/differences.md).
 
 Quick links:
 
