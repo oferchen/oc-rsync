@@ -34,6 +34,19 @@ It can spawn `ssh` in server mode (`--server` arguments) and capture the
 process's stderr for diagnostics. Child stdio is wrapped in buffered readers and
 writers to ensure bounded I/O when communicating with remote peers.
 
+## Version and capability negotiation
+
+Every session begins with a handshake where both peers advertise the highest
+protocol version they support along with a bitmask of optional capabilities.
+The `protocol` crate compares the peer's version with its own range of
+[`MIN_VERSION`](../crates/protocol/src/lib.rs) through
+[`LATEST_VERSION`](../crates/protocol/src/lib.rs) and selects the highest common
+value. Capabilities are negotiated by intersecting the advertised bitmasks so
+that both sides enable only features understood by each. If no overlap exists
+the handshake fails with a negotiation error. Subsequent messages—including
+keep-alives, progress updates and error reports—operate within the agreed
+version and capability set.
+
 ## Data flow
 
 1. The [`walk`](../crates/walk) crate scans the filesystem and yields metadata
