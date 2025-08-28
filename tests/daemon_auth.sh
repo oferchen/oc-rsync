@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Execute daemon authentication tests individually for clarity
+cargo test --test daemon -- --exact daemon_rejects_invalid_token
+cargo test --test daemon -- --exact daemon_rejects_unauthorized_module
+cargo test --test daemon -- --exact daemon_accepts_authorized_client

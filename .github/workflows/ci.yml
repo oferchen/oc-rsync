@@ -97,15 +97,15 @@ jobs:
 
       - name: Filter rule edge case tests
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        run: echo "TODO: add filter rule edge case tests once implemented"
+        run: bash tests/filter_rule_precedence.sh
 
       - name: Compression negotiation tests
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        run: echo "TODO: add compression negotiation tests once implemented"
+        run: bash tests/compression_negotiation.sh
 
       - name: Daemon authentication tests
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        run: echo "TODO: add daemon authentication tests once implemented"
+        run: bash tests/daemon_auth.sh
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
