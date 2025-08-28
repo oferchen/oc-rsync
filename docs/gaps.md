@@ -19,6 +19,5 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
 - Many CLI options listed in `docs/feature_matrix.md` have no associated tests.
 
 ## Continuous integration deficiencies
-- The CI matrix omits Windows runners, limiting cross-platform assurance.
-- Coverage reporting is absent from CI.
-- Fuzzing in CI is limited to short smoke tests and may miss deeper issues.
+- Coverage is collected on Linux and Windows using `cargo-llvm-cov`, but no thresholds are enforced.
+- Nightly jobs fuzz all targets for longer runs, yet pull requests still rely on brief smoke tests.

@@ -145,5 +145,27 @@ jobs:
       - run: cargo install cargo-fuzz --locked
       - name: Run fuzzers
         run: |
-          cargo +nightly fuzz run filters_parse_fuzz -- -max_total_time=300
-          cargo +nightly fuzz run filters -- -max_total_time=300
+          for target in $(cargo +nightly fuzz list); do
+            cargo +nightly fuzz run "$target" -- -max_total_time=600
+          done
+
+  windows-coverage:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: llvm-tools-preview
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
+      - name: Generate coverage report
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-windows
+          path: lcov.info
