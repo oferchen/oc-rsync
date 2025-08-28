@@ -1,12 +1,12 @@
 use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
-use std::path::Path;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
+use std::path::Path;
 
-use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 pub use checksums::StrongHash;
+use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 #[cfg(feature = "lz4")]
 use compress::Lz4;
 use compress::{available_codecs, Codec, Compressor, Decompressor, Zlib, Zstd};
@@ -59,18 +59,89 @@ pub enum Op {
 /// `DEFAULT_BASIS_WINDOW * block_size` bytes.
 const DEFAULT_BASIS_WINDOW: usize = 8 * 1024; // 8k blocks
 
+/// Iterator over delta operations produced by [`compute_delta`].
+pub struct DeltaIter<'a, R: Read + Seek> {
+    cfg: &'a ChecksumConfig,
+    target: &'a mut R,
+    block_size: usize,
+    map: HashMap<u32, Vec<(Vec<u8>, usize, usize)>>,
+    lit: Vec<u8>,
+    window: Vec<u8>,
+    byte: [u8; 1],
+    done: bool,
+}
+
+impl<'a, R: Read + Seek> Iterator for DeltaIter<'a, R> {
+    type Item = Result<Op>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if self.window.is_empty() {
+                if self.done {
+                    if self.lit.is_empty() {
+                        return None;
+                    } else {
+                        return Some(Ok(Op::Data(std::mem::take(&mut self.lit))));
+                    }
+                }
+                while self.window.len() < self.block_size {
+                    match self.target.read(&mut self.byte) {
+                        Ok(0) => {
+                            self.done = true;
+                            break;
+                        }
+                        Ok(_) => self.window.push(self.byte[0]),
+                        Err(e) => return Some(Err(e.into())),
+                    }
+                }
+                if self.window.is_empty() && self.done {
+                    if self.lit.is_empty() {
+                        return None;
+                    } else {
+                        return Some(Ok(Op::Data(std::mem::take(&mut self.lit))));
+                    }
+                }
+            }
+
+            let len = usize::min(self.window.len(), self.block_size);
+            let sum = self.cfg.checksum(&self.window[..len]);
+            if let Some(candidates) = self.map.get(&sum.weak) {
+                if let Some((_, off, blen)) = candidates
+                    .iter()
+                    .find(|(s, _, l)| *s == sum.strong && *l == len)
+                {
+                    if !self.lit.is_empty() {
+                        return Some(Ok(Op::Data(std::mem::take(&mut self.lit))));
+                    }
+                    self.window.drain(..len);
+                    return Some(Ok(Op::Copy {
+                        offset: *off,
+                        len: *blen,
+                    }));
+                }
+            }
+
+            // No match: emit first byte as literal and slide the window.
+            self.lit.push(self.window.remove(0));
+            if self.done && self.window.is_empty() {
+                return Some(Ok(Op::Data(std::mem::take(&mut self.lit))));
+            }
+        }
+    }
+}
+
 /// Compute a delta from `basis` to `target` using a simple block matching
 /// algorithm driven by the checksum crate. The computation is performed using
 /// streaming readers to avoid loading entire files into memory. The caller can
 /// limit memory usage by constraining the number of blocks from the basis file
 /// that are kept in memory at any given time via `basis_window`.
-pub fn compute_delta<R1: Read + Seek, R2: Read + Seek>(
-    cfg: &ChecksumConfig,
+pub fn compute_delta<'a, R1: Read + Seek, R2: Read + Seek>(
+    cfg: &'a ChecksumConfig,
     basis: &mut R1,
-    target: &mut R2,
+    target: &'a mut R2,
     block_size: usize,
     basis_window: usize,
-) -> Result<Vec<Op>> {
+) -> Result<DeltaIter<'a, R2>> {
     // Start from the beginning of both streams.
     basis.seek(SeekFrom::Start(0))?;
     target.seek(SeekFrom::Start(0))?;
@@ -112,105 +183,79 @@ pub fn compute_delta<R1: Read + Seek, R2: Read + Seek>(
         }
     }
 
-    let mut ops = Vec::new();
-    let mut lit = Vec::new();
-
-    let mut window = Vec::new();
-    let mut byte = [0u8; 1];
-    loop {
-        // Fill the window up to block_size bytes.
-        while window.len() < block_size {
-            let n = target.read(&mut byte)?;
-            if n == 0 {
-                break;
-            }
-            window.push(byte[0]);
-        }
-        if window.is_empty() {
-            break;
-        }
-
-        let len = usize::min(window.len(), block_size);
-        let sum = cfg.checksum(&window[..len]);
-        if let Some(candidates) = map.get(&sum.weak) {
-            if let Some((_, off, blen)) = candidates
-                .iter()
-                .find(|(s, _, l)| *s == sum.strong && *l == len)
-            {
-                if !lit.is_empty() {
-                    ops.push(Op::Data(std::mem::take(&mut lit)));
-                }
-                ops.push(Op::Copy {
-                    offset: *off,
-                    len: *blen,
-                });
-                window.drain(..len);
-                continue;
-            }
-        }
-
-        // No match: emit first byte as literal and slide the window.
-        lit.push(window.remove(0));
-        if window.is_empty() {
-            // if we've consumed everything, attempt to read more before next iteration
-            continue;
-        }
-    }
-
-    if !window.is_empty() {
-        lit.extend(window);
-    }
-    if !lit.is_empty() {
-        ops.push(Op::Data(lit));
-    }
-    Ok(ops)
+    Ok(DeltaIter {
+        cfg,
+        target,
+        block_size,
+        map,
+        lit: Vec::new(),
+        window: Vec::new(),
+        byte: [0u8; 1],
+        done: false,
+    })
 }
 
 /// Apply a delta to `basis` writing the reconstructed data into `out`.
-fn apply_delta<R: Read + Seek, W: Write + Seek>(
+fn apply_op<R: Read + Seek, W: Write + Seek>(
     basis: &mut R,
-    ops: &[Op],
+    op: Op,
     out: &mut W,
     opts: &SyncOptions,
+    buf: &mut [u8],
 ) -> Result<()> {
-    let mut buf = vec![0u8; 8192];
-    for op in ops {
-        match op {
-            Op::Data(d) => {
-                if opts.sparse {
-                    let mut i = 0;
-                    while i < d.len() {
-                        if d[i] == 0 {
-                            let mut j = i;
-                            while j < d.len() && d[j] == 0 {
-                                j += 1;
-                            }
-                            out.seek(SeekFrom::Current((j - i) as i64))?;
-                            i = j;
-                        } else {
-                            let mut j = i;
-                            while j < d.len() && d[j] != 0 {
-                                j += 1;
-                            }
-                            out.write_all(&d[i..j])?;
-                            i = j;
+    match op {
+        Op::Data(d) => {
+            if opts.sparse {
+                let mut i = 0;
+                while i < d.len() {
+                    if d[i] == 0 {
+                        let mut j = i;
+                        while j < d.len() && d[j] == 0 {
+                            j += 1;
                         }
+                        out.seek(SeekFrom::Current((j - i) as i64))?;
+                        i = j;
+                    } else {
+                        let mut j = i;
+                        while j < d.len() && d[j] != 0 {
+                            j += 1;
+                        }
+                        out.write_all(&d[i..j])?;
+                        i = j;
                     }
-                } else {
-                    out.write_all(d)?;
                 }
-            }
-            Op::Copy { offset, len } => {
-                basis.seek(SeekFrom::Start(*offset as u64))?;
-                let mut remaining = *len;
-                while remaining > 0 {
-                    let to_read = remaining.min(buf.len());
-                    basis.read_exact(&mut buf[..to_read])?;
-                    out.write_all(&buf[..to_read])?;
-                    remaining -= to_read;
-                }
+            } else {
+                out.write_all(&d)?;
             }
         }
+        Op::Copy { offset, len } => {
+            basis.seek(SeekFrom::Start(offset as u64))?;
+            let mut remaining = len;
+            while remaining > 0 {
+                let to_read = remaining.min(buf.len());
+                basis.read_exact(&mut buf[..to_read])?;
+                out.write_all(&buf[..to_read])?;
+                remaining -= to_read;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Apply a delta to `basis` writing the reconstructed data into `out`.
+fn apply_delta<R: Read + Seek, W: Write + Seek, I>(
+    basis: &mut R,
+    ops: I,
+    out: &mut W,
+    opts: &SyncOptions,
+) -> Result<()>
+where
+    I: IntoIterator<Item = Result<Op>>,
+{
+    let mut buf = vec![0u8; 8192];
+    for op in ops {
+        let op = op?;
+        apply_op(basis, op, out, opts, &mut buf)?;
     }
     Ok(())
 }
@@ -226,7 +271,12 @@ pub struct Sender {
 }
 
 impl Sender {
-    pub fn new(block_size: usize, matcher: Matcher, codec: Option<Codec>, opts: SyncOptions) -> Self {
+    pub fn new(
+        block_size: usize,
+        matcher: Matcher,
+        codec: Option<Codec>,
+        opts: SyncOptions,
+    ) -> Self {
         Self {
             state: SenderState::Idle,
             cfg: ChecksumConfigBuilder::new().strong(opts.strong).build(),
@@ -271,15 +321,16 @@ impl Sender {
             Ok(f) => Box::new(BufReader::new(f)),
             Err(_) => Box::new(Cursor::new(Vec::new())),
         };
-        let mut delta = compute_delta(
+        let delta = compute_delta(
             &self.cfg,
             &mut basis_reader,
             &mut src_reader,
             self.block_size,
             DEFAULT_BASIS_WINDOW,
         )?;
-        if let Some(codec) = self.codec {
-            for op in &mut delta {
+        let ops = delta.map(|op_res| {
+            let mut op = op_res?;
+            if let Some(codec) = self.codec {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
                         Codec::Zlib => {
@@ -303,8 +354,9 @@ impl Sender {
                     };
                 }
             }
-        }
-        recv.apply(path, dest, delta)?;
+            Ok(op)
+        });
+        recv.apply(path, dest, ops)?;
         Ok(true)
     }
 }
@@ -331,7 +383,10 @@ impl Receiver {
         }
     }
 
-    fn apply(&mut self, src: &Path, dest: &Path, mut delta: Vec<Op>) -> Result<()> {
+    fn apply<I>(&mut self, src: &Path, dest: &Path, delta: I) -> Result<()>
+    where
+        I: IntoIterator<Item = Result<Op>>,
+    {
         self.state = ReceiverState::Applying;
         let mut basis: Box<dyn ReadSeek> = match File::open(dest) {
             Ok(f) => Box::new(f),
@@ -341,8 +396,9 @@ impl Receiver {
             fs::create_dir_all(parent)?;
         }
         let mut out = BufWriter::new(File::create(dest)?);
-        if let Some(codec) = self.codec {
-            for op in &mut delta {
+        let ops = delta.into_iter().map(|op_res| {
+            let mut op = op_res?;
+            if let Some(codec) = self.codec {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
                         Codec::Zlib => Zlib::default().decompress(d).map_err(EngineError::from)?,
@@ -360,8 +416,9 @@ impl Receiver {
                     };
                 }
             }
-        }
-        apply_delta(&mut basis, &delta, &mut out, &self.opts)?;
+            Ok(op)
+        });
+        apply_delta(&mut basis, ops, &mut out, &self.opts)?;
         out.flush()?;
         self.copy_metadata(src, dest)?;
         self.state = ReceiverState::Finished;
@@ -388,8 +445,16 @@ impl Receiver {
         {
             if self.opts.owner || self.opts.group {
                 use nix::unistd::{chown, Gid, Uid};
-                let uid = if self.opts.owner { Some(Uid::from_raw(meta.uid())) } else { None };
-                let gid = if self.opts.group { Some(Gid::from_raw(meta.gid())) } else { None };
+                let uid = if self.opts.owner {
+                    Some(Uid::from_raw(meta.uid()))
+                } else {
+                    None
+                };
+                let gid = if self.opts.group {
+                    Some(Gid::from_raw(meta.gid()))
+                } else {
+                    None
+                };
                 chown(dest, uid, gid).map_err(|e| EngineError::Other(e.to_string()))?;
             }
             if self.opts.xattrs || self.opts.acls {
@@ -607,7 +672,7 @@ mod tests {
         let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
         let mut basis = Cursor::new(b"hello world".to_vec());
         let mut out = Cursor::new(Vec::new());
-        apply_delta(&mut basis, &delta, &mut out, &SyncOptions::default()).unwrap();
+        apply_delta(&mut basis, delta, &mut out, &SyncOptions::default()).unwrap();
         assert_eq!(out.into_inner(), b"hello brave new world");
     }
 
@@ -620,8 +685,11 @@ mod tests {
         let basis: Vec<u8> = [block1.as_ref(), block2.as_ref()].concat();
         let mut basis_reader = Cursor::new(basis.clone());
         let mut target_reader = Cursor::new(basis.clone());
-        let delta =
-            compute_delta(&cfg, &mut basis_reader, &mut target_reader, 3, usize::MAX).unwrap();
+        let delta: Vec<Op> =
+            compute_delta(&cfg, &mut basis_reader, &mut target_reader, 3, usize::MAX)
+                .unwrap()
+                .collect::<Result<_>>()
+                .unwrap();
         assert_eq!(
             delta,
             vec![
@@ -631,7 +699,13 @@ mod tests {
         );
         let mut basis_reader = Cursor::new(basis.clone());
         let mut out = Cursor::new(Vec::new());
-        apply_delta(&mut basis_reader, &delta, &mut out, &SyncOptions::default()).unwrap();
+        apply_delta(
+            &mut basis_reader,
+            delta.into_iter().map(Ok),
+            &mut out,
+            &SyncOptions::default(),
+        )
+        .unwrap();
         assert_eq!(out.into_inner(), basis);
     }
 
@@ -640,7 +714,10 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(Vec::new());
         let mut target = Cursor::new(b"abc".to_vec());
-        let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
+        let delta: Vec<Op> = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX)
+            .unwrap()
+            .collect::<Result<_>>()
+            .unwrap();
         assert_eq!(delta, vec![Op::Data(b"abc".to_vec())]);
     }
 
@@ -649,7 +726,10 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(b"hello".to_vec());
         let mut target = Cursor::new(Vec::new());
-        let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
+        let delta: Vec<Op> = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX)
+            .unwrap()
+            .collect::<Result<_>>()
+            .unwrap();
         assert!(delta.is_empty());
     }
 
@@ -658,7 +738,10 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(b"abc".to_vec());
         let mut target = Cursor::new(b"abc".to_vec());
-        let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
+        let delta: Vec<Op> = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX)
+            .unwrap()
+            .collect::<Result<_>>()
+            .unwrap();
         assert_eq!(delta, vec![Op::Copy { offset: 0, len: 3 }]);
     }
 
@@ -667,7 +750,10 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(b"hello".to_vec());
         let mut target = Cursor::new(b"hello".to_vec());
-        let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
+        let delta: Vec<Op> = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX)
+            .unwrap()
+            .collect::<Result<_>>()
+            .unwrap();
         assert_eq!(
             delta,
             vec![
@@ -710,7 +796,12 @@ mod tests {
         let outside = tmp.path().join("outside.txt");
         fs::write(&outside, b"outside").unwrap();
 
-        let mut sender = Sender::new(1024, Matcher::default(), Some(Codec::Zlib), SyncOptions::default());
+        let mut sender = Sender::new(
+            1024,
+            Matcher::default(),
+            Some(Codec::Zlib),
+            SyncOptions::default(),
+        );
         let mut receiver = Receiver::new(Some(Codec::Zlib), SyncOptions::default());
         sender.start();
         for path in [src.join("inside.txt"), outside.clone()] {
@@ -754,7 +845,7 @@ mod tests {
         // delta should reconstruct target
         let mut basis = Cursor::new(data.clone());
         let mut out = Cursor::new(Vec::new());
-        apply_delta(&mut basis, &delta, &mut out, &SyncOptions::default()).unwrap();
+        apply_delta(&mut basis, delta, &mut out, &SyncOptions::default()).unwrap();
         assert_eq!(out.into_inner(), data);
         // Memory usage should stay under ~10MB
         assert!(
