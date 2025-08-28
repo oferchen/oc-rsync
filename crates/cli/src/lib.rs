@@ -1,13 +1,16 @@
 use std::env;
 use std::fs;
 use std::io::{Read, Write};
-use std::net::TcpStream;
-use std::path::PathBuf;
+use std::collections::HashMap;
+use std::io::{self, Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
 use engine::{sync, EngineError, Result};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
+use transport::{TcpTransport, Transport};
 
 /// Command line interface for rsync-rs.
 #[derive(Parser)]
@@ -136,6 +139,22 @@ fn parse_remote_spec(s: &str) -> Result<RemoteSpec> {
     Ok(RemoteSpec::Local(PathBuf::from(s)))
 }
 
+fn pipe_transports<S, D>(mut src: S, mut dst: D) -> io::Result<()>
+where
+    S: Transport,
+    D: Transport,
+{
+    let mut buf = [0u8; 8192];
+    loop {
+        let n = src.receive(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        dst.send(&buf[..n])?;
+    }
+    Ok(())
+}
+
 fn run_client(opts: ClientOpts) -> Result<()> {
     let matcher = build_matcher(&opts)?;
     let src = parse_remote_spec(&opts.src)?;
@@ -161,9 +180,38 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 sync(&src, &dst, &matcher)?;
                 Ok(())
             }
-            (RemoteSpec::Remote { .. }, RemoteSpec::Remote { .. }) => Err(EngineError::Other(
-                "remote to remote sync not implemented".into(),
-            )),
+            (
+                RemoteSpec::Remote {
+                    host: src_host,
+                    path: src_path,
+                },
+                RemoteSpec::Remote {
+                    host: dst_host,
+                    path: dst_path,
+                },
+            ) => {
+                if src_host.is_empty() || dst_host.is_empty() {
+                    return Err(EngineError::Other(
+                        "remote host missing".to_string(),
+                    ));
+                }
+                if src_path.as_os_str().is_empty() || dst_path.as_os_str().is_empty() {
+                    return Err(EngineError::Other(
+                        "remote path missing".to_string(),
+                    ));
+                }
+
+                let src_session =
+                    SshStdioTransport::spawn(&src_host, [src_path.as_os_str()])
+                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                let dst_session =
+                    SshStdioTransport::spawn(&dst_host, [dst_path.as_os_str()])
+                        .map_err(|e| EngineError::Other(e.to_string()))?;
+
+                pipe_transports(src_session, dst_session)
+                    .map_err(|e| EngineError::Other(e.to_string()))?;
+                Ok(())
+            }
         }
     }
 }
@@ -185,10 +233,55 @@ fn build_matcher(opts: &ClientOpts) -> Result<Matcher> {
 }
 
 fn run_daemon(opts: DaemonOpts) -> Result<()> {
-    println!("starting daemon with {} module(s)", opts.module.len());
-    for m in &opts.module {
-        println!("{} => {}", m.name, m.path.display());
+    let mut modules = HashMap::new();
+    for m in opts.module {
+        modules.insert(m.name, m.path);
     }
+
+    let listener = TcpListener::bind("127.0.0.1:873")?;
+
+    loop {
+        let (stream, _) = listener.accept()?;
+        let modules = modules.clone();
+        std::thread::spawn(move || {
+            let mut transport = TcpTransport::from_stream(stream);
+            if let Err(e) = handle_connection(&mut transport, &modules) {
+                eprintln!("connection error: {}", e);
+            }
+        });
+    }
+}
+
+fn handle_connection(transport: &mut TcpTransport, modules: &HashMap<String, PathBuf>) -> Result<()> {
+    let mut buf = [0u8; 4];
+    let n = transport.receive(&mut buf)?;
+    if n == 0 {
+        return Ok(());
+    }
+    let peer = u32::from_be_bytes(buf);
+    transport.send(&LATEST_VERSION.to_be_bytes())?;
+    negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
+
+    authenticate(transport)?;
+
+    let mut name_buf = [0u8; 256];
+    let n = transport.receive(&mut name_buf)?;
+    let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
+    if let Some(path) = modules.get(&name) {
+        #[cfg(unix)]
+        {
+            use nix::unistd::{chdir, chroot, setgid, setuid, Gid, Uid};
+            let _ = chroot(path);
+            let _ = chdir("/");
+            let _ = setgid(Gid::from_raw(65534));
+            let _ = setuid(Uid::from_raw(65534));
+        }
+        let _ = sync(Path::new("."), Path::new("."));
+    }
+    Ok(())
+}
+
+fn authenticate(_t: &mut TcpTransport) -> std::io::Result<()> {
     Ok(())
 }
 

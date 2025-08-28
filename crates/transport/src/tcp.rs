@@ -15,6 +15,11 @@ impl TcpTransport {
             stream: TcpStream::connect(addr)?,
         })
     }
+
+    /// Create a transport from an existing `TcpStream`.
+    pub fn from_stream(stream: TcpStream) -> Self {
+        Self { stream }
+    }
 }
 
 impl Transport for TcpTransport {
