@@ -140,6 +140,18 @@ struct ClientOpts {
     /// read daemon-access password from FILE
     #[arg(long = "password-file", value_name = "FILE")]
     password_file: Option<PathBuf>,
+    /// specify the remote shell to use
+    #[arg(short = 'e', long, value_name = "COMMAND")]
+    rsh: Option<String>,
+    /// run in server mode (internal use)
+    #[arg(long, hide = true)]
+    server: bool,
+    /// run in sender mode (internal use)
+    #[arg(long, hide = true)]
+    sender: bool,
+    /// specify the rsync to run on remote machine
+    #[arg(long = "rsync-path", value_name = "PATH", alias = "rsync_path")]
+    rsync_path: Option<PathBuf>,
     /// source path or HOST:PATH
     src: String,
     /// destination path or HOST:PATH
@@ -832,6 +844,29 @@ mod tests {
         assert!(opts.compress);
         assert!(opts.stats);
         assert_eq!(opts.config, Some(PathBuf::from("file")));
+    }
+
+    #[test]
+    fn parses_rsh_flag_and_alias() {
+        let opts = ClientOpts::parse_from(["prog", "--rsh", "ssh", "src", "dst"]);
+        assert_eq!(opts.rsh.as_deref(), Some("ssh"));
+        let opts = ClientOpts::parse_from(["prog", "-e", "ssh", "src", "dst"]);
+        assert_eq!(opts.rsh.as_deref(), Some("ssh"));
+    }
+
+    #[test]
+    fn parses_rsync_path_and_alias() {
+        let opts = ClientOpts::parse_from(["prog", "--rsync-path", "/bin/rsync", "src", "dst"]);
+        assert_eq!(opts.rsync_path, Some(PathBuf::from("/bin/rsync")));
+        let opts = ClientOpts::parse_from(["prog", "--rsync_path", "/bin/rsync", "src", "dst"]);
+        assert_eq!(opts.rsync_path, Some(PathBuf::from("/bin/rsync")));
+    }
+
+    #[test]
+    fn parses_internal_server_sender_flags() {
+        let opts = ClientOpts::parse_from(["prog", "--server", "--sender", "src", "dst"]);
+        assert!(opts.server);
+        assert!(opts.sender);
     }
 
     #[test]
