@@ -198,6 +198,9 @@ struct DaemonOpts {
     /// module declarations of the form NAME=PATH
     #[arg(long, value_parser = parse_module, value_name = "NAME=PATH")]
     module: Vec<Module>,
+    /// port to listen on
+    #[arg(long, default_value_t = 873)]
+    port: u16,
 }
 
 /// Options for the probe mode.
@@ -308,6 +311,27 @@ where
         dst.send(&buf[..n])?;
     }
     Ok(())
+}
+
+fn spawn_remote_session(
+    host: &str,
+    path: &Path,
+    known_hosts: Option<&Path>,
+    strict_host_key_checking: bool,
+) -> io::Result<SshStdioTransport> {
+    if host == "sh" {
+        let cmd = path
+            .to_str()
+            .ok_or_else(|| io::Error::other("invalid command"))?;
+        SshStdioTransport::spawn("sh", ["-c", cmd])
+    } else {
+        SshStdioTransport::spawn_server(
+            host,
+            [path.as_os_str()],
+            known_hosts,
+            strict_host_key_checking,
+        )
+    }
 }
 
 fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
@@ -492,9 +516,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 ))
             }
             (RemoteSpec::Remote { host, path: src }, RemoteSpec::Local(dst)) => {
-                let mut session = SshStdioTransport::spawn_server(
+                let mut session = spawn_remote_session(
                     &host,
-                    [src.path.as_os_str()],
+                    &src.path,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
@@ -507,9 +531,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 sync(&src.path, &dst.path, &matcher, &codecs, &sync_opts)?
             }
             (RemoteSpec::Local(src), RemoteSpec::Remote { host, path: dst }) => {
-                let mut session = SshStdioTransport::spawn_server(
+                let mut session = spawn_remote_session(
                     &host,
-                    [dst.path.as_os_str()],
+                    &dst.path,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
@@ -538,16 +562,16 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     return Err(EngineError::Other("remote path missing".to_string()));
                 }
 
-                let mut src_session = SshStdioTransport::spawn_server(
-                    &src_host,
-                    [src_path.path.as_os_str()],
+                let mut dst_session = spawn_remote_session(
+                    &dst_host,
+                    &dst_path.path,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
-                let mut dst_session = SshStdioTransport::spawn_server(
-                    &dst_host,
-                    [dst_path.path.as_os_str()],
+                let mut src_session = spawn_remote_session(
+                    &src_host,
+                    &src_path.path,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
@@ -659,7 +683,7 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
         modules.insert(m.name, m.path);
     }
 
-    let listener = TcpListener::bind("127.0.0.1:873")?;
+    let listener = TcpListener::bind(("127.0.0.1", opts.port))?;
 
     loop {
         let (stream, _) = listener.accept()?;

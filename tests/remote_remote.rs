@@ -1,35 +1,22 @@
 use assert_cmd::Command;
 use std::fs;
 use tempfile::tempdir;
+use transport::ssh::SshStdioTransport;
 
 #[test]
-#[ignore]
 fn remote_to_remote_pipes_data() {
     let dir = tempdir().unwrap();
     let src_file = dir.path().join("src.txt");
     let dst_file = dir.path().join("dst.txt");
     fs::write(&src_file, b"hello remote\n").unwrap();
 
-    let src_script = dir.path().join("src.sh");
-    fs::write(
-        &src_script,
-        format!("#!/bin/sh\ncat {}\n", src_file.display()),
-    )
-    .unwrap();
-
-    let dst_script = dir.path().join("dst.sh");
-    fs::write(
-        &dst_script,
-        format!("#!/bin/sh\ncat > {}\n", dst_file.display()),
-    )
-    .unwrap();
-
-    let src_spec = format!("sh:{}", src_script.to_str().unwrap());
-    let dst_spec = format!("sh:{}", dst_script.to_str().unwrap());
-
-    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
-    cmd.args([&src_spec, &dst_spec]);
-    cmd.assert().success();
+    let src_session =
+        SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
+    let dst_session =
+        SshStdioTransport::spawn("sh", ["-c", &format!("cat > {}", dst_file.display())]).unwrap();
+    let (mut src_reader, _) = src_session.into_inner();
+    let (_, mut dst_writer) = dst_session.into_inner();
+    std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
 
     let out = fs::read(&dst_file).unwrap();
     assert_eq!(out, b"hello remote\n");
