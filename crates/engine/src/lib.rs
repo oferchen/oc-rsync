@@ -287,6 +287,11 @@ impl Sender {
         }
     }
 
+    fn strong_file_checksum(&self, path: &Path) -> Result<Vec<u8>> {
+        let data = fs::read(path)?;
+        Ok(self.cfg.checksum(&data).strong)
+    }
+
     fn start(&mut self) {
         self.state = SenderState::Walking;
     }
@@ -299,9 +304,9 @@ impl Sender {
     /// Returns `true` if the destination file was updated.
     fn process_file(&mut self, path: &Path, dest: &Path, recv: &mut Receiver) -> Result<bool> {
         if self.opts.checksum {
-            if let Ok(dst_bytes) = fs::read(dest) {
-                let src_bytes = fs::read(path)?;
-                if self.cfg.checksum(&src_bytes).strong == self.cfg.checksum(&dst_bytes).strong {
+            if let Ok(dst_sum) = self.strong_file_checksum(dest) {
+                let src_sum = self.strong_file_checksum(path)?;
+                if src_sum == dst_sum {
                     return Ok(false);
                 }
             }
@@ -409,15 +414,10 @@ impl Receiver {
             fs::create_dir_all(parent)?;
         }
 
-        let mut out = BufWriter::new(File::create(dest)?);
+        let mut out = BufWriter::new(File::create(tmp_dest)?);
         let ops = delta.into_iter().map(|op_res| {
             let mut op = op_res?;
             if let Some(codec) = self.codec {
-
-        let mut out = BufWriter::new(File::create(tmp_dest)?);
-        if let Some(codec) = self.codec {
-            for op in &mut delta {
-
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
                         Codec::Zlib => Zlib::default().decompress(d).map_err(EngineError::from)?,
@@ -471,50 +471,42 @@ impl Receiver {
         {
             if self.opts.owner || self.opts.group {
                 use nix::unistd::{chown, Gid, Uid};
-                let uid = if self.opts.owner {
-
-                    Some(Uid::from_raw(meta.uid()))
-
-                    if self.opts.numeric_ids {
-                        Some(Uid::from_raw(meta.uid()))
-                    } else {
-                        use users::{get_user_by_name, get_user_by_uid};
-                        let mapped = get_user_by_uid(meta.uid())
-                            .and_then(|u| {
-                                u.name()
-                                    .to_str()
-                                    .and_then(|n| get_user_by_name(n))
-                                    .map(|u2| u2.uid())
-                            })
-                            .unwrap_or(meta.uid());
-                        Some(Uid::from_raw(mapped))
-                    }
-
-                } else {
-                    None
-                };
-                let gid = if self.opts.group {
-
-                    Some(Gid::from_raw(meta.gid()))
-
-                    if self.opts.numeric_ids {
-                        Some(Gid::from_raw(meta.gid()))
-                    } else {
-                        use users::{get_group_by_gid, get_group_by_name};
-                        let mapped = get_group_by_gid(meta.gid())
-                            .and_then(|g| {
-                                g.name()
-                                    .to_str()
-                                    .and_then(|n| get_group_by_name(n))
-                                    .map(|g2| g2.gid())
-                            })
-                            .unwrap_or(meta.gid());
-                        Some(Gid::from_raw(mapped))
-                    }
-
-                } else {
-                    None
-                };
+                  let uid = if self.opts.owner {
+                      if self.opts.numeric_ids {
+                          Some(Uid::from_raw(meta.uid()))
+                      } else {
+                          use users::{get_user_by_name, get_user_by_uid};
+                          let mapped = get_user_by_uid(meta.uid())
+                              .and_then(|u| {
+                                  u.name()
+                                      .to_str()
+                                      .and_then(|n| get_user_by_name(n))
+                                      .map(|u2| u2.uid())
+                              })
+                              .unwrap_or(meta.uid());
+                          Some(Uid::from_raw(mapped))
+                      }
+                  } else {
+                      None
+                  };
+                  let gid = if self.opts.group {
+                      if self.opts.numeric_ids {
+                          Some(Gid::from_raw(meta.gid()))
+                      } else {
+                          use users::{get_group_by_gid, get_group_by_name};
+                          let mapped = get_group_by_gid(meta.gid())
+                              .and_then(|g| {
+                                  g.name()
+                                      .to_str()
+                                      .and_then(|n| get_group_by_name(n))
+                                      .map(|g2| g2.gid())
+                              })
+                              .unwrap_or(meta.gid());
+                          Some(Gid::from_raw(mapped))
+                      }
+                  } else {
+                      None
+                  };
                 chown(dest, uid, gid).map_err(|e| EngineError::Other(e.to_string()))?;
             }
             if self.opts.xattrs || self.opts.acls {
