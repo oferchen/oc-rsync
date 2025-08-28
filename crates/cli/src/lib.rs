@@ -38,7 +38,8 @@ struct ClientOpts {
     /// perform a trial run with no changes made
     #[arg(short = 'n', long, help_heading = "Selection")]
     dry_run: bool,
-    /// turn sequences of nulls into sparse blocks
+    /// turn sequences of nulls into sparse blocks and preserve existing holes
+    /// (requires filesystem support)
     #[arg(short = 'S', long, help_heading = "Selection")]
     sparse: bool,
     /// increase logging verbosity
