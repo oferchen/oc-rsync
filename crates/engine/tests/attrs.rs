@@ -293,3 +293,33 @@ fn sparse_roundtrip() {
     assert!(src_meta.blocks() * 512 < src_meta.len());
     assert!(dst_meta.blocks() * 512 < dst_meta.len());
 }
+
+#[test]
+fn sparse_creation_from_zeros() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let zs = src.join("zeros");
+    {
+        let mut f = File::create(&zs).unwrap();
+        f.write_all(&vec![0u8; 1 << 20]).unwrap();
+    }
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        available_codecs(),
+        &SyncOptions {
+            sparse: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let src_meta = fs::metadata(&zs).unwrap();
+    let dst_meta = fs::metadata(dst.join("zeros")).unwrap();
+    assert_eq!(src_meta.len(), dst_meta.len());
+    assert!(dst_meta.blocks() < src_meta.blocks());
+    assert!(dst_meta.blocks() * 512 < dst_meta.len());
+}
