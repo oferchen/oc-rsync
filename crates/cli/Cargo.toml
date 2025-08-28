@@ -7,3 +7,4 @@ edition = "2021"
 clap = { version = "4", features = ["derive"] }
 engine = { path = "../engine" }
 protocol = { path = "../protocol" }
+filters = { path = "../filters" }

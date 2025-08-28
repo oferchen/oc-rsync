@@ -24,6 +24,7 @@ protocol = { path = "crates/protocol" }
 checksums = { path = "crates/checksums" }
 cli = { path = "crates/cli" }
 engine = { path = "crates/engine" }
+filters = { path = "crates/filters" }
 
 [dev-dependencies]
 tempfile = "3"

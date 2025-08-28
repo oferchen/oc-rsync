@@ -4,6 +4,7 @@ use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
+use filters::Matcher;
 use thiserror::Error;
 
 /// Error type for engine operations.
@@ -156,14 +157,16 @@ pub struct Sender {
     state: SenderState,
     cfg: ChecksumConfig,
     block_size: usize,
+    matcher: Matcher,
 }
 
 impl Sender {
-    pub fn new(block_size: usize) -> Self {
+    pub fn new(block_size: usize, matcher: Matcher) -> Self {
         Self {
             state: SenderState::Idle,
             cfg: ChecksumConfigBuilder::new().build(),
             block_size,
+            matcher,
         }
     }
 
@@ -229,13 +232,16 @@ impl Receiver {
 }
 
 /// Synchronize the contents of directory `src` into `dst`.
-pub fn sync(src: &Path, dst: &Path) -> Result<()> {
-    let mut sender = Sender::new(1024);
+pub fn sync(src: &Path, dst: &Path, matcher: &Matcher) -> Result<()> {
+    let mut sender = Sender::new(1024, matcher.clone());
     let mut receiver = Receiver::new();
     sender.start();
     for entry in walk(src) {
         let (path, file_type) = entry.map_err(|e| EngineError::Other(e.to_string()))?;
         if let Ok(rel) = path.strip_prefix(src) {
+            if !matcher.is_included(rel) {
+                continue;
+            }
             let dest_path = dst.join(rel);
             if file_type.is_file() {
                 sender.process_file(&path, &dest_path, &mut receiver)?;
@@ -358,7 +364,7 @@ mod tests {
         fs::write(src.join("a/file1.txt"), b"hello").unwrap();
         fs::write(src.join("file2.txt"), b"world").unwrap();
 
-        sync(&src, &dst).unwrap();
+        sync(&src, &dst, &Matcher::default()).unwrap();
         assert_eq!(fs::read(dst.join("a/file1.txt")).unwrap(), b"hello");
         assert_eq!(fs::read(dst.join("file2.txt")).unwrap(), b"world");
     }
@@ -375,7 +381,7 @@ mod tests {
         let outside = tmp.path().join("outside.txt");
         fs::write(&outside, b"outside").unwrap();
 
-        let mut sender = Sender::new(1024);
+        let mut sender = Sender::new(1024, Matcher::default());
         let mut receiver = Receiver::new();
         sender.start();
         for path in [src.join("inside.txt"), outside.clone()] {

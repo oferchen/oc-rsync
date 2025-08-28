@@ -1,9 +1,10 @@
 use std::path::Path;
 use engine::Result;
+use filters::Matcher;
 
 /// Re-export engine synchronization for convenience.
 pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
-    engine::sync(src, dst)
+    engine::sync(src, dst, &Matcher::default())
 }
 
 #[cfg(test)]
