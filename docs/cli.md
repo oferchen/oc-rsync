@@ -43,15 +43,50 @@ copied:
 
 ## Flags
 
-- `-r, --recursive` – copy directories recursively.
-- `-n, --dry-run` – perform a trial run with no changes made.
-- `-v, --verbose` – increase logging verbosity.
-- `-q, --quiet` – suppress non-error messages.
-- `--delete` – remove extraneous files from the destination.
-- `-c, --checksum` – use full checksums to determine file changes.
-- `-z, --compress` – compress file data during the transfer.
-- `--stats` – display transfer statistics on completion.
-- `--config <FILE>` – supply a custom configuration file.
+- `-r, --recursive` *(default: off)* – copy directories recursively.
+- `-n, --dry-run` *(default: off)* – perform a trial run with no changes made.
+- `-v, --verbose` *(default: off)* – increase logging verbosity.
+- `-q, --quiet` *(default: off)* – suppress non-error messages.
+- `--delete` *(default: off)* – remove extraneous files from the destination.
+- `-c, --checksum` *(default: off)* – use full checksums to determine file changes.
+- `-z, --compress` *(default: off)* – compress file data during the transfer.
+- `--stats` *(default: off)* – display transfer statistics on completion.
+- `--config <FILE>` *(default: `~/.config/rsync-rs/config.toml`)* – supply a custom configuration file.
+- `-e, --rsh <COMMAND>` *(default: `ssh`)* – specify the remote shell to use.
+
+### Daemon and server modes
+
+- `--daemon` – run as an rsync daemon accepting incoming connections *(default: off).* 
+- `--server` – enable server behavior; typically invoked internally when a remote peer connects *(default: off).* 
+
+### Remote shell
+
+`-e, --rsh` selects the program used to connect to remote hosts. The command
+line takes precedence, followed by the `RSYNC_RSH` environment variable; if
+neither is provided, `ssh` is used.
+
+### Deletion flags
+
+Deletion options control how extraneous files at the destination are removed.
+All deletion flags are disabled by default.
+
+- `--delete` – remove files during the transfer.
+- `--del` – an alias for `--delete-during`.
+- `--delete-before`, `--delete-during`, `--delete-after`, and `--delete-delay` –
+  adjust when deletions occur.
+- `--delete-excluded` – also delete files that are excluded by filters.
+
+### Advanced transfer options
+
+These flags mirror `rsync(1)` features that fine‑tune how data is copied.
+
+- `--partial` – keep partially transferred files instead of discarding them.
+- `--partial-dir <DIR>` – place partial files in `DIR`.
+- `--append` / `--append-verify` – append data to existing files rather than
+  replacing them.
+- `--bwlimit <RATE>` – throttle I/O bandwidth to `RATE` bytes per second.
+- `--link-dest <DIR>` / `--copy-dest <DIR>` – hard‑link or copy unchanged
+  files from `DIR`.
 
 Flags such as `-a`, `-R`, `-P`, and `--numeric-ids` mirror their `rsync`
 behavior. See `docs/differences.md` for a summary of supported options.
@@ -64,6 +99,7 @@ see the [CLI flag reference](cli/flags.md).
 1. Command-line flags
 2. Environment variables (prefixed with `RSYNC_RS_`)
 3. Configuration file (defaults to `~/.config/rsync-rs/config.toml`)
+4. Built-in defaults
 
 Settings specified earlier in the list override later sources.
 

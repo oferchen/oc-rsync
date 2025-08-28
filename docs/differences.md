@@ -16,3 +16,13 @@ below highlights how common flags map to current support and how the
 | `--numeric-ids` | ✅ uses numeric uid/gid values | n/a |
 | `--modern` | rsync-rs only | enables zstd compression and BLAKE3 checksums |
 
+## Additional notes
+
+- `--daemon` and `--server` have the same syntax and defaults as `rsync`; see [cli.md](cli.md#daemon-and-server-modes).
+- `-e`/`--rsh` defaults to `ssh` and honors the `RSYNC_RSH` environment variable; see [cli.md](cli.md#remote-shell).
+- Only `--delete` is currently supported among deletion flags. Other variants are
+  parsed but not implemented. See [cli.md](cli.md#deletion-flags).
+- Advanced transfer options such as `--partial`, `--bwlimit`, and `--link-dest`
+  behave like `rsync` when available; see
+  [cli.md](cli.md#advanced-transfer-options).
+
