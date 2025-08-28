@@ -8,5 +8,5 @@ name = "rsync-rs"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = "1"
 cli = { path = "../../crates/cli" }
+engine = { path = "../../crates/engine" }

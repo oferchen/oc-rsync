@@ -2,6 +2,19 @@ use md5::{Digest, Md5};
 use sha1::Sha1;
 #[cfg(feature = "blake3")]
 use blake3::Hasher as Blake3;
+use std::fmt;
+
+/// Error type for checksum operations.
+#[derive(Debug)]
+pub struct ChecksumError(pub String);
+
+impl fmt::Display for ChecksumError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for ChecksumError {}
 
 /// Algorithms that can be used for the strong digest.
 #[derive(Clone, Copy, Debug)]

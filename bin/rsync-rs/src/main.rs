@@ -1,4 +1,4 @@
-use anyhow::Result;
+use engine::Result;
 
 fn main() -> Result<()> {
     cli::run()
