@@ -13,6 +13,7 @@ pub mod helpers {
     /// Many fuzz targets operate on types that expect an `io::Read`
     /// implementation.  A `Cursor` over the input bytes satisfies that
     /// requirement without allocating.
+    #[inline]
     pub fn cursor(data: &[u8]) -> Cursor<&[u8]> {
         Cursor::new(data)
     }
@@ -21,6 +22,7 @@ pub mod helpers {
     ///
     /// Returning `None` instead of panicking keeps fuzz targets simple
     /// when they need optional textual input.
+    #[inline]
     pub fn as_str(data: &[u8]) -> Option<&str> {
         std::str::from_utf8(data).ok()
     }
