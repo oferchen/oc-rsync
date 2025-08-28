@@ -48,6 +48,36 @@ struct ClientOpts {
     /// use full checksums to determine file changes
     #[arg(short = 'c', long, help_heading = "Attributes")]
     checksum: bool,
+    /// preserve permissions
+    #[arg(long, help_heading = "Attributes")]
+    perms: bool,
+    /// preserve modification times
+    #[arg(long, help_heading = "Attributes")]
+    times: bool,
+    /// preserve owner
+    #[arg(long, help_heading = "Attributes")]
+    owner: bool,
+    /// preserve group
+    #[arg(long, help_heading = "Attributes")]
+    group: bool,
+    /// copy symlinks as symlinks
+    #[arg(long, help_heading = "Attributes")]
+    links: bool,
+    /// preserve hard links
+    #[arg(long = "hard-links", help_heading = "Attributes")]
+    hard_links: bool,
+    /// preserve device files
+    #[arg(long, help_heading = "Attributes")]
+    devices: bool,
+    /// preserve special files
+    #[arg(long, help_heading = "Attributes")]
+    specials: bool,
+    /// preserve extended attributes
+    #[arg(long, help_heading = "Attributes")]
+    xattrs: bool,
+    /// preserve ACLs
+    #[arg(long, help_heading = "Attributes")]
+    acls: bool,
     /// compress file data during the transfer
     #[arg(short = 'z', long, help_heading = "Compression")]
     compress: bool,
@@ -352,6 +382,17 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         delete: opts.delete,
         checksum: opts.checksum,
         compress: opts.compress,
+        perms: opts.perms || opts.archive,
+        times: opts.times || opts.archive,
+        owner: opts.owner || opts.archive,
+        group: opts.group || opts.archive,
+        links: opts.links || opts.archive,
+        hard_links: opts.hard_links || opts.archive,
+        devices: opts.devices || opts.archive,
+        specials: opts.specials || opts.archive,
+        xattrs: opts.xattrs,
+        acls: opts.acls,
+        sparse: false,
     };
     let stats = if opts.local {
         match (src, dst) {
