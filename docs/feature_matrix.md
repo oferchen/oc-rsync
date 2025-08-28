@@ -68,12 +68,12 @@ This table tracks the implementation status of rsync 3.2.x command-line options.
 | `--existing` |  |  |  |  |
 | `--ignore-existing` |  |  |  |  |
 | `--remove-source-files` |  |  |  |  |
-| `--del` |  |  |  |  |
-| `--delete` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |
-| `--delete-before` |  |  |  |  |
-| `--delete-during` |  |  |  |  |
-| `--delete-delay` |  |  |  |  |
-| `--delete-after` |  |  |  |  |
+| `--del` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | |
+| `--delete` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | |
+| `--delete-before` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | |
+| `--delete-during` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | |
+| `--delete-delay` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | treated as `--delete-after` |
+| `--delete-after` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | |
 | `--delete-excluded` |  |  |  |  |
 | `--ignore-missing-args` |  |  |  |  |
 | `--delete-missing-args` |  |  |  |  |

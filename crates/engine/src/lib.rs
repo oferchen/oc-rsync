@@ -418,7 +418,11 @@ impl Receiver {
         };
         let tmp_dest = if self.opts.partial { &partial } else { dest };
         let mut basis: Box<dyn ReadSeek> = match File::open(&basis_path) {
-            Ok(f) => Box::new(f),
+            Ok(mut f) => {
+                let mut buf = Vec::new();
+                f.read_to_end(&mut buf)?;
+                Box::new(Cursor::new(buf))
+            }
             Err(_) => Box::new(Cursor::new(Vec::new())),
         };
         if let Some(parent) = tmp_dest.parent() {
@@ -483,10 +487,18 @@ impl Receiver {
     }
 }
 
+/// When to delete extraneous files from the destination.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeleteMode {
+    Before,
+    During,
+    After,
+}
+
 /// Options controlling synchronization behavior.
 #[derive(Debug, Clone, Copy)]
 pub struct SyncOptions {
-    pub delete: bool,
+    pub delete: Option<DeleteMode>,
     pub checksum: bool,
     pub compress: bool,
     pub perms: bool,
@@ -510,7 +522,7 @@ pub struct SyncOptions {
 impl Default for SyncOptions {
     fn default() -> Self {
         Self {
-            delete: false,
+            delete: None,
             checksum: false,
             compress: false,
             perms: false,
@@ -555,6 +567,29 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     }
 }
 
+fn delete_extraneous(src: &Path, dst: &Path, matcher: &Matcher, stats: &mut Stats) -> Result<()> {
+    for entry in walk(dst) {
+        let (path, file_type) = entry.map_err(|e| EngineError::Other(e.to_string()))?;
+        if let Ok(rel) = path.strip_prefix(dst) {
+            if !matcher
+                .is_included(rel)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?
+            {
+                continue;
+            }
+            if !src.join(rel).exists() {
+                if file_type.is_dir() {
+                    fs::remove_dir_all(&path)?;
+                } else {
+                    fs::remove_file(&path)?;
+                }
+                stats.files_deleted += 1;
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Synchronize the contents of directory `src` into `dst`.
 pub fn sync(
     src: &Path,
@@ -571,6 +606,9 @@ pub fn sync(
     let mut sender = Sender::new(1024, matcher.clone(), codec, *opts);
     let mut receiver = Receiver::new(codec, *opts);
     let mut stats = Stats::default();
+    if matches!(opts.delete, Some(DeleteMode::Before)) {
+        delete_extraneous(src, dst, &matcher, &mut stats)?;
+    }
     sender.start();
     #[cfg(unix)]
     let mut hard_links: HashMap<(u64, u64), std::path::PathBuf> = HashMap::new();
@@ -646,26 +684,11 @@ pub fn sync(
         }
     }
     sender.finish();
-    if opts.delete {
-        for entry in walk(dst) {
-            let (path, file_type) = entry.map_err(|e| EngineError::Other(e.to_string()))?;
-            if let Ok(rel) = path.strip_prefix(dst) {
-                if !matcher
-                    .is_included(rel)
-                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?
-                {
-                    continue;
-                }
-                if !src.join(rel).exists() {
-                    if file_type.is_dir() {
-                        fs::remove_dir_all(&path)?;
-                    } else {
-                        fs::remove_file(&path)?;
-                    }
-                    stats.files_deleted += 1;
-                }
-            }
-        }
+    if matches!(
+        opts.delete,
+        Some(DeleteMode::After) | Some(DeleteMode::During)
+    ) {
+        delete_extraneous(src, dst, &matcher, &mut stats)?;
     }
     Ok(stats)
 }
