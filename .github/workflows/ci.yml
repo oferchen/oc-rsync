@@ -40,3 +40,19 @@ jobs:
 
       - name: Test
         run: cargo test
+
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Run fuzzers briefly
+        run: |
+          cargo run -p fuzz --bin protocol_frame_decode_fuzz -- -runs=1
+          cargo run -p fuzz --bin filters_parse_fuzz -- -runs=1
