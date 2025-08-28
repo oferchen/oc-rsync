@@ -3,7 +3,7 @@ use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
@@ -329,13 +329,14 @@ impl Sender {
 
         let src = File::open(path)?;
         let mut src_reader = BufReader::new(src);
-        let basis_path = if self.opts.partial {
-            let tmp = dest.with_extension("partial");
-            if tmp.exists() {
-                tmp
-            } else {
-                dest.to_path_buf()
-            }
+        let partial_path = if let Some(dir) = &self.opts.partial_dir {
+            dir.join(dest.file_name().unwrap())
+                .with_extension("partial")
+        } else {
+            dest.with_extension("partial")
+        };
+        let basis_path = if self.opts.partial && partial_path.exists() {
+            partial_path.clone()
         } else {
             dest.to_path_buf()
         };
@@ -410,7 +411,12 @@ impl Receiver {
         I: IntoIterator<Item = Result<Op>>,
     {
         self.state = ReceiverState::Applying;
-        let partial = dest.with_extension("partial");
+        let partial = if let Some(dir) = &self.opts.partial_dir {
+            dir.join(dest.file_name().unwrap())
+                .with_extension("partial")
+        } else {
+            dest.with_extension("partial")
+        };
         let basis_path = if self.opts.partial && partial.exists() {
             partial.clone()
         } else {
@@ -496,7 +502,7 @@ pub enum DeleteMode {
 }
 
 /// Options controlling synchronization behavior.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct SyncOptions {
     pub delete: Option<DeleteMode>,
     pub checksum: bool,
@@ -516,6 +522,7 @@ pub struct SyncOptions {
     pub compress_level: Option<i32>,
     pub partial: bool,
     pub progress: bool,
+    pub partial_dir: Option<PathBuf>,
     pub numeric_ids: bool,
 }
 
@@ -540,6 +547,7 @@ impl Default for SyncOptions {
             compress_level: None,
             partial: false,
             progress: false,
+            partial_dir: None,
             numeric_ids: false,
         }
     }
@@ -603,8 +611,8 @@ pub fn sync(
     // Clone the matcher and attach the source root so per-directory filter files
     // can be located during the walk.
     let matcher = matcher.clone().with_root(src.to_path_buf());
-    let mut sender = Sender::new(1024, matcher.clone(), codec, *opts);
-    let mut receiver = Receiver::new(codec, *opts);
+    let mut sender = Sender::new(1024, matcher.clone(), codec, opts.clone());
+    let mut receiver = Receiver::new(codec, opts.clone());
     let mut stats = Stats::default();
     if matches!(opts.delete, Some(DeleteMode::Before)) {
         delete_extraneous(src, dst, &matcher, &mut stats)?;

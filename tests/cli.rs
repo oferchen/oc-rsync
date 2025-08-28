@@ -1,9 +1,9 @@
 use assert_cmd::Command;
-use tempfile::tempdir;
 #[cfg(unix)]
 use nix::unistd::{chown, Gid, Uid};
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
+use tempfile::tempdir;
 
 #[test]
 fn client_local_sync() {
@@ -91,7 +91,7 @@ fn relative_preserves_ancestors() {
 }
 
 #[test]
-fn progress_with_partial_flag() {
+fn progress_flag_shows_output() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
@@ -100,10 +100,38 @@ fn progress_with_partial_flag() {
 
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args(["--local", "-P", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.args(["--local", "--progress", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert()
         .success()
         .stderr(predicates::str::contains("a.txt"));
+}
+
+#[test]
+fn resumes_from_partial_dir() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    let partial_dir = dir.path().join("partial");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::write(src_dir.join("a.txt"), b"hello").unwrap();
+    std::fs::create_dir_all(&partial_dir).unwrap();
+    std::fs::write(partial_dir.join("a.partial"), b"he").unwrap();
+
+    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--local",
+        "--partial",
+        "--partial-dir",
+        partial_dir.to_str().unwrap(),
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, b"hello");
+    assert!(!partial_dir.join("a.partial").exists());
 }
 
 #[test]
@@ -116,7 +144,12 @@ fn numeric_ids_are_preserved() {
     std::fs::write(&file, b"ids").unwrap();
     #[cfg(unix)]
     {
-        chown(&file, Some(Uid::from_raw(12345)), Some(Gid::from_raw(12345))).unwrap();
+        chown(
+            &file,
+            Some(Uid::from_raw(12345)),
+            Some(Gid::from_raw(12345)),
+        )
+        .unwrap();
     }
 
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
