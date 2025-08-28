@@ -1,3 +1,4 @@
+use compress::available_codecs;
 use engine::sync;
 use filters::Matcher;
 use std::fs;
@@ -16,7 +17,7 @@ fn sync_large_file_streaming() {
     }
     fs::write(src.join("file.bin"), &data).unwrap();
 
-    sync(&src, &dst, &Matcher::default()).unwrap();
+    sync(&src, &dst, &Matcher::default(), available_codecs()).unwrap();
     let out = fs::read(dst.join("file.bin")).unwrap();
     assert_eq!(out, data);
 }

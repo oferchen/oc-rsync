@@ -1,10 +1,11 @@
 use std::path::Path;
+use compress::available_codecs;
 use engine::Result;
 use filters::Matcher;
 
 /// Re-export engine synchronization for convenience.
 pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
-    engine::sync(src, dst, &Matcher::default())
+    engine::sync(src, dst, &Matcher::default(), available_codecs())
 }
 
 #[cfg(test)]

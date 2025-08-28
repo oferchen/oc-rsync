@@ -11,6 +11,11 @@ pub enum Codec {
     Lz4,
 }
 
+/// Return codecs supported by this crate in preference order.
+pub fn available_codecs() -> &'static [Codec] {
+    &[Codec::Zstd, Codec::Lz4, Codec::Zlib]
+}
+
 /// Compresses a buffer of bytes.
 pub trait Compressor {
     /// Compress `data` and return the compressed bytes.
