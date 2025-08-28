@@ -159,17 +159,19 @@ pub struct Sender {
     cfg: ChecksumConfig,
     block_size: usize,
     matcher: Matcher,
-    codec: Codec,
+    codec: Option<Codec>,
+    checksum: bool,
 }
 
 impl Sender {
-    pub fn new(block_size: usize, matcher: Matcher, codec: Codec) -> Self {
+    pub fn new(block_size: usize, matcher: Matcher, codec: Option<Codec>, checksum: bool) -> Self {
         Self {
             state: SenderState::Idle,
             cfg: ChecksumConfigBuilder::new().build(),
             block_size,
             matcher,
             codec,
+            checksum,
         }
     }
 
@@ -182,7 +184,27 @@ impl Sender {
     }
 
     /// Generate a delta for `path` against `dest` and ask the receiver to apply it.
-    fn process_file(&mut self, path: &Path, dest: &Path, recv: &mut Receiver) -> Result<()> {
+    /// Returns `true` if the destination file was updated.
+    fn process_file(&mut self, path: &Path, dest: &Path, recv: &mut Receiver) -> Result<bool> {
+        if self.checksum {
+            if let Ok(dst_bytes) = fs::read(dest) {
+                let src_bytes = fs::read(path)?;
+                if self.cfg.checksum(&src_bytes).strong
+                    == self.cfg.checksum(&dst_bytes).strong
+                {
+                    return Ok(false);
+                }
+            }
+        } else if let (Ok(src_meta), Ok(dst_meta)) = (fs::metadata(path), fs::metadata(dest)) {
+            if src_meta.len() == dst_meta.len() {
+                if let (Ok(sm), Ok(dm)) = (src_meta.modified(), dst_meta.modified()) {
+                    if sm == dm {
+                        return Ok(false);
+                    }
+                }
+            }
+        }
+
         let src = File::open(path)?;
         let mut src_reader = BufReader::new(src);
         let mut basis_reader: Box<dyn ReadSeek> = match File::open(dest) {
@@ -195,33 +217,36 @@ impl Sender {
             &mut src_reader,
             self.block_size,
         )?;
-        for op in &mut delta {
-            if let Op::Data(ref mut d) = op {
-                *d = match self.codec {
-                    Codec::Zlib => Zlib.compress(d).map_err(EngineError::from)?,
-                    Codec::Zstd => Zstd.compress(d).map_err(EngineError::from)?,
-                    Codec::Lz4 => Lz4.compress(d).map_err(EngineError::from)?,
-                };
+        if let Some(codec) = self.codec {
+            for op in &mut delta {
+                if let Op::Data(ref mut d) = op {
+                    *d = match codec {
+                        Codec::Zlib => Zlib.compress(d).map_err(EngineError::from)?,
+                        Codec::Zstd => Zstd.compress(d).map_err(EngineError::from)?,
+                        Codec::Lz4 => Lz4.compress(d).map_err(EngineError::from)?,
+                    };
+                }
             }
         }
-        recv.apply(dest, delta)
+        recv.apply(dest, delta)?;
+        Ok(true)
     }
 }
 
 /// Receiver responsible for applying deltas to the destination tree.
 pub struct Receiver {
     state: ReceiverState,
-    codec: Codec,
+    codec: Option<Codec>,
 }
 
 impl Default for Receiver {
     fn default() -> Self {
-        Self::new(Codec::Zlib)
+        Self::new(None)
     }
 }
 
 impl Receiver {
-    pub fn new(codec: Codec) -> Self {
+    pub fn new(codec: Option<Codec>) -> Self {
         Self {
             state: ReceiverState::Idle,
             codec,
@@ -238,13 +263,15 @@ impl Receiver {
             fs::create_dir_all(parent)?;
         }
         let mut out = BufWriter::new(File::create(dest)?);
-        for op in &mut delta {
-            if let Op::Data(ref mut d) = op {
-                *d = match self.codec {
-                    Codec::Zlib => Zlib.decompress(d).map_err(EngineError::from)?,
-                    Codec::Zstd => Zstd.decompress(d).map_err(EngineError::from)?,
-                    Codec::Lz4 => Lz4.decompress(d).map_err(EngineError::from)?,
-                };
+        if let Some(codec) = self.codec {
+            for op in &mut delta {
+                if let Op::Data(ref mut d) = op {
+                    *d = match codec {
+                        Codec::Zlib => Zlib.decompress(d).map_err(EngineError::from)?,
+                        Codec::Zstd => Zstd.decompress(d).map_err(EngineError::from)?,
+                        Codec::Lz4 => Lz4.decompress(d).map_err(EngineError::from)?,
+                    };
+                }
             }
         }
         apply_delta(&mut basis, &delta, &mut out)?;
@@ -254,16 +281,42 @@ impl Receiver {
     }
 }
 
+/// Options controlling synchronization behavior.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SyncOptions {
+    pub delete: bool,
+    pub checksum: bool,
+    pub compress: bool,
+}
+
+/// Statistics produced during synchronization.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Stats {
+    pub files_transferred: usize,
+    pub files_deleted: usize,
+    pub bytes_transferred: u64,
+}
+
 /// Synchronize the contents of directory `src` into `dst`.
-pub fn sync(src: &Path, dst: &Path, matcher: &Matcher, remote: &[Codec]) -> Result<()> {
+pub fn sync(
+    src: &Path,
+    dst: &Path,
+    matcher: &Matcher,
+    remote: &[Codec],
+    opts: &SyncOptions,
+) -> Result<Stats> {
     // Determine the codec to use by negotiating with the remote peer.
-    let local = available_codecs();
-    let codec = negotiate_codec(local, remote).unwrap_or(Codec::Zlib);
+    let codec = if opts.compress {
+        negotiate_codec(available_codecs(), remote)
+    } else {
+        None
+    };
     // Clone the matcher and attach the source root so per-directory filter files
     // can be located during the walk.
     let matcher = matcher.clone().with_root(src.to_path_buf());
-    let mut sender = Sender::new(1024, matcher.clone(), codec);
+    let mut sender = Sender::new(1024, matcher.clone(), codec, opts.checksum);
     let mut receiver = Receiver::new(codec);
+    let mut stats = Stats::default();
     sender.start();
     for entry in walk(src) {
         let (path, file_type) = entry.map_err(|e| EngineError::Other(e.to_string()))?;
@@ -273,7 +326,10 @@ pub fn sync(src: &Path, dst: &Path, matcher: &Matcher, remote: &[Codec]) -> Resu
             }
             let dest_path = dst.join(rel);
             if file_type.is_file() {
-                sender.process_file(&path, &dest_path, &mut receiver)?;
+                if sender.process_file(&path, &dest_path, &mut receiver)? {
+                    stats.files_transferred += 1;
+                    stats.bytes_transferred += fs::metadata(&path)?.len() as u64;
+                }
             } else if file_type.is_dir() {
                 fs::create_dir_all(&dest_path)?;
             } else if file_type.is_symlink() {
@@ -298,7 +354,25 @@ pub fn sync(src: &Path, dst: &Path, matcher: &Matcher, remote: &[Codec]) -> Resu
         }
     }
     sender.finish();
-    Ok(())
+    if opts.delete {
+        for entry in walk(dst) {
+            let (path, file_type) = entry.map_err(|e| EngineError::Other(e.to_string()))?;
+            if let Ok(rel) = path.strip_prefix(dst) {
+                if !matcher.is_included(rel) {
+                    continue;
+                }
+                if !src.join(rel).exists() {
+                    if file_type.is_dir() {
+                        fs::remove_dir_all(&path)?;
+                    } else {
+                        fs::remove_file(&path)?;
+                    }
+                    stats.files_deleted += 1;
+                }
+            }
+        }
+    }
+    Ok(stats)
 }
 
 #[cfg(test)]
@@ -393,7 +467,14 @@ mod tests {
         fs::write(src.join("a/file1.txt"), b"hello").unwrap();
         fs::write(src.join("file2.txt"), b"world").unwrap();
 
-        sync(&src, &dst, &Matcher::default(), available_codecs()).unwrap();
+        sync(
+            &src,
+            &dst,
+            &Matcher::default(),
+            available_codecs(),
+            &SyncOptions::default(),
+        )
+        .unwrap();
         assert_eq!(fs::read(dst.join("a/file1.txt")).unwrap(), b"hello");
         assert_eq!(fs::read(dst.join("file2.txt")).unwrap(), b"world");
     }
@@ -410,8 +491,9 @@ mod tests {
         let outside = tmp.path().join("outside.txt");
         fs::write(&outside, b"outside").unwrap();
 
-        let mut sender = Sender::new(1024, Matcher::default(), Codec::Zlib);
-        let mut receiver = Receiver::new(Codec::Zlib);
+        let mut sender =
+            Sender::new(1024, Matcher::default(), Some(Codec::Zlib), false);
+        let mut receiver = Receiver::new(Some(Codec::Zlib));
         sender.start();
         for path in [src.join("inside.txt"), outside.clone()] {
             if let Some(rel) = path.strip_prefix(&src).ok() {
