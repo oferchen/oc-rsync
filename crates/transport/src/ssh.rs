@@ -1,12 +1,16 @@
 use std::ffi::OsStr;
-use std::io;
+use std::io::{self, BufReader, BufWriter, Read};
 use std::process::{ChildStdin, ChildStdout, Command, Stdio};
+use std::sync::{Arc, Mutex};
 
 use crate::{LocalPipeTransport, SshTransport, Transport};
 
+const SSH_IO_BUF_SIZE: usize = 32 * 1024;
+
 /// Transport over the stdio of a spawned `ssh` process.
 pub struct SshStdioTransport {
-    inner: LocalPipeTransport<ChildStdout, ChildStdin>,
+    inner: LocalPipeTransport<BufReader<ChildStdout>, BufWriter<ChildStdin>>,
+    stderr: Arc<Mutex<Vec<u8>>>,
 }
 
 impl SshStdioTransport {
@@ -18,7 +22,27 @@ impl SshStdioTransport {
     {
         let mut cmd = Command::new(program);
         cmd.args(args);
-        cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
+        Self::spawn_from_command(cmd)
+    }
+
+    /// Spawn a real `ssh` process targeting an rsync server and capture stderr.
+    pub fn spawn_server<I, S>(host: &str, server_args: I) -> io::Result<Self>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let mut cmd = Command::new("ssh");
+        cmd.arg(host);
+        cmd.arg("rsync");
+        cmd.arg("--server");
+        cmd.args(server_args);
+        Self::spawn_from_command(cmd)
+    }
+
+    fn spawn_from_command(mut cmd: Command) -> io::Result<Self> {
+        cmd.stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
         let mut child = cmd.spawn()?;
         let stdin = child
             .stdin
@@ -28,9 +52,43 @@ impl SshStdioTransport {
             .stdout
             .take()
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "missing stdout"))?;
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "missing stderr"))?;
+
+        let stderr_buf = Arc::new(Mutex::new(Vec::new()));
+        let stderr_buf_clone = Arc::clone(&stderr_buf);
+        std::thread::spawn(move || {
+            let mut reader = BufReader::new(stderr);
+            let mut buf = Vec::new();
+            if reader.read_to_end(&mut buf).is_ok() {
+                if let Ok(mut locked) = stderr_buf_clone.lock() {
+                    *locked = buf;
+                }
+            }
+        });
+
         Ok(Self {
-            inner: LocalPipeTransport::new(stdout, stdin),
+            inner: LocalPipeTransport::new(
+                BufReader::with_capacity(SSH_IO_BUF_SIZE, stdout),
+                BufWriter::with_capacity(SSH_IO_BUF_SIZE, stdin),
+            ),
+            stderr: stderr_buf,
         })
+    }
+
+    /// Return any data captured from stderr of the spawned process.
+    pub fn stderr(&self) -> Vec<u8> {
+        self.stderr
+            .lock()
+            .map(|buf| buf.clone())
+            .unwrap_or_default()
+    }
+
+    /// Consume the transport returning the buffered reader and writer.
+    pub fn into_inner(self) -> (BufReader<ChildStdout>, BufWriter<ChildStdin>) {
+        self.inner.into_inner()
     }
 }
 

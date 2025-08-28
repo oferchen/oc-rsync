@@ -27,6 +27,13 @@ crate boundaries, data flow, and the key algorithms that power `rsync-rs`.
 - [`fuzz`](../crates/fuzz) – houses fuzz targets that stress protocol and parser
   logic for robustness.
 
+### Transport
+
+The [`transport`](../crates/transport) crate abstracts local and remote I/O.
+It can spawn `ssh` in server mode (`--server` arguments) and capture the
+process's stderr for diagnostics. Child stdio is wrapped in buffered readers and
+writers to ensure bounded I/O when communicating with remote peers.
+
 ## Data flow
 
 1. The [`walk`](../crates/walk) crate scans the filesystem and yields metadata
