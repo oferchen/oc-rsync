@@ -243,6 +243,8 @@ pub fn run() -> Result<()> {
     } else if args.iter().any(|a| a == "--probe") {
         let opts = ProbeOpts::parse_from(&args);
         run_probe(opts)
+    } else if args.iter().any(|a| a == "--server") {
+        run_server()
     } else {
         let opts = ClientOpts::parse_from(&args);
         run_client(opts)
@@ -806,6 +808,16 @@ fn run_probe(opts: ProbeOpts) -> Result<()> {
         println!("negotiated version {}", ver);
         Ok(())
     }
+}
+
+fn run_server() -> Result<()> {
+    use protocol::Server;
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+    let mut srv = Server::new(stdin.lock(), stdout.lock());
+    srv.handshake()
+        .map_err(|e| EngineError::Other(e.to_string()))?;
+    Ok(())
 }
 
 #[cfg(test)]
