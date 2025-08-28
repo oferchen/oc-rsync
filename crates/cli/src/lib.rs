@@ -3,11 +3,13 @@ use std::env;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use clap::{ArgAction, Parser};
 use compress::{available_codecs, Codec};
-use engine::{sync, EngineError, Result, Stats, SyncOptions, StrongHash};
+use engine::{sync, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
 use transport::{SshStdioTransport, TcpTransport, Transport};
@@ -82,7 +84,11 @@ struct ClientOpts {
     #[arg(short = 'z', long, help_heading = "Compression")]
     compress: bool,
     /// explicitly set compression level
-    #[arg(long = "compress-level", value_name = "NUM", help_heading = "Compression")]
+    #[arg(
+        long = "compress-level",
+        value_name = "NUM",
+        help_heading = "Compression"
+    )]
     compress_level: Option<i32>,
     /// enable modern zstd compression and BLAKE3 checksums
     #[arg(long, help_heading = "Compression")]
@@ -393,8 +399,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         }
     }
 
-    let compress =
-        opts.modern || opts.compress || opts.compress_level.map_or(false, |l| l > 0);
+    let compress = opts.modern || opts.compress || opts.compress_level.map_or(false, |l| l > 0);
     let sync_opts = SyncOptions {
         delete: opts.delete,
         checksum: opts.checksum,
@@ -410,7 +415,11 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         xattrs: opts.xattrs,
         acls: opts.acls,
         sparse: false,
-        strong: if opts.modern { StrongHash::Blake3 } else { StrongHash::Md5 },
+        strong: if opts.modern {
+            StrongHash::Blake3
+        } else {
+            StrongHash::Md5
+        },
         compress_level: opts.compress_level,
     };
     let stats = if opts.local {
@@ -438,7 +447,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
-                    .map_err(|e| EngineError::Other(e.to_string()))?;
+                .map_err(|e| EngineError::Other(e.to_string()))?;
                 let codecs = handshake_with_peer(&mut session)?;
                 let err = session.stderr();
                 if !err.is_empty() {
@@ -453,7 +462,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
-                    .map_err(|e| EngineError::Other(e.to_string()))?;
+                .map_err(|e| EngineError::Other(e.to_string()))?;
                 let codecs = handshake_with_peer(&mut session)?;
                 let err = session.stderr();
                 if !err.is_empty() {
@@ -593,6 +602,16 @@ fn authenticate(t: &mut TcpTransport) -> std::io::Result<Vec<String>> {
     if !auth_path.exists() {
         return Ok(Vec::new());
     }
+    #[cfg(unix)]
+    {
+        let mode = fs::metadata(auth_path)?.permissions().mode();
+        if mode & 0o077 != 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "auth file permissions are too open",
+            ));
+        }
+    }
     let contents = fs::read_to_string(auth_path)?;
     let mut buf = [0u8; 256];
     let n = t.receive(&mut buf)?;
@@ -672,5 +691,37 @@ mod tests {
         assert!(opts.compress);
         assert!(opts.stats);
         assert_eq!(opts.config, Some(PathBuf::from("file")));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn rejects_insecure_auth_file() {
+        use std::net::{TcpListener, TcpStream};
+        use std::os::unix::fs::PermissionsExt;
+        use std::{env, fs};
+        use tempfile::tempdir;
+        use transport::TcpTransport;
+
+        let dir = tempdir().unwrap();
+        let auth_path = dir.path().join("auth");
+        fs::write(&auth_path, "tok user").unwrap();
+        fs::set_permissions(&auth_path, fs::Permissions::from_mode(0o644)).unwrap();
+
+        let prev = env::current_dir().unwrap();
+        env::set_current_dir(dir.path()).unwrap();
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let handle = std::thread::spawn(move || {
+            let (_s, _) = listener.accept().unwrap();
+        });
+        let stream = TcpStream::connect(addr).unwrap();
+        let mut t = TcpTransport::from_stream(stream);
+
+        let err = authenticate(&mut t).unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+
+        env::set_current_dir(prev).unwrap();
+        handle.join().unwrap();
     }
 }
