@@ -2,6 +2,8 @@ use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::Path;
+#[cfg(unix)]
+use std::os::unix::fs::{FileTypeExt, MetadataExt};
 
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 #[cfg(feature = "lz4")]
@@ -164,11 +166,39 @@ pub fn compute_delta<R1: Read + Seek, R2: Read + Seek>(
 }
 
 /// Apply a delta to `basis` writing the reconstructed data into `out`.
-fn apply_delta<R: Read + Seek, W: Write>(basis: &mut R, ops: &[Op], out: &mut W) -> Result<()> {
+fn apply_delta<R: Read + Seek, W: Write + Seek>(
+    basis: &mut R,
+    ops: &[Op],
+    out: &mut W,
+    opts: &SyncOptions,
+) -> Result<()> {
     let mut buf = vec![0u8; 8192];
     for op in ops {
         match op {
-            Op::Data(d) => out.write_all(d)?,
+            Op::Data(d) => {
+                if opts.sparse {
+                    let mut i = 0;
+                    while i < d.len() {
+                        if d[i] == 0 {
+                            let mut j = i;
+                            while j < d.len() && d[j] == 0 {
+                                j += 1;
+                            }
+                            out.seek(SeekFrom::Current((j - i) as i64))?;
+                            i = j;
+                        } else {
+                            let mut j = i;
+                            while j < d.len() && d[j] != 0 {
+                                j += 1;
+                            }
+                            out.write_all(&d[i..j])?;
+                            i = j;
+                        }
+                    }
+                } else {
+                    out.write_all(d)?;
+                }
+            }
             Op::Copy { offset, len } => {
                 basis.seek(SeekFrom::Start(*offset as u64))?;
                 let mut remaining = *len;
@@ -191,18 +221,18 @@ pub struct Sender {
     block_size: usize,
     _matcher: Matcher,
     codec: Option<Codec>,
-    checksum: bool,
+    opts: SyncOptions,
 }
 
 impl Sender {
-    pub fn new(block_size: usize, matcher: Matcher, codec: Option<Codec>, checksum: bool) -> Self {
+    pub fn new(block_size: usize, matcher: Matcher, codec: Option<Codec>, opts: SyncOptions) -> Self {
         Self {
             state: SenderState::Idle,
             cfg: ChecksumConfigBuilder::new().build(),
             block_size,
             _matcher: matcher,
             codec,
-            checksum,
+            opts,
         }
     }
 
@@ -217,7 +247,7 @@ impl Sender {
     /// Generate a delta for `path` against `dest` and ask the receiver to apply it.
     /// Returns `true` if the destination file was updated.
     fn process_file(&mut self, path: &Path, dest: &Path, recv: &mut Receiver) -> Result<bool> {
-        if self.checksum {
+        if self.opts.checksum {
             if let Ok(dst_bytes) = fs::read(dest) {
                 let src_bytes = fs::read(path)?;
                 if self.cfg.checksum(&src_bytes).strong == self.cfg.checksum(&dst_bytes).strong {
@@ -267,7 +297,7 @@ impl Sender {
                 }
             }
         }
-        recv.apply(dest, delta)?;
+        recv.apply(path, dest, delta)?;
         Ok(true)
     }
 }
@@ -276,23 +306,25 @@ impl Sender {
 pub struct Receiver {
     state: ReceiverState,
     codec: Option<Codec>,
+    opts: SyncOptions,
 }
 
 impl Default for Receiver {
     fn default() -> Self {
-        Self::new(None)
+        Self::new(None, SyncOptions::default())
     }
 }
 
 impl Receiver {
-    pub fn new(codec: Option<Codec>) -> Self {
+    pub fn new(codec: Option<Codec>, opts: SyncOptions) -> Self {
         Self {
             state: ReceiverState::Idle,
             codec,
+            opts,
         }
     }
 
-    fn apply(&mut self, dest: &Path, mut delta: Vec<Op>) -> Result<()> {
+    fn apply(&mut self, src: &Path, dest: &Path, mut delta: Vec<Op>) -> Result<()> {
         self.state = ReceiverState::Applying;
         let mut basis: Box<dyn ReadSeek> = match File::open(dest) {
             Ok(f) => Box::new(f),
@@ -322,9 +354,53 @@ impl Receiver {
                 }
             }
         }
-        apply_delta(&mut basis, &delta, &mut out)?;
+        apply_delta(&mut basis, &delta, &mut out, &self.opts)?;
         out.flush()?;
+        self.copy_metadata(src, dest)?;
         self.state = ReceiverState::Finished;
+        Ok(())
+    }
+}
+
+impl Receiver {
+    fn copy_metadata(&self, src: &Path, dest: &Path) -> Result<()> {
+        let meta = fs::symlink_metadata(src)?;
+        if self.opts.perms {
+            fs::set_permissions(dest, meta.permissions())?;
+        }
+        if self.opts.times {
+            #[cfg(unix)]
+            {
+                use filetime::{set_file_times, FileTime};
+                let mtime = FileTime::from_last_modification_time(&meta);
+                let atime = FileTime::from_last_access_time(&meta);
+                set_file_times(dest, atime, mtime).map_err(EngineError::from)?;
+            }
+        }
+        #[cfg(unix)]
+        {
+            if self.opts.owner || self.opts.group {
+                use nix::unistd::{chown, Gid, Uid};
+                let uid = if self.opts.owner { Some(Uid::from_raw(meta.uid())) } else { None };
+                let gid = if self.opts.group { Some(Gid::from_raw(meta.gid())) } else { None };
+                chown(dest, uid, gid).map_err(|e| EngineError::Other(e.to_string()))?;
+            }
+            if self.opts.xattrs || self.opts.acls {
+                let attrs = xattr::list(src).map_err(|e| EngineError::Other(e.to_string()))?;
+                for name in attrs {
+                    let name_str = name.to_string_lossy();
+                    if !self.opts.acls && name_str.starts_with("system.posix_acl") {
+                        continue;
+                    }
+                    if let Some(val) =
+                        xattr::get(src, &name).map_err(|e| EngineError::Other(e.to_string()))?
+                    {
+                        xattr::set(dest, &name, &val)
+                            .map_err(|e| EngineError::Other(e.to_string()))?;
+                    }
+                }
+            }
+        }
         Ok(())
     }
 }
@@ -335,6 +411,17 @@ pub struct SyncOptions {
     pub delete: bool,
     pub checksum: bool,
     pub compress: bool,
+    pub perms: bool,
+    pub times: bool,
+    pub owner: bool,
+    pub group: bool,
+    pub links: bool,
+    pub hard_links: bool,
+    pub devices: bool,
+    pub specials: bool,
+    pub xattrs: bool,
+    pub acls: bool,
+    pub sparse: bool,
 }
 
 /// Statistics produced during synchronization.
@@ -362,10 +449,12 @@ pub fn sync(
     // Clone the matcher and attach the source root so per-directory filter files
     // can be located during the walk.
     let matcher = matcher.clone().with_root(src.to_path_buf());
-    let mut sender = Sender::new(1024, matcher.clone(), codec, opts.checksum);
-    let mut receiver = Receiver::new(codec);
+    let mut sender = Sender::new(1024, matcher.clone(), codec, *opts);
+    let mut receiver = Receiver::new(codec, *opts);
     let mut stats = Stats::default();
     sender.start();
+    #[cfg(unix)]
+    let mut hard_links: HashMap<(u64, u64), std::path::PathBuf> = HashMap::new();
     for entry in walk(src) {
         let (path, file_type) = entry.map_err(|e| EngineError::Other(e.to_string()))?;
         if let Ok(rel) = path.strip_prefix(src) {
@@ -377,13 +466,25 @@ pub fn sync(
             }
             let dest_path = dst.join(rel);
             if file_type.is_file() {
+                #[cfg(unix)]
+                if opts.hard_links {
+                    use std::os::unix::fs::MetadataExt;
+                    let meta = fs::metadata(&path)?;
+                    let key = (meta.dev(), meta.ino());
+                    if let Some(existing) = hard_links.get(&key) {
+                        fs::hard_link(existing, &dest_path)?;
+                        continue;
+                    } else {
+                        hard_links.insert(key, dest_path.clone());
+                    }
+                }
                 if sender.process_file(&path, &dest_path, &mut receiver)? {
                     stats.files_transferred += 1;
                     stats.bytes_transferred += fs::metadata(&path)?.len();
                 }
             } else if file_type.is_dir() {
                 fs::create_dir_all(&dest_path)?;
-            } else if file_type.is_symlink() {
+            } else if file_type.is_symlink() && opts.links {
                 let target = fs::read_link(&path)?;
                 if let Some(parent) = dest_path.parent() {
                     fs::create_dir_all(parent)?;
@@ -396,6 +497,27 @@ pub fn sync(
                         std::os::windows::fs::symlink_dir(&target, &dest_path)?;
                     } else {
                         std::os::windows::fs::symlink_file(&target, &dest_path)?;
+                    }
+                }
+            } else {
+                #[cfg(unix)]
+                {
+                    if (file_type.is_char_device() || file_type.is_block_device()) && opts.devices {
+                        use nix::sys::stat::{mknod, Mode, SFlag};
+                        let meta = fs::symlink_metadata(&path)?;
+                        let kind = if file_type.is_char_device() {
+                            SFlag::S_IFCHR
+                        } else {
+                            SFlag::S_IFBLK
+                        };
+                        let perm = Mode::from_bits_truncate(meta.mode() & 0o777);
+                        mknod(&dest_path, kind, perm, meta.rdev())
+                            .map_err(|e| EngineError::Other(e.to_string()))?;
+                    } else if file_type.is_fifo() && opts.specials {
+                        use nix::sys::stat::Mode;
+                        use nix::unistd::mkfifo;
+                        mkfifo(&dest_path, Mode::from_bits_truncate(0o644))
+                            .map_err(|e| EngineError::Other(e.to_string()))?;
                     }
                 }
             }
@@ -442,9 +564,9 @@ mod tests {
         let mut target = Cursor::new(b"hello brave new world".to_vec());
         let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
         let mut basis = Cursor::new(b"hello world".to_vec());
-        let mut out = Vec::new();
-        apply_delta(&mut basis, &delta, &mut out).unwrap();
-        assert_eq!(out, b"hello brave new world");
+        let mut out = Cursor::new(Vec::new());
+        apply_delta(&mut basis, &delta, &mut out, &SyncOptions::default()).unwrap();
+        assert_eq!(out.into_inner(), b"hello brave new world");
     }
 
     #[test]
@@ -466,9 +588,9 @@ mod tests {
             ]
         );
         let mut basis_reader = Cursor::new(basis.clone());
-        let mut out = Vec::new();
-        apply_delta(&mut basis_reader, &delta, &mut out).unwrap();
-        assert_eq!(out, basis);
+        let mut out = Cursor::new(Vec::new());
+        apply_delta(&mut basis_reader, &delta, &mut out, &SyncOptions::default()).unwrap();
+        assert_eq!(out.into_inner(), basis);
     }
 
     #[test]
@@ -546,8 +668,8 @@ mod tests {
         let outside = tmp.path().join("outside.txt");
         fs::write(&outside, b"outside").unwrap();
 
-        let mut sender = Sender::new(1024, Matcher::default(), Some(Codec::Zlib), false);
-        let mut receiver = Receiver::new(Some(Codec::Zlib));
+        let mut sender = Sender::new(1024, Matcher::default(), Some(Codec::Zlib), SyncOptions::default());
+        let mut receiver = Receiver::new(Some(Codec::Zlib), SyncOptions::default());
         sender.start();
         for path in [src.join("inside.txt"), outside.clone()] {
             if let Some(rel) = path.strip_prefix(&src).ok() {
@@ -589,9 +711,9 @@ mod tests {
         let after = mem_usage_kb();
         // delta should reconstruct target
         let mut basis = Cursor::new(data.clone());
-        let mut out = Vec::new();
-        apply_delta(&mut basis, &delta, &mut out).unwrap();
-        assert_eq!(out, data);
+        let mut out = Cursor::new(Vec::new());
+        apply_delta(&mut basis, &delta, &mut out, &SyncOptions::default()).unwrap();
+        assert_eq!(out.into_inner(), data);
         // Memory usage should stay under ~10MB
         assert!(
             after - before < 10 * 1024,

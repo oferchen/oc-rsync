@@ -417,10 +417,13 @@ dependencies = [
  "checksums",
  "compress",
  "criterion",
+ "filetime",
  "filters",
+ "nix",
  "tempfile",
  "thiserror",
  "walk",
+ "xattr",
 ]
 
 [[package]]
