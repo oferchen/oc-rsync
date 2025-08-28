@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use clap::{ArgAction, Parser};
 use compress::{available_codecs, Codec};
-use engine::{sync, EngineError, Result, Stats, SyncOptions};
+use engine::{sync, EngineError, Result, Stats, SyncOptions, StrongHash};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
 use transport::{SshStdioTransport, TcpTransport, Transport};
@@ -81,6 +81,12 @@ struct ClientOpts {
     /// compress file data during the transfer
     #[arg(short = 'z', long, help_heading = "Compression")]
     compress: bool,
+    /// explicitly set compression level
+    #[arg(long = "compress-level", value_name = "NUM", help_heading = "Compression")]
+    compress_level: Option<i32>,
+    /// enable modern zstd compression and BLAKE3 checksums
+    #[arg(long, help_heading = "Compression")]
+    modern: bool,
     /// keep partially transferred files and show progress
     #[arg(short = 'P', help_heading = "Misc")]
     partial: bool,
@@ -378,10 +384,12 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         }
     }
 
+    let compress =
+        opts.modern || opts.compress || opts.compress_level.map_or(false, |l| l > 0);
     let sync_opts = SyncOptions {
         delete: opts.delete,
         checksum: opts.checksum,
-        compress: opts.compress,
+        compress,
         perms: opts.perms || opts.archive,
         times: opts.times || opts.archive,
         owner: opts.owner || opts.archive,
@@ -393,6 +401,8 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         xattrs: opts.xattrs,
         acls: opts.acls,
         sparse: false,
+        strong: if opts.modern { StrongHash::Blake3 } else { StrongHash::Md5 },
+        compress_level: opts.compress_level,
     };
     let stats = if opts.local {
         match (src, dst) {

@@ -6,7 +6,7 @@ const DATA: &[u8] = b"The quick brown fox jumps over the lazy dog";
 
 #[test]
 fn zlib_roundtrip() {
-    let codec = Zlib;
+    let codec = Zlib::default();
     let compressed = codec.compress(DATA).expect("compress");
     let decompressed = codec.decompress(&compressed).expect("decompress");
     assert_eq!(DATA, decompressed.as_slice());
@@ -14,7 +14,7 @@ fn zlib_roundtrip() {
 
 #[test]
 fn zstd_roundtrip() {
-    let codec = Zstd;
+    let codec = Zstd::default();
     let compressed = codec.compress(DATA).expect("compress");
     let decompressed = codec.decompress(&compressed).expect("decompress");
     assert_eq!(DATA, decompressed.as_slice());
