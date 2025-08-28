@@ -35,10 +35,16 @@ rsync-rs [OPTIONS] <SRC> <DEST>
 - `-r, --recursive` – copy directories recursively.
 - `-n, --dry-run` – perform a trial run with no changes made.
 - `-v, --verbose` – increase logging verbosity.
+- `-q, --quiet` – suppress non-error messages.
 - `--delete` – remove extraneous files from the destination.
 - `-c, --checksum` – use full checksums to determine file changes.
+- `-z, --compress` – compress file data during the transfer.
 - `--stats` – display transfer statistics on completion.
 - `--config <FILE>` – supply a custom configuration file.
+
+The CLI also parses flags like `-a`, `-R`, `-P`, and `--numeric-ids`, but these
+are not yet implemented and will exit with a message directing users to
+`docs/differences.md`.
 
 For a comprehensive list of available flags and their current support status,
 see the [CLI flag reference](cli/flags.md).
