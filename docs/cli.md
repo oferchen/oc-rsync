@@ -53,9 +53,8 @@ copied:
 - `--stats` – display transfer statistics on completion.
 - `--config <FILE>` – supply a custom configuration file.
 
-The CLI also parses flags like `-a`, `-R`, `-P`, and `--numeric-ids`, but these
-are not yet implemented and will exit with a message directing users to
-`docs/differences.md`.
+Flags such as `-a`, `-R`, `-P`, and `--numeric-ids` mirror their `rsync`
+behavior. See `docs/differences.md` for a summary of supported options.
 
 For a comprehensive list of available flags and their current support status,
 see the [CLI flag reference](cli/flags.md).

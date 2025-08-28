@@ -5,7 +5,7 @@
 | --address | Error |  |
 | --append | Error |  |
 | --append-verify | Error |  |
-| --archive | Error | flag -a/--archive is not supported; see docs/differences.md |
+| --archive | Supported | sets perms, times, owner, group, links, devices, specials |
 | --atimes | Error |  |
 | --backup | Error |  |
 | --backup-dir | Error |  |
@@ -88,7 +88,7 @@
 | --no-OPTION | Error |  |
 | --no-implied-dirs | Error |  |
 | --no-motd | Error |  |
-| --numeric-ids | Error | flag --numeric-ids is not supported; see docs/differences.md |
+| --numeric-ids | Supported | use numeric uid/gid values |
 | --old-args | Error |  |
 | --old-d | Error | alias for --old-dirs |
 | --old-dirs | Error |  |
@@ -112,7 +112,7 @@
 | --quiet | Supported |  |
 | --read-batch | Error |  |
 | --recursive | Supported |  |
-| --relative | Error | flag -R/--relative is not supported; see docs/differences.md |
+| --relative | Supported | use relative path names |
 | --remote-option | Error |  |
 | --remove-source-files | Error |  |
 | --rsh | Error |  |
@@ -161,15 +161,15 @@
 | -M | Error | alias for --remote-option |
 | -N | Error | alias for --crtimes |
 | -O | Error | alias for --omit-dir-times |
-| -P | Error | same as --partial --progress; flag -P is not supported; see docs/differences.md |
-| -R | Error | alias for --relative; flag -R/--relative is not supported; see docs/differences.md |
+| -P | Supported | same as --partial --progress |
+| -R | Alias | alias for --relative |
 | -S | Error | alias for --sparse |
 | -T | Error | alias for --temp-dir |
 | -U | Error | alias for --atimes |
 | -V | Error | alias for --version |
 | -W | Error | alias for --whole-file |
 | -X | Error | alias for --xattrs |
-| -a | Error | alias for --archive; flag -a/--archive is not supported; see docs/differences.md |
+| -a | Alias | alias for --archive |
 | -b | Error | alias for --backup |
 | -c | Alias | alias for --checksum |
 | -d | Error | alias for --dirs |

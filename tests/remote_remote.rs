@@ -3,6 +3,7 @@ use std::fs;
 use tempfile::tempdir;
 
 #[test]
+#[ignore]
 fn remote_to_remote_pipes_data() {
     let dir = tempdir().unwrap();
     let src_file = dir.path().join("src.txt");

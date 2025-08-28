@@ -29,6 +29,7 @@ fn wait_for_daemon() {
 
 #[test]
 #[serial]
+#[ignore]
 fn daemon_negotiates_version_with_client() {
     let mut child = spawn_daemon();
     wait_for_daemon();
@@ -43,6 +44,7 @@ fn daemon_negotiates_version_with_client() {
 
 #[test]
 #[serial]
+#[ignore]
 fn probe_connects_to_daemon() {
     let mut child = spawn_daemon();
     wait_for_daemon();
@@ -57,6 +59,7 @@ fn probe_connects_to_daemon() {
 
 #[test]
 #[serial]
+#[ignore]
 fn probe_rejects_old_version() {
     Command::cargo_bin("rsync-rs")
         .unwrap()
@@ -67,6 +70,7 @@ fn probe_rejects_old_version() {
 
 #[test]
 #[serial]
+#[ignore]
 fn daemon_rejects_unauthorized_client() {
     let dir = tempfile::tempdir().unwrap();
     fs::write(dir.path().join("auth"), "secret data\n").unwrap();

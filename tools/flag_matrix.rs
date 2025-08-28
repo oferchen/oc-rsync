@@ -75,27 +75,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rsync_rs_flags, rsync_rs_aliases, _rsync_rs_alias_desc) = parse_help(&rsync_rs_help_str);
 
     let error_notes: HashMap<&str, &str> = [
-        (
-            "-a",
-            "flag -a/--archive is not supported; see docs/differences.md",
-        ),
-        (
-            "--archive",
-            "flag -a/--archive is not supported; see docs/differences.md",
-        ),
-        (
-            "-R",
-            "flag -R/--relative is not supported; see docs/differences.md",
-        ),
-        (
-            "--relative",
-            "flag -R/--relative is not supported; see docs/differences.md",
-        ),
-        ("-P", "flag -P is not supported; see docs/differences.md"),
-        (
-            "--numeric-ids",
-            "flag --numeric-ids is not supported; see docs/differences.md",
-        ),
     ]
     .into_iter()
     .collect();
