@@ -1,6 +1,6 @@
 use assert_cmd::Command;
-use tempfile::tempdir;
 use std::fs;
+use tempfile::tempdir;
 
 #[test]
 fn remote_to_remote_pipes_data() {
@@ -10,16 +10,24 @@ fn remote_to_remote_pipes_data() {
     fs::write(&src_file, b"hello remote\n").unwrap();
 
     let src_script = dir.path().join("src.sh");
-    fs::write(&src_script, format!("#!/bin/sh\ncat {}\n", src_file.display())).unwrap();
+    fs::write(
+        &src_script,
+        format!("#!/bin/sh\ncat {}\n", src_file.display()),
+    )
+    .unwrap();
 
     let dst_script = dir.path().join("dst.sh");
-    fs::write(&dst_script, format!("#!/bin/sh\ncat > {}\n", dst_file.display())).unwrap();
+    fs::write(
+        &dst_script,
+        format!("#!/bin/sh\ncat > {}\n", dst_file.display()),
+    )
+    .unwrap();
 
     let src_spec = format!("sh:{}", src_script.to_str().unwrap());
     let dst_spec = format!("sh:{}", dst_script.to_str().unwrap());
 
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
-    cmd.args(["client", &src_spec, &dst_spec]);
+    cmd.args([&src_spec, &dst_spec]);
     cmd.assert().success();
 
     let out = fs::read(&dst_file).unwrap();
@@ -30,7 +38,7 @@ fn remote_to_remote_pipes_data() {
 fn remote_pair_missing_host_fails() {
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
     // Missing host in source spec should yield an error before attempting connections
-    cmd.args(["client", ":/tmp/src", "sh:/tmp/dst"]);
+    cmd.args([":/tmp/src", "sh:/tmp/dst"]);
     cmd.assert().failure();
 }
 
@@ -38,6 +46,6 @@ fn remote_pair_missing_host_fails() {
 fn remote_pair_missing_path_fails() {
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
     // Missing path in source spec should also fail
-    cmd.args(["client", "sh:", "sh:/tmp/dst"]);
+    cmd.args(["sh:", "sh:/tmp/dst"]);
     cmd.assert().failure();
 }
