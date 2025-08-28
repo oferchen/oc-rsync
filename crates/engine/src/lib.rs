@@ -468,8 +468,18 @@ impl Receiver {
         });
         apply_delta(&mut basis, ops, &mut out, &self.opts)?;
         let len = out.seek(SeekFrom::Current(0))?;
-        out.get_ref().set_len(len)?;
+        // Ensure the file is extended without eagerly allocating blocks so that
+        // sparse regions remain holes on filesystems like APFS.  Truncating
+        // with `set_len` can preallocate on some platforms which defeats
+        // sparseness, so we only write a single zero byte if the final position
+        // is beyond the current length.
         out.flush()?;
+        let file = out.get_mut();
+        let current = file.metadata()?.len();
+        if current < len {
+            file.seek(SeekFrom::Start(len - 1))?;
+            file.write_all(&[0])?;
+        }
         if self.opts.partial {
             fs::rename(tmp_dest, dest)?;
         }
