@@ -20,7 +20,15 @@ fn walk_includes_files_dirs_and_symlinks() {
     #[cfg(windows)]
     symlink_file(root.join("top.txt"), &link_path).unwrap();
 
-    let entries: Vec<_> = walk(root).collect::<Result<Vec<_>, _>>().unwrap();
+    let mut entries = Vec::new();
+    let mut state = String::new();
+    for batch in walk(root, 10) {
+        let batch = batch.unwrap();
+        for e in batch {
+            let path = e.apply(&mut state);
+            entries.push((path, e.file_type));
+        }
+    }
     assert!(entries.iter().any(|(p, t)| p == &root && t.is_dir()));
     assert!(entries
         .iter()
@@ -34,4 +42,37 @@ fn walk_includes_files_dirs_and_symlinks() {
     assert!(entries
         .iter()
         .any(|(p, t)| p == &link_path && t.is_symlink()));
+}
+
+#[test]
+fn walk_preserves_order_and_bounds_batches() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path();
+    fs::create_dir(root.join("dir")).unwrap();
+    fs::create_dir(root.join("dir/sub")).unwrap();
+    fs::write(root.join("dir/file1"), b"a").unwrap();
+    fs::write(root.join("dir/sub/file2"), b"b").unwrap();
+    fs::write(root.join("top.txt"), b"c").unwrap();
+
+    let mut paths = Vec::new();
+    let mut state = String::new();
+    let mut walker = walk(root, 2);
+    while let Some(batch) = walker.next() {
+        let batch = batch.unwrap();
+        assert!(batch.len() <= 2);
+        for e in batch {
+            let path = e.apply(&mut state);
+            paths.push(path);
+        }
+    }
+
+    let expected = vec![
+        root.to_path_buf(),
+        root.join("dir"),
+        root.join("dir/file1"),
+        root.join("dir/sub"),
+        root.join("dir/sub/file2"),
+        root.join("top.txt"),
+    ];
+    assert_eq!(paths, expected);
 }
