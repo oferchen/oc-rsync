@@ -6,7 +6,7 @@ use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 
 use clap::{ArgAction, Parser};
-use compress::available_codecs;
+use compress::{available_codecs, Codec};
 use engine::{sync, EngineError, Result, SyncOptions, Stats};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
@@ -162,7 +162,7 @@ fn parse_remote_spec(s: &str) -> Result<RemoteSpec> {
     Ok(RemoteSpec::Local(PathBuf::from(s)))
 }
 
-fn pipe_transports<S, D>(mut src: S, mut dst: D) -> io::Result<()>
+fn pipe_transports<S, D>(src: &mut S, dst: &mut D) -> io::Result<()>
 where
     S: Transport,
     D: Transport,
@@ -176,6 +176,69 @@ where
         dst.send(&buf[..n])?;
     }
     Ok(())
+}
+
+fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
+    transport
+        .send(&LATEST_VERSION.to_be_bytes())
+        .map_err(EngineError::from)?;
+
+    let mut ver_buf = [0u8; 4];
+    let mut read = 0;
+    while read < ver_buf.len() {
+        let n = transport.receive(&mut ver_buf[read..]).map_err(EngineError::from)?;
+        if n == 0 {
+            return Err(EngineError::Other("failed to read version".into()));
+        }
+        read += n;
+    }
+    let peer = u32::from_be_bytes(ver_buf);
+    negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
+
+    let codecs = available_codecs();
+    transport
+        .send(&[codecs.len() as u8])
+        .map_err(EngineError::from)?;
+    for c in codecs {
+        transport
+            .send(&[*c as u8])
+            .map_err(EngineError::from)?;
+    }
+
+    let mut len_buf = [0u8; 1];
+    let mut read = 0;
+    while read < 1 {
+        let n = transport.receive(&mut len_buf[read..]).map_err(EngineError::from)?;
+        if n == 0 {
+            return Err(EngineError::Other("failed to read codec list length".into()));
+        }
+        read += n;
+    }
+    let len = len_buf[0] as usize;
+    let mut buf = vec![0u8; len];
+    let mut off = 0;
+    while off < len {
+        let n = transport.receive(&mut buf[off..]).map_err(EngineError::from)?;
+        if n == 0 {
+            return Err(EngineError::Other("failed to read codec list".into()));
+        }
+        off += n;
+    }
+
+    let mut remote = Vec::new();
+    for b in buf {
+        let codec = match b {
+            0 => Codec::Zlib,
+            1 => Codec::Zstd,
+            2 => Codec::Lz4,
+            other => {
+                return Err(EngineError::Other(format!("unknown codec {}", other)));
+            }
+        };
+        remote.push(codec);
+    }
+
+    Ok(remote)
 }
 
 fn run_client(opts: ClientOpts) -> Result<()> {
@@ -214,11 +277,25 @@ fn run_client(opts: ClientOpts) -> Result<()> {
             (RemoteSpec::Local(_), RemoteSpec::Local(_)) => {
                 return Err(EngineError::Other("local sync requires --local flag".into()))
             }
-            (RemoteSpec::Remote { path: src, .. }, RemoteSpec::Local(dst)) => {
-                sync(&src, &dst, &matcher, available_codecs(), &sync_opts)?
+            (RemoteSpec::Remote { host, path: src }, RemoteSpec::Local(dst)) => {
+                let mut session = SshStdioTransport::spawn_server(&host, [src.as_os_str()])
+                    .map_err(|e| EngineError::Other(e.to_string()))?;
+                let codecs = handshake_with_peer(&mut session)?;
+                let err = session.stderr();
+                if !err.is_empty() {
+                    return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
+                }
+                sync(&src, &dst, &matcher, &codecs, &sync_opts)?
             }
-            (RemoteSpec::Local(src), RemoteSpec::Remote { path: dst, .. }) => {
-                sync(&src, &dst, &matcher, available_codecs(), &sync_opts)?
+            (RemoteSpec::Local(src), RemoteSpec::Remote { host, path: dst }) => {
+                let mut session = SshStdioTransport::spawn_server(&host, [dst.as_os_str()])
+                    .map_err(|e| EngineError::Other(e.to_string()))?;
+                let codecs = handshake_with_peer(&mut session)?;
+                let err = session.stderr();
+                if !err.is_empty() {
+                    return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
+                }
+                sync(&src, &dst, &matcher, &codecs, &sync_opts)?
             }
             (
                 RemoteSpec::Remote {
@@ -237,13 +314,27 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     return Err(EngineError::Other("remote path missing".to_string()));
                 }
 
-                let src_session = SshStdioTransport::spawn(&src_host, [src_path.as_os_str()])
-                    .map_err(|e| EngineError::Other(e.to_string()))?;
-                let dst_session = SshStdioTransport::spawn(&dst_host, [dst_path.as_os_str()])
-                    .map_err(|e| EngineError::Other(e.to_string()))?;
+                let mut src_session = SshStdioTransport::spawn_server(
+                    &src_host,
+                    [src_path.as_os_str()],
+                )
+                .map_err(|e| EngineError::Other(e.to_string()))?;
+                let mut dst_session = SshStdioTransport::spawn_server(
+                    &dst_host,
+                    [dst_path.as_os_str()],
+                )
+                .map_err(|e| EngineError::Other(e.to_string()))?;
 
-                pipe_transports(src_session, dst_session)
+                pipe_transports(&mut src_session, &mut dst_session)
                     .map_err(|e| EngineError::Other(e.to_string()))?;
+                let src_err = src_session.stderr();
+                if !src_err.is_empty() {
+                    return Err(EngineError::Other(String::from_utf8_lossy(&src_err).into()));
+                }
+                let dst_err = dst_session.stderr();
+                if !dst_err.is_empty() {
+                    return Err(EngineError::Other(String::from_utf8_lossy(&dst_err).into()));
+                }
                 Stats::default()
             }
         }
