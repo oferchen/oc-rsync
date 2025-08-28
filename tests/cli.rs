@@ -37,3 +37,19 @@ fn unsupported_subcommand() {
     ]);
     cmd.assert().failure();
 }
+
+#[test]
+fn remote_destination_is_unsupported() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::write(src_dir.join("file.txt"), b"hello").unwrap();
+
+    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    cmd.args([
+        "client",
+        src_dir.to_str().unwrap(),
+        "remote:/dest",
+    ]);
+    cmd.assert().failure();
+}
