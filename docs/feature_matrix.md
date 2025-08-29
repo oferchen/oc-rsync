@@ -17,9 +17,9 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--block-size` | `-B` | ✅ | ❌ | — | controls delta block size | ≤3.2 |
 | `--blocking-io` | — | ❌ | — | — |  | ≤3.2 |
 | `--bwlimit` | — | ✅ | ❌ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) |  | ≤3.2 |
-| `--cc` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--checksum-choice` | ≤3.2 |
+| `--cc` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | alias for `--checksum-choice` | ≤3.2 |
 | `--checksum` | `-c` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, BLAKE3 | ≤3.2 |
-| `--checksum-choice` | — | ❌ | — | — |  | ≤3.2 |
+| `--checksum-choice` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | choose the strong hash algorithm | ≤3.2 |
 | `--checksum-seed` | — | ❌ | — | — |  | ≤3.2 |
 | `--chmod` | — | ❌ | — | — |  | ≤3.2 |
 | `--chown` | — | ❌ | — | — |  | ≤3.2 |

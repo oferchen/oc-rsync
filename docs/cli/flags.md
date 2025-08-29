@@ -151,7 +151,7 @@
 |  | --backup-dir=DIR | make backups into hierarchy based in DIR | yes |  | no |
 | -B | --block-size=SIZE | force a fixed checksum block-size | no |  | no |
 | -c | --checksum | skip based on checksum, not mod-time & size | no | Parsed but not implemented | no |
-|  | --checksum-choice=STR | choose the checksum algorithm (aka --cc) | no |  | no |
+|  | --checksum-choice=STR | choose the checksum algorithm (aka --cc) | yes |  | no |
 |  | --checksum-seed=NUM | set block/file checksum seed (advanced) | no |  | no |
 |  | --compare-dest=DIR | also compare destination files relative to DIR | yes |  | no |
 |  | --contimeout=SECONDS | set daemon connection timeout in seconds | yes |  | no |
