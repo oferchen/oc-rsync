@@ -1,5 +1,5 @@
 use compress::{available_codecs, encode_codecs};
-use protocol::{Server, LATEST_VERSION};
+use protocol::{Server, CAP_CODECS, LATEST_VERSION};
 use std::io::Cursor;
 
 #[test]
@@ -10,6 +10,7 @@ fn server_negotiates_version() {
     codecs_frame.encode(&mut codecs_buf).unwrap();
     let mut input = Cursor::new({
         let mut v = LATEST_VERSION.to_be_bytes().to_vec();
+        v.extend_from_slice(&CAP_CODECS.to_be_bytes());
         v.extend_from_slice(&codecs_buf);
         v
     });
@@ -20,6 +21,7 @@ fn server_negotiates_version() {
     assert_eq!(peer_codecs, available_codecs());
     let expected = {
         let mut v = LATEST_VERSION.to_be_bytes().to_vec();
+        v.extend_from_slice(&CAP_CODECS.to_be_bytes());
         let mut out_frame = Vec::new();
         codecs_frame.encode(&mut out_frame).unwrap();
         v.extend_from_slice(&out_frame);

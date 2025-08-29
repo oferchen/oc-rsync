@@ -1,7 +1,7 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
-use crate::{negotiate_version, Demux, Frame, Message, Mux};
+use crate::{negotiate_version, Demux, Frame, Message, Mux, CAP_CODECS};
 use compress::{available_codecs, decode_codecs, encode_codecs, Codec};
 
 /// Server-side protocol state machine.
@@ -33,14 +33,17 @@ impl<R: Read, W: Write> Server<R, W> {
         }
     }
 
-    /// Perform the initial version negotiation handshake with a client. The
-    /// client is expected to send a 4 byte big-endian protocol version which we
-    /// negotiate against our supported range and reply with the selected
-    /// version.  After version negotiation, both peers exchange lists of
-    /// supported compression codecs. The client's advertised codecs are
-    /// returned.
+    /// Perform the initial version negotiation handshake with a client.
+    ///
+    /// The client sends a 4 byte big-endian protocol version followed by a
+    /// 32-bit capability bitmask. We negotiate the version, echo back the
+    /// selected version and capabilities understood by both sides, and then
+    /// optionally exchange codec lists if [`CAP_CODECS`] is agreed. The client's
+    /// advertised codecs are returned, defaulting to `[Codec::Zlib]` when no
+    /// explicit negotiation occurs.
     pub fn handshake(&mut self) -> io::Result<Vec<Codec>> {
         let mut buf = [0u8; 4];
+        // Peer protocol version
         self.reader.read_exact(&mut buf)?;
         let peer = u32::from_be_bytes(buf);
         let ver = negotiate_version(peer)?;
@@ -48,24 +51,41 @@ impl<R: Read, W: Write> Server<R, W> {
         self.writer.flush()?;
         self.version = ver;
 
-        // Read the client's advertised codecs message.
-        let frame = Frame::decode(&mut self.reader)?;
-        let msg = Message::from_frame(frame)?;
-        let peer_codecs = match msg {
-            Message::Codecs(buf) => decode_codecs(&buf)?,
-            _ => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "expected codecs message",
-                ))
-            }
-        };
+        // Peer capability bitmask
+        self.reader.read_exact(&mut buf)?;
+        let peer_caps = u32::from_be_bytes(buf);
 
-        // Respond with our own codec list via a codecs message.
-        let payload = encode_codecs(available_codecs());
-        let frame = Message::Codecs(payload).to_frame(0);
-        frame.encode(&mut self.writer)?;
+        // Advertise our capabilities only if the peer signaled support.
+        let mut caps = 0u32;
+        if peer_caps & CAP_CODECS != 0 {
+            caps |= CAP_CODECS;
+        }
+        self.writer.write_all(&caps.to_be_bytes())?;
         self.writer.flush()?;
+
+        let mut peer_codecs = vec![Codec::Zlib];
+        if caps & CAP_CODECS != 0 {
+            match Frame::decode(&mut self.reader) {
+                Ok(frame) => {
+                    let msg = Message::from_frame(frame.clone())?;
+                    if let Message::Codecs(buf) = msg {
+                        peer_codecs = decode_codecs(&buf)?;
+                        let payload = encode_codecs(available_codecs());
+                        let frame = Message::Codecs(payload).to_frame(0);
+                        frame.encode(&mut self.writer)?;
+                        self.writer.flush()?;
+                    } else {
+                        // Client did not send a codecs message; queue the frame
+                        // for later processing.
+                        let _ = self.demux.ingest(frame);
+                    }
+                }
+                Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
+                    // Treat missing frame as lack of codec negotiation.
+                }
+                Err(e) => return Err(e),
+            }
+        }
 
         Ok(peer_codecs)
     }

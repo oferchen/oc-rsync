@@ -13,7 +13,7 @@ use clap::{ArgAction, Parser};
 use compress::{available_codecs, Codec};
 use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{parse as parse_filters, Matcher};
-use protocol::{negotiate_version, Frame, FrameHeader, Message, Msg, Tag, LATEST_VERSION};
+use protocol::{negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION};
 use shell_words::split as shell_split;
 use transport::{RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
 
@@ -553,54 +553,71 @@ fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
     let peer = u32::from_be_bytes(ver_buf);
     negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
 
-    // Advertise our supported codecs via a codecs message frame.
-    let payload = compress::encode_codecs(available_codecs());
-    let frame = Message::Codecs(payload).to_frame(0);
-    let mut buf = Vec::new();
-    frame.encode(&mut buf).map_err(EngineError::from)?;
-    transport.send(&buf).map_err(EngineError::from)?;
+    // Send our capability bitmask.
+    let caps = CAP_CODECS;
+    transport
+        .send(&caps.to_be_bytes())
+        .map_err(EngineError::from)?;
 
-    // Read the peer's codecs message frame.
-    let mut hdr = [0u8; 8];
-    let mut read = 0;
-    while read < hdr.len() {
-        let n = transport
-            .receive(&mut hdr[read..])
-            .map_err(EngineError::from)?;
-        if n == 0 {
-            return Err(EngineError::Other("failed to read frame header".into()));
+    // Read server capability bitmask.
+    let mut cap_buf = [0u8; 4];
+    transport
+        .receive(&mut cap_buf)
+        .map_err(EngineError::from)?;
+    let server_caps = u32::from_be_bytes(cap_buf);
+
+    let mut peer_codecs = vec![Codec::Zlib];
+    if server_caps & CAP_CODECS != 0 {
+        // Advertise our supported codecs via a codecs message frame.
+        let payload = compress::encode_codecs(available_codecs());
+        let frame = Message::Codecs(payload).to_frame(0);
+        let mut buf = Vec::new();
+        frame.encode(&mut buf).map_err(EngineError::from)?;
+        transport.send(&buf).map_err(EngineError::from)?;
+
+        // Read the peer's codecs message frame.
+        let mut hdr = [0u8; 8];
+        let mut read = 0;
+        while read < hdr.len() {
+            let n = transport
+                .receive(&mut hdr[read..])
+                .map_err(EngineError::from)?;
+            if n == 0 {
+                return Err(EngineError::Other("failed to read frame header".into()));
+            }
+            read += n;
         }
-        read += n;
-    }
-    let channel = u16::from_be_bytes([hdr[0], hdr[1]]);
-    let tag = Tag::try_from(hdr[2]).map_err(|e| EngineError::Other(e.to_string()))?;
-    let msg = Msg::try_from(hdr[3]).map_err(|e| EngineError::Other(e.to_string()))?;
-    let len = u32::from_be_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
-    let mut payload = vec![0u8; len];
-    let mut off = 0;
-    while off < len {
-        let n = transport
-            .receive(&mut payload[off..])
-            .map_err(EngineError::from)?;
-        if n == 0 {
-            return Err(EngineError::Other("failed to read frame payload".into()));
+        let channel = u16::from_be_bytes([hdr[0], hdr[1]]);
+        let tag = Tag::try_from(hdr[2]).map_err(|e| EngineError::Other(e.to_string()))?;
+        let msg = Msg::try_from(hdr[3]).map_err(|e| EngineError::Other(e.to_string()))?;
+        let len = u32::from_be_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
+        let mut payload = vec![0u8; len];
+        let mut off = 0;
+        while off < len {
+            let n = transport
+                .receive(&mut payload[off..])
+                .map_err(EngineError::from)?;
+            if n == 0 {
+                return Err(EngineError::Other("failed to read frame payload".into()));
+            }
+            off += n;
         }
-        off += n;
+        let frame = Frame {
+            header: FrameHeader {
+                channel,
+                tag,
+                msg,
+                len: len as u32,
+            },
+            payload,
+        };
+        let msg = Message::from_frame(frame).map_err(EngineError::from)?;
+        if let Message::Codecs(data) = msg {
+            peer_codecs = compress::decode_codecs(&data).map_err(EngineError::from)?;
+        }
     }
-    let frame = Frame {
-        header: FrameHeader {
-            channel,
-            tag,
-            msg,
-            len: len as u32,
-        },
-        payload,
-    };
-    let msg = Message::from_frame(frame).map_err(EngineError::from)?;
-    match msg {
-        Message::Codecs(data) => compress::decode_codecs(&data).map_err(EngineError::from),
-        _ => Err(EngineError::Other("expected codecs message".into())),
-    }
+
+    Ok(peer_codecs)
 }
 
 fn run_client(opts: ClientOpts) -> Result<()> {
