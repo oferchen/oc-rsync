@@ -170,6 +170,14 @@ struct ClientOpts {
         visible_alias = "zl"
     )]
     compress_level: Option<i32>,
+    /// skip compression for files with suffix in LIST
+    #[arg(
+        long = "skip-compress",
+        value_name = "LIST",
+        help_heading = "Compression",
+        value_delimiter = ','
+    )]
+    skip_compress: Vec<String>,
     /// enable BLAKE3 checksums (zstd is negotiated automatically)
     #[arg(long, help_heading = "Compression")]
     modern: bool,
@@ -942,6 +950,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         strong,
         compress_level: opts.compress_level,
         compress_choice,
+        skip_compress: opts.skip_compress.clone(),
         partial: opts.partial || opts.partial_progress,
         progress: opts.progress || opts.partial_progress,
         itemize_changes: opts.itemize_changes,
