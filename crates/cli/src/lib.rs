@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::env;
 use std::fs;
 use std::io::{self, Read, Write};
@@ -12,7 +13,7 @@ use clap::{ArgAction, Parser};
 use compress::{available_codecs, Codec};
 use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{parse as parse_filters, Matcher};
-use protocol::{negotiate_version, LATEST_VERSION};
+use protocol::{negotiate_version, Frame, FrameHeader, Message, Msg, Tag, LATEST_VERSION};
 use transport::{SshStdioTransport, TcpTransport, Transport};
 use shell_words::split as shell_split;
 
@@ -100,7 +101,7 @@ struct ClientOpts {
     #[cfg(feature = "acl")]
     #[arg(long, help_heading = "Attributes")]
     acls: bool,
-    /// compress file data during the transfer
+    /// compress file data during the transfer (zlib by default, negotiates zstd when supported)
     #[arg(short = 'z', long, help_heading = "Compression")]
     compress: bool,
     /// explicitly set compression level
@@ -110,7 +111,7 @@ struct ClientOpts {
         help_heading = "Compression"
     )]
     compress_level: Option<i32>,
-    /// enable modern zstd compression and BLAKE3 checksums
+    /// enable BLAKE3 checksums (zstd is negotiated automatically)
     #[arg(long, help_heading = "Compression")]
     modern: bool,
     /// keep partially transferred files
@@ -407,40 +408,54 @@ fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
     let peer = u32::from_be_bytes(ver_buf);
     negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
 
-    let codecs = available_codecs();
-    let payload = compress::encode_codecs(codecs);
-    transport
-        .send(&[payload.len() as u8])
-        .map_err(EngineError::from)?;
-    transport.send(&payload).map_err(EngineError::from)?;
+    // Advertise our supported codecs via a codecs message frame.
+    let payload = compress::encode_codecs(available_codecs());
+    let frame = Message::Codecs(payload).to_frame(0);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).map_err(EngineError::from)?;
+    transport.send(&buf).map_err(EngineError::from)?;
 
-    let mut len_buf = [0u8; 1];
+    // Read the peer's codecs message frame.
+    let mut hdr = [0u8; 8];
     let mut read = 0;
-    while read < 1 {
+    while read < hdr.len() {
         let n = transport
-            .receive(&mut len_buf[read..])
+            .receive(&mut hdr[read..])
             .map_err(EngineError::from)?;
         if n == 0 {
-            return Err(EngineError::Other(
-                "failed to read codec list length".into(),
-            ));
+            return Err(EngineError::Other("failed to read frame header".into()));
         }
         read += n;
     }
-    let len = len_buf[0] as usize;
-    let mut buf = vec![0u8; len];
+    let channel = u16::from_be_bytes([hdr[0], hdr[1]]);
+    let tag = Tag::try_from(hdr[2]).map_err(|e| EngineError::Other(e.to_string()))?;
+    let msg = Msg::try_from(hdr[3]).map_err(|e| EngineError::Other(e.to_string()))?;
+    let len = u32::from_be_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
+    let mut payload = vec![0u8; len];
     let mut off = 0;
     while off < len {
         let n = transport
-            .receive(&mut buf[off..])
+            .receive(&mut payload[off..])
             .map_err(EngineError::from)?;
         if n == 0 {
-            return Err(EngineError::Other("failed to read codec list".into()));
+            return Err(EngineError::Other("failed to read frame payload".into()));
         }
         off += n;
     }
-
-    compress::decode_codecs(&buf).map_err(EngineError::from)
+    let frame = Frame {
+        header: FrameHeader {
+            channel,
+            tag,
+            msg,
+            len: len as u32,
+        },
+        payload,
+    };
+    let msg = Message::from_frame(frame).map_err(EngineError::from)?;
+    match msg {
+        Message::Codecs(data) => compress::decode_codecs(&data).map_err(EngineError::from),
+        _ => Err(EngineError::Other("expected codecs message".into())),
+    }
 }
 
 fn run_client(opts: ClientOpts) -> Result<()> {

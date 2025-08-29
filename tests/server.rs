@@ -1,6 +1,7 @@
 use assert_cmd::cargo::cargo_bin;
 use compress::{available_codecs, decode_codecs, encode_codecs};
-use protocol::{LATEST_VERSION, MIN_VERSION};
+use protocol::{Frame, FrameHeader, Message, Msg, Tag, LATEST_VERSION, MIN_VERSION};
+use std::convert::TryFrom;
 use std::fs;
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
@@ -46,18 +47,37 @@ fn server_handshake_succeeds() {
     stdout.read_exact(&mut ver_buf).unwrap();
     assert_eq!(u32::from_be_bytes(ver_buf), LATEST_VERSION);
 
-    // Send codec list.
+    // Send codec list as a frame.
     let codecs = available_codecs();
     let payload = encode_codecs(codecs);
-    stdin.write_all(&[payload.len() as u8]).unwrap();
-    stdin.write_all(&payload).unwrap();
+    let frame = Message::Codecs(payload).to_frame(0);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    stdin.write_all(&buf).unwrap();
 
-    // Receive server codec list.
-    let mut len = [0u8; 1];
-    stdout.read_exact(&mut len).unwrap();
-    let mut buf = vec![0u8; len[0] as usize];
-    stdout.read_exact(&mut buf).unwrap();
-    let server_codecs = decode_codecs(&buf).unwrap();
+    // Receive server codec list as a frame.
+    let mut hdr = [0u8; 8];
+    stdout.read_exact(&mut hdr).unwrap();
+    let channel = u16::from_be_bytes([hdr[0], hdr[1]]);
+    let tag = Tag::try_from(hdr[2]).unwrap();
+    let msg = Msg::try_from(hdr[3]).unwrap();
+    let len = u32::from_be_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
+    let mut payload = vec![0u8; len];
+    stdout.read_exact(&mut payload).unwrap();
+    let frame = Frame {
+        header: FrameHeader {
+            channel,
+            tag,
+            msg,
+            len: len as u32,
+        },
+        payload: payload.clone(),
+    };
+    let msg = Message::from_frame(frame).unwrap();
+    let server_codecs = match msg {
+        Message::Codecs(data) => decode_codecs(&data).unwrap(),
+        _ => panic!("expected codecs message"),
+    };
     assert_eq!(server_codecs, codecs);
 
     let status = child.wait().unwrap();
