@@ -89,7 +89,10 @@ fn remote_to_remote_reports_errors() {
     dst_reader.read_exact(&mut ready).unwrap();
     assert_eq!(&ready, b"ready\n");
 
-    let err = std::io::copy(&mut src_reader, &mut dst_writer).unwrap_err();
+    let _ = std::io::copy(&mut src_reader, &mut dst_writer);
+    // Allow background threads to observe the closed pipe
+    std::thread::sleep(std::time::Duration::from_millis(10));
+    let err = dst_writer.flush().unwrap_err();
     assert_eq!(err.kind(), std::io::ErrorKind::BrokenPipe);
 }
 
@@ -196,8 +199,9 @@ fn remote_to_remote_failure_and_reconnect() {
         SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; sleep 1"]).unwrap();
     let (mut src_reader, _) = src_session.into_inner();
     let (_, mut dst_writer) = dst_session.into_inner();
-    let result = std::io::copy(&mut src_reader, &mut dst_writer);
-    assert!(result.is_err());
+    let _ = std::io::copy(&mut src_reader, &mut dst_writer);
+    std::thread::sleep(std::time::Duration::from_millis(10));
+    assert!(dst_writer.flush().is_err());
     drop(dst_writer);
     drop(src_reader);
     std::thread::sleep(std::time::Duration::from_millis(50));
