@@ -1,4 +1,5 @@
 use filters::{parse, Matcher};
+use std::collections::HashSet;
 use std::fs;
 use tempfile::tempdir;
 
@@ -21,7 +22,8 @@ fn rsync_filter_merge_order_and_wildcards() {
     fs::write(nested.join(".rsync-filter"), "- debug.log\n").unwrap();
 
     // Global rules mirror recorded rsync behaviour with -F.
-    let global = parse(": /.rsync-filter\n- .rsync-filter\n+ *.log\n- *\n").unwrap();
+    let mut v = HashSet::new();
+    let global = parse(": /.rsync-filter\n- .rsync-filter\n+ *.log\n- *\n", &mut v, 0).unwrap();
     let matcher = Matcher::new(global).with_root(root);
 
     // Root rule overrides global include.
@@ -38,7 +40,8 @@ fn rsync_filter_merge_order_and_wildcards() {
 
 #[test]
 fn recorded_selection_parity() {
-    let rules = parse("+ *.txt\n- *\n").unwrap();
+    let mut v = HashSet::new();
+    let rules = parse("+ *.txt\n- *\n", &mut v, 0).unwrap();
     let matcher = Matcher::new(rules);
 
     assert!(matcher.is_included("a.txt").unwrap());

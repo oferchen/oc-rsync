@@ -1,4 +1,5 @@
 use filters::{parse, Matcher};
+use std::collections::HashSet;
 use proptest::prelude::*;
 use std::fs;
 use tempfile::tempdir;
@@ -12,7 +13,8 @@ fn include_overrides_parent_exclude() {
     fs::create_dir_all(&sub).unwrap();
     fs::write(sub.join(".rsync-filter"), "+ keep.tmp\n").unwrap();
 
-    let rules = parse(": /.rsync-filter\n- .rsync-filter\n").unwrap();
+    let mut v = HashSet::new();
+    let rules = parse(": /.rsync-filter\n- .rsync-filter\n", &mut v, 0).unwrap();
     let matcher = Matcher::new(rules).with_root(root);
 
     assert!(!matcher.is_included("other.tmp").unwrap());
@@ -31,7 +33,8 @@ fn nested_filters_apply_in_order() {
     fs::write(dir.join(".rsync-filter"), "+ debug.log\n").unwrap();
     fs::write(sub.join(".rsync-filter"), "- debug.log\n").unwrap();
 
-    let rules = parse(": /.rsync-filter\n- .rsync-filter\n").unwrap();
+    let mut v = HashSet::new();
+    let rules = parse(": /.rsync-filter\n- .rsync-filter\n", &mut v, 0).unwrap();
     let matcher = Matcher::new(rules).with_root(root);
 
     assert!(matcher.is_included("dir/debug.log").unwrap());
@@ -49,7 +52,8 @@ proptest! {
         fs::create_dir_all(&sub).unwrap();
         fs::write(sub.join(".rsync-filter"), format!("+ {}\n", keep)).unwrap();
 
-        let rules = parse(": /.rsync-filter\n- .rsync-filter\n").unwrap();
+        let mut v = HashSet::new();
+        let rules = parse(": /.rsync-filter\n- .rsync-filter\n", &mut v, 0).unwrap();
         let matcher = Matcher::new(rules).with_root(root);
 
         prop_assert!(!matcher.is_included("other.tmp").unwrap());

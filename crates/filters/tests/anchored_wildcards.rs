@@ -1,8 +1,14 @@
 use filters::{parse, Matcher};
+use std::collections::HashSet;
+
+fn p(input: &str) -> Vec<filters::Rule> {
+    let mut v = HashSet::new();
+    parse(input, &mut v, 0).unwrap()
+}
 
 #[test]
 fn root_anchored_exclusion() {
-    let rules = parse("- /root.txt\n+ *.txt\n- *\n").unwrap();
+    let rules = p("- /root.txt\n+ *.txt\n- *\n");
     let matcher = Matcher::new(rules);
     assert!(!matcher.is_included("root.txt").unwrap());
     assert!(matcher.is_included("dir/root.txt").unwrap());
@@ -10,7 +16,7 @@ fn root_anchored_exclusion() {
 
 #[test]
 fn directory_trailing_slash() {
-    let rules = parse("- tmp/\n").unwrap();
+    let rules = p("- tmp/\n");
     let matcher = Matcher::new(rules);
     assert!(!matcher.is_included("tmp").unwrap());
     assert!(!matcher.is_included("tmp/file.txt").unwrap());
@@ -19,7 +25,7 @@ fn directory_trailing_slash() {
 
 #[test]
 fn wildcard_question_mark() {
-    let rules = parse("+ file?.txt\n- *\n").unwrap();
+    let rules = p("+ file?.txt\n- *\n");
     let matcher = Matcher::new(rules);
     assert!(matcher.is_included("file1.txt").unwrap());
     assert!(!matcher.is_included("file10.txt").unwrap());
@@ -27,7 +33,7 @@ fn wildcard_question_mark() {
 
 #[test]
 fn double_star_matches() {
-    let rules = parse("+ dir/**/keep.txt\n- *\n").unwrap();
+    let rules = p("+ dir/**/keep.txt\n- *\n");
     let matcher = Matcher::new(rules);
     assert!(matcher.is_included("dir/a/b/keep.txt").unwrap());
     assert!(!matcher.is_included("dir/a/b/drop.txt").unwrap());

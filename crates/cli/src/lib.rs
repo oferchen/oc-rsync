@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
@@ -10,10 +10,15 @@ use std::path::{Path, PathBuf};
 use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
 use compress::{available_codecs, Codec};
 use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
-use filters::{parse as parse_filters, Matcher, Rule};
+use filters::{parse, Matcher, Rule};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
 use transport::{RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
+
+fn parse_filters(s: &str) -> std::result::Result<Vec<Rule>, filters::ParseError> {
+    let mut v = HashSet::new();
+    parse(s, &mut v, 0)
+}
 
 /// Command line interface for rsync-rs.
 ///

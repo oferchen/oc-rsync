@@ -1,6 +1,7 @@
 use compress::available_codecs;
 use engine::{sync, SyncOptions};
 use filters::{parse, Matcher};
+use std::collections::HashSet;
 use std::fs;
 use tempfile::tempdir;
 
@@ -13,7 +14,8 @@ fn excluded_paths_are_skipped() {
     fs::write(src.join("include.txt"), b"include").unwrap();
     fs::write(src.join("skip.txt"), b"skip").unwrap();
 
-    let rules = parse("- skip.txt").unwrap();
+    let mut visited = HashSet::new();
+    let rules = parse("- skip.txt", &mut visited, 0).unwrap();
     let matcher = Matcher::new(rules);
 
     sync(
