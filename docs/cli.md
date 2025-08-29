@@ -29,6 +29,18 @@ rsync-rs [OPTIONS] <SRC> <DEST>
   ```sh
   rsync-rs --config ./rsync-rs.toml ./src remote:/dst
   ```
+- Mirror with exclusions and deletions:
+  ```sh
+  rsync-rs -a --delete --exclude '.cache/' ./src/ ./mirror/
+  ```
+- Incremental backup using hard links:
+  ```sh
+  rsync-rs -a --link-dest=../prev --compare-dest=../base ./src/ ./snapshot/
+  ```
+- Throttled modern compression:
+  ```sh
+  rsync-rs -az --modern --bwlimit=1m ./src/ host:/archive/
+  ```
 
 ### Trailing slash semantics
 
@@ -41,65 +53,78 @@ copied:
 - `rsync-rs remote:/src/ local/` pulls the contents of `/src` from the remote
   host into `local`.
 
-## Flags
+## Options
 
-- `-r, --recursive` *(default: off)* – copy directories recursively.
-- `-n, --dry-run` *(default: off)* – perform a trial run with no changes made.
-- `-v, --verbose` *(default: off)* – increase logging verbosity.
-- `-q, --quiet` *(default: off)* – suppress non-error messages.
-- `--delete` *(default: off)* – remove extraneous files from the destination.
-- `-c, --checksum` *(default: off)* – use full checksums to determine file changes.
-- `-z, --compress` *(default: off)* – compress file data during the transfer.
-- `--stats` *(default: off)* – display transfer statistics on completion.
-- `--no-motd` *(default: off)* – suppress the message of the day when connecting to a daemon.
-- `--config <FILE>` – supply a custom configuration file.
-- `-e, --rsh <COMMAND>` *(default: `ssh`)* – specify the remote shell to use.
+| Short | Long | Default | Description |
+|-------|------|---------|-------------|
+| `-v` | `--verbose` | off | increase verbosity |
+| `-q` | `--quiet` | off | suppress non-error messages |
+| | `--no-motd` | off | suppress daemon-mode MOTD |
+| `-c` | `--checksum` | off | skip based on checksum, not mod-time & size |
+| `-a` | `--archive` | off | archive mode is -rlptgoD (no -A,-X,-U,-N,-H) |
+| `-r` | `--recursive` | off | recurse into directories |
+| `-R` | `--relative` | off | use relative path names |
+| `-I` | `--inplace` | off | update destination files in-place |
+| | `--append` | off | append data onto shorter files |
+| | `--append-verify` | off | --append w/old data in file checksum |
+| `-l` | `--links` | off | copy symlinks as symlinks |
+| | `--hard-links` | off | preserve hard links |
+| | `--perms` | off | preserve permissions |
+| | `--acls` | off | preserve ACLs (implies --perms) |
+| | `--xattrs` | off | preserve extended attributes |
+| | `--owner` | off | preserve owner (super-user only) |
+| | `--group` | off | preserve group |
+| | `--devices` | off | preserve device files (super-user only) |
+| | `--specials` | off | preserve special files |
+| | `--times` | off | preserve modification times |
+| `-U` | `--atimes` | off | preserve access (use) times |
+| `-N` | `--crtimes` | off | preserve create times (newness) |
+| `-S` | `--sparse` | off | turn sequences of nulls into sparse blocks |
+| `-n` | `--dry-run` | off | perform a trial run with no changes made |
+| `-e` | `--rsh=COMMAND` | `ssh` | specify the remote shell to use |
+| | `--rsync-path=PROGRAM` | none | specify the rsync to run on remote machine |
+| | `--delete` | off | delete extraneous files from dest dirs |
+| | `--delete-before` | off | receiver deletes before transfer, not during |
+| | `--delete-during` (`--del`) | off | receiver deletes during the transfer |
+| | `--delete-delay` | off | find deletions during, delete after |
+| | `--delete-after` | off | receiver deletes after transfer, not during |
+| | `--delete-excluded` | off | also delete excluded files from dest dirs |
+| | `--partial` | off | keep partially transferred files |
+| | `--partial-dir=DIR` | none | put a partially transferred file into DIR |
+| | `--numeric-ids` | off | don't map uid/gid values by user/group name |
+| | `--compare-dest=DIR` | none | also compare destination files relative to DIR |
+| | `--copy-dest=DIR` | none | ... and include copies of unchanged files |
+| | `--link-dest=DIR` | none | hardlink to files in DIR when unchanged |
+| | `--config=FILE` | none | specify alternate config file |
+| `-z` | `--compress` | off | compress file data during the transfer |
+| | `--compress-choice=STR` | auto | choose the compression algorithm |
+| | `--compress-level=NUM` | auto | explicitly set compression level |
+| | `--modern` | off | enable zstd compression and BLAKE3 checksums (rsync-rs specific) |
+| `-f` | `--filter=RULE` | none | add a file-filtering RULE |
+| `-F` | | off | same as --filter='dir-merge /.rsync-filter' repeated: --filter='- .rsync-filter' |
+| | `--exclude=PATTERN` | none | exclude files matching PATTERN |
+| | `--exclude-from=FILE` | none | read exclude patterns from FILE |
+| | `--include=PATTERN` | none | don't exclude files matching PATTERN |
+| | `--include-from=FILE` | none | read include patterns from FILE |
+| | `--files-from=FILE` | none | read list of source-file names from FILE |
+| `-0` | `--from0` | off | all *-from/filter files are delimited by 0s |
+| | `--stats` | off | give some file-transfer stats |
+| | `--progress` | off | show progress during transfer |
+| `-P` | | off | same as --partial --progress |
+| | `--password-file=FILE` | none | read daemon-access password from FILE |
+| | `--bwlimit=RATE` | none | limit socket I/O bandwidth |
+| | `--daemon` | off | run as an rsync daemon |
+| | `--module NAME=PATH` | none | module declaration (daemon mode) |
+| | `--address=ADDR` | 0.0.0.0 | bind address for daemon |
+| | `--port=PORT` | 873 | port to listen on (daemon mode) |
+| | `--secrets-file=FILE` | none | path to secrets file for authentication |
+| | `--hosts-allow=LIST` | none | list of hosts allowed to connect |
+| | `--hosts-deny=LIST` | none | list of hosts denied from connecting |
+| | `--log-file=FILE` | none | log what we're doing to the specified FILE |
+| | `--log-file-format=FMT` | none | log updates using the specified FMT |
+| | `--motd=FILE` | none | path to message of the day file |
 
-### Daemon and server modes
-
-- `--daemon` – run as an rsync daemon accepting incoming connections *(default: off).*
-- `--server` – enable server behavior; typically invoked internally when a remote peer connects *(default: off).*
-- `--address <ADDR>` – bind the daemon to `ADDR` *(default: `0.0.0.0`).*
-
-### Remote shell
-
-`-e, --rsh` selects the program used to connect to remote hosts. The command
-line takes precedence, followed by the `RSYNC_RSH` environment variable; if
-neither is provided, `ssh` is used.
-
-### Deletion flags
-
-Deletion options control how extraneous files at the destination are removed.
-All deletion flags are disabled by default.
-
-- `--delete` – remove files during the transfer.
-- `--del` – an alias for `--delete-during`.
-- `--delete-before`, `--delete-during`, `--delete-after`, and `--delete-delay` –
-  adjust when deletions occur.
-- `--delete-excluded` – also delete files that are excluded by filters.
-
-### Advanced transfer options
-
-These flags mirror `rsync(1)` features that fine‑tune how data is copied.
-
-- `--partial` – keep partially transferred files instead of discarding them.
-- `--partial-dir <DIR>` – place partial files in `DIR`.
-- `--append` / `--append-verify` – append data to existing files rather than
-  replacing them.
-- `--sparse` – convert long sequences of zero bytes into holes and preserve
-  holes in sparse source files. The destination filesystem must support sparse
-  files. See `tests/cli.rs::sparse_files_created` and
-  `tests/cli.rs::sparse_files_preserved` for examples.
-- `--bwlimit <RATE>` – throttle I/O bandwidth to `RATE` bytes per second using a
-  token bucket rate limiter.
-- `--link-dest <DIR>` / `--copy-dest <DIR>` / `--compare-dest <DIR>` –
-  hard‑link, copy, or skip unchanged files from `DIR`.
-
-Flags such as `-a`, `-R`, `-P`, and `--numeric-ids` mirror their `rsync`
-behavior. See `docs/differences.md` for a summary of supported options.
-
-For a comprehensive list of available flags and their current support status,
-see the [CLI flag reference](cli/flags.md).
+Flags such as `-P` and `--numeric-ids` mirror their `rsync` behavior. See the [CLI flag reference](cli/flags.md) for implementation details and notes.
 
 ## Configuration precedence
 
