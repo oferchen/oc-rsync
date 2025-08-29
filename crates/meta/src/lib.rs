@@ -171,14 +171,14 @@ fn acl_to_io(err: posix_acl::ACLError) -> io::Error {
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 fn set_file_crtime(path: &Path, crtime: FileTime) -> io::Result<()> {
-    use libc::{attrlist, setattrlist, timespec, ATTR_BIT_MAP_COUNT, ATTR_CMN_CRTIMESPEC};
+    use libc::{attrlist, setattrlist, timespec, ATTR_BIT_MAP_COUNT, ATTR_CMN_CRTIME};
     use std::ffi::CString;
     use std::mem;
 
     let mut attr = attrlist {
         bitmapcount: ATTR_BIT_MAP_COUNT as u16,
         reserved: 0,
-        commonattr: ATTR_CMN_CRTIMESPEC as u32,
+        commonattr: ATTR_CMN_CRTIME as u32,
         volattr: 0,
         dirattr: 0,
         fileattr: 0,
