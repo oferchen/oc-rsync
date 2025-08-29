@@ -1,9 +1,27 @@
 use assert_cmd::Command;
 use std::fs;
 use std::io::{Read, Write};
+use std::time::{Duration, Instant};
 use tempfile::tempdir;
 use transport::ssh::SshStdioTransport;
-use serial_test::serial;
+
+/// Wait until the provided condition evaluates to true.
+///
+/// This is used in tests to wait for spawned shell commands to finish by
+/// polling for file-system side effects rather than sleeping for a fixed
+/// duration.
+fn wait_for<F>(mut condition: F)
+where
+    F: FnMut() -> bool,
+{
+    let start = Instant::now();
+    while !condition() {
+        if start.elapsed() > Duration::from_secs(1) {
+            panic!("timed out waiting for condition");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
 
 #[test]
 fn remote_to_remote_pipes_data() {
@@ -21,7 +39,12 @@ fn remote_to_remote_pipes_data() {
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    let expected = b"hello remote\n".len() as u64;
+    wait_for(|| {
+        fs::metadata(&dst_file)
+            .map(|m| m.len() == expected)
+            .unwrap_or(false)
+    });
 
     let out = fs::read(&dst_file).unwrap();
     assert_eq!(out, b"hello remote\n");
@@ -60,7 +83,12 @@ fn remote_to_remote_large_transfer() {
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    let expected = data.len() as u64;
+    wait_for(|| {
+        fs::metadata(&dst_file)
+            .map(|m| m.len() == expected)
+            .unwrap_or(false)
+    });
 
     let out = fs::read(dst_file).unwrap();
     assert_eq!(out, data);
@@ -75,11 +103,8 @@ fn remote_to_remote_reports_errors() {
     let src_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     // Destination process closes its stdin and signals when that has happened
-    let dst_session = SshStdioTransport::spawn(
-        "sh",
-        ["-c", "exec 0<&-; echo ready; sleep 1"],
-    )
-    .unwrap();
+    let dst_session =
+        SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready; sleep 1"]).unwrap();
 
     let (mut src_reader, _) = src_session.into_inner();
     let (mut dst_reader, mut dst_writer) = dst_session.into_inner();
@@ -126,7 +151,12 @@ fn remote_to_remote_different_block_sizes() {
     }
     drop(dst_writer);
     drop(src_reader);
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    let expected = data.len() as u64;
+    wait_for(|| {
+        fs::metadata(&dst_file)
+            .map(|m| m.len() == expected)
+            .unwrap_or(false)
+    });
 
     let out = fs::read(dst_file).unwrap();
     assert_eq!(out, data);
@@ -155,7 +185,11 @@ fn remote_to_remote_partial_and_resume() {
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    wait_for(|| {
+        fs::metadata(&dst_file)
+            .map(|m| m.len() == 5)
+            .unwrap_or(false)
+    });
 
     let partial = fs::read(&dst_file).unwrap();
     assert_eq!(partial, b"hello");
@@ -176,7 +210,11 @@ fn remote_to_remote_partial_and_resume() {
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    wait_for(|| {
+        fs::metadata(&dst_file)
+            .map(|m| m.len() == 11)
+            .unwrap_or(false)
+    });
 
     let out = fs::read(&dst_file).unwrap();
     assert_eq!(out, b"hello world");
@@ -192,15 +230,14 @@ fn remote_to_remote_failure_and_reconnect() {
     // Initial transfer fails because destination immediately closes
     let src_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
-    let dst_session =
-        SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; sleep 1"]).unwrap();
+    let dst_session = SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; sleep 1"]).unwrap();
     let (mut src_reader, _) = src_session.into_inner();
     let (_, mut dst_writer) = dst_session.into_inner();
     let result = std::io::copy(&mut src_reader, &mut dst_writer);
     assert!(result.is_err());
     drop(dst_writer);
     drop(src_reader);
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    wait_for(|| !dst_file.exists());
     assert!(!dst_file.exists());
 
     // Reconnect and complete transfer
@@ -213,7 +250,12 @@ fn remote_to_remote_failure_and_reconnect() {
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    let expected = fs::metadata(&src_file).unwrap().len();
+    wait_for(|| {
+        fs::metadata(&dst_file)
+            .map(|m| m.len() == expected)
+            .unwrap_or(false)
+    });
 
     let out_src = fs::read(&src_file).unwrap();
     let out_dst = fs::read(&dst_file).unwrap();
