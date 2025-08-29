@@ -853,6 +853,7 @@ pub struct SyncOptions {
     pub compress_choice: Option<Vec<Codec>>,
     pub partial: bool,
     pub progress: bool,
+    pub itemize_changes: bool,
     pub partial_dir: Option<PathBuf>,
     pub append: bool,
     pub append_verify: bool,
@@ -898,6 +899,7 @@ impl Default for SyncOptions {
             compress_choice: None,
             partial: false,
             progress: false,
+            itemize_changes: false,
             partial_dir: None,
             append: false,
             append_verify: false,
@@ -1071,9 +1073,16 @@ pub fn sync(
                     if sender.process_file(&path, &dest_path, rel, &mut receiver)? {
                         stats.files_transferred += 1;
                         stats.bytes_transferred += fs::metadata(&path)?.len();
+                        if opts.itemize_changes {
+                            println!(">f+++++++++ {}", rel.display());
+                        }
                     }
                 } else if file_type.is_dir() {
+                    let created = !dest_path.exists();
                     fs::create_dir_all(&dest_path)?;
+                    if created && opts.itemize_changes {
+                        println!("cd+++++++++ {}/", rel.display());
+                    }
                 } else if file_type.is_symlink() {
                     let target = fs::read_link(&path)?;
                     let target_path = if target.is_absolute() {

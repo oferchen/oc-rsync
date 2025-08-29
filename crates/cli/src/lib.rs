@@ -63,6 +63,9 @@ struct ClientOpts {
     /// suppress daemon-mode MOTD
     #[arg(long, help_heading = "Output")]
     no_motd: bool,
+    /// output a change-summary for all updates
+    #[arg(short = 'i', long = "itemize-changes", help_heading = "Output")]
+    itemize_changes: bool,
     /// remove extraneous files from the destination
     #[arg(long, help_heading = "Delete")]
     delete: bool,
@@ -907,6 +910,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         compress_choice,
         partial: opts.partial || opts.partial_progress,
         progress: opts.progress || opts.partial_progress,
+        itemize_changes: opts.itemize_changes,
         partial_dir: opts.partial_dir.clone(),
         append: opts.append,
         append_verify: opts.append_verify,
