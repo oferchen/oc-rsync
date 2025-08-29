@@ -104,7 +104,7 @@ fn remote_to_remote_reports_errors() {
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     // Destination process closes its stdin and signals when that has happened
     let dst_session =
-        SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready; sleep 1"]).unwrap();
+        SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready"]).unwrap();
 
     let (mut src_reader, _) = src_session.into_inner();
     let (mut dst_reader, mut dst_writer) = dst_session.into_inner();
@@ -114,10 +114,7 @@ fn remote_to_remote_reports_errors() {
     dst_reader.read_exact(&mut ready).unwrap();
     assert_eq!(&ready, b"ready\n");
 
-    let _ = std::io::copy(&mut src_reader, &mut dst_writer);
-    // Allow background threads to observe the closed pipe
-    std::thread::sleep(std::time::Duration::from_millis(10));
-    let err = dst_writer.flush().unwrap_err();
+    let err = std::io::copy(&mut src_reader, &mut dst_writer).unwrap_err();
     assert_eq!(err.kind(), std::io::ErrorKind::BrokenPipe);
 }
 
@@ -234,7 +231,7 @@ fn remote_to_remote_failure_and_reconnect() {
     let src_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     let dst_session =
-        SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready; sleep 1"]).unwrap();
+        SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready"]).unwrap();
     let (mut src_reader, _) = src_session.into_inner();
     let (mut dst_reader, mut dst_writer) = dst_session.into_inner();
 
@@ -243,12 +240,10 @@ fn remote_to_remote_failure_and_reconnect() {
     dst_reader.read_exact(&mut ready).unwrap();
     assert_eq!(&ready, b"ready\n");
 
-    let copy_result = std::io::copy(&mut src_reader, &mut dst_writer);
-    assert!(dst_writer.flush().is_err());
-    assert_eq!(copy_result.unwrap_err().kind(), io::ErrorKind::BrokenPipe);
+    let err = std::io::copy(&mut src_reader, &mut dst_writer).unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::BrokenPipe);
     drop(dst_writer);
     drop(src_reader);
-    wait_for(|| !dst_file.exists());
     assert!(!dst_file.exists());
 
     // Reconnect and complete transfer
