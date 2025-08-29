@@ -24,7 +24,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--chmod` | ❌ | — | — |  | |
 | `--chown` | ❌ | — | — |  | |
 | `--compare-dest` | ❌ | — | — |  | |
-| `--compress` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh) |  | |
+| `--compress` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/compression_negotiation.sh](../tests/compression_negotiation.sh) | negotiates zstd when supported by both peers | |
 | `--compress-choice` | ❌ | — | — |  | |
 | `--compress-level` | ✅ | ❌ | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) |  | |
 | `--zc` | ❌ | — | [gaps.md](gaps.md) | alias for `--compress-choice` | |

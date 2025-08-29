@@ -5,10 +5,12 @@ use std::io::Cursor;
 #[test]
 fn server_negotiates_version() {
     let payload = encode_codecs(available_codecs());
+    let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
+    let mut codecs_buf = Vec::new();
+    codecs_frame.encode(&mut codecs_buf).unwrap();
     let mut input = Cursor::new({
         let mut v = LATEST_VERSION.to_be_bytes().to_vec();
-        v.push(payload.len() as u8);
-        v.extend_from_slice(&payload);
+        v.extend_from_slice(&codecs_buf);
         v
     });
     let mut output = Vec::new();
@@ -18,8 +20,9 @@ fn server_negotiates_version() {
     assert_eq!(peer_codecs, available_codecs());
     let expected = {
         let mut v = LATEST_VERSION.to_be_bytes().to_vec();
-        v.push(payload.len() as u8);
-        v.extend_from_slice(&payload);
+        let mut out_frame = Vec::new();
+        codecs_frame.encode(&mut out_frame).unwrap();
+        v.extend_from_slice(&out_frame);
         v
     };
     assert_eq!(output, expected);

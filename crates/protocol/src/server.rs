@@ -1,7 +1,7 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
-use crate::{negotiate_version, Demux, Frame, Mux};
+use crate::{negotiate_version, Demux, Frame, Message, Mux};
 use compress::{available_codecs, decode_codecs, encode_codecs, Codec};
 
 /// Server-side protocol state machine.
@@ -48,17 +48,23 @@ impl<R: Read, W: Write> Server<R, W> {
         self.writer.flush()?;
         self.version = ver;
 
-        // Read the client's advertised codecs.
-        let mut len = [0u8; 1];
-        self.reader.read_exact(&mut len)?;
-        let mut codecs_buf = vec![0u8; len[0] as usize];
-        self.reader.read_exact(&mut codecs_buf)?;
-        let peer_codecs = decode_codecs(&codecs_buf)?;
+        // Read the client's advertised codecs message.
+        let frame = Frame::decode(&mut self.reader)?;
+        let msg = Message::from_frame(frame)?;
+        let peer_codecs = match msg {
+            Message::Codecs(buf) => decode_codecs(&buf)?,
+            _ => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "expected codecs message",
+                ))
+            }
+        };
 
-        // Respond with our own codec list.
+        // Respond with our own codec list via a codecs message.
         let payload = encode_codecs(available_codecs());
-        self.writer.write_all(&[payload.len() as u8])?;
-        self.writer.write_all(&payload)?;
+        let frame = Message::Codecs(payload).to_frame(0);
+        frame.encode(&mut self.writer)?;
         self.writer.flush()?;
 
         Ok(peer_codecs)
