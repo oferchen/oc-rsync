@@ -16,7 +16,7 @@ below highlights how common flags map to current support and how the
 | `-R`, `--relative` | ✅ preserves ancestor directories | [tests/cli.rs](../tests/cli.rs) | n/a |
 | `-P` | ✅ keeps partial files and shows progress | [tests/cli.rs](../tests/cli.rs) | n/a |
 | `--numeric-ids` | ✅ uses numeric uid/gid values | [tests/cli.rs](../tests/cli.rs) | n/a |
-| `--modern` | rsync-rs only | — | enables zstd compression and BLAKE3 checksums |
+| `--modern` | rsync-rs only | [tests/interop/modern.rs](../tests/interop/modern.rs) | enables zstd compression and BLAKE3 checksums |
 
 ## Additional notes
 
