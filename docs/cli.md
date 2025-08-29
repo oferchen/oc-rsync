@@ -91,8 +91,8 @@ These flags mirror `rsync(1)` features that fine‑tune how data is copied.
   `tests/cli.rs::sparse_files_preserved` for examples.
 - `--bwlimit <RATE>` – throttle I/O bandwidth to `RATE` bytes per second using a
   token bucket rate limiter.
-- `--link-dest <DIR>` / `--copy-dest <DIR>` – hard‑link or copy unchanged
-  files from `DIR`.
+- `--link-dest <DIR>` / `--copy-dest <DIR>` / `--compare-dest <DIR>` –
+  hard‑link, copy, or skip unchanged files from `DIR`.
 
 Flags such as `-a`, `-R`, `-P`, and `--numeric-ids` mirror their `rsync`
 behavior. See `docs/differences.md` for a summary of supported options.

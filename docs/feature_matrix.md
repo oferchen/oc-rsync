@@ -23,7 +23,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--checksum-seed` | — | ❌ | — | — | — | — |  |  |
 | `--chmod` | — | ❌ | — | — | — | — |  |  |
 | `--chown` | — | ❌ | — | — | — | — |  |  |
-| `--compare-dest` | — | ❌ | — | — | — | — |  |  |
+| `--compare-dest` | — | ✅ | ✅ | — | — | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  |  |
 | `--compress` | `-z` | ✅ | ✅ | off | — | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/compression_negotiation.sh](../tests/compression_negotiation.sh) | negotiates zstd when supported by both peers |  |
 | `--compress-choice` | — | ❌ | — | — | choose the compression algorithm (aka --zc) | — |  |  |
 | `--compress-level` | — | ✅ | ❌ | — | explicitly set compression level (aka --zl) | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) |  |  |
@@ -31,7 +31,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--zl` | — | ❌ | — | off | alias for `--compress-level` | [gaps.md](gaps.md) | alias for `--compress-level` |  |
 | `--contimeout` | — | ❌ | — | — | — | — |  |  |
 | `--copy-as` | — | ❌ | — | — | — | — |  |  |
-| `--copy-dest` | — | ❌ | — | — | — | — |  |  |
+| `--copy-dest` | — | ✅ | ✅ | — | — | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  |  |
 | `--copy-devices` | — | ❌ | — | off | — | — |  |  |
 | `--copy-dirlinks` | `-k` | ❌ | — | off | — | — |  |  |
 | `--copy-links` | `-L` | ❌ | — | off | — | — |  |  |
@@ -82,7 +82,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--ipv6` | `-6` | ❌ | — | off | — | — |  |  |
 | `--itemize-changes` | `-i` | ❌ | — | off | — | — |  |  |
 | `--keep-dirlinks` | `-K` | ❌ | — | off | — | — |  |  |
-| `--link-dest` | — | ❌ | — | — | — | — |  |  |
+| `--link-dest` | — | ✅ | ✅ | — | — | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  |  |
 | `--links` | `-l` | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
 | `--list-only` | — | ❌ | — | off | — | — |  |  |
 | `--log-file` | — | ❌ | — | — | — | — |  |  |

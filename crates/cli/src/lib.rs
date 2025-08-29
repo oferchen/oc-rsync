@@ -138,6 +138,15 @@ struct ClientOpts {
     /// throttle I/O bandwidth to RATE bytes per second
     #[arg(long = "bwlimit", value_name = "RATE", help_heading = "Misc")]
     bwlimit: Option<u64>,
+    /// hardlink to files in DIR when unchanged
+    #[arg(long = "link-dest", value_name = "DIR", help_heading = "Misc")]
+    link_dest: Option<PathBuf>,
+    /// copy files from DIR when unchanged
+    #[arg(long = "copy-dest", value_name = "DIR", help_heading = "Misc")]
+    copy_dest: Option<PathBuf>,
+    /// skip files that match in DIR
+    #[arg(long = "compare-dest", value_name = "DIR", help_heading = "Misc")]
+    compare_dest: Option<PathBuf>,
     /// don't map uid/gid values by user/group name
     #[arg(long, help_heading = "Attributes")]
     numeric_ids: bool,
@@ -705,6 +714,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         numeric_ids: opts.numeric_ids,
         inplace: opts.inplace,
         bwlimit: opts.bwlimit,
+        link_dest: opts.link_dest.clone(),
+        copy_dest: opts.copy_dest.clone(),
+        compare_dest: opts.compare_dest.clone(),
     };
     let stats = if opts.local {
         match (src, dst) {

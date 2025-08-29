@@ -86,7 +86,7 @@
   },
   {
     "flag": "--compare-dest",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -116,7 +116,7 @@
   },
   {
     "flag": "--copy-dest",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -366,7 +366,7 @@
   },
   {
     "flag": "--link-dest",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {

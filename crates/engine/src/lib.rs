@@ -30,6 +30,43 @@ use walk::walk;
 trait ReadSeek: Read + Seek {}
 impl<T: Read + Seek> ReadSeek for T {}
 
+fn files_identical(a: &Path, b: &Path) -> bool {
+    if let (Ok(ma), Ok(mb)) = (fs::metadata(a), fs::metadata(b)) {
+        if ma.len() != mb.len() {
+            return false;
+        }
+        let mut fa = match File::open(a) {
+            Ok(f) => f,
+            Err(_) => return false,
+        };
+        let mut fb = match File::open(b) {
+            Ok(f) => f,
+            Err(_) => return false,
+        };
+        let mut ba = [0u8; 8192];
+        let mut bb = [0u8; 8192];
+        loop {
+            match (fa.read(&mut ba), fb.read(&mut bb)) {
+                (Ok(ra), Ok(rb)) => {
+                    if ra != rb {
+                        return false;
+                    }
+                    if ra == 0 {
+                        break;
+                    }
+                    if &ba[..ra] != &bb[..rb] {
+                        return false;
+                    }
+                }
+                _ => return false,
+            }
+        }
+        true
+    } else {
+        false
+    }
+}
+
 /// Sender state machine.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SenderState {
@@ -703,6 +740,9 @@ pub struct SyncOptions {
     pub numeric_ids: bool,
     pub inplace: bool,
     pub bwlimit: Option<u64>,
+    pub link_dest: Option<PathBuf>,
+    pub copy_dest: Option<PathBuf>,
+    pub compare_dest: Option<PathBuf>,
 }
 
 impl Default for SyncOptions {
@@ -733,6 +773,9 @@ impl Default for SyncOptions {
             numeric_ids: false,
             inplace: false,
             bwlimit: None,
+            link_dest: None,
+            copy_dest: None,
+            compare_dest: None,
         }
     }
 }
@@ -841,6 +884,34 @@ pub fn sync(
                             continue;
                         } else {
                             hard_links.insert(key, dest_path.clone());
+                        }
+                    }
+                    if !dest_path.exists() {
+                        if let Some(ref link_dir) = opts.link_dest {
+                            let link_path = link_dir.join(rel);
+                            if files_identical(&path, &link_path) {
+                                if let Some(parent) = dest_path.parent() {
+                                    fs::create_dir_all(parent)?;
+                                }
+                                fs::hard_link(&link_path, &dest_path)?;
+                                continue;
+                            }
+                        }
+                        if let Some(ref copy_dir) = opts.copy_dest {
+                            let copy_path = copy_dir.join(rel);
+                            if files_identical(&path, &copy_path) {
+                                if let Some(parent) = dest_path.parent() {
+                                    fs::create_dir_all(parent)?;
+                                }
+                                fs::copy(&copy_path, &dest_path)?;
+                                continue;
+                            }
+                        }
+                        if let Some(ref compare_dir) = opts.compare_dest {
+                            let comp_path = compare_dir.join(rel);
+                            if files_identical(&path, &comp_path) {
+                                continue;
+                            }
                         }
                     }
                     if sender.process_file(&path, &dest_path, &mut receiver)? {

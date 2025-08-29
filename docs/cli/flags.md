@@ -153,9 +153,9 @@
 | -c | --checksum | skip based on checksum, not mod-time & size | no | Parsed but not implemented | no |
 |  | --checksum-choice=STR | choose the checksum algorithm (aka --cc) | no |  | no |
 |  | --checksum-seed=NUM | set block/file checksum seed (advanced) | no |  | no |
-|  | --compare-dest=DIR | also compare destination files relative to DIR | no |  | no |
+|  | --compare-dest=DIR | also compare destination files relative to DIR | yes |  | no |
 |  | --contimeout=SECONDS | set daemon connection timeout in seconds | no |  | no |
-|  | --copy-dest=DIR | ... and include copies of unchanged files | no |  | no |
+|  | --copy-dest=DIR | ... and include copies of unchanged files | yes |  | no |
 | -k | --copy-dirlinks | transform symlink to dir into referent dir | no |  | no |
 | -L | --copy-links | transform symlink into referent file/dir | no |  | no |
 |  | --copy-unsafe-links | only "unsafe" symlinks are transformed | no |  | no |
@@ -168,7 +168,7 @@
 | -I | --ignore-times | don't skip files that match size and time | no |  | no |
 |  | --inplace | update destination files in-place | no |  | no |
 | -K | --keep-dirlinks | treat symlinked dir on receiver as dir | no |  | no |
-|  | --link-dest=DIR | hardlink to files in DIR when unchanged | no |  | no |
+|  | --link-dest=DIR | hardlink to files in DIR when unchanged | yes |  | no |
 |  | --links | copy symlinks as symlinks | yes |  | no |
 |  | --max-alloc=SIZE | change a limit relating to memory alloc | no |  | no |
 |  | --max-size=SIZE | don't transfer any file larger than SIZE | no |  | no |
