@@ -19,7 +19,7 @@
 | --chown | Error |  |
 | --compare-dest | Supported |  |
 | --compress | Supported |  |
-| --compress-choice | Error |  |
+| --compress-choice | Supported |  |
 | --compress-level | Supported |  |
 | --contimeout | Error |  |
 | --copy-as | Error |  |

@@ -530,37 +530,38 @@ impl Sender {
             DEFAULT_BASIS_WINDOW,
         )?;
         let mut skip = resume as u64;
-        let adjusted = delta.filter_map(move |op_res| {
-            match op_res {
-                Ok(op) => {
-                    if skip == 0 {
-                        return Some(Ok(op));
-                    }
-                    match op {
-                        Op::Data(d) => {
-                            if (skip as usize) >= d.len() {
-                                skip -= d.len() as u64;
-                                None
-                            } else {
-                                let start = skip as usize;
-                                skip = 0;
-                                Some(Ok(Op::Data(d[start..].to_vec())))
-                            }
+        let adjusted = delta.filter_map(move |op_res| match op_res {
+            Ok(op) => {
+                if skip == 0 {
+                    return Some(Ok(op));
+                }
+                match op {
+                    Op::Data(d) => {
+                        if (skip as usize) >= d.len() {
+                            skip -= d.len() as u64;
+                            None
+                        } else {
+                            let start = skip as usize;
+                            skip = 0;
+                            Some(Ok(Op::Data(d[start..].to_vec())))
                         }
-                        Op::Copy { offset, len } => {
-                            if (skip as usize) >= len {
-                                skip -= len as u64;
-                                None
-                            } else {
-                                let start = skip as usize;
-                                skip = 0;
-                                Some(Ok(Op::Copy { offset: offset + start, len: len - start }))
-                            }
+                    }
+                    Op::Copy { offset, len } => {
+                        if (skip as usize) >= len {
+                            skip -= len as u64;
+                            None
+                        } else {
+                            let start = skip as usize;
+                            skip = 0;
+                            Some(Ok(Op::Copy {
+                                offset: offset + start,
+                                len: len - start,
+                            }))
                         }
                     }
                 }
-                Err(e) => Some(Err(e)),
             }
+            Err(e) => Some(Err(e)),
         });
         let ops = adjusted.map(|op_res| {
             let mut op = op_res?;
@@ -686,7 +687,9 @@ impl Receiver {
                 let mut dst_buf = vec![0u8; len as usize];
                 src_f.read_exact(&mut src_buf)?;
                 dst_f.read_exact(&mut dst_buf)?;
-                let cfg = ChecksumConfigBuilder::new().strong(self.opts.strong).build();
+                let cfg = ChecksumConfigBuilder::new()
+                    .strong(self.opts.strong)
+                    .build();
                 let src_sum = cfg.checksum(&src_buf).strong;
                 let dst_sum = cfg.checksum(&dst_buf).strong;
                 if src_sum != dst_sum {
@@ -814,6 +817,7 @@ pub struct SyncOptions {
     pub sparse: bool,
     pub strong: StrongHash,
     pub compress_level: Option<i32>,
+    pub compress_choice: Option<Vec<Codec>>,
     pub partial: bool,
     pub progress: bool,
     pub partial_dir: Option<PathBuf>,
@@ -851,6 +855,7 @@ impl Default for SyncOptions {
             sparse: false,
             strong: StrongHash::Md5,
             compress_level: None,
+            compress_choice: None,
             partial: false,
             progress: false,
             partial_dir: None,
@@ -879,9 +884,14 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     if !opts.compress || opts.compress_level == Some(0) {
         return None;
     }
+    if let Some(choice) = &opts.compress_choice {
+        return choice.iter().copied().find(|c| remote.contains(c));
+    }
     let local = available_codecs();
     if local.contains(&Codec::Zstd) && remote.contains(&Codec::Zstd) {
         Some(Codec::Zstd)
+    } else if local.contains(&Codec::Lz4) && remote.contains(&Codec::Lz4) {
+        Some(Codec::Lz4)
     } else if remote.contains(&Codec::Zlib) {
         Some(Codec::Zlib)
     } else {
