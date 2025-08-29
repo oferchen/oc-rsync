@@ -1,6 +1,11 @@
 use assert_cmd::Command;
+use assert_cmd::cargo::cargo_bin;
 use std::fs;
 use std::io::{self, Read, Write};
+use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
+use std::process::Command as StdCommand;
+use wait_timeout::ChildExt;
 use std::time::{Duration, Instant};
 use tempfile::tempdir;
 use transport::ssh::SshStdioTransport;
@@ -21,6 +26,38 @@ where
         }
         std::thread::sleep(Duration::from_millis(10));
     }
+}
+
+fn assert_same_tree(a: &Path, b: &Path) {
+    fn walk(a: &Path, b: &Path) {
+        let mut ents_a: Vec<_> = fs::read_dir(a)
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        ents_a.sort();
+        let mut ents_b: Vec<_> = fs::read_dir(b)
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        ents_b.sort();
+        assert_eq!(ents_a, ents_b, "directory entries differ");
+        for name in ents_a {
+            let pa = a.join(&name);
+            let pb = b.join(&name);
+            let ma = fs::symlink_metadata(&pa).unwrap();
+            let mb = fs::symlink_metadata(&pb).unwrap();
+            assert_eq!(ma.file_type(), mb.file_type(), "file type differs for {:?}", name);
+            assert_eq!(ma.permissions().mode(), mb.permissions().mode(), "permissions differ for {:?}", name);
+            if ma.file_type().is_file() {
+                assert_eq!(fs::read(&pa).unwrap(), fs::read(&pb).unwrap(), "file contents differ for {:?}", name);
+            } else if ma.file_type().is_dir() {
+                walk(&pa, &pb);
+            } else if ma.file_type().is_symlink() {
+                assert_eq!(fs::read_link(&pa).unwrap(), fs::read_link(&pb).unwrap(), "symlink target differs for {:?}", name);
+            }
+        }
+    }
+    walk(a, b);
 }
 
 #[test]
@@ -307,4 +344,160 @@ fn remote_to_remote_failure_and_reconnect() {
     let out_src = fs::read(&src_file).unwrap();
     let out_dst = fs::read(&dst_file).unwrap();
     assert_eq!(out_src, out_dst);
+}
+
+#[test]
+#[ignore]
+fn remote_remote_via_rsh_matches_rsync() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst_rr = dir.path().join("dst_rr");
+    let dst_rsync = dir.path().join("dst_rsync");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst_rr).unwrap();
+    fs::create_dir_all(&dst_rsync).unwrap();
+    let file = src.join("file.txt");
+    fs::write(&file, b"via_rsh").unwrap();
+    let mut perm = fs::metadata(&file).unwrap().permissions();
+    perm.set_mode(0o600);
+    fs::set_permissions(&file, perm).unwrap();
+    std::os::unix::fs::symlink("file.txt", src.join("link.txt")).unwrap();
+
+    let rsh = dir.path().join("fake_rsh.sh");
+    fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
+    fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let src_spec = format!("fake:{}", src.display());
+    let dst_rr_spec = format!("fake:{}", dst_rr.display());
+    let dst_rsync_spec = format!("fake:{}", dst_rsync.display());
+
+    let rr_bin = cargo_bin("rsync-rs");
+    let rr_dir = rr_bin.parent().unwrap();
+    let path_env = format!("{}:{}", rr_dir.display(), std::env::var("PATH").unwrap());
+    let mut child_rr = StdCommand::new(&rr_bin)
+        .env("PATH", path_env)
+        .args([
+            "--archive",
+            "--rsh",
+            rsh.to_str().unwrap(),
+            &src_spec,
+            &dst_rr_spec,
+        ])
+        .spawn()
+        .unwrap();
+    let status_rr = child_rr
+        .wait_timeout(Duration::from_secs(15))
+        .unwrap()
+        .expect("rsync-rs timed out");
+
+    let mut child_rsync = StdCommand::new("rsync")
+        .args([
+            "--archive",
+            "--rsh",
+            rsh.to_str().unwrap(),
+            &src_spec,
+            &dst_rsync_spec,
+        ])
+        .spawn()
+        .unwrap();
+    let status_rsync = child_rsync
+        .wait_timeout(Duration::from_secs(15))
+        .unwrap()
+        .expect("rsync timed out");
+
+    assert_eq!(status_rr.code(), status_rsync.code());
+    assert!(status_rr.success());
+
+    assert_same_tree(&dst_rr, &dst_rsync);
+}
+
+#[test]
+#[ignore]
+fn remote_remote_via_rsync_urls_match_rsync() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst_rr = dir.path().join("dst_rr");
+    let dst_rsync = dir.path().join("dst_rsync");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst_rr).unwrap();
+    fs::create_dir_all(&dst_rsync).unwrap();
+    let file = src.join("file.txt");
+    fs::write(&file, b"via_daemon").unwrap();
+    let mut perm = fs::metadata(&file).unwrap().permissions();
+    perm.set_mode(0o640);
+    fs::set_permissions(&file, perm).unwrap();
+    std::os::unix::fs::symlink("file.txt", src.join("link.txt")).unwrap();
+
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let conf = dir.path().join("rsyncd.conf");
+    fs::write(
+        &conf,
+        format!(
+            "uid = root\n\
+gid = root\n\
+use chroot = false\n\
+[src]\n  path = {}\n  read only = false\n\
+[dst_rr]\n  path = {}\n  read only = false\n\
+[dst_rsync]\n  path = {}\n  read only = false\n",
+            src.display(),
+            dst_rr.display(),
+            dst_rsync.display()
+        ),
+    )
+    .unwrap();
+
+    let mut daemon = StdCommand::new("rsync")
+        .args([
+            "--daemon",
+            "--no-detach",
+            "--port",
+            &port.to_string(),
+            "--config",
+            conf.to_str().unwrap(),
+        ])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+
+    // Allow daemon to start
+    std::thread::sleep(Duration::from_millis(100));
+
+    let src_url = format!("rsync://127.0.0.1:{}/src/", port);
+    let dst_rr_url = format!("rsync://127.0.0.1:{}/dst_rr/", port);
+    let dst_rsync_url = format!("rsync://127.0.0.1:{}/dst_rsync/", port);
+
+    let rr_bin = cargo_bin("rsync-rs");
+    let rr_dir = rr_bin.parent().unwrap();
+    let path_env = format!("{}:{}", rr_dir.display(), std::env::var("PATH").unwrap());
+    let mut child_rr = StdCommand::new(&rr_bin)
+        .env("PATH", path_env)
+        .args(["--archive", &src_url, &dst_rr_url])
+        .spawn()
+        .unwrap();
+    let status_rr = child_rr
+        .wait_timeout(Duration::from_secs(15))
+        .unwrap()
+        .expect("rsync-rs timed out");
+
+    let mut child_rsync = StdCommand::new("rsync")
+        .args(["--archive", &src_url, &dst_rsync_url])
+        .spawn()
+        .unwrap();
+    let status_rsync = child_rsync
+        .wait_timeout(Duration::from_secs(15))
+        .unwrap()
+        .expect("rsync timed out");
+
+    assert_eq!(status_rr.code(), status_rsync.code());
+    assert!(status_rr.success());
+
+    // Ensure data is flushed before killing daemon
+    std::thread::sleep(Duration::from_millis(50));
+    assert_same_tree(&dst_rr, &dst_rsync);
+
+    let _ = daemon.kill();
+    let _ = daemon.wait();
 }

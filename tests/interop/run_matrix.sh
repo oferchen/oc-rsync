@@ -25,6 +25,7 @@ SCENARIOS=(
   "rsh"
   "drop_connection"
   "vanished"
+  "remote_remote"
 )
 
 # Options used for all transfers. -a implies -rtgoD, we add -A and -X for ACLs
@@ -93,6 +94,31 @@ CFG
   local pid=$!
   trap 'kill $pid >/dev/null 2>&1 || true; rm -rf "$tmp"' RETURN
   echo "$port" "$tmp/root"
+}
+
+setup_daemon_rr() {
+  local server_bin="$1"
+  local tmp
+  tmp="$(mktemp -d)"
+  local port
+  port=$(shuf -i 40000-49999 -n 1)
+  cat <<CFG > "$tmp/rsyncd.conf"
+uid = root
+gid = root
+use chroot = false
+max connections = 4
+[src]
+  path = $tmp/src
+  read only = false
+[dst]
+  path = $tmp/dst
+  read only = false
+CFG
+  mkdir -p "$tmp/src" "$tmp/dst"
+  "$server_bin" --daemon --no-detach --port "$port" --config "$tmp/rsyncd.conf" &
+  local pid=$!
+  trap 'kill $pid >/dev/null 2>&1 || true; rm -rf "$tmp"' RETURN
+  echo "$port" "$tmp"
 }
 
 make_source() {
@@ -175,6 +201,7 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             if [[ "$name" == delete* ]]; then
               touch "$tmpdir/stale.txt"
             fi
+            result="$tmpdir"
             if [[ "$name" == drop_connection ]]; then
               dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
               timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
@@ -183,6 +210,11 @@ for c in "${CLIENT_VERSIONS[@]}"; do
               "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
             elif [[ "$name" == rsh ]]; then
               "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsh "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
+            elif [[ "$name" == remote_remote ]]; then
+              mkdir -p "$tmpdir/src" "$tmpdir/dst"
+              cp -a "$src/." "$tmpdir/src"
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsh "$ssh" "root@localhost:$tmpdir/src/" "root@localhost:$tmpdir/dst" >/dev/null
+              result="$tmpdir/dst"
             else
               "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
             fi
@@ -193,26 +225,35 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             fi
             if [[ "${UPDATE:-0}" == "1" ]]; then
               rm -rf "$gold"
-              mv "$tmpdir" "$gold"
+              mv "$result" "$gold"
             else
               mkdir -p "$dst"
-              mv "$tmpdir" "$dst"
+              mv "$result" "$dst"
               compare_trees "$gold" "$dst"
             fi
             ;;
           rsync)
-            read -r port rootdir < <(setup_daemon "$server_bin")
-            if [[ "$name" == delete* ]]; then
-              touch "$rootdir/stale.txt"
-            fi
-            if [[ "$name" == drop_connection ]]; then
-              dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
-              timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
-            elif [[ "$name" == vanished ]]; then
-              (sleep 0.1 && rm -f "$src/file.txt") &
-              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
+            result=""
+            if [[ "$name" == remote_remote ]]; then
+              read -r port tmpdir < <(setup_daemon_rr "$server_bin")
+              cp -a "$src/." "$tmpdir/src"
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "rsync://localhost:$port/src/" "rsync://localhost:$port/dst" >/dev/null
+              result="$tmpdir/dst"
             else
-              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null
+              read -r port rootdir < <(setup_daemon "$server_bin")
+              if [[ "$name" == delete* ]]; then
+                touch "$rootdir/stale.txt"
+              fi
+              if [[ "$name" == drop_connection ]]; then
+                dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
+                timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
+              elif [[ "$name" == vanished ]]; then
+                (sleep 0.1 && rm -f "$src/file.txt") &
+                "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
+              else
+                "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null
+              fi
+              result="$rootdir"
             fi
             base="${c}_${s}_rsync"
             gold="$GOLDEN/$base"
@@ -221,10 +262,10 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             fi
             if [[ "${UPDATE:-0}" == "1" ]]; then
               rm -rf "$gold"
-              mv "$rootdir" "$gold"
+              mv "$result" "$gold"
             else
               mkdir -p "$dst"
-              mv "$rootdir" "$dst"
+              mv "$result" "$dst"
               compare_trees "$gold" "$dst"
             fi
             ;;
