@@ -12,27 +12,23 @@ pub enum Rule {
     Include(GlobMatcher),
     Exclude(GlobMatcher),
     Protect(GlobMatcher),
+    /// Clear all previously defined rules.
+    Clear,
     /// Per-directory merge directive (e.g., `: .rsync-filter`).
     DirMerge(PerDir),
 }
 
-impl Rule {
-    fn matches<P: AsRef<Path>>(&self, path: P) -> bool {
-        match self {
-            Rule::Include(m) | Rule::Exclude(m) | Rule::Protect(m) => m.is_match(path),
-            Rule::DirMerge(_) => false,
-        }
-    }
-
-    fn is_include(&self) -> bool {
-        matches!(self, Rule::Include(_))
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, Hash, PartialEq, Eq)]
 pub struct PerDir {
     file: String,
     anchored: bool,
+    root_only: bool,
+}
+
+#[derive(Clone)]
+struct Cached {
+    rules: Vec<Rule>,
+    merges: Vec<PerDir>,
 }
 
 /// Matcher evaluates rules sequentially against paths.
@@ -44,8 +40,10 @@ pub struct Matcher {
     rules: Vec<Rule>,
     /// Filenames that should be merged for every directory visited.
     per_dir: Vec<PerDir>,
-    /// Cache of parsed rules for directories already visited.
-    cached: RefCell<HashMap<PathBuf, Vec<Rule>>>,
+    /// Additional per-directory merge directives discovered while walking.
+    extra_per_dir: RefCell<HashMap<PathBuf, Vec<PerDir>>>,
+    /// Cache of parsed rules for filter files along with any nested merges.
+    cached: RefCell<HashMap<PathBuf, Cached>>,
 }
 
 impl Matcher {
@@ -62,6 +60,7 @@ impl Matcher {
             root: None,
             rules: global,
             per_dir,
+            extra_per_dir: RefCell::new(HashMap::new()),
             cached: RefCell::new(HashMap::new()),
         }
     }
@@ -78,7 +77,7 @@ impl Matcher {
     /// evaluation order.
     pub fn is_included<P: AsRef<Path>>(&self, path: P) -> Result<bool, ParseError> {
         let path = path.as_ref();
-        let mut active = Vec::new();
+        let mut active: Vec<Rule> = Vec::new();
 
         if let Some(root) = &self.root {
             let mut dirs = vec![root.clone()];
@@ -91,20 +90,44 @@ impl Matcher {
                 }
             }
 
-            for d in dirs.iter().rev() {
-                active.extend(self.dir_rules(d)?);
+            for d in dirs {
+                let mut rules = Vec::new();
+                for rule in self.dir_rules(&d)? {
+                    if let Rule::Clear = rule {
+                        active.clear();
+                        rules.clear();
+                    } else {
+                        rules.push(rule);
+                    }
+                }
+                if !rules.is_empty() {
+                    let mut new_rules = rules;
+                    new_rules.extend(active);
+                    active = new_rules;
+                }
             }
         }
 
-        // Global rules have the lowest precedence.
         active.extend(self.rules.clone());
 
         for rule in &active {
-            if rule.matches(path) {
-                if let Rule::Protect(_) = rule {
-                    continue;
+            match rule {
+                Rule::Protect(m) => {
+                    if m.is_match(path) {
+                        continue;
+                    }
                 }
-                return Ok(rule.is_include());
+                Rule::Include(m) => {
+                    if m.is_match(path) {
+                        return Ok(true);
+                    }
+                }
+                Rule::Exclude(m) => {
+                    if m.is_match(path) {
+                        return Ok(false);
+                    }
+                }
+                Rule::DirMerge(_) | Rule::Clear => {}
             }
         }
         Ok(true)
@@ -123,9 +146,22 @@ impl Matcher {
             }
         }
 
+        // Gather per-dir directives from globals and ancestors.
+        let mut per_dirs = self.per_dir.clone();
+        let mut anc = dir.parent();
+        while let Some(a) = anc {
+            if let Some(extra) = self.extra_per_dir.borrow().get(a) {
+                per_dirs.extend(extra.clone());
+            }
+            anc = a.parent();
+        }
+
         let mut combined = Vec::new();
-        for pd in &self.per_dir {
-            let path = if pd.anchored {
+        let mut new_merges = Vec::new();
+        let mut seen_files = HashSet::new();
+
+        for pd in per_dirs {
+            let path = if pd.root_only {
                 if let Some(root) = &self.root {
                     root.join(&pd.file)
                 } else {
@@ -134,69 +170,141 @@ impl Matcher {
             } else {
                 dir.join(&pd.file)
             };
-            let mut cache = self.cached.borrow_mut();
-            if let Some(r) = cache.get(&path) {
-                combined.extend(r.clone());
+
+            if !seen_files.insert(path.clone()) {
                 continue;
             }
-            let rel = if !pd.anchored {
+
+            let rel = if pd.anchored {
+                None
+            } else {
                 self.root
                     .as_ref()
                     .and_then(|r| dir.strip_prefix(r).ok())
+                    .map(|p| p.to_path_buf())
                     .filter(|p| !p.as_os_str().is_empty())
+            };
+
+            let mut cache = self.cached.borrow_mut();
+            let state = if let Some(c) = cache.get(&path) {
+                c.clone()
             } else {
-                None
+                let mut visited = HashSet::new();
+                visited.insert(path.clone());
+                let (rules, merges) =
+                    self.load_merge_file(dir, &path, rel.as_deref(), &mut visited, 0)?;
+                let cached = Cached {
+                    rules: rules.clone(),
+                    merges: merges.clone(),
+                };
+                cache.insert(path.clone(), cached.clone());
+                cached
             };
-            let rules = match fs::read_to_string(&path) {
-                Ok(content) => {
-                    let adjusted = if let Some(rel) = rel {
-                        let mut buf = String::new();
-                        let rel_str = rel.to_string_lossy();
-                        for raw_line in content.lines() {
-                            let line = raw_line.trim();
-                            if line.is_empty() || line.starts_with('#') {
-                                continue;
-                            }
-                            let (kind, pat) = if let Some(rest) = line.strip_prefix('+') {
-                                ('+', rest.trim_start())
-                            } else if let Some(rest) = line.strip_prefix('-') {
-                                ('-', rest.trim_start())
-                            } else if let Some(rest) =
-                                line.strip_prefix('P').or_else(|| line.strip_prefix('p'))
-                            {
-                                ('P', rest.trim_start())
-                            } else {
-                                buf.push_str(raw_line);
-                                buf.push('\n');
-                                continue;
-                            };
-                            let new_pat = if pat.starts_with('/') {
-                                pat.to_string()
-                            } else {
-                                format!("{}/{}", rel_str, pat)
-                            };
-                            buf.push(kind);
-                            buf.push(' ');
-                            buf.push_str(&new_pat);
-                            buf.push('\n');
-                        }
-                        buf
-                    } else {
-                        content
-                    };
-                    let mut visited = HashSet::new();
-                    visited.insert(path.clone());
-                    parse(&adjusted, &mut visited, 0)?
-                        .into_iter()
-                        .filter(|r| !matches!(r, Rule::DirMerge(_)))
-                        .collect()
-                }
-                Err(_) => Vec::new(),
-            };
-            cache.insert(path.clone(), rules.clone());
-            combined.extend(rules);
+
+            combined.extend(state.rules.clone());
+            new_merges.extend(state.merges.clone());
         }
+
+        if !new_merges.is_empty() {
+            let mut map = self.extra_per_dir.borrow_mut();
+            let entry = map.entry(dir.to_path_buf()).or_default();
+            for pd in new_merges {
+                if !entry.contains(&pd) {
+                    entry.push(pd);
+                }
+            }
+        }
+
         Ok(combined)
+    }
+
+    fn load_merge_file(
+        &self,
+        dir: &Path,
+        path: &Path,
+        rel: Option<&Path>,
+        visited: &mut HashSet<PathBuf>,
+        depth: usize,
+    ) -> Result<(Vec<Rule>, Vec<PerDir>), ParseError> {
+        if depth >= MAX_PARSE_DEPTH {
+            return Err(ParseError::RecursionLimit);
+        }
+
+        let content = match fs::read_to_string(path) {
+            Ok(c) => c,
+            Err(_) => return Ok((Vec::new(), Vec::new())),
+        };
+
+        let adjusted = if let Some(rel) = rel {
+            let rel_str = rel.to_string_lossy();
+            let mut buf = String::new();
+            for raw_line in content.lines() {
+                let line = raw_line.trim();
+                if line.is_empty() || line.starts_with('#') {
+                    continue;
+                }
+                if line == "!" {
+                    buf.push_str("!\n");
+                    continue;
+                }
+                let (kind, pat) = if let Some(rest) = line.strip_prefix('+') {
+                    ('+', rest.trim_start())
+                } else if let Some(rest) = line.strip_prefix('-') {
+                    ('-', rest.trim_start())
+                } else if let Some(rest) = line.strip_prefix('P').or_else(|| line.strip_prefix('p'))
+                {
+                    ('P', rest.trim_start())
+                } else {
+                    buf.push_str(raw_line);
+                    buf.push('\n');
+                    continue;
+                };
+                let new_pat = if pat.starts_with('/') {
+                    pat.to_string()
+                } else {
+                    format!("{}/{}", rel_str, pat)
+                };
+                buf.push(kind);
+                buf.push(' ');
+                buf.push_str(&new_pat);
+                buf.push('\n');
+            }
+            buf
+        } else {
+            content
+        };
+
+        let mut rules = Vec::new();
+        let mut merges = Vec::new();
+        let parsed = parse(&adjusted, visited, depth + 1)?;
+
+        for r in parsed {
+            match r {
+                Rule::DirMerge(pd) => {
+                    merges.push(pd.clone());
+                    let nested = if pd.root_only {
+                        if let Some(root) = &self.root {
+                            root.join(&pd.file)
+                        } else {
+                            dir.join(&pd.file)
+                        }
+                    } else {
+                        dir.join(&pd.file)
+                    };
+                    if !visited.insert(nested.clone()) {
+                        return Err(ParseError::RecursiveInclude(nested));
+                    }
+                    let rel2 = if pd.anchored { None } else { rel };
+                    let (mut nr, mut nm) =
+                        self.load_merge_file(dir, &nested, rel2, visited, depth + 1)?;
+                    rules.append(&mut nr);
+                    merges.append(&mut nm);
+                }
+                other => rules.push(other),
+            }
+        }
+
+        Ok((rules, merges))
     }
 }
 
@@ -237,11 +345,17 @@ pub fn parse(
             continue;
         }
 
+        if line == "!" {
+            rules.push(Rule::Clear);
+            continue;
+        }
+
         if let Some(rest) = line.strip_prefix("-F") {
             if rest.chars().all(|c| c == 'F') {
                 rules.push(Rule::DirMerge(PerDir {
                     file: ".rsync-filter".to_string(),
                     anchored: false,
+                    root_only: false,
                 }));
                 if !rest.is_empty() {
                     let matcher = Glob::new("**/.rsync-filter")?.compile_matcher();
@@ -287,6 +401,7 @@ pub fn parse(
             rules.push(Rule::DirMerge(PerDir {
                 file: fname,
                 anchored,
+                root_only: false,
             }));
             continue;
         } else {
@@ -317,6 +432,7 @@ pub fn parse(
                     rules.push(Rule::DirMerge(PerDir {
                         file: fname,
                         anchored,
+                        root_only: anchored,
                     }));
                     continue;
                 }
