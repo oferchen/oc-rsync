@@ -16,7 +16,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--backup-dir` | — | ❌ | — | — | — | — |  |  |
 | `--block-size` | `-B` | ❌ | — | — | — | — |  |  |
 | `--blocking-io` | — | ❌ | — | off | — | — |  |  |
-| `--bwlimit` | — | ❌ | — | — | — | — |  |  |
+| `--bwlimit` | — | ✅ | ❌ | — | — | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) |  |  |
 | `--cc` | — | ❌ | — | off | alias for `--checksum-choice` | [gaps.md](gaps.md) | alias for `--checksum-choice` |  |
 | `--checksum` | `-c` | ✅ | ✅ | off | — | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, BLAKE3 |  |
 | `--checksum-choice` | — | ❌ | — | — | choose the checksum algorithm (aka --cc) | — |  |  |

@@ -702,6 +702,7 @@ pub struct SyncOptions {
     pub partial_dir: Option<PathBuf>,
     pub numeric_ids: bool,
     pub inplace: bool,
+    pub bwlimit: Option<u64>,
 }
 
 impl Default for SyncOptions {
@@ -731,6 +732,7 @@ impl Default for SyncOptions {
             partial_dir: None,
             numeric_ids: false,
             inplace: false,
+            bwlimit: None,
         }
     }
 }

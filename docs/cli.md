@@ -89,7 +89,8 @@ These flags mirror `rsync(1)` features that fine‑tune how data is copied.
   holes in sparse source files. The destination filesystem must support sparse
   files. See `tests/cli.rs::sparse_files_created` and
   `tests/cli.rs::sparse_files_preserved` for examples.
-- `--bwlimit <RATE>` – throttle I/O bandwidth to `RATE` bytes per second.
+- `--bwlimit <RATE>` – throttle I/O bandwidth to `RATE` bytes per second using a
+  token bucket rate limiter.
 - `--link-dest <DIR>` / `--copy-dest <DIR>` – hard‑link or copy unchanged
   files from `DIR`.
 
