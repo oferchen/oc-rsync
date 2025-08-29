@@ -11,6 +11,7 @@ use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
 use compress::{available_codecs, Codec};
 use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{parse, Matcher, Rule};
+use meta::{Chmod, ChmodOp, ChmodTarget};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
 use transport::{RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
@@ -87,6 +88,9 @@ struct ClientOpts {
     /// preserve permissions
     #[arg(long, help_heading = "Attributes")]
     perms: bool,
+    /// affect file and/or directory permissions
+    #[arg(long = "chmod", value_name = "CHMOD", help_heading = "Attributes")]
+    chmod: Vec<String>,
     /// preserve modification times
     #[arg(long, help_heading = "Attributes")]
     times: bool,
@@ -277,6 +281,105 @@ fn parse_module(s: &str) -> std::result::Result<Module, String> {
         name,
         path: PathBuf::from(path),
     })
+}
+
+fn parse_chmod_spec(spec: &str) -> std::result::Result<Chmod, String> {
+    let (target, rest) = if let Some(r) = spec.strip_prefix('D') {
+        (ChmodTarget::Dir, r)
+    } else if let Some(r) = spec.strip_prefix('F') {
+        (ChmodTarget::File, r)
+    } else {
+        (ChmodTarget::All, spec)
+    };
+
+    if rest.is_empty() {
+        return Err("missing mode".into());
+    }
+
+    if rest.chars().all(|c| c.is_ascii_digit()) {
+        let bits = u32::from_str_radix(rest, 8).map_err(|_| "invalid octal mode")?;
+        return Ok(Chmod {
+            target,
+            op: ChmodOp::Set,
+            mask: 0o7777,
+            bits,
+            conditional: false,
+        });
+    }
+
+    let op_pos = rest
+        .find(|c| c == '+' || c == '-' || c == '=')
+        .ok_or_else(|| "missing operator".to_string())?;
+    let who_part = &rest[..op_pos];
+    let op_char = rest.as_bytes()[op_pos] as char;
+    let perm_part = &rest[op_pos + 1..];
+    if perm_part.is_empty() {
+        return Err("missing permissions".into());
+    }
+
+    let mut who_mask = 0u32;
+    if who_part.is_empty() {
+        who_mask = 0o777;
+    } else {
+        for ch in who_part.chars() {
+            who_mask |= match ch {
+                'u' => 0o700,
+                'g' => 0o070,
+                'o' => 0o007,
+                'a' => 0o777,
+                _ => return Err(format!("invalid class '{ch}'")),
+            };
+        }
+    }
+
+    let mut bits = 0u32;
+    let mut mask = who_mask;
+    let mut conditional = false;
+    for ch in perm_part.chars() {
+        match ch {
+            'r' => bits |= 0o444 & who_mask,
+            'w' => bits |= 0o222 & who_mask,
+            'x' => bits |= 0o111 & who_mask,
+            'X' => {
+                bits |= 0o111 & who_mask;
+                conditional = true;
+            }
+            's' => {
+                if who_mask & 0o700 != 0 {
+                    bits |= 0o4000;
+                    mask |= 0o4000;
+                }
+                if who_mask & 0o070 != 0 {
+                    bits |= 0o2000;
+                    mask |= 0o2000;
+                }
+            }
+            't' => {
+                bits |= 0o1000;
+                mask |= 0o1000;
+            }
+            _ => return Err(format!("invalid permission '{ch}'")),
+        }
+    }
+
+    let op = match op_char {
+        '+' => ChmodOp::Add,
+        '-' => ChmodOp::Remove,
+        '=' => ChmodOp::Set,
+        _ => unreachable!(),
+    };
+
+    Ok(Chmod {
+        target,
+        op,
+        mask,
+        bits,
+        conditional,
+    })
+}
+
+fn parse_chmod(s: &str) -> std::result::Result<Vec<Chmod>, String> {
+    s.split(',').map(parse_chmod_spec).collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -696,6 +799,10 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         delete_mode = Some(DeleteMode::During);
     }
     let block_size = opts.block_size.unwrap_or(1024);
+    let mut chmod_rules = Vec::new();
+    for spec in &opts.chmod {
+        chmod_rules.extend(parse_chmod(spec).map_err(|e| EngineError::Other(e))?);
+    }
     let sync_opts = SyncOptions {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
@@ -740,6 +847,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         compare_dest: opts.compare_dest.clone(),
         backup: opts.backup || opts.backup_dir.is_some(),
         backup_dir: opts.backup_dir.clone(),
+        chmod: if chmod_rules.is_empty() {
+            None
+        } else {
+            Some(chmod_rules)
+        },
     };
     let stats = if opts.local {
         match (src, dst) {

@@ -787,6 +787,7 @@ impl Receiver {
                         false
                     }
                 },
+                chmod: self.opts.chmod.clone(),
             };
 
             if self.opts.perms
@@ -798,7 +799,8 @@ impl Receiver {
                 || meta_opts.xattrs
                 || meta_opts.acl
             {
-                let meta = meta::Metadata::from_path(src, meta_opts).map_err(EngineError::from)?;
+                let meta =
+                    meta::Metadata::from_path(src, meta_opts.clone()).map_err(EngineError::from)?;
                 meta.apply(dest, meta_opts).map_err(EngineError::from)?;
             }
         }
@@ -857,6 +859,7 @@ pub struct SyncOptions {
     pub compare_dest: Option<PathBuf>,
     pub backup: bool,
     pub backup_dir: Option<PathBuf>,
+    pub chmod: Option<Vec<meta::Chmod>>,
 }
 
 impl Default for SyncOptions {
@@ -901,6 +904,7 @@ impl Default for SyncOptions {
             compare_dest: None,
             backup: false,
             backup_dir: None,
+            chmod: None,
         }
     }
 }
