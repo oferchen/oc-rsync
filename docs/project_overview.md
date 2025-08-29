@@ -36,7 +36,7 @@
 - [ ] M7—Stabilization
   - [ ] Hardlink support *(planned)*
   - [ ] Sparse file handling *(planned)*
-  - [ ] Extended attributes (xattrs) & ACLs *(planned)*
+  - [x] Extended attributes (xattrs) & ACLs
 
 ## Interoperability
 For compatibility tracking with other implementations, see the [compatibility matrix](compat_matrix.md).

@@ -6,7 +6,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | Option | Supported | Parity | Tests | Notes | Enhanced? |
 | --- | --- | --- | --- | --- | --- |
 | `--8-bit-output` | ❌ | — | — |  | |
-| `--acls` | ❌ | — | — |  | |
+| `--acls` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `acl` feature | |
 | `--address` | ❌ | — | — |  | |
 | `--append` | ❌ | — | — |  | |
 | `--append-verify` | ❌ | — | — |  | |
@@ -153,4 +153,4 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--whole-file` | ❌ | — | — |  | |
 | `--write-batch` | ❌ | — | — |  | |
 | `--write-devices` | ❌ | — | — |  | |
-| `--xattrs` | ❌ | — | — |  | |
+| `--xattrs` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `xattr` feature | |
