@@ -32,6 +32,28 @@ fn spawn_daemon() -> (Child, u16) {
     (child, port)
 }
 
+fn spawn_daemon_with_address(addr: &str) -> (Child, u16) {
+    let port = TcpListener::bind((addr, 0))
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let child = StdCommand::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            "data=/tmp",
+            "--port",
+            &port.to_string(),
+            "--address",
+            addr,
+        ])
+        .spawn()
+        .unwrap();
+    (child, port)
+}
+
 fn wait_for_daemon(port: u16) {
     for _ in 0..20 {
         if TcpStream::connect(("127.0.0.1", port)).is_ok() {
@@ -52,6 +74,17 @@ fn daemon_negotiates_version_with_client() {
     let mut buf = [0u8; 4];
     stream.read_exact(&mut buf).unwrap();
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_binds_to_specified_address() {
+    let (mut child, port) = spawn_daemon_with_address("127.0.0.1");
+    wait_for_daemon(port);
+    TcpStream::connect(("127.0.0.1", port)).unwrap();
+    assert!(TcpStream::connect(("127.0.0.2", port)).is_err());
     let _ = child.kill();
     let _ = child.wait();
 }

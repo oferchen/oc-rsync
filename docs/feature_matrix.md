@@ -7,7 +7,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | --- | --- | --- | --- | --- | --- | --- |
 | `--8-bit-output` | `-8` | ❌ | — | — |  | ≤3.2 |
 | `--acls` | `-A` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `acl` feature | ≤3.2 |
-| `--address` | — | ❌ | — | — |  | ≤3.2 |
+| `--address` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--append` | — | ❌ | — | — |  | ≤3.2 |
 | `--append-verify` | — | ❌ | — | — |  | ≤3.2 |
 | `--archive` | `-a` | ✅ | ❌ | [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) |  | ≤3.2 |

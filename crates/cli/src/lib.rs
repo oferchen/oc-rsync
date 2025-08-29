@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
-use std::net::{IpAddr, TcpListener, TcpStream};
+use std::net::{IpAddr, Ipv4Addr, TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -265,6 +265,9 @@ struct DaemonOpts {
     /// module declarations of the form NAME=PATH
     #[arg(long, value_parser = parse_module, value_name = "NAME=PATH")]
     module: Vec<Module>,
+    /// address to listen on
+    #[arg(long)]
+    address: Option<IpAddr>,
     /// port to listen on
     #[arg(long, default_value_t = 873)]
     port: u16,
@@ -1109,7 +1112,8 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     let log_format = opts.log_file_format.clone();
     let motd = opts.motd.clone();
 
-    let listener = TcpListener::bind(("127.0.0.1", opts.port))?;
+    let addr = opts.address.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+    let listener = TcpListener::bind((addr, opts.port))?;
 
     loop {
         let (stream, addr) = listener.accept()?;

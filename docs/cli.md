@@ -57,8 +57,9 @@ copied:
 
 ### Daemon and server modes
 
-- `--daemon` – run as an rsync daemon accepting incoming connections *(default: off).* 
-- `--server` – enable server behavior; typically invoked internally when a remote peer connects *(default: off).* 
+- `--daemon` – run as an rsync daemon accepting incoming connections *(default: off).*
+- `--server` – enable server behavior; typically invoked internally when a remote peer connects *(default: off).*
+- `--address <ADDR>` – bind the daemon to `ADDR` *(default: `0.0.0.0`).*
 
 ### Remote shell
 
