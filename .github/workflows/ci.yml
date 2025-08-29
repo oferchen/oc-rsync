@@ -55,6 +55,14 @@ jobs:
         run: |
           cargo run --bin flag_matrix
           git diff --exit-code tools/flag_matrix.md tools/flag_matrix.json
+      - name: Install pandoc
+        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
+        run: sudo apt-get update && sudo apt-get install -y pandoc
+      - name: Generate manpages
+        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
+        run: |
+          bash scripts/generate-manpages.sh
+          git diff --exit-code man
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy

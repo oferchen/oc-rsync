@@ -28,6 +28,7 @@ filters = { path = "crates/filters" }
 compress = { path = "crates/compress" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+clap_complete = "4"
 
 [dev-dependencies]
 tempfile = "3"
@@ -44,6 +45,10 @@ shell-words = "1.1"
 [[bin]]
 name = "flag_matrix"
 path = "tools/flag_matrix.rs"
+
+[[bin]]
+name = "gen-completions"
+path = "tools/gen_completions.rs"
 
 [features]
 default = []
