@@ -2,6 +2,7 @@ use std::io::{self, Read, Write};
 use std::time::Duration;
 
 use crate::{negotiate_version, Demux, Frame, Mux};
+use compress::{available_codecs, decode_codecs, encode_codecs, Codec};
 
 /// Server-side protocol state machine.
 ///
@@ -35,15 +36,32 @@ impl<R: Read, W: Write> Server<R, W> {
     /// Perform the initial version negotiation handshake with a client. The
     /// client is expected to send a 4 byte big-endian protocol version which we
     /// negotiate against our supported range and reply with the selected
-    /// version.
-    pub fn handshake(&mut self) -> io::Result<u32> {
+    /// version.  After version negotiation, both peers exchange lists of
+    /// supported compression codecs. The client's advertised codecs are
+    /// returned.
+    pub fn handshake(&mut self) -> io::Result<Vec<Codec>> {
         let mut buf = [0u8; 4];
         self.reader.read_exact(&mut buf)?;
         let peer = u32::from_be_bytes(buf);
         let ver = negotiate_version(peer)?;
         self.writer.write_all(&ver.to_be_bytes())?;
+        self.writer.flush()?;
         self.version = ver;
-        Ok(ver)
+
+        // Read the client's advertised codecs.
+        let mut len = [0u8; 1];
+        self.reader.read_exact(&mut len)?;
+        let mut codecs_buf = vec![0u8; len[0] as usize];
+        self.reader.read_exact(&mut codecs_buf)?;
+        let peer_codecs = decode_codecs(&codecs_buf)?;
+
+        // Respond with our own codec list.
+        let payload = encode_codecs(available_codecs());
+        self.writer.write_all(&[payload.len() as u8])?;
+        self.writer.write_all(&payload)?;
+        self.writer.flush()?;
+
+        Ok(peer_codecs)
     }
 
     /// Pump a single iteration of the multiplexed I/O machinery.

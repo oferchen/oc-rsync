@@ -5,7 +5,6 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
 ## Missing rsync behaviors
 
 ### Protocol gaps
-- The `--server` handshake is not implemented, leaving server-mode negotiation incomplete; see the `--protocol` entry in `docs/feature_matrix.md`.
 - Remote shell (`--rsh`) negotiation is incomplete, lacking full `rsh` command parsing and environment handshakes.
 - Partial transfer resumption does not fully match `rsync` semantics; interrupted copies cannot reuse partially transferred data.
 - Compression negotiation between peers is unimplemented.

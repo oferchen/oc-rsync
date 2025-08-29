@@ -816,7 +816,8 @@ fn run_server() -> Result<()> {
     let stdin = io::stdin();
     let stdout = io::stdout();
     let mut srv = Server::new(stdin.lock(), stdout.lock());
-    srv.handshake()
+    let _ = srv
+        .handshake()
         .map_err(|e| EngineError::Other(e.to_string()))?;
     Ok(())
 }
