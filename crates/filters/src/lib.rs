@@ -125,15 +125,22 @@ impl Matcher {
 
         let mut combined = Vec::new();
         for pd in &self.per_dir {
-            let path = dir.join(&pd.file);
+            let path = if pd.anchored {
+                if let Some(root) = &self.root {
+                    root.join(&pd.file)
+                } else {
+                    dir.join(&pd.file)
+                }
+            } else {
+                dir.join(&pd.file)
+            };
             let mut cache = self.cached.borrow_mut();
             if let Some(r) = cache.get(&path) {
                 combined.extend(r.clone());
                 continue;
             }
             let rel = if !pd.anchored {
-                self
-                    .root
+                self.root
                     .as_ref()
                     .and_then(|r| dir.strip_prefix(r).ok())
                     .filter(|p| !p.as_os_str().is_empty())
