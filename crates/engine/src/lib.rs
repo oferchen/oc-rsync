@@ -1,6 +1,6 @@
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
@@ -106,9 +106,7 @@ impl<'a, R: Read + Seek> Iterator for DeltaIter<'a, R> {
 
             let len = usize::min(self.window.len(), self.block_size);
             self.window.make_contiguous();
-            let sum = self
-                .cfg
-                .checksum(&self.window.as_slices().0[..len]);
+            let sum = self.cfg.checksum(&self.window.as_slices().0[..len]);
             if let Some(candidates) = self.map.get(&sum.weak) {
                 if let Some((_, off, blen)) = candidates
                     .iter()
@@ -247,6 +245,35 @@ fn apply_op_plain<R: Read + Seek, W: Write + Seek>(
     Ok(())
 }
 
+fn apply_op_inplace<R: Read + Seek>(
+    basis: &mut R,
+    op: Op,
+    out: &mut File,
+    buf: &mut [u8],
+) -> Result<()> {
+    match op {
+        Op::Data(d) => {
+            out.write_all(&d)?;
+        }
+        Op::Copy { offset, len } => {
+            let pos = out.stream_position()?;
+            if offset as u64 == pos {
+                out.seek(SeekFrom::Current(len as i64))?;
+            } else {
+                basis.seek(SeekFrom::Start(offset as u64))?;
+                let mut remaining = len;
+                while remaining > 0 {
+                    let to_read = remaining.min(buf.len());
+                    basis.read_exact(&mut buf[..to_read])?;
+                    out.write_all(&buf[..to_read])?;
+                    remaining -= to_read;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 fn apply_op_sparse<R: Read + Seek>(
     basis: &mut R,
     op: Op,
@@ -282,7 +309,15 @@ where
     I: IntoIterator<Item = Result<Op>>,
 {
     let mut buf = vec![0u8; 8192];
-    if opts.sparse {
+    if opts.inplace {
+        let file = (&mut *out as &mut dyn Any)
+            .downcast_mut::<File>()
+            .ok_or_else(|| EngineError::Other("inplace output must be a File".into()))?;
+        for op in ops {
+            let op = op?;
+            apply_op_inplace(basis, op, file, &mut buf)?;
+        }
+    } else if opts.sparse {
         let file = (&mut *out as &mut dyn Any)
             .downcast_mut::<File>()
             .ok_or_else(|| EngineError::Other("sparse output must be a File".into()))?;
@@ -465,12 +500,20 @@ impl Receiver {
         } else {
             dest.with_extension("partial")
         };
-        let basis_path = if self.opts.partial && partial.exists() {
+        let basis_path = if self.opts.inplace {
+            dest.to_path_buf()
+        } else if self.opts.partial && partial.exists() {
             partial.clone()
         } else {
             dest.to_path_buf()
         };
-        let tmp_dest = if self.opts.partial { &partial } else { dest };
+        let tmp_dest = if self.opts.inplace {
+            dest
+        } else if self.opts.partial {
+            &partial
+        } else {
+            dest
+        };
         let mut basis: Box<dyn ReadSeek> = match File::open(&basis_path) {
             Ok(mut f) => {
                 let mut buf = Vec::new();
@@ -483,7 +526,15 @@ impl Receiver {
             fs::create_dir_all(parent)?;
         }
 
-        let mut out = File::create(tmp_dest)?;
+        let mut out = if self.opts.inplace {
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(tmp_dest)?
+        } else {
+            File::create(tmp_dest)?
+        };
         let ops = delta.into_iter().map(|op_res| {
             let mut op = op_res?;
             if let Some(codec) = self.codec {
@@ -509,7 +560,7 @@ impl Receiver {
         apply_delta(&mut basis, ops, &mut out, &self.opts)?;
         let len = out.seek(SeekFrom::Current(0))?;
         out.set_len(len)?;
-        if self.opts.partial {
+        if self.opts.partial && !self.opts.inplace {
             fs::rename(tmp_dest, dest)?;
         }
         self.copy_metadata(src, dest)?;
@@ -598,6 +649,7 @@ pub struct SyncOptions {
     pub progress: bool,
     pub partial_dir: Option<PathBuf>,
     pub numeric_ids: bool,
+    pub inplace: bool,
 }
 
 impl Default for SyncOptions {
@@ -625,6 +677,7 @@ impl Default for SyncOptions {
             progress: false,
             partial_dir: None,
             numeric_ids: false,
+            inplace: false,
         }
     }
 }

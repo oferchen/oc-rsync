@@ -77,7 +77,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--include` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | |
 | `--include-from` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | |
 | `--info` | ❌ | — | — |  | |
-| `--inplace` | ❌ | — | — |  | |
+| `--inplace` | ✅ | ✅ | [tests/golden/cli_parity/inplace.sh](../tests/golden/cli_parity/inplace.sh) |  | |
 | `--ipv4` | ❌ | — | — |  | |
 | `--ipv6` | ❌ | — | — |  | |
 | `--itemize-changes` | ❌ | — | — |  | |
