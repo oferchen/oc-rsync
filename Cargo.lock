@@ -1103,6 +1103,7 @@ dependencies = [
  "shell-words",
  "tempfile",
  "transport",
+ "wait-timeout",
  "xattr",
 ]
 
