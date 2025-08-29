@@ -176,6 +176,14 @@ struct ClientOpts {
     /// put a partially transferred file into DIR
     #[arg(long = "partial-dir", value_name = "DIR", help_heading = "Misc")]
     partial_dir: Option<PathBuf>,
+    /// create temporary files in directory DIR
+    #[arg(
+        short = 'T',
+        long = "temp-dir",
+        value_name = "DIR",
+        help_heading = "Misc"
+    )]
+    temp_dir: Option<PathBuf>,
     /// show progress during transfer
     #[arg(long, help_heading = "Misc")]
     progress: bool,
@@ -915,6 +923,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         partial: opts.partial || opts.partial_progress,
         progress: opts.progress || opts.partial_progress,
         partial_dir: opts.partial_dir.clone(),
+        temp_dir: opts.temp_dir.clone(),
         append: opts.append,
         append_verify: opts.append_verify,
         numeric_ids: opts.numeric_ids,

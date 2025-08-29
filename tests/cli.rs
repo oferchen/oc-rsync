@@ -120,6 +120,30 @@ fn resumes_from_partial_file() {
 }
 
 #[test]
+fn fails_when_temp_dir_is_file() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    let tmp_file = dir.path().join("tmp");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::write(src_dir.join("a.txt"), b"hello").unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    std::fs::write(&tmp_file, b"not a dir").unwrap();
+
+    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--local",
+        "--temp-dir",
+        tmp_file.to_str().unwrap(),
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().failure();
+    assert!(!dst_dir.join("a.txt").exists());
+}
+
+#[test]
 fn numeric_ids_are_preserved() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
