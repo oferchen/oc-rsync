@@ -74,13 +74,23 @@ fn remote_to_remote_reports_errors() {
 
     let src_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
-    // Destination process exits immediately, causing a broken pipe
-    // Close stdin immediately so writes fail with BrokenPipe
-    let dst_session = SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; sleep 1"]).unwrap();
+    // Destination process closes its stdin and signals when that has happened
+    let dst_session = SshStdioTransport::spawn(
+        "sh",
+        ["-c", "exec 0<&-; echo ready; sleep 1"],
+    )
+    .unwrap();
+
     let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
-    let result = std::io::copy(&mut src_reader, &mut dst_writer);
-    assert!(result.is_err());
+    let (mut dst_reader, mut dst_writer) = dst_session.into_inner();
+
+    // Ensure the destination has closed stdin before attempting to copy
+    let mut ready = [0u8; 6];
+    dst_reader.read_exact(&mut ready).unwrap();
+    assert_eq!(&ready, b"ready\n");
+
+    let err = std::io::copy(&mut src_reader, &mut dst_writer).unwrap_err();
+    assert_eq!(err.kind(), std::io::ErrorKind::BrokenPipe);
 }
 
 #[test]
