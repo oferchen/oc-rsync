@@ -458,6 +458,9 @@ struct DaemonOpts {
     /// set daemon connection timeout in seconds
     #[arg(long = "contimeout", value_name = "SECONDS", value_parser = parse_duration)]
     contimeout: Option<Duration>,
+    /// throttle I/O bandwidth to RATE bytes per second
+    #[arg(long = "bwlimit", value_name = "RATE")]
+    bwlimit: Option<u64>,
     /// path to secrets file
     #[arg(long = "secrets-file", value_name = "FILE")]
     secrets_file: Option<PathBuf>,
@@ -1355,6 +1358,7 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     let log_format = opts.log_file_format.clone();
     let motd = opts.motd.clone();
     let timeout = opts.timeout;
+    let bwlimit = opts.bwlimit;
 
     let addr = opts.address.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
     let listener = TcpListener::bind((addr, opts.port))?;
@@ -1375,7 +1379,20 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
         std::thread::spawn(move || {
             let mut transport = TcpTransport::from_stream(stream);
             let _ = transport.set_read_timeout(timeout);
-            if let Err(e) = handle_connection(
+            if let Some(limit) = bwlimit {
+                let mut transport = RateLimitedTransport::new(transport, limit);
+                if let Err(e) = handle_connection(
+                    &mut transport,
+                    &modules,
+                    secrets.as_deref(),
+                    log_file.as_deref(),
+                    log_format.as_deref(),
+                    motd.as_deref(),
+                    &peer,
+                ) {
+                    eprintln!("connection error: {}", e);
+                }
+            } else if let Err(e) = handle_connection(
                 &mut transport,
                 &modules,
                 secrets.as_deref(),
@@ -1407,8 +1424,8 @@ fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
     true
 }
 
-fn handle_connection(
-    transport: &mut TcpTransport,
+fn handle_connection<T: Transport>(
+    transport: &mut T,
     modules: &HashMap<String, PathBuf>,
     secrets: Option<&Path>,
     log_file: Option<&Path>,
@@ -1487,7 +1504,7 @@ pub fn parse_auth_token(token: &str, contents: &str) -> Option<Vec<String>> {
     None
 }
 
-fn authenticate(t: &mut TcpTransport, path: Option<&Path>) -> std::io::Result<Vec<String>> {
+fn authenticate<T: Transport>(t: &mut T, path: Option<&Path>) -> std::io::Result<Vec<String>> {
     let auth_path = path.unwrap_or(Path::new("auth"));
     if !auth_path.exists() {
         return Ok(Vec::new());

@@ -9,7 +9,7 @@ use std::net::{TcpListener, TcpStream};
 use std::os::unix::fs::PermissionsExt;
 use std::process::{Child, Command as StdCommand};
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use transport::{TcpTransport, Transport};
 
 fn spawn_daemon() -> (Child, u16) {
@@ -408,6 +408,89 @@ fn client_respects_no_motd() {
         .unwrap();
     assert!(!String::from_utf8_lossy(&output.stdout).contains("Hello world"));
 
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_logs_connections() {
+    let dir = tempfile::tempdir().unwrap();
+    let log = dir.path().join("log");
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let mut child = StdCommand::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            "data=/tmp",
+            "--port",
+            &port.to_string(),
+            "--log-file",
+            log.to_str().unwrap(),
+            "--log-file-format",
+            "%h %m",
+        ])
+        .spawn()
+        .unwrap();
+    wait_for_daemon(port);
+    {
+        let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}"), None).unwrap();
+        t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+        let mut buf = [0u8; 4];
+        t.receive(&mut buf).unwrap();
+        t.send(b"data\n").unwrap();
+    }
+    sleep(Duration::from_millis(100));
+    let contents = fs::read_to_string(&log).unwrap();
+    assert!(contents.contains("127.0.0.1 data"));
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_honors_bwlimit() {
+    let dir = tempfile::tempdir().unwrap();
+    let motd = dir.path().join("motd");
+    let line = "A".repeat(256);
+    fs::write(&motd, format!("{line}\nsecond")).unwrap();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let mut child = StdCommand::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            "data=/tmp",
+            "--port",
+            &port.to_string(),
+            "--bwlimit",
+            "256",
+            "--motd",
+            motd.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}"), None).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    let mut first = vec![0u8; 300];
+    let n1 = t.receive(&mut first).unwrap();
+    assert!(!String::from_utf8_lossy(&first[..n1]).contains("second"));
+    let start = Instant::now();
+    let mut second = [0u8; 64];
+    let _ = t.receive(&mut second).unwrap();
+    assert!(start.elapsed() >= Duration::from_millis(800));
     let _ = child.kill();
     let _ = child.wait();
 }
