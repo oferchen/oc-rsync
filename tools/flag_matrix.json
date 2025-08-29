@@ -6,8 +6,8 @@
   },
   {
     "flag": "--acls",
-    "status": "Ok",
-    "notes": "requires acl feature"
+    "status": "Error",
+    "notes": ""
   },
   {
     "flag": "--address",
@@ -341,7 +341,7 @@
   },
   {
     "flag": "--inplace",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -706,8 +706,8 @@
   },
   {
     "flag": "--xattrs",
-    "status": "Ok",
-    "notes": "requires xattr feature"
+    "status": "Error",
+    "notes": ""
   },
   {
     "flag": "-0",
@@ -736,7 +736,7 @@
   },
   {
     "flag": "-A",
-    "status": "Ok",
+    "status": "Error",
     "notes": "alias for --acls"
   },
   {
@@ -771,7 +771,7 @@
   },
   {
     "flag": "-I",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --ignore-times"
   },
   {
@@ -841,7 +841,7 @@
   },
   {
     "flag": "-X",
-    "status": "Ok",
+    "status": "Error",
     "notes": "alias for --xattrs"
   },
   {
