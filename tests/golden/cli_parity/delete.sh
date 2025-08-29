@@ -8,21 +8,27 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
 run_case() {
-  local flag="$1"
-  local rs_flag="${2:-$flag}"
-  local dir="$TMP/$(echo "$flag" | tr -d '-')"
+  local flags=("$@")
+  local dir="$TMP/$(echo "${flags[*]}" | tr -d ' -.')"
   mkdir -p "$dir/src" "$dir/rsync_dst" "$dir/rsync_rs_dst"
   echo keep > "$dir/src/a.txt"
   cp "$dir/src/a.txt" "$dir/rsync_dst/a.txt"
-  echo obsolete > "$dir/rsync_dst/old.txt"
-  cp "$dir/rsync_dst/old.txt" "$dir/rsync_rs_dst/old.txt"
   cp "$dir/src/a.txt" "$dir/rsync_rs_dst/a.txt"
 
-  rsync_output=$(rsync --quiet --recursive "$rs_flag" "$dir/src/" "$dir/rsync_dst" 2>&1)
+  if [[ " ${flags[*]} " == *" --delete-excluded "* ]]; then
+    echo skip > "$dir/src/old.txt"
+    cp "$dir/src/old.txt" "$dir/rsync_dst/old.txt"
+    cp "$dir/src/old.txt" "$dir/rsync_rs_dst/old.txt"
+  else
+    echo obsolete > "$dir/rsync_dst/old.txt"
+    cp "$dir/rsync_dst/old.txt" "$dir/rsync_rs_dst/old.txt"
+  fi
+
+  rsync_output=$(rsync --quiet --recursive "${flags[@]}" "$dir/src/" "$dir/rsync_dst" 2>&1)
   rsync_status=$?
 
   set +e
-  rsync_rs_raw=$("$RSYNC_RS" --local --recursive "$flag" "$dir/src/" "$dir/rsync_rs_dst" 2>&1)
+  rsync_rs_raw=$("$RSYNC_RS" --local --recursive "${flags[@]}" "$dir/src/" "$dir/rsync_rs_dst" 2>&1)
   rsync_rs_status=$?
   set -e
   rsync_rs_output=$(echo "$rsync_rs_raw" | grep -v 'recursive mode enabled' || true)
@@ -51,3 +57,4 @@ run_case --delete-after
 run_case --delete-delay
 run_case --delete-during
 run_case --del
+run_case --delete-excluded --exclude old.txt
