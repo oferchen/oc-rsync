@@ -8,6 +8,15 @@ pub use ssh::SshStdioTransport;
 pub use tcp::TcpTransport;
 pub use rate::RateLimitedTransport;
 
+/// Address family preference for network connections.
+#[derive(Clone, Copy, Debug)]
+pub enum AddressFamily {
+    /// Use IPv4 addresses only.
+    V4,
+    /// Use IPv6 addresses only.
+    V6,
+}
+
 /// Trait representing a blocking transport.
 pub trait Transport {
     /// Send data over the transport.

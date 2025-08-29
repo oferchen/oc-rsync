@@ -33,8 +33,9 @@ fn refuses_unknown_host_key() {
     // Use an empty known_hosts file to ensure the host key is unknown.
     let tmp = NamedTempFile::new().expect("tmp known_hosts");
 
-    let transport = SshStdioTransport::spawn_server("localhost", ["/"], Some(tmp.path()), true)
-        .expect("spawn ssh");
+    let transport =
+        SshStdioTransport::spawn_server("localhost", ["/"], Some(tmp.path()), true, None)
+            .expect("spawn ssh");
 
     // Give the ssh process time to emit its failure message.
     thread::sleep(Duration::from_millis(500));
