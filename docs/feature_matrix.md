@@ -1,156 +1,156 @@
 # Feature Matrix
 
-This table tracks the implementation status of rsync 3.2.x command-line options.
+This table tracks the implementation status of rsync 3.4.1 command-line options.
 See [differences.md](differences.md) for a summary of notable behavioral differences.
 
-| Option | Short | Supported | Parity | Default | Interactions | Tests | Notes | Enhanced? |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `--8-bit-output` | `-8` | ❌ | — | off | — | — |  |  |
-| `--acls` | `-A` | ✅ | ❌ | off | requires `acl` feature | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `acl` feature |  |
-| `--address` | — | ❌ | — | — | — | — |  |  |
-| `--append` | — | ❌ | — | off | — | — |  |  |
-| `--append-verify` | — | ❌ | — | off | — | — |  |  |
-| `--archive` | `-a` | ✅ | ❌ | off | — | [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) |  |  |
-| `--atimes` | `-U` | ✅ | ❌ | off | — | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  |  |
-| `--backup` | `-b` | ❌ | — | off | — | — |  |  |
-| `--backup-dir` | — | ❌ | — | — | — | — |  |  |
-| `--block-size` | `-B` | ❌ | — | — | — | — |  |  |
-| `--blocking-io` | — | ❌ | — | off | — | — |  |  |
-| `--bwlimit` | — | ✅ | ❌ | — | — | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) |  |  |
-| `--cc` | — | ❌ | — | off | alias for `--checksum-choice` | [gaps.md](gaps.md) | alias for `--checksum-choice` |  |
-| `--checksum` | `-c` | ✅ | ✅ | off | — | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, BLAKE3 |  |
-| `--checksum-choice` | — | ❌ | — | — | choose the checksum algorithm (aka --cc) | — |  |  |
-| `--checksum-seed` | — | ❌ | — | — | — | — |  |  |
-| `--chmod` | — | ❌ | — | — | — | — |  |  |
-| `--chown` | — | ❌ | — | — | — | — |  |  |
-| `--compare-dest` | — | ✅ | ✅ | — | — | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  |  |
-| `--compress` | `-z` | ✅ | ✅ | off | — | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/compression_negotiation.sh](../tests/compression_negotiation.sh) | negotiates zstd when supported by both peers |  |
-| `--compress-choice` | — | ✅ | ✅ | — | choose the compression algorithm (aka --zc) | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | supports zstd and zlib only |  |
-| `--compress-level` | — | ✅ | ✅ | — | explicitly set compression level (aka --zl) | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | applies to zlib or zstd |  |
-| `--zc` | — | ✅ | ✅ | off | alias for `--compress-choice` | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | alias for `--compress-choice` |  |
-| `--zl` | — | ✅ | ✅ | off | alias for `--compress-level` | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | alias for `--compress-level` |  |
-| `--contimeout` | — | ❌ | — | — | — | — |  |  |
-| `--copy-as` | — | ❌ | — | — | — | — |  |  |
-| `--copy-dest` | — | ✅ | ✅ | — | — | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  |  |
-| `--copy-devices` | — | ❌ | — | off | — | — |  |  |
-| `--copy-dirlinks` | `-k` | ❌ | — | off | — | — |  |  |
-| `--copy-links` | `-L` | ❌ | — | off | — | — |  |  |
-| `--copy-unsafe-links` | — | ❌ | — | off | — | — |  |  |
-| `--crtimes` | `-N` | ✅ | ❌ | off | — | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  |  |
-| `--cvs-exclude` | `-C` | ❌ | — | off | — | — |  |  |
-| `--daemon` | — | ✅ | ❌ | off | — | [tests/daemon.rs](../tests/daemon.rs) |  |  |
-| `--debug` | — | ❌ | — | — | — | — |  |  |
-| `--del` | — | ✅ | ✅ | off | an alias for --delete-during | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | alias for `--delete-during` |  |
-| `--delay-updates` | — | ❌ | — | off | — | — |  |  |
-| `--delete` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |  |
-| `--delete-after` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |  |
-| `--delete-before` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |  |
-| `--delete-delay` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |  |
-| `--delete-during` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |  |
-| `--delete-excluded` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |  |
-| `--delete-missing-args` | — | ❌ | — | off | — | — |  |  |
-| `--devices` | — | ✅ | ❌ | off | — | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  |  |
-| `--dirs` | `-d` | ❌ | — | off | — | — |  |  |
-| `--dry-run` | `-n` | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--early-input` | — | ❌ | — | — | — | — |  |  |
-| `--exclude` | — | ✅ | ❌ | — | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--exclude-from` | — | ✅ | ❌ | — | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--executability` | `-E` | ❌ | — | off | — | — |  |  |
-| `--existing` | — | ❌ | — | off | — | — |  |  |
-| `--fake-super` | — | ❌ | — | off | — | — |  |  |
-| `--files-from` | — | ✅ | ❌ | — | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--filter` | `-f` | ✅ | ✅ | — | — | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  |  |
-| `--force` | — | ❌ | — | off | — | — |  |  |
-| `--from0` | `-0` | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--fsync` | — | ❌ | — | off | — | — |  |  |
-| `--fuzzy` | `-y` | ❌ | — | off | — | — |  |  |
-| `--group` | `-g` | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--groupmap` | — | ❌ | — | — | — | — |  |  |
-| `--hard-links` | `-H` | ✅ | ❌ | off | — | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  |  |
-| `--help` | `-h (*)` | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--human-readable` | `-h` | ❌ | — | off | — | — |  |  |
-| `--iconv` | — | ❌ | — | — | — | — |  |  |
-| `--ignore-errors` | — | ❌ | — | off | — | — |  |  |
-| `--ignore-existing` | — | ❌ | — | off | — | — |  |  |
-| `--ignore-missing-args` | — | ❌ | — | off | — | — |  |  |
-| `--ignore-times` | `-I` | ❌ | — | off | — | — |  |  |
-| `--include` | — | ✅ | ❌ | — | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--include-from` | — | ✅ | ❌ | — | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--info` | — | ❌ | — | — | — | — |  |  |
-| `--inplace` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/inplace.sh](../tests/golden/cli_parity/inplace.sh) |  |  |
-| `--ipv4` | `-4` | ❌ | — | off | — | — |  |  |
-| `--ipv6` | `-6` | ❌ | — | off | — | — |  |  |
-| `--itemize-changes` | `-i` | ❌ | — | off | — | — |  |  |
-| `--keep-dirlinks` | `-K` | ❌ | — | off | — | — |  |  |
-| `--link-dest` | — | ✅ | ✅ | — | — | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  |  |
-| `--links` | `-l` | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--list-only` | — | ❌ | — | off | — | — |  |  |
-| `--log-file` | — | ❌ | — | — | — | — |  |  |
-| `--log-file-format` | — | ❌ | — | — | — | — |  |  |
-| `--max-alloc` | — | ❌ | — | — | — | — |  |  |
-| `--max-delete` | — | ❌ | — | — | — | — |  |  |
-| `--max-size` | — | ❌ | — | — | — | — |  |  |
-| `--min-size` | — | ❌ | — | — | — | — |  |  |
-| `--mkpath` | — | ❌ | — | off | — | — |  |  |
-| `--modify-window` | `-@` | ❌ | — | — | — | — |  |  |
-| `--munge-links` | — | ❌ | — | off | — | — |  |  |
-| `--no-D` | — | ❌ | — | off | alias for `--no-devices --no-specials` | [gaps.md](gaps.md) | alias for `--no-devices --no-specials` |  |
-| `--no-OPTION` | — | ❌ | — | off | — | — |  |  |
-| `--no-implied-dirs` | — | ❌ | — | off | — | — |  |  |
-| `--no-motd` | — | ✅ | ❌ | off | — | [tests/daemon.rs](../tests/daemon.rs) |  |  |
-| `--numeric-ids` | — | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--old-args` | — | ❌ | — | off | — | — |  |  |
-| `--old-d` | — | ❌ | — | off | alias for --old-dirs | [gaps.md](gaps.md) | alias for `--old-dirs` |  |
-| `--old-dirs` | — | ❌ | — | off | — | — |  |  |
-| `--omit-dir-times` | `-O` | ❌ | — | off | — | — |  |  |
-| `--omit-link-times` | `-J` | ❌ | — | off | — | — |  |  |
-| `--one-file-system` | `-x` | ❌ | — | off | — | — |  |  |
-| `--only-write-batch` | — | ❌ | — | — | — | — |  |  |
-| `--open-noatime` | — | ❌ | — | off | — | — |  |  |
-| `--out-format` | — | ❌ | — | — | — | — |  |  |
-| `--outbuf` | — | ❌ | — | — | — | — |  |  |
-| `--owner` | `-o` | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--partial` | — | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--partial-dir` | — | ✅ | ❌ | — | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--password-file` | — | ✅ | ❌ | — | — | [tests/daemon.rs](../tests/daemon.rs) |  |  |
-| `--perms` | `-p` | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--port` | — | ❌ | — | — | — | — |  |  |
-| `--preallocate` | — | ❌ | — | off | — | — |  |  |
-| `--progress` | — | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--protocol` | — | ❌ | — | — | — | — |  |  |
-| `--prune-empty-dirs` | `-m` | ❌ | — | off | — | — |  |  |
-| `--quiet` | `-q` | ✅ | ✅ | off | — | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  |  |
-| `--read-batch` | — | ❌ | — | — | — | — |  |  |
-| `--recursive` | `-r` | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  |  |
-| `--relative` | `-R` | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--remote-option` | `-M` | ❌ | — | — | — | — |  |  |
-| `--remove-source-files` | — | ❌ | — | off | — | — |  |  |
-| `--rsh` | `-e` | ❌ | — | — | — | [tests/rsh.rs](../tests/rsh.rs) |  |  |
-| `--rsync-path` | — | ❌ | — | — | — | [tests/rsync_path.rs](../tests/rsync_path.rs) |  |  |
-| `--safe-links` | — | ❌ | — | off | — | — |  |  |
-| `--secluded-args` | `-s` | ❌ | — | off | — | — |  |  |
-| `--secrets-file` | — | ✅ | ❌ | off | — | [tests/daemon.rs](../tests/daemon.rs) |  |  |
-| `--server` | — | ✅ | ❌ | off | — | [tests/server.rs](../tests/server.rs) | negotiates protocol version and codecs |  |
-| `--size-only` | — | ❌ | — | off | — | — |  |  |
-| `--skip-compress` | — | ❌ | — | — | — | — |  |  |
-| `--sockopts` | — | ❌ | — | — | — | — |  |  |
-| `--sparse` | `-S` | ✅ | ✅ | off | — | [tests/cli.rs](../tests/cli.rs) | creates holes for long zero runs |  |
-| `--specials` | — | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--stats` | — | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--stderr` | — | ❌ | — | errors | — | — |  |  |
-| `--stop-after` | — | ❌ | — | — | — | — |  |  |
-| `--stop-at` | — | ❌ | — | — | — | — |  |  |
-| `--suffix` | — | ❌ | — | ~ w/o --backup-dir | — | — |  |  |
-| `--super` | — | ❌ | — | off | — | — |  |  |
-| `--temp-dir` | `-T` | ❌ | — | — | — | — |  |  |
-| `--timeout` | — | ❌ | — | — | — | — |  |  |
-| `--times` | `-t` | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--trust-sender` | — | ❌ | — | off | — | — |  |  |
-| `--update` | `-u` | ❌ | — | off | — | — |  |  |
-| `--usermap` | — | ❌ | — | — | — | — |  |  |
-| `--verbose` | `-v` | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
-| `--version` | `-V` | ❌ | — | off | — | — |  |  |
-| `--whole-file` | `-W` | ❌ | — | off | — | — |  |  |
-| `--write-batch` | — | ❌ | — | — | — | — |  |  |
-| `--write-devices` | — | ❌ | — | off | — | — |  |  |
-| `--xattrs` | `-X` | ✅ | ❌ | off | requires `xattr` feature | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `xattr` feature |  |
+| Option | Short | Supported | Parity scope | Tests link | Notes | Version introduced |
+| --- | --- | --- | --- | --- | --- | --- |
+| `--8-bit-output` | `-8` | ❌ | — | — |  | — |
+| `--acls` | `-A` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `acl` feature | — |
+| `--address` | — | ❌ | — | — |  | — |
+| `--append` | — | ❌ | — | — |  | — |
+| `--append-verify` | — | ❌ | — | — |  | — |
+| `--archive` | `-a` | ✅ | ❌ | [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) |  | — |
+| `--atimes` | `-U` | ✅ | ❌ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | — |
+| `--backup` | `-b` | ❌ | — | — |  | — |
+| `--backup-dir` | — | ❌ | — | — |  | — |
+| `--block-size` | `-B` | ❌ | — | — |  | — |
+| `--blocking-io` | — | ❌ | — | — |  | — |
+| `--bwlimit` | — | ✅ | ❌ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) |  | — |
+| `--cc` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--checksum-choice` | — |
+| `--checksum` | `-c` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, BLAKE3 | — |
+| `--checksum-choice` | — | ❌ | — | — |  | — |
+| `--checksum-seed` | — | ❌ | — | — |  | — |
+| `--chmod` | — | ❌ | — | — |  | — |
+| `--chown` | — | ❌ | — | — |  | — |
+| `--compare-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | — |
+| `--compress` | `-z` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/compression_negotiation.sh](../tests/compression_negotiation.sh) | negotiates zstd when supported by both peers | — |
+| `--compress-choice` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | supports zstd and zlib only | — |
+| `--compress-level` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | applies to zlib or zstd | — |
+| `--zc` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | alias for `--compress-choice` | — |
+| `--zl` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | alias for `--compress-level` | — |
+| `--contimeout` | — | ❌ | — | — |  | — |
+| `--copy-as` | — | ❌ | — | — |  | — |
+| `--copy-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | — |
+| `--copy-devices` | — | ❌ | — | — |  | — |
+| `--copy-dirlinks` | `-k` | ❌ | — | — |  | — |
+| `--copy-links` | `-L` | ❌ | — | — |  | — |
+| `--copy-unsafe-links` | — | ❌ | — | — |  | — |
+| `--crtimes` | `-N` | ✅ | ❌ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | — |
+| `--cvs-exclude` | `-C` | ❌ | — | — |  | — |
+| `--daemon` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | — |
+| `--debug` | — | ❌ | — | — |  | — |
+| `--del` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | alias for `--delete-during` | — |
+| `--delay-updates` | — | ❌ | — | — |  | — |
+| `--delete` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | — |
+| `--delete-after` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | — |
+| `--delete-before` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | — |
+| `--delete-delay` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | — |
+| `--delete-during` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | — |
+| `--delete-excluded` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | — |
+| `--delete-missing-args` | — | ❌ | — | — |  | — |
+| `--devices` | — | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | — |
+| `--dirs` | `-d` | ❌ | — | — |  | — |
+| `--dry-run` | `-n` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--early-input` | — | ❌ | — | — |  | — |
+| `--exclude` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--exclude-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--executability` | `-E` | ❌ | — | — |  | — |
+| `--existing` | — | ❌ | — | — |  | — |
+| `--fake-super` | — | ❌ | — | — |  | — |
+| `--files-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--filter` | `-f` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | — |
+| `--force` | — | ❌ | — | — |  | — |
+| `--from0` | `-0` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--fsync` | — | ❌ | — | — |  | — |
+| `--fuzzy` | `-y` | ❌ | — | — |  | — |
+| `--group` | `-g` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--groupmap` | — | ❌ | — | — |  | — |
+| `--hard-links` | `-H` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | — |
+| `--help` | `-h (*)` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--human-readable` | `-h` | ❌ | — | — |  | — |
+| `--iconv` | — | ❌ | — | — |  | — |
+| `--ignore-errors` | — | ❌ | — | — |  | — |
+| `--ignore-existing` | — | ❌ | — | — |  | — |
+| `--ignore-missing-args` | — | ❌ | — | — |  | — |
+| `--ignore-times` | `-I` | ❌ | — | — |  | — |
+| `--include` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--include-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--info` | — | ❌ | — | — |  | — |
+| `--inplace` | — | ✅ | ✅ | [tests/golden/cli_parity/inplace.sh](../tests/golden/cli_parity/inplace.sh) |  | — |
+| `--ipv4` | `-4` | ❌ | — | — |  | — |
+| `--ipv6` | `-6` | ❌ | — | — |  | — |
+| `--itemize-changes` | `-i` | ❌ | — | — |  | — |
+| `--keep-dirlinks` | `-K` | ❌ | — | — |  | — |
+| `--link-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | — |
+| `--links` | `-l` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--list-only` | — | ❌ | — | — |  | — |
+| `--log-file` | — | ❌ | — | — |  | — |
+| `--log-file-format` | — | ❌ | — | — |  | — |
+| `--max-alloc` | — | ❌ | — | — |  | — |
+| `--max-delete` | — | ❌ | — | — |  | — |
+| `--max-size` | — | ❌ | — | — |  | — |
+| `--min-size` | — | ❌ | — | — |  | — |
+| `--mkpath` | — | ❌ | — | — |  | — |
+| `--modify-window` | `-@` | ❌ | — | — |  | — |
+| `--munge-links` | — | ❌ | — | — |  | — |
+| `--no-D` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--no-devices --no-specials` | — |
+| `--no-OPTION` | — | ❌ | — | — |  | — |
+| `--no-implied-dirs` | — | ❌ | — | — |  | — |
+| `--no-motd` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | — |
+| `--numeric-ids` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--old-args` | — | ❌ | — | — |  | — |
+| `--old-d` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--old-dirs` | — |
+| `--old-dirs` | — | ❌ | — | — |  | — |
+| `--omit-dir-times` | `-O` | ❌ | — | — |  | — |
+| `--omit-link-times` | `-J` | ❌ | — | — |  | — |
+| `--one-file-system` | `-x` | ❌ | — | — |  | — |
+| `--only-write-batch` | — | ❌ | — | — |  | — |
+| `--open-noatime` | — | ❌ | — | — |  | — |
+| `--out-format` | — | ❌ | — | — |  | — |
+| `--outbuf` | — | ❌ | — | — |  | — |
+| `--owner` | `-o` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--partial` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--partial-dir` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--password-file` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | — |
+| `--perms` | `-p` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--port` | — | ❌ | — | — |  | — |
+| `--preallocate` | — | ❌ | — | — |  | — |
+| `--progress` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--protocol` | — | ❌ | — | — |  | — |
+| `--prune-empty-dirs` | `-m` | ❌ | — | — |  | — |
+| `--quiet` | `-q` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | — |
+| `--read-batch` | — | ❌ | — | — |  | — |
+| `--recursive` | `-r` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | — |
+| `--relative` | `-R` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--remote-option` | `-M` | ❌ | — | — |  | — |
+| `--remove-source-files` | — | ❌ | — | — |  | — |
+| `--rsh` | `-e` | ❌ | — | [tests/rsh.rs](../tests/rsh.rs) |  | — |
+| `--rsync-path` | — | ❌ | — | [tests/rsync_path.rs](../tests/rsync_path.rs) |  | — |
+| `--safe-links` | — | ❌ | — | — |  | — |
+| `--secluded-args` | `-s` | ❌ | — | — |  | — |
+| `--secrets-file` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | — |
+| `--server` | — | ✅ | ❌ | [tests/server.rs](../tests/server.rs) | negotiates protocol version and codecs | — |
+| `--size-only` | — | ❌ | — | — |  | — |
+| `--skip-compress` | — | ❌ | — | — |  | — |
+| `--sockopts` | — | ❌ | — | — |  | — |
+| `--sparse` | `-S` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | creates holes for long zero runs | — |
+| `--specials` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--stats` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--stderr` | — | ❌ | — | — |  | — |
+| `--stop-after` | — | ❌ | — | — |  | — |
+| `--stop-at` | — | ❌ | — | — |  | — |
+| `--suffix` | — | ❌ | — | — |  | — |
+| `--super` | — | ❌ | — | — |  | — |
+| `--temp-dir` | `-T` | ❌ | — | — |  | — |
+| `--timeout` | — | ❌ | — | — |  | — |
+| `--times` | `-t` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--trust-sender` | — | ❌ | — | — |  | — |
+| `--update` | `-u` | ❌ | — | — |  | — |
+| `--usermap` | — | ❌ | — | — |  | — |
+| `--verbose` | `-v` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | — |
+| `--version` | `-V` | ❌ | — | — |  | — |
+| `--whole-file` | `-W` | ❌ | — | — |  | — |
+| `--write-batch` | — | ❌ | — | — |  | — |
+| `--write-devices` | — | ❌ | — | — |  | — |
+| `--xattrs` | `-X` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `xattr` feature | — |
