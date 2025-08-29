@@ -25,10 +25,10 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--chown` | — | ❌ | — | — | — | — |  |  |
 | `--compare-dest` | — | ✅ | ✅ | — | — | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  |  |
 | `--compress` | `-z` | ✅ | ✅ | off | — | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/compression_negotiation.sh](../tests/compression_negotiation.sh) | negotiates zstd when supported by both peers |  |
-| `--compress-choice` | — | ✅ | ❌ | — | choose the compression algorithm (aka --zc) | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) |  |  |
-| `--compress-level` | — | ✅ | ❌ | — | explicitly set compression level (aka --zl) | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) |  |  |
-| `--zc` | — | ✅ | ❌ | off | alias for `--compress-choice` | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | alias for `--compress-choice` |  |
-| `--zl` | — | ✅ | ❌ | off | alias for `--compress-level` | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | alias for `--compress-level` |  |
+| `--compress-choice` | — | ✅ | ✅ | — | choose the compression algorithm (aka --zc) | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | supports zstd and zlib only |  |
+| `--compress-level` | — | ✅ | ✅ | — | explicitly set compression level (aka --zl) | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | applies to zlib or zstd |  |
+| `--zc` | — | ✅ | ✅ | off | alias for `--compress-choice` | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | alias for `--compress-choice` |  |
+| `--zl` | — | ✅ | ✅ | off | alias for `--compress-level` | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | alias for `--compress-level` |  |
 | `--contimeout` | — | ❌ | — | — | — | — |  |  |
 | `--copy-as` | — | ❌ | — | — | — | — |  |  |
 | `--copy-dest` | — | ✅ | ✅ | — | — | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  |  |
@@ -45,9 +45,9 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--delete` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |  |
 | `--delete-after` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |  |
 | `--delete-before` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |  |
-| `--delete-delay` | — | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
+| `--delete-delay` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |  |
 | `--delete-during` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |  |
-| `--delete-excluded` | — | ❌ | — | off | — | — |  |  |
+| `--delete-excluded` | — | ✅ | ✅ | off | — | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  |  |
 | `--delete-missing-args` | — | ❌ | — | off | — | — |  |  |
 | `--devices` | — | ✅ | ❌ | off | — | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  |  |
 | `--dirs` | `-d` | ❌ | — | off | — | — |  |  |
