@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::env;
-use std::fs;
+use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
 use std::process::Command;
-use std::net::{TcpListener, TcpStream};
+use std::net::{TcpListener, TcpStream, IpAddr};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -226,6 +226,21 @@ struct DaemonOpts {
     /// path to secrets file
     #[arg(long = "secrets-file", value_name = "FILE")]
     secrets_file: Option<PathBuf>,
+    /// list of hosts allowed to connect
+    #[arg(long = "hosts-allow", value_delimiter = ',', value_name = "LIST")]
+    hosts_allow: Vec<String>,
+    /// list of hosts denied from connecting
+    #[arg(long = "hosts-deny", value_delimiter = ',', value_name = "LIST")]
+    hosts_deny: Vec<String>,
+    /// log file path
+    #[arg(long = "log-file", value_name = "FILE")]
+    log_file: Option<PathBuf>,
+    /// log file format (supports %h for host and %m for module)
+    #[arg(long = "log-file-format", value_name = "FMT")]
+    log_file_format: Option<String>,
+    /// path to message of the day file
+    #[arg(long = "motd", value_name = "FILE")]
+    motd: Option<PathBuf>,
 }
 
 /// Options for the probe mode.
@@ -462,6 +477,15 @@ fn run_client(opts: ClientOpts) -> Result<()> {
     let matcher = build_matcher(&opts)?;
 
     if let Some(pf) = &opts.password_file {
+        #[cfg(unix)]
+        {
+            let mode = fs::metadata(pf)?.permissions().mode();
+            if mode & 0o077 != 0 {
+                return Err(EngineError::Other(
+                    "password file permissions are too open".into(),
+                ));
+            }
+        }
         let _ = fs::read_to_string(pf).map_err(|e| EngineError::Other(e.to_string()))?;
     }
 
@@ -757,37 +781,90 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     }
 
     let secrets = opts.secrets_file.clone();
+    let hosts_allow = opts.hosts_allow.clone();
+    let hosts_deny = opts.hosts_deny.clone();
+    let log_file = opts.log_file.clone();
+    let log_format = opts.log_file_format.clone();
+    let motd = opts.motd.clone();
 
     let listener = TcpListener::bind(("127.0.0.1", opts.port))?;
 
     loop {
-        let (stream, _) = listener.accept()?;
+        let (stream, addr) = listener.accept()?;
+        let ip = addr.ip();
+        if !host_allowed(&ip, &hosts_allow, &hosts_deny) {
+            let _ = stream.shutdown(std::net::Shutdown::Both);
+            continue;
+        }
+        let peer = ip.to_string();
         let modules = modules.clone();
         let secrets = secrets.clone();
+        let log_file = log_file.clone();
+        let log_format = log_format.clone();
+        let motd = motd.clone();
         std::thread::spawn(move || {
             let mut transport = TcpTransport::from_stream(stream);
-            if let Err(e) = handle_connection(&mut transport, &modules, secrets.as_deref()) {
+            if let Err(e) = handle_connection(
+                &mut transport,
+                &modules,
+                secrets.as_deref(),
+                log_file.as_deref(),
+                log_format.as_deref(),
+                motd.as_deref(),
+                &peer,
+            ) {
                 eprintln!("connection error: {}", e);
             }
         });
     }
 }
 
+fn host_matches(ip: &IpAddr, pat: &str) -> bool {
+    if pat == "*" {
+        return true;
+    }
+    pat.parse::<IpAddr>().map_or(false, |p| &p == ip)
+}
+
+fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
+    if !allow.is_empty() && !allow.iter().any(|p| host_matches(ip, p)) {
+        return false;
+    }
+    if deny.iter().any(|p| host_matches(ip, p)) {
+        return false;
+    }
+    true
+}
+
 fn handle_connection(
     transport: &mut TcpTransport,
     modules: &HashMap<String, PathBuf>,
     secrets: Option<&Path>,
+    log_file: Option<&Path>,
+    log_format: Option<&str>,
+    motd: Option<&Path>,
+    peer: &str,
 ) -> Result<()> {
     let mut buf = [0u8; 4];
     let n = transport.receive(&mut buf)?;
     if n == 0 {
         return Ok(());
     }
-    let peer = u32::from_be_bytes(buf);
+    let peer_ver = u32::from_be_bytes(buf);
     transport.send(&LATEST_VERSION.to_be_bytes())?;
-    negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
+    negotiate_version(peer_ver).map_err(|e| EngineError::Other(e.to_string()))?;
 
     let allowed = authenticate(transport, secrets).map_err(EngineError::from)?;
+
+    if let Some(mpath) = motd {
+        if let Ok(content) = fs::read_to_string(mpath) {
+            for line in content.lines() {
+                let msg = format!("@RSYNCD: {line}\n");
+                transport.send(msg.as_bytes())?;
+            }
+            transport.send(b"@RSYNCD: OK\n")?;
+        }
+    }
 
     let mut name_buf = [0u8; 256];
     let n = transport.receive(&mut name_buf)?;
@@ -795,6 +872,13 @@ fn handle_connection(
     if let Some(path) = modules.get(&name) {
         if !allowed.is_empty() && !allowed.iter().any(|m| m == &name) {
             return Err(EngineError::Other("unauthorized module".into()));
+        }
+        if let Some(path) = log_file {
+            let fmt = log_format.unwrap_or("%h %m");
+            let line = fmt.replace("%h", peer).replace("%m", &name);
+            let mut f = OpenOptions::new().create(true).append(true).open(path)?;
+            writeln!(f, "{}", line)?;
+            f.flush()?;
         }
         #[cfg(unix)]
         {

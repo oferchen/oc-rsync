@@ -215,3 +215,110 @@ fn daemon_accepts_authorized_client() {
     let _ = child.kill();
     let _ = child.wait();
 }
+
+#[test]
+#[serial]
+fn daemon_respects_host_allow_and_deny_lists() {
+    // Allow list
+    let (mut child, port) = {
+        let port = TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let child = StdCommand::cargo_bin("rsync-rs")
+            .unwrap()
+            .args([
+                "--daemon",
+                "--module",
+                "data=/tmp",
+                "--port",
+                &port.to_string(),
+                "--hosts-allow",
+                "127.0.0.1",
+            ])
+            .spawn()
+            .unwrap();
+        (child, port)
+    };
+    wait_for_daemon(port);
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    stream.read_exact(&mut buf).unwrap();
+    assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
+    let _ = child.kill();
+    let _ = child.wait();
+
+    // Deny list
+    let (mut child, port) = {
+        let port = TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let child = StdCommand::cargo_bin("rsync-rs")
+            .unwrap()
+            .args([
+                "--daemon",
+                "--module",
+                "data=/tmp",
+                "--port",
+                &port.to_string(),
+                "--hosts-deny",
+                "127.0.0.1",
+            ])
+            .spawn()
+            .unwrap();
+        (child, port)
+    };
+    wait_for_daemon(port);
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_millis(200)))
+        .unwrap();
+    stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    let res = stream.read(&mut buf);
+    assert!(res.is_err() || res.unwrap() == 0);
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_displays_motd() {
+    let dir = tempfile::tempdir().unwrap();
+    let motd = dir.path().join("motd");
+    fs::write(&motd, "Hello world\n").unwrap();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let mut child = StdCommand::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            "data=/tmp",
+            "--port",
+            &port.to_string(),
+            "--motd",
+            motd.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}")).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
+    t.authenticate(None).unwrap();
+    let mut motd_buf = [0u8; 64];
+    let n = t.receive(&mut motd_buf).unwrap();
+    assert!(String::from_utf8_lossy(&motd_buf[..n]).contains("Hello world"));
+    let _ = child.kill();
+    let _ = child.wait();
+}

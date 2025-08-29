@@ -37,14 +37,35 @@ Before serving files the daemon confines itself to the module root. On Unix plat
 
 ## Hosts allow/deny lists
 
-Future releases will honor `hosts allow` and `hosts deny` directives similar to `rsyncd.conf`. A typical configuration might look like:
+The daemon can restrict connections based on client address. The `--hosts-allow`
+and `--hosts-deny` flags accept comma separated IP addresses. A client must match
+the allow list (if supplied) and must not match the deny list:
 
-```
-[logs]
-    path = /srv/logs
-    hosts allow = 192.0.2.0/24, 198.51.100.7
-    hosts deny  = *
+```bash
+rsync-rs --daemon \
+    --module logs=/srv/logs \
+    --hosts-allow=127.0.0.1 \
+    --hosts-deny=*
 ```
 
-Clients whose address does not match the allow list will be denied before authentication. This functionality is under active development.
+Clients whose address does not satisfy these rules are disconnected before any
+authentication takes place.
+
+## Logging
+
+Supply `--log-file` to record daemon activity. The optional
+`--log-file-format` flag controls the line format and supports `%h` for the
+client host and `%m` for the requested module:
+
+```bash
+rsync-rs --daemon --module data=/srv/export \
+    --log-file=/var/log/rsyncd.log \
+    --log-file-format="%h %m"
+```
+
+## Message of the day
+
+Use `--motd` to display a message of the day to connecting clients. Each line in
+the file is sent with the `@RSYNCD:` prefix during the handshake. Clients may
+suppress the message with `--no-motd`.
 
