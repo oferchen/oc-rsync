@@ -1,0 +1,1 @@
+--filter='- *.tmp' --filter='+ keep/tmp/file.tmp' --filter='- skip/' --filter='+ keep/***' --filter='+ *.md' --filter='- *'

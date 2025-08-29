@@ -7,10 +7,10 @@ use std::net::{IpAddr, TcpListener, TcpStream};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
-use clap::{ArgAction, Parser};
+use clap::{ArgAction, Parser, CommandFactory, FromArgMatches, ArgMatches};
 use compress::available_codecs;
 use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
-use filters::{parse as parse_filters, Matcher};
+use filters::{parse as parse_filters, Matcher, Rule};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
 use transport::{RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
@@ -192,11 +192,14 @@ struct ClientOpts {
     /// destination path or HOST:PATH
     dst: String,
     /// filter rules provided directly
-    #[arg(long, value_name = "RULE")]
+    #[arg(short = 'f', long, value_name = "RULE", help_heading = "Selection")]
     filter: Vec<String>,
     /// files containing filter rules
-    #[arg(long, value_name = "FILE")]
+    #[arg(long, value_name = "FILE", help_heading = "Selection")]
     filter_file: Vec<PathBuf>,
+    /// shorthand for per-directory filter files
+    #[arg(short = 'F', action = ArgAction::Count, help_heading = "Selection")]
+    filter_shorthand: u8,
     /// include files matching PATTERN
     #[arg(long, value_name = "PATTERN")]
     include: Vec<String>,
@@ -296,8 +299,10 @@ pub fn run() -> Result<()> {
     } else if args.iter().any(|a| a == "--server") {
         run_server()
     } else {
-        let opts = ClientOpts::parse_from(&args);
-        run_client(opts)
+        let cmd = ClientOpts::command();
+        let matches = cmd.get_matches_from(&args);
+        let opts = ClientOpts::from_arg_matches(&matches).unwrap();
+        run_client(opts, &matches)
     }
 }
 
@@ -477,8 +482,8 @@ fn spawn_daemon_session(
 }
 
 
-fn run_client(opts: ClientOpts) -> Result<()> {
-    let matcher = build_matcher(&opts)?;
+fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
+    let matcher = build_matcher(&opts, matches)?;
 
     if let Some(pf) = &opts.password_file {
         #[cfg(unix)]
@@ -893,7 +898,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
     Ok(())
 }
 
-fn build_matcher(opts: &ClientOpts) -> Result<Matcher> {
+fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
         if from0 {
             let content = fs::read(path)?;
@@ -921,53 +926,87 @@ fn build_matcher(opts: &ClientOpts) -> Result<Matcher> {
         }
     }
 
-    let mut rules = Vec::new();
-    for rule in &opts.filter {
-        rules.extend(parse_filters(rule).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
-    }
-    for file in &opts.filter_file {
-        let content = fs::read_to_string(file)?;
-        rules.extend(parse_filters(&content).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
-    }
-    for pat in &opts.include {
-        rules.extend(
-            parse_filters(&format!("+ {}", pat))
-                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-        );
-    }
-    for pat in &opts.exclude {
-        rules.extend(
-            parse_filters(&format!("- {}", pat))
-                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-        );
-    }
-    for file in &opts.include_from {
-        for pat in load_patterns(file, opts.from0)? {
-            rules.extend(
-                parse_filters(&format!("+ {}", pat))
-                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-            );
+    let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
+    let mut seq = 0;
+    let mut add_rules = |idx: usize, rs: Vec<Rule>| {
+        for r in rs {
+            entries.push((idx, seq, r));
+            seq += 1;
+        }
+    };
+
+    if let Some(values) = matches.get_many::<String>("filter") {
+        let idxs: Vec<_> = matches.indices_of("filter").unwrap().collect();
+        for (idx, val) in idxs.into_iter().zip(values) {
+            add_rules(idx, parse_filters(val).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
         }
     }
-    for file in &opts.exclude_from {
-        for pat in load_patterns(file, opts.from0)? {
-            rules.extend(
-                parse_filters(&format!("- {}", pat))
-                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-            );
+    if let Some(values) = matches.get_many::<PathBuf>("filter_file") {
+        let idxs: Vec<_> = matches.indices_of("filter_file").unwrap().collect();
+        for (idx, file) in idxs.into_iter().zip(values) {
+            let content = fs::read_to_string(file)?;
+            add_rules(idx, parse_filters(&content).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
         }
     }
-    for file in &opts.files_from {
-        for pat in load_patterns(file, opts.from0)? {
-            rules.extend(
-                parse_filters(&format!("+ {}", pat))
-                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-            );
+    if let Some(values) = matches.get_many::<String>("include") {
+        let idxs: Vec<_> = matches.indices_of("include").unwrap().collect();
+        for (idx, pat) in idxs.into_iter().zip(values) {
+            add_rules(idx, parse_filters(&format!("+ {}", pat)).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+        }
+    }
+    if let Some(values) = matches.get_many::<String>("exclude") {
+        let idxs: Vec<_> = matches.indices_of("exclude").unwrap().collect();
+        for (idx, pat) in idxs.into_iter().zip(values) {
+            add_rules(idx, parse_filters(&format!("- {}", pat)).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+        }
+    }
+    if let Some(values) = matches.get_many::<PathBuf>("include_from") {
+        let idxs: Vec<_> = matches.indices_of("include_from").unwrap().collect();
+        for (idx, file) in idxs.into_iter().zip(values) {
+            for pat in load_patterns(file, opts.from0)? {
+                add_rules(idx, parse_filters(&format!("+ {}", pat)).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+            }
+        }
+    }
+    if let Some(values) = matches.get_many::<PathBuf>("exclude_from") {
+        let idxs: Vec<_> = matches.indices_of("exclude_from").unwrap().collect();
+        for (idx, file) in idxs.into_iter().zip(values) {
+            for pat in load_patterns(file, opts.from0)? {
+                add_rules(idx, parse_filters(&format!("- {}", pat)).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+            }
+        }
+    }
+    if let Some(values) = matches.get_many::<PathBuf>("files_from") {
+        let idxs: Vec<_> = matches.indices_of("files_from").unwrap().collect();
+        for (idx, file) in idxs.into_iter().zip(values) {
+            for pat in load_patterns(file, opts.from0)? {
+                add_rules(idx, parse_filters(&format!("+ {}", pat)).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+            }
+        }
+    }
+    if matches.contains_id("filter_shorthand") {
+        if let Some(idx) = matches.index_of("filter_shorthand") {
+            let count = matches.get_count("filter_shorthand");
+            if count >= 1 {
+                add_rules(idx, parse_filters(": /.rsync-filter").map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+            }
+            if count >= 2 {
+                add_rules(idx, parse_filters("- .rsync-filter").map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+            }
         }
     }
     if !opts.files_from.is_empty() {
-        rules.extend(parse_filters("- *").map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+        add_rules(usize::MAX, parse_filters("- *").map_err(|e| EngineError::Other(format!("{:?}", e)))?);
     }
+
+    entries.sort_by(|a, b| {
+        if a.0 == b.0 {
+            a.1.cmp(&b.1)
+        } else {
+            a.0.cmp(&b.0)
+        }
+    });
+    let rules: Vec<Rule> = entries.into_iter().map(|(_, _, r)| r).collect();
     Ok(Matcher::new(rules))
 }
 

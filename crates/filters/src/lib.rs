@@ -220,6 +220,20 @@ pub fn parse(input: &str) -> Result<Vec<Rule>, ParseError> {
             continue;
         }
 
+        if let Some(rest) = line.strip_prefix("-F") {
+            if rest.chars().all(|c| c == 'F') {
+                rules.push(Rule::DirMerge(PerDir {
+                    file: ".rsync-filter".to_string(),
+                    anchored: true,
+                }));
+                if !rest.is_empty() {
+                    let matcher = Glob::new("**/.rsync-filter")?.compile_matcher();
+                    rules.push(Rule::Exclude(matcher));
+                }
+                continue;
+            }
+        }
+
         let (kind, rest) = if let Some(r) = line.strip_prefix('+') {
             (Some(RuleKind::Include), r.trim_start())
         } else if let Some(r) = line.strip_prefix('-') {
