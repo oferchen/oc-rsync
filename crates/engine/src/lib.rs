@@ -679,6 +679,7 @@ pub enum DeleteMode {
 #[derive(Debug, Clone)]
 pub struct SyncOptions {
     pub delete: Option<DeleteMode>,
+    pub delete_excluded: bool,
     pub checksum: bool,
     pub compress: bool,
     pub perms: bool,
@@ -707,6 +708,7 @@ impl Default for SyncOptions {
     fn default() -> Self {
         Self {
             delete: None,
+            delete_excluded: false,
             checksum: false,
             compress: false,
             perms: false,
@@ -756,7 +758,13 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     }
 }
 
-fn delete_extraneous(src: &Path, dst: &Path, matcher: &Matcher, stats: &mut Stats) -> Result<()> {
+fn delete_extraneous(
+    src: &Path,
+    dst: &Path,
+    matcher: &Matcher,
+    delete_excluded: bool,
+    stats: &mut Stats,
+) -> Result<()> {
     let mut walker = walk(dst, 1024);
     let mut state = String::new();
     while let Some(batch) = walker.next() {
@@ -765,13 +773,11 @@ fn delete_extraneous(src: &Path, dst: &Path, matcher: &Matcher, stats: &mut Stat
             let path = entry.apply(&mut state);
             let file_type = entry.file_type;
             if let Ok(rel) = path.strip_prefix(dst) {
-                if !matcher
+                let included = matcher
                     .is_included(rel)
-                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?
-                {
-                    continue;
-                }
-                if !src.join(rel).exists() {
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+                let src_exists = src.join(rel).exists();
+                if (included && !src_exists) || (!included && delete_excluded) {
                     if file_type.is_dir() {
                         fs::remove_dir_all(&path)?;
                     } else {
@@ -802,7 +808,7 @@ pub fn sync(
     let mut receiver = Receiver::new(codec, opts.clone());
     let mut stats = Stats::default();
     if matches!(opts.delete, Some(DeleteMode::Before)) {
-        delete_extraneous(src, dst, &matcher, &mut stats)?;
+        delete_extraneous(src, dst, &matcher, opts.delete_excluded, &mut stats)?;
     }
     sender.start();
     #[cfg(unix)]
@@ -898,7 +904,7 @@ pub fn sync(
         opts.delete,
         Some(DeleteMode::After) | Some(DeleteMode::During)
     ) {
-        delete_extraneous(src, dst, &matcher, &mut stats)?;
+        delete_extraneous(src, dst, &matcher, opts.delete_excluded, &mut stats)?;
     }
     Ok(stats)
 }

@@ -69,6 +69,9 @@ struct ClientOpts {
     /// find deletions during, delete after
     #[arg(long = "delete-delay", help_heading = "Delete")]
     delete_delay: bool,
+    /// also delete excluded files from destination
+    #[arg(long = "delete-excluded", help_heading = "Delete")]
+    delete_excluded: bool,
     /// use full checksums to determine file changes
     #[arg(short = 'c', long, help_heading = "Attributes")]
     checksum: bool,
@@ -657,7 +660,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
     }
 
     let compress = opts.modern || opts.compress || opts.compress_level.map_or(false, |l| l > 0);
-    let delete_mode = if opts.delete_before {
+    let mut delete_mode = if opts.delete_before {
         Some(DeleteMode::Before)
     } else if opts.delete_after || opts.delete_delay {
         Some(DeleteMode::After)
@@ -666,8 +669,12 @@ fn run_client(opts: ClientOpts) -> Result<()> {
     } else {
         None
     };
+    if delete_mode.is_none() && opts.delete_excluded {
+        delete_mode = Some(DeleteMode::During);
+    }
     let sync_opts = SyncOptions {
         delete: delete_mode,
+        delete_excluded: opts.delete_excluded,
         checksum: opts.checksum,
         compress,
         perms: opts.perms || opts.archive,
