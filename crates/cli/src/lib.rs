@@ -51,6 +51,9 @@ struct ClientOpts {
     /// suppress non-error messages
     #[arg(short, long, help_heading = "Output")]
     quiet: bool,
+    /// suppress daemon-mode MOTD
+    #[arg(long, help_heading = "Output")]
+    no_motd: bool,
     /// remove extraneous files from the destination
     #[arg(long, help_heading = "Delete")]
     delete: bool,
@@ -457,6 +460,7 @@ fn spawn_daemon_session(
     host: &str,
     module: &str,
     password_file: Option<&Path>,
+    no_motd: bool,
 ) -> Result<TcpTransport> {
     let addr = if host.contains(':') {
         host.to_string()
@@ -489,6 +493,16 @@ fn spawn_daemon_session(
         if b[0] == b'\n' {
             if line == b"@RSYNCD: OK\n" {
                 break;
+            }
+            if !no_motd {
+                if let Some(s) = String::from_utf8(line.clone()).ok() {
+                    if let Some(msg) = s.strip_prefix("@RSYNCD: ") {
+                        print!("{msg}");
+                    } else {
+                        print!("{s}");
+                    }
+                    let _ = io::stdout().flush();
+                }
             }
             line.clear();
         }
@@ -707,8 +721,12 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 },
                 RemoteSpec::Local(dst),
             ) => {
-                let mut _session =
-                    spawn_daemon_session(&host, &module, opts.password_file.as_deref())?;
+                let mut _session = spawn_daemon_session(
+                    &host,
+                    &module,
+                    opts.password_file.as_deref(),
+                    opts.no_motd,
+                )?;
                 sync(
                     &src.path,
                     &dst.path,
@@ -749,8 +767,12 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     module: Some(module),
                 },
             ) => {
-                let mut _session =
-                    spawn_daemon_session(&host, &module, opts.password_file.as_deref())?;
+                let mut _session = spawn_daemon_session(
+                    &host,
+                    &module,
+                    opts.password_file.as_deref(),
+                    opts.no_motd,
+                )?;
                 sync(
                     &src.path,
                     &dst.path,
@@ -842,10 +864,18 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                         Stats::default()
                     }
                     (Some(sm), Some(dm)) => {
-                        let mut dst_session =
-                            spawn_daemon_session(&dst_host, &dm, opts.password_file.as_deref())?;
-                        let mut src_session =
-                            spawn_daemon_session(&src_host, &sm, opts.password_file.as_deref())?;
+                        let mut dst_session = spawn_daemon_session(
+                            &dst_host,
+                            &dm,
+                            opts.password_file.as_deref(),
+                            opts.no_motd,
+                        )?;
+                        let mut src_session = spawn_daemon_session(
+                            &src_host,
+                            &sm,
+                            opts.password_file.as_deref(),
+                            opts.no_motd,
+                        )?;
                         pipe_transports(&mut src_session, &mut dst_session)
                             .map_err(|e| EngineError::Other(e.to_string()))?;
                         Stats::default()
@@ -860,8 +890,12 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                             strict_host_key_checking,
                         )
                         .map_err(|e| EngineError::Other(e.to_string()))?;
-                        let mut src_session =
-                            spawn_daemon_session(&src_host, &sm, opts.password_file.as_deref())?;
+                        let mut src_session = spawn_daemon_session(
+                            &src_host,
+                            &sm,
+                            opts.password_file.as_deref(),
+                            opts.no_motd,
+                        )?;
                         pipe_transports(&mut src_session, &mut dst_session)
                             .map_err(|e| EngineError::Other(e.to_string()))?;
                         let (dst_err, _) = dst_session.stderr();
@@ -873,8 +907,12 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                         Stats::default()
                     }
                     (None, Some(dm)) => {
-                        let mut dst_session =
-                            spawn_daemon_session(&dst_host, &dm, opts.password_file.as_deref())?;
+                        let mut dst_session = spawn_daemon_session(
+                            &dst_host,
+                            &dm,
+                            opts.password_file.as_deref(),
+                            opts.no_motd,
+                        )?;
                         let mut src_session = spawn_remote_session(
                             &src_host,
                             &src_path.path,
