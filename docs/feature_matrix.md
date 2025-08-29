@@ -125,8 +125,8 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--relative` | `-R` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--remote-option` | `-M` | ❌ | — | — |  | ≤3.2 |
 | `--remove-source-files` | — | ❌ | — | — |  | ≤3.2 |
-| `--rsh` | `-e` | ❌ | — | [tests/rsh.rs](../tests/rsh.rs) |  | ≤3.2 |
-| `--rsync-path` | — | ❌ | — | [tests/rsync_path.rs](../tests/rsync_path.rs) |  | ≤3.2 |
+| `--rsh` | `-e` | ⚠️ | ❌ | [tests/rsh.rs](../tests/rsh.rs) | negotiation incomplete; lacks full command parsing and environment handshake | ≤3.2 |
+| `--rsync-path` | — | ⚠️ | ❌ | [tests/rsync_path.rs](../tests/rsync_path.rs) | requires `--rsh`; remote path negotiation incomplete | ≤3.2 |
 | `--safe-links` | — | ❌ | — | — |  | ≤3.2 |
 | `--secluded-args` | `-s` | ❌ | — | — |  | ≤3.2 |
 | `--secrets-file` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
