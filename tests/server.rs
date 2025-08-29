@@ -1,6 +1,6 @@
 use assert_cmd::cargo::cargo_bin;
 use compress::{available_codecs, decode_codecs, encode_codecs};
-use protocol::{Frame, FrameHeader, Message, Msg, Tag, LATEST_VERSION, MIN_VERSION};
+use protocol::{Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION, MIN_VERSION};
 use std::convert::TryFrom;
 use std::fs;
 use std::io::{Read, Write};
@@ -46,6 +46,12 @@ fn server_handshake_succeeds() {
     let mut ver_buf = [0u8; 4];
     stdout.read_exact(&mut ver_buf).unwrap();
     assert_eq!(u32::from_be_bytes(ver_buf), LATEST_VERSION);
+
+    // Advertise capability bitmask and read server response.
+    stdin.write_all(&CAP_CODECS.to_be_bytes()).unwrap();
+    let mut cap_buf = [0u8; 4];
+    stdout.read_exact(&mut cap_buf).unwrap();
+    assert_eq!(u32::from_be_bytes(cap_buf) & CAP_CODECS, CAP_CODECS);
 
     // Send codec list as a frame.
     let codecs = available_codecs();

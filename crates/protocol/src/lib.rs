@@ -21,6 +21,12 @@ pub use server::Server;
 pub const LATEST_VERSION: u32 = 31;
 /// Oldest protocol version we support.
 pub const MIN_VERSION: u32 = 29;
+/// Capability flag indicating support for codec advertisement.
+///
+/// Peers set this bit during the handshake to signal that they understand
+/// [`Message::Codecs`] exchanges.  If the flag is absent, codec negotiation is
+/// skipped and both sides fall back to zlib compression.
+pub const CAP_CODECS: u32 = 1 << 0;
 
 /// Error returned when there is no version overlap during negotiation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

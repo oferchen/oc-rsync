@@ -9,3 +9,6 @@ cargo test -p engine --test compress -- codec_selection_prefers_zstd
 
 # Protocol handshake exchanges codec lists using Message::Codecs
 cargo test -p protocol --test server -- server_negotiates_version
+
+# Stock rsync falls back to zlib when it doesn't support codec lists
+cargo test -p rsync-rs --test rsync_zlib -- rsync_client_falls_back_to_zlib
