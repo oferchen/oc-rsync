@@ -1,5 +1,5 @@
 use std::ffi::OsStr;
-use std::io::{self, BufReader, BufWriter, Read};
+use std::io::{self, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::process::{ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -11,7 +11,7 @@ const SSH_STDERR_CAP: usize = 32 * 1024;
 
 /// Transport over the stdio of a spawned `ssh` process.
 pub struct SshStdioTransport {
-    inner: LocalPipeTransport<BufReader<ChildStdout>, BufWriter<ChildStdin>>,
+    inner: LocalPipeTransport<BufReader<ChildStdout>, ChildStdin>,
     stderr: Arc<Mutex<CapturedStderr>>,
 }
 
@@ -126,7 +126,7 @@ impl SshStdioTransport {
         Ok(Self {
             inner: LocalPipeTransport::new(
                 BufReader::with_capacity(SSH_IO_BUF_SIZE, stdout),
-                BufWriter::with_capacity(SSH_IO_BUF_SIZE, stdin),
+                stdin,
             ),
             stderr: stderr_buf,
         })
@@ -142,8 +142,8 @@ impl SshStdioTransport {
         }
     }
 
-    /// Consume the transport returning the buffered reader and writer.
-    pub fn into_inner(self) -> (BufReader<ChildStdout>, BufWriter<ChildStdin>) {
+    /// Consume the transport returning the reader and writer.
+    pub fn into_inner(self) -> (BufReader<ChildStdout>, ChildStdin) {
         self.inner.into_inner()
     }
 }
