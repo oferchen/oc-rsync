@@ -91,7 +91,7 @@ jobs:
         run: cargo install cargo-llvm-cov --locked
       - name: Coverage
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        run: cargo llvm-cov --all-features --workspace --fail-under-lines 90 --fail-under-functions 90 --lcov --output-path lcov.info
+        run: cargo llvm-cov --all-features --workspace --fail-under-lines 92 --fail-under-functions 92 --lcov --output-path lcov.info
       - name: Upload coverage report
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         uses: actions/upload-artifact@v4
@@ -121,11 +121,11 @@ jobs:
         run: bash tests/daemon_auth.sh
 
       - name: Advanced filter tests
-        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
+        if: matrix.use-cross == false && matrix.os != 'windows-latest'
         run: bash tests/filter_rule_precedence.sh
 
       - name: Remote-to-remote tests
-        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
+        if: matrix.use-cross == false && matrix.os != 'windows-latest'
         run: cargo test --test remote_remote
 
   release:
@@ -196,7 +196,10 @@ jobs:
           done
 
   interop:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -206,6 +209,8 @@ jobs:
           override: true
       - name: Remote-to-remote tests
         run: cargo test --test remote_remote
+      - name: Modern mode interop
+        run: cargo test --test modern
       - name: Run interop matrix
         run: bash tests/interop/run_matrix.sh
 
@@ -223,7 +228,7 @@ jobs:
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --locked
       - name: Generate coverage report
-        run: cargo llvm-cov --all-features --workspace --fail-under-lines 90 --fail-under-functions 90 --lcov --output-path lcov.info
+        run: cargo llvm-cov --all-features --workspace --fail-under-lines 92 --fail-under-functions 92 --lcov --output-path lcov.info
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
