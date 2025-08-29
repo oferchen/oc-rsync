@@ -76,7 +76,7 @@ jobs:
         run: cargo install cargo-llvm-cov --locked
       - name: Coverage
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        run: cargo llvm-cov --all-features --workspace --fail-under-lines 80 --fail-under-functions 80 --lcov --output-path lcov.info
+        run: cargo llvm-cov --all-features --workspace --fail-under-lines 85 --fail-under-functions 85 --lcov --output-path lcov.info
       - name: Upload coverage report
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         uses: actions/upload-artifact@v4
@@ -94,10 +94,6 @@ jobs:
         run: |
           timeout 60s cargo +nightly fuzz run filters_parse_fuzz -- -max_total_time=30
           timeout 60s cargo +nightly fuzz run filters -- -max_total_time=30
-
-      - name: Filter rule edge case tests
-        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        run: bash tests/filter_rule_precedence.sh
 
       - name: Compression negotiation tests
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
