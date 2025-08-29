@@ -498,6 +498,26 @@ impl Sender {
         } else {
             dest.to_path_buf()
         };
+        let mut resume = if self.opts.partial && partial_path.exists() {
+            fs::metadata(&partial_path).map(|m| m.len()).unwrap_or(0)
+        } else if self.opts.append || self.opts.append_verify {
+            fs::metadata(dest).map(|m| m.len()).unwrap_or(0)
+        } else {
+            0
+        };
+        if self.opts.append_verify && resume > 0 {
+            let mut src_f = File::open(path)?;
+            let mut dst_f = File::open(&basis_path)?;
+            let mut src_buf = vec![0u8; resume as usize];
+            let mut dst_buf = vec![0u8; resume as usize];
+            src_f.read_exact(&mut src_buf)?;
+            dst_f.read_exact(&mut dst_buf)?;
+            let src_sum = self.cfg.checksum(&src_buf).strong;
+            let dst_sum = self.cfg.checksum(&dst_buf).strong;
+            if src_sum != dst_sum {
+                resume = 0;
+            }
+        }
         let mut basis_reader: Box<dyn ReadSeek> = match File::open(&basis_path) {
             Ok(f) => Box::new(BufReader::new(f)),
             Err(_) => Box::new(Cursor::new(Vec::new())),
@@ -509,7 +529,40 @@ impl Sender {
             self.block_size,
             DEFAULT_BASIS_WINDOW,
         )?;
-        let ops = delta.map(|op_res| {
+        let mut skip = resume as u64;
+        let adjusted = delta.filter_map(move |op_res| {
+            match op_res {
+                Ok(op) => {
+                    if skip == 0 {
+                        return Some(Ok(op));
+                    }
+                    match op {
+                        Op::Data(d) => {
+                            if (skip as usize) >= d.len() {
+                                skip -= d.len() as u64;
+                                None
+                            } else {
+                                let start = skip as usize;
+                                skip = 0;
+                                Some(Ok(Op::Data(d[start..].to_vec())))
+                            }
+                        }
+                        Op::Copy { offset, len } => {
+                            if (skip as usize) >= len {
+                                skip -= len as u64;
+                                None
+                            } else {
+                                let start = skip as usize;
+                                skip = 0;
+                                Some(Ok(Op::Copy { offset: offset + start, len: len - start }))
+                            }
+                        }
+                    }
+                }
+                Err(e) => Some(Err(e)),
+            }
+        });
+        let ops = adjusted.map(|op_res| {
             let mut op = op_res?;
             if let Some(codec) = self.codec {
                 if let Op::Data(ref mut d) = op {
@@ -603,7 +656,7 @@ impl Receiver {
             fs::create_dir_all(parent)?;
         }
 
-        let (mut out, resume) = if self.opts.inplace {
+        let (mut out, mut resume) = if self.opts.inplace {
             let f = OpenOptions::new()
                 .read(true)
                 .write(true)
@@ -618,6 +671,29 @@ impl Receiver {
                 .create(true)
                 .open(tmp_dest)?;
             let len = f.metadata()?.len();
+            (f, len)
+        } else if self.opts.append || self.opts.append_verify {
+            let f = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(tmp_dest)?;
+            let mut len = f.metadata()?.len();
+            if self.opts.append_verify && len > 0 {
+                let mut src_f = File::open(src)?;
+                let mut dst_f = f.try_clone()?;
+                let mut src_buf = vec![0u8; len as usize];
+                let mut dst_buf = vec![0u8; len as usize];
+                src_f.read_exact(&mut src_buf)?;
+                dst_f.read_exact(&mut dst_buf)?;
+                let cfg = ChecksumConfigBuilder::new().strong(self.opts.strong).build();
+                let src_sum = cfg.checksum(&src_buf).strong;
+                let dst_sum = cfg.checksum(&dst_buf).strong;
+                if src_sum != dst_sum {
+                    f.set_len(0)?;
+                    len = 0;
+                }
+            }
             (f, len)
         } else {
             (File::create(tmp_dest)?, 0)
@@ -645,7 +721,7 @@ impl Receiver {
             }
             Ok(op)
         });
-        apply_delta(&mut basis, ops, &mut out, &self.opts, resume)?;
+        apply_delta(&mut basis, ops, &mut out, &self.opts, 0)?;
         let len = out.seek(SeekFrom::Current(0))?;
         out.set_len(len)?;
         if self.opts.partial && !self.opts.inplace {
@@ -741,6 +817,8 @@ pub struct SyncOptions {
     pub partial: bool,
     pub progress: bool,
     pub partial_dir: Option<PathBuf>,
+    pub append: bool,
+    pub append_verify: bool,
     pub numeric_ids: bool,
     pub inplace: bool,
     pub bwlimit: Option<u64>,
@@ -776,6 +854,8 @@ impl Default for SyncOptions {
             partial: false,
             progress: false,
             partial_dir: None,
+            append: false,
+            append_verify: false,
             numeric_ids: false,
             inplace: false,
             bwlimit: None,
