@@ -690,6 +690,8 @@ impl Receiver {
 
             if self.opts.perms
                 || self.opts.times
+                || self.opts.atimes
+                || self.opts.crtimes
                 || self.opts.owner
                 || self.opts.group
                 || meta_opts.xattrs
@@ -721,6 +723,8 @@ pub struct SyncOptions {
     pub compress: bool,
     pub perms: bool,
     pub times: bool,
+    pub atimes: bool,
+    pub crtimes: bool,
     pub owner: bool,
     pub group: bool,
     pub links: bool,
@@ -754,6 +758,8 @@ impl Default for SyncOptions {
             compress: false,
             perms: false,
             times: false,
+            atimes: false,
+            crtimes: false,
             owner: false,
             group: false,
             links: false,

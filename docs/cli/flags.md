@@ -5,11 +5,11 @@
 | short | long | summary | implemented? | notes | enhanced? |
 | --- | --- | --- | :---: | --- | :---: |
 | -A | --acls | preserve ACLs (implies --perms) | yes | requires `acl` feature | no |
-| -U | --atimes | preserve access (use) times | no |  | no |
+| -U | --atimes | preserve access (use) times | yes |  | no |
 |  | --chmod=CHMOD | affect file and/or directory permissions | no |  | no |
 |  | --chown=USER:GROUP | simple username/groupname mapping | no |  | no |
 |  | --copy-devices | copy device contents as a regular file | no |  | no |
-| -N | --crtimes | preserve create times (newness) | no |  | no |
+| -N | --crtimes | preserve create times (newness) | yes |  | no |
 |  | --devices | preserve device files (super-user only) | yes |  | no |
 | -E | --executability | preserve executability | no |  | no |
 |  | --fake-super | store/recover privileged attrs using xattrs | no |  | no |

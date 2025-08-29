@@ -31,7 +31,7 @@
   },
   {
     "flag": "--atimes",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -141,7 +141,7 @@
   },
   {
     "flag": "--crtimes",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -796,7 +796,7 @@
   },
   {
     "flag": "-N",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --crtimes"
   },
   {
@@ -826,7 +826,7 @@
   },
   {
     "flag": "-U",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --atimes"
   },
   {

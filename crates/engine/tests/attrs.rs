@@ -6,7 +6,7 @@ use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 
 use compress::available_codecs;
 use engine::{sync, SyncOptions};
-use filetime::{set_file_mtime, FileTime};
+use filetime::{set_file_atime, set_file_mtime, FileTime};
 use filters::Matcher;
 use nix::sys::stat::{makedev, mknod, Mode, SFlag};
 use nix::unistd::{chown, mkfifo, Gid, Uid};
@@ -63,6 +63,75 @@ fn times_roundtrip() {
     let meta = fs::metadata(dst.join("file")).unwrap();
     let dst_mtime = FileTime::from_last_modification_time(&meta);
     assert_eq!(dst_mtime, mtime);
+}
+
+#[test]
+fn atimes_roundtrip() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    let atime = FileTime::from_unix_time(1_000_000, 0);
+    set_file_atime(&file, atime).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        available_codecs(),
+        &SyncOptions {
+            atimes: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let src_meta = fs::metadata(src.join("file")).unwrap();
+    let dst_meta = fs::metadata(dst.join("file")).unwrap();
+    let src_atime = FileTime::from_last_access_time(&src_meta);
+    let dst_atime = FileTime::from_last_access_time(&dst_meta);
+    assert_eq!(dst_atime, src_atime);
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[test]
+fn crtimes_roundtrip() {
+    use std::time::Duration;
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+
+    let src_meta = fs::metadata(&file).unwrap();
+    let src_crtime = match src_meta.created() {
+        Ok(t) => t,
+        Err(_) => return, // platform does not support creation time
+    };
+
+    std::thread::sleep(Duration::from_secs(1));
+
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        available_codecs(),
+        &SyncOptions {
+            crtimes: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let dst_meta = fs::metadata(dst.join("file")).unwrap();
+    match dst_meta.created() {
+        Ok(t) => assert_eq!(t, src_crtime),
+        Err(_) => return,
+    }
 }
 
 #[test]

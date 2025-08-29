@@ -1,6 +1,7 @@
+use std::convert::TryInto;
+use std::fs;
 use std::io;
 use std::path::Path;
-use std::convert::TryInto;
 
 use filetime::{self, FileTime};
 use nix::sys::stat::{self, FchmodatFlags, Mode};
@@ -45,6 +46,10 @@ pub struct Metadata {
     pub mode: u32,
     /// Modification time with nanosecond precision.
     pub mtime: FileTime,
+    /// Access time with nanosecond precision.
+    pub atime: Option<FileTime>,
+    /// Creation time with nanosecond precision when available.
+    pub crtime: Option<FileTime>,
     #[cfg(feature = "xattr")]
     /// Extended attributes.
     pub xattrs: Vec<(OsString, Vec<u8>)>,
@@ -61,6 +66,10 @@ impl Metadata {
         let gid = st.st_gid;
         let mode = (st.st_mode as u32) & 0o7777;
         let mtime = FileTime::from_unix_time(st.st_mtime, st.st_mtime_nsec as u32);
+
+        let std_meta = fs::metadata(path)?;
+        let atime = FileTime::from_last_access_time(&std_meta);
+        let crtime = FileTime::from_creation_time(&std_meta);
 
         #[cfg(feature = "xattr")]
         let xattrs = if _opts.xattrs {
@@ -88,6 +97,8 @@ impl Metadata {
             gid,
             mode,
             mtime,
+            atime: Some(atime),
+            crtime,
             #[cfg(feature = "xattr")]
             xattrs,
             #[cfg(feature = "acl")]
@@ -111,7 +122,15 @@ impl Metadata {
         let mode = Mode::from_bits_truncate(mode_t);
         stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink).map_err(nix_to_io)?;
 
-        filetime::set_file_mtime(path, self.mtime)?;
+        if let Some(atime) = self.atime {
+            filetime::set_file_times(path, atime, self.mtime)?;
+        } else {
+            filetime::set_file_mtime(path, self.mtime)?;
+        }
+
+        if let Some(crtime) = self.crtime {
+            let _ = set_file_crtime(path, crtime);
+        }
 
         #[cfg(feature = "xattr")]
         if _opts.xattrs {
@@ -148,6 +167,49 @@ fn acl_to_io(err: posix_acl::ACLError) -> io::Error {
     } else {
         io::Error::new(io::ErrorKind::Other, err)
     }
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+fn set_file_crtime(path: &Path, crtime: FileTime) -> io::Result<()> {
+    use libc::{attrlist, setattrlist, timespec, ATTR_BIT_MAP_COUNT, ATTR_CMN_CRTIMESPEC};
+    use std::ffi::CString;
+    use std::mem;
+
+    let mut attr = attrlist {
+        bitmapcount: ATTR_BIT_MAP_COUNT as u16,
+        reserved: 0,
+        commonattr: ATTR_CMN_CRTIMESPEC as u32,
+        volattr: 0,
+        dirattr: 0,
+        fileattr: 0,
+        forkattr: 0,
+    };
+
+    let mut ts = timespec {
+        tv_sec: crtime.unix_seconds(),
+        tv_nsec: crtime.nanoseconds() as _,
+    };
+
+    let path = CString::new(path.as_os_str().as_bytes())?;
+    let ret = unsafe {
+        setattrlist(
+            path.as_ptr(),
+            &mut attr,
+            &mut ts as *mut _ as *mut libc::c_void,
+            mem::size_of::<timespec>() as libc::size_t,
+            0,
+        )
+    };
+    if ret == -1 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+fn set_file_crtime(_path: &Path, _crtime: FileTime) -> io::Result<()> {
+    Ok(())
 }
 
 #[cfg(all(test, feature = "xattr"))]

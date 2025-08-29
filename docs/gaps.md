@@ -10,7 +10,7 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
 - Compression negotiation between peers is unimplemented.
 
 ### Metadata gaps
-- File time preservation is incomplete; access times (`--atimes`) and creation times (`--crtimes`) are not handled.
+- File time preservation is incomplete; creation times (`--crtimes`) may not be supported on all platforms.
 - Enhanced metadata such as permissions, owners, and groups lack full parity with GNU rsync.
 
 ### Filter gaps

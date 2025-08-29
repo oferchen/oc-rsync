@@ -81,6 +81,12 @@ struct ClientOpts {
     /// preserve modification times
     #[arg(long, help_heading = "Attributes")]
     times: bool,
+    /// preserve access times
+    #[arg(short = 'U', long, help_heading = "Attributes")]
+    atimes: bool,
+    /// preserve create times
+    #[arg(short = 'N', long, help_heading = "Attributes")]
+    crtimes: bool,
     /// preserve owner
     #[arg(long, help_heading = "Attributes")]
     owner: bool,
@@ -691,6 +697,8 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         compress,
         perms: opts.perms || opts.archive,
         times: opts.times || opts.archive,
+        atimes: opts.atimes,
+        crtimes: opts.crtimes,
         owner: opts.owner || opts.archive,
         group: opts.group || opts.archive,
         links: opts.links || opts.archive,

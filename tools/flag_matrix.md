@@ -6,7 +6,7 @@
 | --append | Error |  |
 | --append-verify | Error |  |
 | --archive | Supported |  |
-| --atimes | Error |  |
+| --atimes | Supported |  |
 | --backup | Error |  |
 | --backup-dir | Error |  |
 | --block-size | Error |  |
@@ -28,7 +28,7 @@
 | --copy-dirlinks | Error |  |
 | --copy-links | Error |  |
 | --copy-unsafe-links | Error |  |
-| --crtimes | Error |  |
+| --crtimes | Supported |  |
 | --cvs-exclude | Error |  |
 | --debug | Error |  |
 | --del | Error | an alias for --delete-during |
@@ -159,13 +159,13 @@
 | -K | Error | alias for --keep-dirlinks |
 | -L | Error | alias for --copy-links |
 | -M | Error | alias for --remote-option |
-| -N | Error | alias for --crtimes |
+| -N | Alias | alias for --crtimes |
 | -O | Error | alias for --omit-dir-times |
 | -P | Supported | same as --partial --progress |
 | -R | Alias | alias for --relative |
 | -S | Alias | alias for --sparse |
 | -T | Error | alias for --temp-dir |
-| -U | Error | alias for --atimes |
+| -U | Alias | alias for --atimes |
 | -V | Error | alias for --version |
 | -W | Error | alias for --whole-file |
 | -X | Error | alias for --xattrs |
