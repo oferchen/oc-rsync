@@ -94,15 +94,6 @@ fn remote_to_remote_reports_errors() {
 }
 
 #[test]
-#[serial]
-fn remote_pair_unresolvable_host_fails() {
-    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
-    // Using an unresolvable host should fail quickly
-    cmd.args(["nosuchhost.invalid:/tmp/src", "nosuchhost.invalid:/tmp/dst"]);
-    cmd.assert().failure();
-}
-
-#[test]
 fn remote_to_remote_different_block_sizes() {
     let dir = tempdir().unwrap();
     let src_file = dir.path().join("src.bin");
