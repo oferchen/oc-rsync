@@ -24,7 +24,7 @@ run_case() {
     cp "$dir/rsync_dst/old.txt" "$dir/rsync_rs_dst/old.txt"
   fi
 
-  rsync_output=$(rsync --quiet --recursive "${flags[@]}" "$dir/src/" "$dir/rsync_dst" 2>&1)
+  rsync_output=$(rsync --recursive "${flags[@]}" "$dir/src/" "$dir/rsync_dst" 2>&1)
   rsync_status=$?
 
   set +e
