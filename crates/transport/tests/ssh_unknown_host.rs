@@ -7,7 +7,17 @@ use transport::ssh::SshStdioTransport;
 
 #[test]
 fn refuses_unknown_host_key() {
-    // Start a local SSH server in the background.
+    // Start a local SSH server in the background if available.
+    if Command::new("/usr/sbin/sshd")
+        .arg("-h")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_err()
+    {
+        eprintln!("sshd not available; skipping test");
+        return;
+    }
     std::fs::create_dir_all("/run/sshd").expect("create /run/sshd");
     let mut sshd = Command::new("/usr/sbin/sshd")
         .arg("-D")
