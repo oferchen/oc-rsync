@@ -323,6 +323,14 @@ pub fn run() -> Result<()> {
     }
 }
 
+/// Construct the client mode [`clap::Command`].
+///
+/// External tooling uses this to generate shell completion scripts without
+/// duplicating the flag definitions.
+pub fn cli_command() -> clap::Command {
+    ClientOpts::command()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PathSpec {
     path: PathBuf,
