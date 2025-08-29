@@ -17,13 +17,13 @@
 | --checksum-seed | Error |  |
 | --chmod | Error |  |
 | --chown | Error |  |
-| --compare-dest | Error |  |
+| --compare-dest | Supported |  |
 | --compress | Supported |  |
 | --compress-choice | Error |  |
 | --compress-level | Supported |  |
 | --contimeout | Error |  |
 | --copy-as | Error |  |
-| --copy-dest | Error |  |
+| --copy-dest | Supported |  |
 | --copy-devices | Error |  |
 | --copy-dirlinks | Error |  |
 | --copy-links | Error |  |
@@ -73,7 +73,7 @@
 | --ipv6 | Error |  |
 | --itemize-changes | Error |  |
 | --keep-dirlinks | Error |  |
-| --link-dest | Error |  |
+| --link-dest | Supported |  |
 | --links | Supported |  |
 | --list-only | Error |  |
 | --log-file | Error |  |
