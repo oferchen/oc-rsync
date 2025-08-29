@@ -1,6 +1,7 @@
 use compress::{available_codecs, encode_codecs};
 use protocol::{Server, CAP_CODECS, LATEST_VERSION};
 use std::io::Cursor;
+use std::time::Duration;
 
 #[test]
 fn server_negotiates_version() {
@@ -15,7 +16,7 @@ fn server_negotiates_version() {
         v
     });
     let mut output = Vec::new();
-    let mut srv = Server::new(&mut input, &mut output);
+    let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
     let peer_codecs = srv.handshake().unwrap();
     assert_eq!(srv.version, LATEST_VERSION);
     assert_eq!(peer_codecs, available_codecs());

@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use compress::{available_codecs, Codec};
 use protocol::{
@@ -253,6 +254,7 @@ impl SshStdioTransport {
         remote_bin: Option<&Path>,
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
+        connect_timeout: Option<Duration>,
     ) -> io::Result<Self> {
         let program = rsh.get(0).map(|s| s.as_str()).unwrap_or("ssh");
         if program == "ssh" {
@@ -274,6 +276,10 @@ impl SshStdioTransport {
             if let Some(path) = known_hosts_path {
                 cmd.arg("-o")
                     .arg(format!("UserKnownHostsFile={}", path.display()));
+            }
+            if let Some(dur) = connect_timeout {
+                cmd.arg("-o")
+                    .arg(format!("ConnectTimeout={}", dur.as_secs()));
             }
             cmd.arg(host);
             if let Some(bin) = remote_bin {
@@ -310,6 +316,7 @@ impl SshStdioTransport {
         remote_bin: Option<&Path>,
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
+        connect_timeout: Option<Duration>,
     ) -> io::Result<(Self, Vec<Codec>)> {
         let mut t = Self::spawn_with_rsh(
             host,
@@ -319,6 +326,7 @@ impl SshStdioTransport {
             remote_bin,
             known_hosts,
             strict_host_key_checking,
+            connect_timeout,
         )?;
         let codecs = Self::handshake(&mut t, rsync_env)?;
         Ok((t, codecs))

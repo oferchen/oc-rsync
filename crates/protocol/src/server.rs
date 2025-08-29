@@ -21,14 +21,13 @@ pub struct Server<R: Read, W: Write> {
 }
 
 impl<R: Read, W: Write> Server<R, W> {
-    /// Create a new server state machine with default keepalive and timeout
-    /// durations of 30 seconds.
-    pub fn new(reader: R, writer: W) -> Self {
+    /// Create a new server state machine with the specified keepalive and timeout duration.
+    pub fn new(reader: R, writer: W, timeout: Duration) -> Self {
         Server {
             reader,
             writer,
-            mux: Mux::new(Duration::from_secs(30)),
-            demux: Demux::new(Duration::from_secs(30)),
+            mux: Mux::new(timeout),
+            demux: Demux::new(timeout),
             version: 0,
         }
     }
