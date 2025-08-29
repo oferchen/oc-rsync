@@ -1,6 +1,6 @@
 # Fuzzing
 
-This repository includes several fuzz targets under `crates/fuzz`.
+This repository includes several fuzz targets under `fuzz`.
 The harnesses are built with [`libFuzzer`](https://llvm.org/docs/LibFuzzer.html)
 via the [`libfuzzer-sys`](https://crates.io/crates/libfuzzer-sys) crate.
 

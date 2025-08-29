@@ -103,7 +103,7 @@ cargo test
 ```
 
 ## Fuzzing
-The project includes fuzz targets under `crates/fuzz`.
+The project includes fuzz targets under `fuzz`.
 See [docs/fuzzing.md](docs/fuzzing.md) for instructions on installing the
 tooling and running the fuzzers.
 
