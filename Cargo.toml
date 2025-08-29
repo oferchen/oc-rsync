@@ -39,6 +39,7 @@ xattr = "1.3"
 posix-acl = "1.2"
 transport = { path = "crates/transport" }
 filetime = "0.2"
+shell-words = "1.1"
 
 [[bin]]
 name = "flag_matrix"

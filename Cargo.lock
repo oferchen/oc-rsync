@@ -1116,6 +1116,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
+ "shell-words",
  "tempfile",
  "transport",
  "xattr",
