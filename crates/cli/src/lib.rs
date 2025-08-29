@@ -359,6 +359,7 @@ fn spawn_remote_session(
     host: &str,
     path: &Path,
     rsh: &[String],
+    remote_bin: Option<&Path>,
     known_hosts: Option<&Path>,
     strict_host_key_checking: bool,
 ) -> io::Result<SshStdioTransport> {
@@ -389,14 +390,22 @@ fn spawn_remote_session(
                     .arg(format!("UserKnownHostsFile={}", path.display()));
             }
             cmd.arg(host);
-            cmd.arg("rsync");
+            if let Some(bin) = remote_bin {
+                cmd.arg(bin);
+            } else {
+                cmd.arg("rsync");
+            }
             cmd.arg("--server");
             cmd.arg(path.as_os_str());
             SshStdioTransport::spawn_from_command(cmd)
         } else {
             let mut args = rsh[1..].to_vec();
             args.push(host.to_string());
-            args.push("rsync".to_string());
+            if let Some(bin) = remote_bin {
+                args.push(bin.to_string_lossy().into_owned());
+            } else {
+                args.push("rsync".to_string());
+            }
             args.push("--server".to_string());
             args.push(path.to_string_lossy().into_owned());
             SshStdioTransport::spawn(program, args)
@@ -613,6 +622,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     &host,
                     &src.path,
                     &rsh_cmd,
+                    opts.rsync_path.as_deref(),
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
@@ -629,6 +639,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     &host,
                     &dst.path,
                     &rsh_cmd,
+                    opts.rsync_path.as_deref(),
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
@@ -661,6 +672,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     &dst_host,
                     &dst_path.path,
                     &rsh_cmd,
+                    opts.rsync_path.as_deref(),
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
@@ -669,6 +681,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     &src_host,
                     &src_path.path,
                     &rsh_cmd,
+                    opts.rsync_path.as_deref(),
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
