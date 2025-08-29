@@ -7,6 +7,13 @@ on:
   pull_request:
   schedule:
     - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      long-fuzz:
+        description: "Run longer fuzzing"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   test:
@@ -84,7 +91,7 @@ jobs:
         run: cargo install cargo-llvm-cov --locked
       - name: Coverage
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        run: cargo llvm-cov --all-features --workspace --fail-under-lines 85 --fail-under-functions 85 --lcov --output-path lcov.info
+        run: cargo llvm-cov --all-features --workspace --fail-under-lines 90 --fail-under-functions 90 --lcov --output-path lcov.info
       - name: Upload coverage report
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         uses: actions/upload-artifact@v4
@@ -112,6 +119,10 @@ jobs:
       - name: Daemon authentication tests
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: bash tests/daemon_auth.sh
+
+      - name: Advanced filter tests
+        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
+        run: bash tests/filter_rule_precedence.sh
 
       - name: Remote-to-remote tests
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
@@ -175,8 +186,13 @@ jobs:
       - run: cargo install cargo-fuzz --locked
       - name: Run fuzzers
         run: |
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.long-fuzz }}" = "true" ]; then
+            FUZZ_TIME=3600
+          else
+            FUZZ_TIME=600
+          fi
           for target in $(cargo +nightly fuzz list); do
-            cargo +nightly fuzz run "$target" -- -max_total_time=600
+            cargo +nightly fuzz run "$target" -- -max_total_time=$FUZZ_TIME
           done
 
   interop:
@@ -207,7 +223,7 @@ jobs:
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --locked
       - name: Generate coverage report
-        run: cargo llvm-cov --all-features --workspace --fail-under-lines 80 --fail-under-functions 80 --lcov --output-path lcov.info
+        run: cargo llvm-cov --all-features --workspace --fail-under-lines 90 --fail-under-functions 90 --lcov --output-path lcov.info
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
