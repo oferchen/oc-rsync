@@ -660,10 +660,14 @@ impl Receiver {
         } else {
             dest.to_path_buf()
         };
-        let tmp_dest = if self.opts.inplace {
+        let tmp_buf: PathBuf;
+        let tmp_dest: &Path = if self.opts.inplace {
             dest
         } else if self.opts.partial {
             &partial
+        } else if let Some(dir) = &self.opts.temp_dir {
+            tmp_buf = dir.join(file_name).with_extension("tmp");
+            &tmp_buf
         } else {
             dest
         };
@@ -749,7 +753,7 @@ impl Receiver {
         apply_delta(&mut basis, ops, &mut out, &self.opts, 0)?;
         let len = out.seek(SeekFrom::Current(0))?;
         out.set_len(len)?;
-        if self.opts.partial && !self.opts.inplace {
+        if !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some()) {
             fs::rename(tmp_dest, dest)?;
         }
         self.copy_metadata(src, dest)?;
@@ -854,6 +858,7 @@ pub struct SyncOptions {
     pub partial: bool,
     pub progress: bool,
     pub partial_dir: Option<PathBuf>,
+    pub temp_dir: Option<PathBuf>,
     pub append: bool,
     pub append_verify: bool,
     pub numeric_ids: bool,
@@ -899,6 +904,7 @@ impl Default for SyncOptions {
             partial: false,
             progress: false,
             partial_dir: None,
+            temp_dir: None,
             append: false,
             append_verify: false,
             numeric_ids: false,
