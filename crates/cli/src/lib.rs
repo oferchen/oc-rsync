@@ -75,6 +75,12 @@ struct ClientOpts {
     /// also delete excluded files from destination
     #[arg(long = "delete-excluded", help_heading = "Delete")]
     delete_excluded: bool,
+    /// make backups (see --backup-dir)
+    #[arg(short = 'b', long, help_heading = "Backup")]
+    backup: bool,
+    /// make backups into hierarchy based in DIR
+    #[arg(long = "backup-dir", value_name = "DIR", help_heading = "Backup")]
+    backup_dir: Option<PathBuf>,
     /// use full checksums to determine file changes
     #[arg(short = 'c', long, help_heading = "Attributes")]
     checksum: bool,
@@ -710,6 +716,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         link_dest: opts.link_dest.clone(),
         copy_dest: opts.copy_dest.clone(),
         compare_dest: opts.compare_dest.clone(),
+        backup: opts.backup || opts.backup_dir.is_some(),
+        backup_dir: opts.backup_dir.clone(),
     };
     let stats = if opts.local {
         match (src, dst) {
@@ -1128,8 +1136,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             if count >= 1 {
                 add_rules(
                     idx,
-                    parse_filters("-F")
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    parse_filters("-F").map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
             }
             if count >= 2 {

@@ -36,12 +36,12 @@
   },
   {
     "flag": "--backup",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--backup-dir",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {

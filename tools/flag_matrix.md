@@ -7,8 +7,8 @@
 | --append-verify | Error |  |
 | --archive | Supported |  |
 | --atimes | Supported |  |
-| --backup | Error |  |
-| --backup-dir | Error |  |
+| --backup | Supported |  |
+| --backup-dir | Supported |  |
 | --block-size | Error |  |
 | --blocking-io | Error |  |
 | --bwlimit | Error |  |

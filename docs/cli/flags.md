@@ -147,8 +147,8 @@
 |  | --append | append data onto shorter files | no |  | no |
 |  | --append-verify | --append w/old data in file checksum | no |  | no |
 | -a | --archive | archive mode is -rlptgoD (no -A,-X,-U,-N,-H) | yes |  | no |
-| -b | --backup | make backups (see --suffix & --backup-dir) | no |  | no |
-|  | --backup-dir=DIR | make backups into hierarchy based in DIR | no |  | no |
+| -b | --backup | make backups (see --suffix & --backup-dir) | yes |  | no |
+|  | --backup-dir=DIR | make backups into hierarchy based in DIR | yes |  | no |
 | -B | --block-size=SIZE | force a fixed checksum block-size | no |  | no |
 | -c | --checksum | skip based on checksum, not mod-time & size | no | Parsed but not implemented | no |
 |  | --checksum-choice=STR | choose the checksum algorithm (aka --cc) | no |  | no |

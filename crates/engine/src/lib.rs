@@ -465,8 +465,15 @@ impl Sender {
     }
 
     /// Generate a delta for `path` against `dest` and ask the receiver to apply it.
+    /// `rel` is the path relative to the destination root used for backups.
     /// Returns `true` if the destination file was updated.
-    fn process_file(&mut self, path: &Path, dest: &Path, recv: &mut Receiver) -> Result<bool> {
+    fn process_file(
+        &mut self,
+        path: &Path,
+        dest: &Path,
+        rel: &Path,
+        recv: &mut Receiver,
+    ) -> Result<bool> {
         if self.opts.checksum {
             if let Ok(dst_sum) = self.strong_file_checksum(dest) {
                 let src_sum = self.strong_file_checksum(path)?;
@@ -529,6 +536,21 @@ impl Sender {
             self.block_size,
             DEFAULT_BASIS_WINDOW,
         )?;
+        if self.opts.backup && dest.exists() {
+            let backup_path = if let Some(ref dir) = self.opts.backup_dir {
+                dir.join(rel)
+            } else {
+                let name = dest
+                    .file_name()
+                    .map(|n| format!("{}~", n.to_string_lossy()))
+                    .unwrap_or_else(|| "~".to_string());
+                dest.with_file_name(name)
+            };
+            if let Some(parent) = backup_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::rename(dest, &backup_path)?;
+        }
         let mut skip = resume as u64;
         let adjusted = delta.filter_map(move |op_res| match op_res {
             Ok(op) => {
@@ -829,6 +851,8 @@ pub struct SyncOptions {
     pub link_dest: Option<PathBuf>,
     pub copy_dest: Option<PathBuf>,
     pub compare_dest: Option<PathBuf>,
+    pub backup: bool,
+    pub backup_dir: Option<PathBuf>,
 }
 
 impl Default for SyncOptions {
@@ -867,6 +891,8 @@ impl Default for SyncOptions {
             link_dest: None,
             copy_dest: None,
             compare_dest: None,
+            backup: false,
+            backup_dir: None,
         }
     }
 }
@@ -903,7 +929,7 @@ fn delete_extraneous(
     src: &Path,
     dst: &Path,
     matcher: &Matcher,
-    delete_excluded: bool,
+    opts: &SyncOptions,
     stats: &mut Stats,
 ) -> Result<()> {
     let mut walker = walk(dst, 1024);
@@ -918,8 +944,22 @@ fn delete_extraneous(
                     .is_included(rel)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
                 let src_exists = src.join(rel).exists();
-                if (included && !src_exists) || (!included && delete_excluded) {
-                    if file_type.is_dir() {
+                if (included && !src_exists) || (!included && opts.delete_excluded) {
+                    if opts.backup {
+                        let backup_path = if let Some(ref dir) = opts.backup_dir {
+                            dir.join(rel)
+                        } else {
+                            let name = path
+                                .file_name()
+                                .map(|n| format!("{}~", n.to_string_lossy()))
+                                .unwrap_or_else(|| "~".to_string());
+                            path.with_file_name(name)
+                        };
+                        if let Some(parent) = backup_path.parent() {
+                            fs::create_dir_all(parent)?;
+                        }
+                        fs::rename(&path, &backup_path)?;
+                    } else if file_type.is_dir() {
                         fs::remove_dir_all(&path)?;
                     } else {
                         fs::remove_file(&path)?;
@@ -949,7 +989,7 @@ pub fn sync(
     let mut receiver = Receiver::new(codec, opts.clone());
     let mut stats = Stats::default();
     if matches!(opts.delete, Some(DeleteMode::Before)) {
-        delete_extraneous(src, dst, &matcher, opts.delete_excluded, &mut stats)?;
+        delete_extraneous(src, dst, &matcher, opts, &mut stats)?;
     }
     sender.start();
     #[cfg(unix)]
@@ -1010,7 +1050,7 @@ pub fn sync(
                             }
                         }
                     }
-                    if sender.process_file(&path, &dest_path, &mut receiver)? {
+                    if sender.process_file(&path, &dest_path, rel, &mut receiver)? {
                         stats.files_transferred += 1;
                         stats.bytes_transferred += fs::metadata(&path)?.len();
                     }
@@ -1073,7 +1113,7 @@ pub fn sync(
         opts.delete,
         Some(DeleteMode::After) | Some(DeleteMode::During)
     ) {
-        delete_extraneous(src, dst, &matcher, opts.delete_excluded, &mut stats)?;
+        delete_extraneous(src, dst, &matcher, opts, &mut stats)?;
     }
     Ok(stats)
 }
@@ -1229,7 +1269,7 @@ mod tests {
             if let Some(rel) = path.strip_prefix(&src).ok() {
                 let dest_path = dst.join(rel);
                 sender
-                    .process_file(&path, &dest_path, &mut receiver)
+                    .process_file(&path, &dest_path, rel, &mut receiver)
                     .unwrap();
             }
         }
