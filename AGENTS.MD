@@ -1,4 +1,4 @@
-# AGENT.MD — rsync_rs
+# AGENTS.MD — rsync_rs
 
 **Purpose:** This document instructs an autonomous coding agent (e.g., “Codex”) how to drive `rsync_rs` to production with **default rsync 3.2.x compatibility** (protocol v31) and **opt-in enhancements** that do **not** affect interop with stock rsync.
 
