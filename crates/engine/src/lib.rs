@@ -525,17 +525,27 @@ impl Sender {
                 resume = 0;
             }
         }
-        let mut basis_reader: Box<dyn ReadSeek> = match File::open(&basis_path) {
-            Ok(f) => Box::new(BufReader::new(f)),
-            Err(_) => Box::new(Cursor::new(Vec::new())),
+        let mut basis_reader: Box<dyn ReadSeek> = if self.opts.whole_file {
+            Box::new(Cursor::new(Vec::new()))
+        } else {
+            match File::open(&basis_path) {
+                Ok(f) => Box::new(BufReader::new(f)),
+                Err(_) => Box::new(Cursor::new(Vec::new())),
+            }
         };
-        let delta = compute_delta(
-            &self.cfg,
-            &mut basis_reader,
-            &mut src_reader,
-            self.block_size,
-            DEFAULT_BASIS_WINDOW,
-        )?;
+        let mut buf: Vec<u8> = Vec::new();
+        let delta: Box<dyn Iterator<Item = Result<Op>> + '_> = if self.opts.whole_file {
+            src_reader.read_to_end(&mut buf)?;
+            Box::new(std::iter::once(Ok(Op::Data(buf))))
+        } else {
+            Box::new(compute_delta(
+                &self.cfg,
+                &mut basis_reader,
+                &mut src_reader,
+                self.block_size,
+                DEFAULT_BASIS_WINDOW,
+            )?)
+        };
         if self.opts.backup && dest.exists() {
             let backup_path = if let Some(ref dir) = self.opts.backup_dir {
                 dir.join(rel)
@@ -855,6 +865,7 @@ pub struct SyncOptions {
     pub strong: StrongHash,
     pub compress_level: Option<i32>,
     pub compress_choice: Option<Vec<Codec>>,
+    pub whole_file: bool,
     pub partial: bool,
     pub progress: bool,
     pub itemize_changes: bool,
@@ -902,6 +913,7 @@ impl Default for SyncOptions {
             strong: StrongHash::Md5,
             compress_level: None,
             compress_choice: None,
+            whole_file: false,
             partial: false,
             progress: false,
             itemize_changes: false,

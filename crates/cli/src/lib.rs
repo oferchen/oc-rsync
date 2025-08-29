@@ -222,6 +222,21 @@ struct ClientOpts {
         help_heading = "Misc"
     )]
     block_size: Option<usize>,
+    /// copy files whole (w/o delta-xfer algorithm)
+    #[arg(
+        short = 'W',
+        long,
+        help_heading = "Misc",
+        overrides_with = "no_whole_file"
+    )]
+    whole_file: bool,
+    /// disable whole-file transfer
+    #[arg(
+        long = "no-whole-file",
+        help_heading = "Misc",
+        overrides_with = "whole_file"
+    )]
+    no_whole_file: bool,
     /// hardlink to files in DIR when unchanged
     #[arg(long = "link-dest", value_name = "DIR", help_heading = "Misc")]
     link_dest: Option<PathBuf>,
@@ -928,6 +943,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         strong,
         compress_level: opts.compress_level,
         compress_choice,
+        whole_file: if opts.no_whole_file {
+            false
+        } else {
+            opts.whole_file
+        },
         partial: opts.partial || opts.partial_progress,
         progress: opts.progress || opts.partial_progress,
         itemize_changes: opts.itemize_changes,

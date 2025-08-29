@@ -28,6 +28,33 @@ fn client_local_sync() {
 }
 
 #[test]
+fn whole_file_direct_copy() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let src_file = src_dir.join("a.txt");
+    let dst_file = dst_dir.join("a.txt");
+    std::fs::write(&src_file, b"new contents").unwrap();
+    std::fs::write(&dst_file, b"old contents").unwrap();
+    set_file_mtime(&dst_file, FileTime::from_unix_time(0, 0)).unwrap();
+
+    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--local",
+        "--whole-file",
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, b"new contents");
+}
+
+#[test]
 fn local_sync_without_flag_fails() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
