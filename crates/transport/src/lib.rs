@@ -2,9 +2,11 @@ use std::io::{self, Read, Write};
 
 pub mod ssh;
 pub mod tcp;
+mod rate;
 
 pub use ssh::SshStdioTransport;
 pub use tcp::TcpTransport;
+pub use rate::RateLimitedTransport;
 
 /// Trait representing a blocking transport.
 pub trait Transport {

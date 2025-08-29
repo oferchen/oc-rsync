@@ -15,7 +15,7 @@ use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptio
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, Frame, FrameHeader, Message, Msg, Tag, LATEST_VERSION};
 use shell_words::split as shell_split;
-use transport::{SshStdioTransport, TcpTransport, Transport};
+use transport::{RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
 
 /// Command line interface for rsync-rs.
 ///
@@ -135,6 +135,9 @@ struct ClientOpts {
     /// update destination files in-place
     #[arg(short = 'I', long, help_heading = "Misc")]
     inplace: bool,
+    /// throttle I/O bandwidth to RATE bytes per second
+    #[arg(long = "bwlimit", value_name = "RATE", help_heading = "Misc")]
+    bwlimit: Option<u64>,
     /// don't map uid/gid values by user/group name
     #[arg(long, help_heading = "Attributes")]
     numeric_ids: bool,
@@ -701,6 +704,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         partial_dir: opts.partial_dir.clone(),
         numeric_ids: opts.numeric_ids,
         inplace: opts.inplace,
+        bwlimit: opts.bwlimit,
     };
     let stats = if opts.local {
         match (src, dst) {
@@ -854,19 +858,38 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                         )
                         .map_err(|e| EngineError::Other(e.to_string()))?;
 
-                        pipe_transports(&mut src_session, &mut dst_session)
-                            .map_err(|e| EngineError::Other(e.to_string()))?;
-                        let (src_err, _) = src_session.stderr();
-                        if !src_err.is_empty() {
-                            return Err(EngineError::Other(
-                                String::from_utf8_lossy(&src_err).into(),
-                            ));
-                        }
-                        let (dst_err, _) = dst_session.stderr();
-                        if !dst_err.is_empty() {
-                            return Err(EngineError::Other(
-                                String::from_utf8_lossy(&dst_err).into(),
-                            ));
+                        if let Some(limit) = opts.bwlimit {
+                            let mut dst_session = RateLimitedTransport::new(dst_session, limit);
+                            pipe_transports(&mut src_session, &mut dst_session)
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            let (src_err, _) = src_session.stderr();
+                            if !src_err.is_empty() {
+                                return Err(EngineError::Other(
+                                    String::from_utf8_lossy(&src_err).into(),
+                                ));
+                            }
+                            let dst_session = dst_session.into_inner();
+                            let (dst_err, _) = dst_session.stderr();
+                            if !dst_err.is_empty() {
+                                return Err(EngineError::Other(
+                                    String::from_utf8_lossy(&dst_err).into(),
+                                ));
+                            }
+                        } else {
+                            pipe_transports(&mut src_session, &mut dst_session)
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            let (src_err, _) = src_session.stderr();
+                            if !src_err.is_empty() {
+                                return Err(EngineError::Other(
+                                    String::from_utf8_lossy(&src_err).into(),
+                                ));
+                            }
+                            let (dst_err, _) = dst_session.stderr();
+                            if !dst_err.is_empty() {
+                                return Err(EngineError::Other(
+                                    String::from_utf8_lossy(&dst_err).into(),
+                                ));
+                            }
                         }
                         Stats::default()
                     }
@@ -883,8 +906,14 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                             opts.password_file.as_deref(),
                             opts.no_motd,
                         )?;
-                        pipe_transports(&mut src_session, &mut dst_session)
-                            .map_err(|e| EngineError::Other(e.to_string()))?;
+                        if let Some(limit) = opts.bwlimit {
+                            let mut dst_session = RateLimitedTransport::new(dst_session, limit);
+                            pipe_transports(&mut src_session, &mut dst_session)
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                        } else {
+                            pipe_transports(&mut src_session, &mut dst_session)
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                        }
                         Stats::default()
                     }
                     (Some(sm), None) => {
@@ -903,13 +932,26 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                             opts.password_file.as_deref(),
                             opts.no_motd,
                         )?;
-                        pipe_transports(&mut src_session, &mut dst_session)
-                            .map_err(|e| EngineError::Other(e.to_string()))?;
-                        let (dst_err, _) = dst_session.stderr();
-                        if !dst_err.is_empty() {
-                            return Err(EngineError::Other(
-                                String::from_utf8_lossy(&dst_err).into(),
-                            ));
+                        if let Some(limit) = opts.bwlimit {
+                            let mut dst_session = RateLimitedTransport::new(dst_session, limit);
+                            pipe_transports(&mut src_session, &mut dst_session)
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            let dst_session = dst_session.into_inner();
+                            let (dst_err, _) = dst_session.stderr();
+                            if !dst_err.is_empty() {
+                                return Err(EngineError::Other(
+                                    String::from_utf8_lossy(&dst_err).into(),
+                                ));
+                            }
+                        } else {
+                            pipe_transports(&mut src_session, &mut dst_session)
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            let (dst_err, _) = dst_session.stderr();
+                            if !dst_err.is_empty() {
+                                return Err(EngineError::Other(
+                                    String::from_utf8_lossy(&dst_err).into(),
+                                ));
+                            }
                         }
                         Stats::default()
                     }
@@ -929,8 +971,14 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                             strict_host_key_checking,
                         )
                         .map_err(|e| EngineError::Other(e.to_string()))?;
-                        pipe_transports(&mut src_session, &mut dst_session)
-                            .map_err(|e| EngineError::Other(e.to_string()))?;
+                        if let Some(limit) = opts.bwlimit {
+                            let mut dst_session = RateLimitedTransport::new(dst_session, limit);
+                            pipe_transports(&mut src_session, &mut dst_session)
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                        } else {
+                            pipe_transports(&mut src_session, &mut dst_session)
+                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                        }
                         let (src_err, _) = src_session.stderr();
                         if !src_err.is_empty() {
                             return Err(EngineError::Other(
