@@ -41,6 +41,10 @@ rsync-rs [OPTIONS] <SRC> <DEST>
   ```sh
   rsync-rs -az --modern --bwlimit=1m ./src/ host:/archive/
   ```
+- Tune delta block size:
+  ```sh
+  rsync-rs -B 65536 ./src remote:/dst
+  ```
 
 ### Trailing slash semantics
 
@@ -115,6 +119,7 @@ copied:
 | `-P` | | off | same as --partial --progress |
 | | `--password-file=FILE` | none | read daemon-access password from FILE |
 | | `--bwlimit=RATE` | none | limit socket I/O bandwidth |
+| `-B` | `--block-size=SIZE` | 1024 | set block size used for rolling checksums |
 | | `--daemon` | off | run as an rsync daemon |
 | | `--module NAME=PATH` | none | module declaration (daemon mode) |
 | | `--address=ADDR` | 0.0.0.0 | bind address for daemon |

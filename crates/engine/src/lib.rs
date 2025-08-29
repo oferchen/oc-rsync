@@ -848,6 +848,7 @@ pub struct SyncOptions {
     pub numeric_ids: bool,
     pub inplace: bool,
     pub bwlimit: Option<u64>,
+    pub block_size: usize,
     pub link_dest: Option<PathBuf>,
     pub copy_dest: Option<PathBuf>,
     pub compare_dest: Option<PathBuf>,
@@ -888,6 +889,7 @@ impl Default for SyncOptions {
             numeric_ids: false,
             inplace: false,
             bwlimit: None,
+            block_size: 1024,
             link_dest: None,
             copy_dest: None,
             compare_dest: None,
@@ -985,7 +987,7 @@ pub fn sync(
     // Clone the matcher and attach the source root so per-directory filter files
     // can be located during the walk.
     let matcher = matcher.clone().with_root(src.to_path_buf());
-    let mut sender = Sender::new(1024, matcher.clone(), codec, opts.clone());
+    let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
     let mut receiver = Receiver::new(codec, opts.clone());
     let mut stats = Stats::default();
     if matches!(opts.delete, Some(DeleteMode::Before)) {
