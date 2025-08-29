@@ -752,6 +752,13 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let mut rsync_env: Vec<(String, String)> = env::vars()
         .filter(|(k, _)| k.starts_with("RSYNC_"))
         .collect();
+    rsync_env.extend(
+        rsh_cmd
+            .env
+            .iter()
+            .filter(|(k, _)| k.starts_with("RSYNC_"))
+            .cloned(),
+    );
     if let Some(to) = opts.timeout {
         rsync_env.push(("RSYNC_TIMEOUT".into(), to.as_secs().to_string()));
     }

@@ -1,6 +1,8 @@
 #[cfg(unix)]
 use assert_cmd::cargo::cargo_bin;
 #[cfg(unix)]
+use assert_cmd::Command as AssertCommand;
+#[cfg(unix)]
 use cli::parse_rsh;
 #[cfg(unix)]
 use compress::available_codecs;
@@ -173,4 +175,41 @@ fn rsh_environment_variables_are_propagated() {
     c.status().unwrap();
     let content = fs::read_to_string(&out).unwrap();
     assert_eq!(content.trim(), "bar");
+}
+
+#[cfg(unix)]
+#[test]
+fn rsync_path_respects_rsh_env_var() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    fs::create_dir(&src_dir).unwrap();
+    let src_file = src_dir.join("file.txt");
+    fs::write(&src_file, b"from env var").unwrap();
+    let dst_dir = dir.path().join("dst");
+
+    // Copy the client binary to act as the remote rsync executable.
+    let remote_bin = dir.path().join("rr-remote");
+    fs::copy(cargo_bin("rsync-rs"), &remote_bin).unwrap();
+    fs::set_permissions(&remote_bin, fs::Permissions::from_mode(0o755)).unwrap();
+
+    // Fake remote shell that ignores host argument.
+    let rsh = dir.path().join("fake_rsh.sh");
+    fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
+    fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let src_spec = format!("{}/", src_dir.display());
+    let dst_spec = format!("ignored:{}", dst_dir.display());
+    let mut cmd = AssertCommand::cargo_bin("rsync-rs").unwrap();
+    cmd.env("RSYNC_RSH", rsh.to_str().unwrap());
+    cmd.args([
+        "--rsync-path",
+        remote_bin.to_str().unwrap(),
+        "-r",
+        &src_spec,
+        &dst_spec,
+    ]);
+    cmd.assert().success();
+
+    let out = fs::read(dst_dir.join("file.txt")).unwrap();
+    assert_eq!(out, b"from env var");
 }
