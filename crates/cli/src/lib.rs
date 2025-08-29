@@ -105,6 +105,15 @@ struct ClientOpts {
     /// copy symlinks as symlinks
     #[arg(long, help_heading = "Attributes")]
     links: bool,
+    /// transform symlink into referent file/dir
+    #[arg(short = 'L', long, help_heading = "Attributes")]
+    copy_links: bool,
+    /// only "unsafe" symlinks are transformed
+    #[arg(long, help_heading = "Attributes")]
+    copy_unsafe_links: bool,
+    /// ignore symlinks that point outside the tree
+    #[arg(long, help_heading = "Attributes")]
+    safe_links: bool,
     /// preserve hard links
     #[arg(long = "hard-links", help_heading = "Attributes")]
     hard_links: bool,
@@ -699,6 +708,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         owner: opts.owner || opts.archive,
         group: opts.group || opts.archive,
         links: opts.links || opts.archive,
+        copy_links: opts.copy_links,
+        copy_unsafe_links: opts.copy_unsafe_links,
+        safe_links: opts.safe_links,
         hard_links: opts.hard_links,
         devices: opts.devices || opts.archive,
         specials: opts.specials || opts.archive,
