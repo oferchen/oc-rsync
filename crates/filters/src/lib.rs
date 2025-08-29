@@ -4,17 +4,21 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// A single include or exclude rule compiled into a glob matcher.
+/// A single rule compiled into a glob matcher or special directive.
 #[derive(Clone)]
 pub enum Rule {
     Include(GlobMatcher),
     Exclude(GlobMatcher),
+    Protect(GlobMatcher),
+    /// Per-directory merge directive (e.g., `: .rsync-filter`).
+    DirMerge(PerDir),
 }
 
 impl Rule {
     fn matches<P: AsRef<Path>>(&self, path: P) -> bool {
         match self {
-            Rule::Include(m) | Rule::Exclude(m) => m.is_match(path),
+            Rule::Include(m) | Rule::Exclude(m) | Rule::Protect(m) => m.is_match(path),
+            Rule::DirMerge(_) => false,
         }
     }
 
@@ -23,22 +27,39 @@ impl Rule {
     }
 }
 
+#[derive(Clone)]
+pub struct PerDir {
+    file: String,
+    anchored: bool,
+}
+
 /// Matcher evaluates rules sequentially against paths.
 #[derive(Clone, Default)]
 pub struct Matcher {
-    /// Root of the walk. Used to locate `.rsync-filter` files.
+    /// Root of the walk. Used to locate per-directory filter files.
     root: Option<PathBuf>,
     /// Global rules supplied via CLI or configuration.
     rules: Vec<Rule>,
+    /// Filenames that should be merged for every directory visited.
+    per_dir: Vec<PerDir>,
     /// Cache of parsed rules for directories already visited.
     cached: RefCell<HashMap<PathBuf, Vec<Rule>>>,
 }
 
 impl Matcher {
     pub fn new(rules: Vec<Rule>) -> Self {
+        let mut per_dir = Vec::new();
+        let mut global = Vec::new();
+        for r in rules {
+            match r {
+                Rule::DirMerge(p) => per_dir.push(p),
+                _ => global.push(r),
+            }
+        }
         Self {
             root: None,
-            rules,
+            rules: global,
+            per_dir,
             cached: RefCell::new(HashMap::new()),
         }
     }
@@ -59,14 +80,26 @@ impl Matcher {
 
         if let Some(root) = &self.root {
             let mut dirs = Vec::new();
-            let mut dir = root.clone();
-            dirs.push(dir.clone());
+
+            if self.per_dir.iter().any(|p| p.anchored) {
+                let mut anc = Some(root.as_path());
+                while let Some(p) = anc {
+                    dirs.push(p.to_path_buf());
+                    anc = p.parent();
+                }
+                dirs.reverse();
+            } else {
+                dirs.push(root.clone());
+            }
+
             if let Some(parent) = path.parent() {
+                let mut dir = root.clone();
                 for comp in parent.components() {
                     dir.push(comp.as_os_str());
                     dirs.push(dir.clone());
                 }
             }
+
             for d in dirs.iter().rev() {
                 active.extend(self.dir_rules(d)?);
             }
@@ -77,6 +110,9 @@ impl Matcher {
 
         for rule in &active {
             if rule.matches(path) {
+                if let Rule::Protect(_) = rule {
+                    continue;
+                }
                 return Ok(rule.is_include());
             }
         }
@@ -88,57 +124,71 @@ impl Matcher {
         self.rules.extend(more);
     }
 
-    /// Load cached rules for `dir`, reading its `.rsync-filter` file if needed.
+    /// Load cached rules for `dir`, reading any per-directory filter files if needed.
     fn dir_rules(&self, dir: &Path) -> Result<Vec<Rule>, ParseError> {
-        let mut cache = self.cached.borrow_mut();
-        if let Some(r) = cache.get(dir) {
-            return Ok(r.clone());
-        }
-        let file = dir.join(".rsync-filter");
-        let rules = match fs::read_to_string(&file) {
-            Ok(content) => {
-                let rel = self
-                    .root
-                    .as_ref()
-                    .and_then(|r| dir.strip_prefix(r).ok())
-                    .filter(|p| !p.as_os_str().is_empty());
-                let adjusted = if let Some(rel) = rel {
-                    let mut buf = String::new();
-                    let rel_str = rel.to_string_lossy();
-                    for raw_line in content.lines() {
-                        let line = raw_line.trim();
-                        if line.is_empty() || line.starts_with('#') {
-                            continue;
-                        }
-                        let (kind, pat) = if let Some(rest) = line.strip_prefix('+') {
-                            ('+', rest.trim_start())
-                        } else if let Some(rest) = line.strip_prefix('-') {
-                            ('-', rest.trim_start())
-                        } else {
-                            continue;
-                        };
-                        let new_pat = if pat.starts_with('/') {
-                            pat.to_string()
-                        } else if pat.contains('/') {
-                            format!("{}/{}", rel_str, pat)
-                        } else {
-                            format!("{}/**/{}", rel_str, pat)
-                        };
-                        buf.push(kind);
-                        buf.push(' ');
-                        buf.push_str(&new_pat);
-                        buf.push('\n');
-                    }
-                    buf
-                } else {
-                    content
-                };
-                parse(&adjusted)?
+        let mut combined = Vec::new();
+        for pd in &self.per_dir {
+            let path = dir.join(&pd.file);
+            let mut cache = self.cached.borrow_mut();
+            if let Some(r) = cache.get(&path) {
+                combined.extend(r.clone());
+                continue;
             }
-            Err(_) => Vec::new(),
-        };
-        cache.insert(dir.to_path_buf(), rules.clone());
-        Ok(rules)
+            let rel = self
+                .root
+                .as_ref()
+                .and_then(|r| dir.strip_prefix(r).ok())
+                .filter(|p| !p.as_os_str().is_empty());
+            let rules = match fs::read_to_string(&path) {
+                Ok(content) => {
+                    let adjusted = if let Some(rel) = rel {
+                        let mut buf = String::new();
+                        let rel_str = rel.to_string_lossy();
+                        for raw_line in content.lines() {
+                            let line = raw_line.trim();
+                            if line.is_empty() || line.starts_with('#') {
+                                continue;
+                            }
+                            let (kind, pat) = if let Some(rest) = line.strip_prefix('+') {
+                                ('+', rest.trim_start())
+                            } else if let Some(rest) = line.strip_prefix('-') {
+                                ('-', rest.trim_start())
+                            } else if let Some(rest) =
+                                line.strip_prefix('P').or_else(|| line.strip_prefix('p'))
+                            {
+                                ('P', rest.trim_start())
+                            } else {
+                                buf.push_str(raw_line);
+                                buf.push('\n');
+                                continue;
+                            };
+                            let new_pat = if pat.starts_with('/') {
+                                pat.to_string()
+                            } else if pat.contains('/') {
+                                format!("{}/{}", rel_str, pat)
+                            } else {
+                                format!("{}/**/{}", rel_str, pat)
+                            };
+                            buf.push(kind);
+                            buf.push(' ');
+                            buf.push_str(&new_pat);
+                            buf.push('\n');
+                        }
+                        buf
+                    } else {
+                        content
+                    };
+                    parse(&adjusted)?
+                        .into_iter()
+                        .filter(|r| !matches!(r, Rule::DirMerge(_)))
+                        .collect()
+                }
+                Err(_) => Vec::new(),
+            };
+            cache.insert(path.clone(), rules.clone());
+            combined.extend(rules);
+        }
+        Ok(combined)
     }
 }
 
@@ -157,6 +207,7 @@ impl From<globset::Error> for ParseError {
 enum RuleKind {
     Include,
     Exclude,
+    Protect,
 }
 
 /// Parse filter rules from input.
@@ -169,36 +220,89 @@ pub fn parse(input: &str) -> Result<Vec<Rule>, ParseError> {
             continue;
         }
 
-        // Determine rule type based on the first character. Using
-        // `strip_prefix` keeps the logic simple and avoids manual
-        // character indexing.
-        let (kind, pattern) = if let Some(rest) = line.strip_prefix('+') {
-            (RuleKind::Include, rest.trim_start())
-        } else if let Some(rest) = line.strip_prefix('-') {
-            (RuleKind::Exclude, rest.trim_start())
+        let (kind, rest) = if let Some(r) = line.strip_prefix('+') {
+            (Some(RuleKind::Include), r.trim_start())
+        } else if let Some(r) = line.strip_prefix('-') {
+            (Some(RuleKind::Exclude), r.trim_start())
+        } else if let Some(r) = line.strip_prefix('P').or_else(|| line.strip_prefix('p')) {
+            (Some(RuleKind::Protect), r.trim_start())
+        } else if let Some(r) = line.strip_prefix('.') {
+            let file = r.trim_start();
+            if file.is_empty() {
+                return Err(ParseError::InvalidRule(raw_line.to_string()));
+            }
+            let content = fs::read_to_string(file)
+                .map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
+            rules.extend(parse(&content)?);
+            continue;
+        } else if let Some(r) = line.strip_prefix(':') {
+            let r = r.trim_start();
+            let mut parts = r.splitn(2, |c: char| c.is_whitespace());
+            let first = parts.next().unwrap_or("");
+            let file = parts.next().unwrap_or(first).trim();
+            if file.is_empty() {
+                return Err(ParseError::InvalidRule(raw_line.to_string()));
+            }
+            let anchored = file.starts_with('/');
+            let fname = if anchored {
+                file.trim_start_matches('/').to_string()
+            } else {
+                file.to_string()
+            };
+            rules.push(Rule::DirMerge(PerDir {
+                file: fname,
+                anchored,
+            }));
+            continue;
         } else {
-            return Err(ParseError::InvalidRule(raw_line.to_string()));
+            let mut parts = line.split_whitespace();
+            let token = parts.next().unwrap_or("");
+            let rest = parts.next().unwrap_or("").trim();
+            match token {
+                "include" => (Some(RuleKind::Include), rest),
+                "exclude" => (Some(RuleKind::Exclude), rest),
+                "protect" => (Some(RuleKind::Protect), rest),
+                "merge" => {
+                    let content = fs::read_to_string(rest)
+                        .map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
+                    rules.extend(parse(&content)?);
+                    continue;
+                }
+                "dir-merge" => {
+                    let anchored = rest.starts_with('/');
+                    let fname = if anchored {
+                        rest.trim_start_matches('/').to_string()
+                    } else {
+                        rest.to_string()
+                    };
+                    rules.push(Rule::DirMerge(PerDir {
+                        file: fname,
+                        anchored,
+                    }));
+                    continue;
+                }
+                _ => (None, rest),
+            }
         };
 
-        if pattern.is_empty() {
+        let kind = match kind {
+            Some(k) => k,
+            None => return Err(ParseError::InvalidRule(raw_line.to_string())),
+        };
+        if rest.is_empty() {
             return Err(ParseError::InvalidRule(raw_line.to_string()));
         }
 
-        // Track whether the pattern is anchored to the root (starts with '/')
-        // or targets a directory (ends with '/'). These affect how we
-        // transform the glob to match rsync's semantics.
+        let pattern = rest;
         let anchored = pattern.starts_with('/');
         let dir_only = pattern.ends_with('/');
-
         let mut base = pattern.trim_start_matches('/').to_string();
         if dir_only {
             base = base.trim_end_matches('/').to_string();
         }
-
         if !anchored && !base.contains('/') {
             base = format!("**/{}", base);
         }
-
         let pats = if dir_only {
             vec![base.clone(), format!("{}/**", base)]
         } else {
@@ -210,6 +314,7 @@ pub fn parse(input: &str) -> Result<Vec<Rule>, ParseError> {
             match kind {
                 RuleKind::Include => rules.push(Rule::Include(matcher)),
                 RuleKind::Exclude => rules.push(Rule::Exclude(matcher)),
+                RuleKind::Protect => rules.push(Rule::Protect(matcher)),
             }
         }
     }

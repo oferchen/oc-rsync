@@ -1,4 +1,4 @@
-use filters::Matcher;
+use filters::{parse, Matcher};
 use proptest::prelude::*;
 use std::fs;
 use tempfile::tempdir;
@@ -12,7 +12,8 @@ fn include_overrides_parent_exclude() {
     fs::create_dir_all(&sub).unwrap();
     fs::write(sub.join(".rsync-filter"), "+ keep.tmp\n").unwrap();
 
-    let matcher = Matcher::new(Vec::new()).with_root(root);
+    let rules = parse(": /.rsync-filter\n- .rsync-filter\n").unwrap();
+    let matcher = Matcher::new(rules).with_root(root);
 
     assert!(!matcher.is_included("other.tmp").unwrap());
     assert!(matcher.is_included("sub/keep.tmp").unwrap());
@@ -30,7 +31,8 @@ fn nested_filters_apply_in_order() {
     fs::write(dir.join(".rsync-filter"), "+ debug.log\n").unwrap();
     fs::write(sub.join(".rsync-filter"), "- debug.log\n").unwrap();
 
-    let matcher = Matcher::new(Vec::new()).with_root(root);
+    let rules = parse(": /.rsync-filter\n- .rsync-filter\n").unwrap();
+    let matcher = Matcher::new(rules).with_root(root);
 
     assert!(matcher.is_included("dir/debug.log").unwrap());
     assert!(!matcher.is_included("dir/sub/debug.log").unwrap());
@@ -47,7 +49,8 @@ proptest! {
         fs::create_dir_all(&sub).unwrap();
         fs::write(sub.join(".rsync-filter"), format!("+ {}\n", keep)).unwrap();
 
-        let matcher = Matcher::new(Vec::new()).with_root(root);
+        let rules = parse(": /.rsync-filter\n- .rsync-filter\n").unwrap();
+        let matcher = Matcher::new(rules).with_root(root);
 
         prop_assert!(!matcher.is_included("other.tmp").unwrap());
         let keep_path = format!("{}/{}", subdir, keep);
