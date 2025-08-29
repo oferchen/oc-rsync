@@ -233,11 +233,18 @@ fn remote_to_remote_failure_and_reconnect() {
     // Initial transfer fails because destination immediately closes
     let src_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
-    let dst_session = SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; sleep 1"]).unwrap();
+    let dst_session =
+        SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready; sleep 1"]).unwrap();
     let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
+    let (mut dst_reader, mut dst_writer) = dst_session.into_inner();
+
+    // Ensure the destination has closed stdin before attempting to copy
+    let mut ready = [0u8; 6];
+    dst_reader.read_exact(&mut ready).unwrap();
+    assert_eq!(&ready, b"ready\n");
+
     let copy_result = std::io::copy(&mut src_reader, &mut dst_writer);
-    std::thread::sleep(std::time::Duration::from_millis(10));
+    assert!(dst_writer.flush().is_err());
     assert_eq!(copy_result.unwrap_err().kind(), io::ErrorKind::BrokenPipe);
     drop(dst_writer);
     drop(src_reader);
