@@ -52,7 +52,7 @@ copied:
 - `-z, --compress` *(default: off)* – compress file data during the transfer.
 - `--stats` *(default: off)* – display transfer statistics on completion.
 - `--no-motd` *(default: off)* – suppress the message of the day when connecting to a daemon.
-- `--config <FILE>` *(default: `~/.config/rsync-rs/config.toml`)* – supply a custom configuration file.
+- `--config <FILE>` – supply a custom configuration file.
 - `-e, --rsh <COMMAND>` *(default: `ssh`)* – specify the remote shell to use.
 
 ### Daemon and server modes
@@ -104,10 +104,11 @@ see the [CLI flag reference](cli/flags.md).
 
 1. Command-line flags
 2. Environment variables (prefixed with `RSYNC_RS_`)
-3. Configuration file (defaults to `~/.config/rsync-rs/config.toml`)
+3. Configuration file provided via `--config`
 4. Built-in defaults
 
-Settings specified earlier in the list override later sources.
+No configuration file is loaded unless `--config` is supplied. Settings
+specified earlier in the list override later sources.
 
 ## Filters
 

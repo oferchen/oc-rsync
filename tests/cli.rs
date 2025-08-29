@@ -2,6 +2,7 @@ use assert_cmd::Command;
 use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
 use nix::unistd::{chown, mkfifo, Gid, Uid};
+use predicates::prelude::PredicateBooleanExt;
 use std::io::{Seek, SeekFrom, Write};
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
@@ -38,7 +39,6 @@ fn local_sync_without_flag_fails() {
     cmd.args([&src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().failure();
 }
-
 
 #[test]
 fn relative_preserves_ancestors() {
@@ -326,6 +326,26 @@ fn config_flag_prints_message() {
     cmd.assert()
         .success()
         .stdout(predicates::str::contains("using config file"));
+}
+
+#[test]
+fn no_default_config_used_without_flag() {
+    let dir = tempdir().unwrap();
+    let home = dir.path();
+    let src_dir = home.join("src");
+    let dst_dir = home.join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    let cfg = home.join(".config/rsync-rs/config.toml");
+    std::fs::create_dir_all(cfg.parent().unwrap()).unwrap();
+    std::fs::write(&cfg, b"cfg").unwrap();
+
+    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.env("HOME", home);
+    cmd.args(["--local", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.assert()
+        .success()
+        .stdout(predicates::str::contains("using config file").not());
 }
 
 #[test]
