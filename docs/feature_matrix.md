@@ -97,7 +97,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--no-D` | — | ❌ | — | off | alias for `--no-devices --no-specials` | [gaps.md](gaps.md) | alias for `--no-devices --no-specials` |  |
 | `--no-OPTION` | — | ❌ | — | off | — | — |  |  |
 | `--no-implied-dirs` | — | ❌ | — | off | — | — |  |  |
-| `--no-motd` | — | ❌ | — | off | — | — |  |  |
+| `--no-motd` | — | ✅ | ❌ | off | — | [tests/daemon.rs](../tests/daemon.rs) |  |  |
 | `--numeric-ids` | — | ✅ | ❌ | off | — | [tests/cli.rs](../tests/cli.rs) |  |  |
 | `--old-args` | — | ❌ | — | off | — | — |  |  |
 | `--old-d` | — | ❌ | — | off | alias for --old-dirs | [gaps.md](gaps.md) | alias for `--old-dirs` |  |

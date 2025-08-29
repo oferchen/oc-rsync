@@ -66,6 +66,10 @@ rsync-rs --daemon --module data=/srv/export \
 ## Message of the day
 
 Use `--motd` to display a message of the day to connecting clients. Each line in
-the file is sent with the `@RSYNCD:` prefix during the handshake. Clients may
-suppress the message with `--no-motd`.
+the file is sent with the `@RSYNCD:` prefix during the handshake. Clients can
+suppress this output with the `--no-motd` flag:
+
+```bash
+rsync-rs --no-motd rsync://host/module dest/
+```
 

@@ -51,6 +51,7 @@ copied:
 - `-c, --checksum` *(default: off)* – use full checksums to determine file changes.
 - `-z, --compress` *(default: off)* – compress file data during the transfer.
 - `--stats` *(default: off)* – display transfer statistics on completion.
+- `--no-motd` *(default: off)* – suppress the message of the day when connecting to a daemon.
 - `--config <FILE>` *(default: `~/.config/rsync-rs/config.toml`)* – supply a custom configuration file.
 - `-e, --rsh <COMMAND>` *(default: `ssh`)* – specify the remote shell to use.
 

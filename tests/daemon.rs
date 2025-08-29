@@ -322,3 +322,59 @@ fn daemon_displays_motd() {
     let _ = child.kill();
     let _ = child.wait();
 }
+
+#[test]
+#[serial]
+fn client_respects_no_motd() {
+    let dir = tempfile::tempdir().unwrap();
+    let motd = dir.path().join("motd");
+    fs::write(&motd, "Hello world\n").unwrap();
+    let src = dir.path().join("src");
+    fs::create_dir(&src).unwrap();
+    let dst = dir.path().join("dst");
+    fs::create_dir(&dst).unwrap();
+
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let mut child = StdCommand::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            &format!("data={}", src.display()),
+            "--port",
+            &port.to_string(),
+            "--motd",
+            motd.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+    wait_for_daemon(port);
+
+    let output = Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            &format!("rsync://127.0.0.1:{port}/data/"),
+            dst.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(String::from_utf8_lossy(&output.stdout).contains("Hello world"));
+
+    let output = Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--no-motd",
+            &format!("rsync://127.0.0.1:{port}/data/"),
+            dst.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("Hello world"));
+
+    let _ = child.kill();
+    let _ = child.wait();
+}
