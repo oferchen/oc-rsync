@@ -136,6 +136,12 @@ struct ClientOpts {
     /// keep partially transferred files and show progress
     #[arg(short = 'P', help_heading = "Misc")]
     partial_progress: bool,
+    /// append data onto shorter files
+    #[arg(long, help_heading = "Misc")]
+    append: bool,
+    /// --append with old data verification
+    #[arg(long = "append-verify", help_heading = "Misc")]
+    append_verify: bool,
     /// update destination files in-place
     #[arg(short = 'I', long, help_heading = "Misc")]
     inplace: bool,
@@ -587,6 +593,8 @@ fn run_client(opts: ClientOpts) -> Result<()> {
         partial: opts.partial || opts.partial_progress,
         progress: opts.progress || opts.partial_progress,
         partial_dir: opts.partial_dir.clone(),
+        append: opts.append,
+        append_verify: opts.append_verify,
         numeric_ids: opts.numeric_ids,
         inplace: opts.inplace,
         bwlimit: opts.bwlimit,
