@@ -18,9 +18,6 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
 - Per-directory `.rsync-filter` handling and `-F` convenience flag semantics are unimplemented.
 
 ### Daemon gaps
-- Daemon mode achieves only partial feature parity; `--password-file` and `--secrets-file` remain incomplete (see `docs/feature_matrix.md`).
-- Module options such as `--log-file`, `--log-file-format`, and MOTD control have not been implemented.
-
 - Many command-line options remain absent or lack parity; see `docs/feature_matrix.md` for the full matrix.
 
 ## Unreachable code
