@@ -7,6 +7,9 @@ use filetime::{self, FileTime};
 use nix::sys::stat::{self, FchmodatFlags, Mode};
 use nix::unistd::{self, Gid, Uid};
 
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+use std::os::unix::ffi::OsStrExt;
+
 #[cfg(feature = "xattr")]
 use std::ffi::OsString;
 
