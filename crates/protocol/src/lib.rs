@@ -141,6 +141,7 @@ impl TryFrom<u8> for Msg {
             5 => Ok(Msg::Attributes),
             6 => Ok(Msg::Error),
             7 => Ok(Msg::Progress),
+            8 => Ok(Msg::Codecs),
             other => Err(UnknownMsg(other)),
         }
     }

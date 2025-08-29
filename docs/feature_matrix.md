@@ -130,7 +130,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--safe-links` | ❌ | — | — |  | |
 | `--secluded-args` | ❌ | — | — |  | |
 | `--secrets-file` | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | |
-| `--server` | ❌ | — | [tests/server.rs](../tests/server.rs) |  | |
+| `--server` | ✅ | ❌ | [tests/server.rs](../tests/server.rs) | negotiates protocol version and codecs | |
 | `--size-only` | ❌ | — | — |  | |
 | `--skip-compress` | ❌ | — | — |  | |
 | `--sockopts` | ❌ | — | — |  | |
