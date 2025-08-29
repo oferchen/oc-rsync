@@ -77,6 +77,67 @@ fn filter_corpus_parity() {
             .arg(&ours_dst)
             .output()
             .unwrap();
-        assert!(diff.status.success(), "directory trees differ for {:?}", path);
+        assert!(
+            diff.status.success(),
+            "directory trees differ for {:?}",
+            path
+        );
     }
+}
+
+#[test]
+fn ignores_parent_rsync_filter_with_ff() {
+    let tmp = tempdir().unwrap();
+    let parent = tmp.path();
+    fs::write(parent.join(".rsync-filter"), "- file.txt\n").unwrap();
+
+    let src = parent.join("src");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("file.txt"), "data").unwrap();
+
+    let rsync_dst = parent.join("rsync");
+    let ours_dst = parent.join("ours");
+    fs::create_dir_all(&rsync_dst).unwrap();
+    fs::create_dir_all(&ours_dst).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+
+    let mut rsync_cmd = StdCommand::new("rsync");
+    rsync_cmd.args([
+        "-r",
+        "--quiet",
+        "--filter=: .rsync-filter",
+        "--filter=- .rsync-filter",
+    ]);
+    rsync_cmd.arg(&src_arg);
+    rsync_cmd.arg(&rsync_dst);
+    let rsync_out = rsync_cmd.output().unwrap();
+    assert!(rsync_out.status.success());
+    let rsync_output = String::from_utf8_lossy(&rsync_out.stdout).to_string()
+        + &String::from_utf8_lossy(&rsync_out.stderr);
+
+    let mut ours_cmd = Command::cargo_bin("rsync-rs").unwrap();
+    ours_cmd.args([
+        "--local",
+        "--recursive",
+        "--filter=: .rsync-filter",
+        "--filter=- .rsync-filter",
+    ]);
+    ours_cmd.arg(&src_arg);
+    ours_cmd.arg(&ours_dst);
+    let ours_out = ours_cmd.output().unwrap();
+    assert!(ours_out.status.success());
+    let mut ours_output = String::from_utf8_lossy(&ours_out.stdout).to_string()
+        + &String::from_utf8_lossy(&ours_out.stderr);
+    ours_output = ours_output.replace("recursive mode enabled\n", "");
+
+    assert_eq!(rsync_output, ours_output);
+
+    let diff = StdCommand::new("diff")
+        .arg("-r")
+        .arg(&rsync_dst)
+        .arg(&ours_dst)
+        .output()
+        .unwrap();
+    assert!(diff.status.success(), "directory trees differ");
 }

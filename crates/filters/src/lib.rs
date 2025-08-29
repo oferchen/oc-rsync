@@ -81,18 +81,7 @@ impl Matcher {
         let mut active = Vec::new();
 
         if let Some(root) = &self.root {
-            let mut dirs = Vec::new();
-
-            if self.per_dir.iter().any(|p| p.anchored) {
-                let mut anc = Some(root.as_path());
-                while let Some(p) = anc {
-                    dirs.push(p.to_path_buf());
-                    anc = p.parent();
-                }
-                dirs.reverse();
-            } else {
-                dirs.push(root.clone());
-            }
+            let mut dirs = vec![root.clone()];
 
             if let Some(parent) = path.parent() {
                 let mut dir = root.clone();
@@ -128,6 +117,12 @@ impl Matcher {
 
     /// Load cached rules for `dir`, reading any per-directory filter files if needed.
     fn dir_rules(&self, dir: &Path) -> Result<Vec<Rule>, ParseError> {
+        if let Some(root) = &self.root {
+            if !dir.starts_with(root) {
+                return Ok(Vec::new());
+            }
+        }
+
         let mut combined = Vec::new();
         for pd in &self.per_dir {
             let path = dir.join(&pd.file);
