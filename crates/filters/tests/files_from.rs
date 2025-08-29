@@ -1,9 +1,15 @@
 use filters::parse;
 use filters::Matcher;
+use std::collections::HashSet;
+
+fn p(s: &str) -> Vec<filters::Rule> {
+    let mut v = HashSet::new();
+    parse(s, &mut v, 0).unwrap()
+}
 
 #[test]
 fn files_from_emulation() {
-    let rules = parse("+ foo\n+ bar\n- *\n").expect("parse");
+    let rules = p("+ foo\n+ bar\n- *\n");
     let matcher = Matcher::new(rules);
     assert!(matcher.is_included("foo").unwrap());
     assert!(matcher.is_included("bar").unwrap());
@@ -19,9 +25,9 @@ fn files_from_null_separated() {
             continue;
         }
         let pat = String::from_utf8_lossy(part);
-        rules.extend(parse(&format!("+ {}\n", pat)).unwrap());
+        rules.extend(p(&format!("+ {}\n", pat)));
     }
-    rules.extend(parse("- *\n").unwrap());
+    rules.extend(p("- *\n"));
     let matcher = Matcher::new(rules);
     assert!(matcher.is_included("foo").unwrap());
     assert!(matcher.is_included("bar").unwrap());

@@ -1,16 +1,22 @@
 use filters::{parse, Matcher};
 use proptest::prelude::*;
+use std::collections::HashSet;
+
+fn p(s: &str) -> Vec<filters::Rule> {
+    let mut v = HashSet::new();
+    parse(s, &mut v, 0).unwrap()
+}
 
 #[test]
 fn rsync_filter_merge() {
-    let root_rules = parse("- *.tmp\n").unwrap();
+    let root_rules = p("- *.tmp\n");
     let mut matcher = Matcher::new(root_rules);
 
     assert!(matcher.is_included("notes.txt").unwrap());
     assert!(!matcher.is_included("junk.tmp").unwrap());
 
     // Merge rules from a subdirectory `.rsync-filter` file
-    let sub_rules = parse("- secret\n").unwrap();
+    let sub_rules = p("- secret\n");
     matcher.merge(sub_rules);
 
     assert!(!matcher.is_included("junk.tmp").unwrap());
@@ -26,10 +32,10 @@ proptest! {
     ) {
         let first_str: String = first.iter().map(|(s,p)| format!("{} {}\n", s, p)).collect();
         let second_str: String = second.iter().map(|(s,p)| format!("{} {}\n", s, p)).collect();
-        let mut matcher = Matcher::new(parse(&first_str).unwrap());
-        matcher.merge(parse(&second_str).unwrap());
+        let mut matcher = Matcher::new(p(&first_str));
+        matcher.merge(p(&second_str));
         let combined = format!("{}{}", first_str, second_str);
-        let matcher_combined = Matcher::new(parse(&combined).unwrap());
+        let matcher_combined = Matcher::new(p(&combined));
         prop_assert_eq!(matcher.is_included(&path).unwrap(), matcher_combined.is_included(&path).unwrap());
     }
 }

@@ -1,8 +1,10 @@
 use globset::{Glob, GlobMatcher};
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+const MAX_PARSE_DEPTH: usize = 64;
 
 /// A single rule compiled into a glob matcher or special directive.
 #[derive(Clone)]
@@ -178,7 +180,9 @@ impl Matcher {
                     } else {
                         content
                     };
-                    parse(&adjusted)?
+                    let mut visited = HashSet::new();
+                    visited.insert(path.clone());
+                    parse(&adjusted, &mut visited, 0)?
                         .into_iter()
                         .filter(|r| !matches!(r, Rule::DirMerge(_)))
                         .collect()
@@ -196,6 +200,8 @@ impl Matcher {
 pub enum ParseError {
     InvalidRule(String),
     Glob(globset::Error),
+    RecursiveInclude(PathBuf),
+    RecursionLimit,
 }
 
 impl From<globset::Error> for ParseError {
@@ -210,8 +216,15 @@ enum RuleKind {
     Protect,
 }
 
-/// Parse filter rules from input.
-pub fn parse(input: &str) -> Result<Vec<Rule>, ParseError> {
+/// Parse filter rules from input with recursion tracking.
+pub fn parse(
+    input: &str,
+    visited: &mut HashSet<PathBuf>,
+    depth: usize,
+) -> Result<Vec<Rule>, ParseError> {
+    if depth >= MAX_PARSE_DEPTH {
+        return Err(ParseError::RecursionLimit);
+    }
     let mut rules = Vec::new();
 
     for raw_line in input.lines() {
@@ -245,9 +258,13 @@ pub fn parse(input: &str) -> Result<Vec<Rule>, ParseError> {
             if file.is_empty() {
                 return Err(ParseError::InvalidRule(raw_line.to_string()));
             }
-            let content = fs::read_to_string(file)
+            let path = PathBuf::from(file);
+            if !visited.insert(path.clone()) {
+                return Err(ParseError::RecursiveInclude(path));
+            }
+            let content = fs::read_to_string(&path)
                 .map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
-            rules.extend(parse(&content)?);
+            rules.extend(parse(&content, visited, depth + 1)?);
             continue;
         } else if let Some(r) = line.strip_prefix(':') {
             let r = r.trim_start();
@@ -277,9 +294,13 @@ pub fn parse(input: &str) -> Result<Vec<Rule>, ParseError> {
                 "exclude" => (Some(RuleKind::Exclude), rest),
                 "protect" => (Some(RuleKind::Protect), rest),
                 "merge" => {
-                    let content = fs::read_to_string(rest)
+                    let path = PathBuf::from(rest);
+                    if !visited.insert(path.clone()) {
+                        return Err(ParseError::RecursiveInclude(path));
+                    }
+                    let content = fs::read_to_string(&path)
                         .map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
-                    rules.extend(parse(&content)?);
+                    rules.extend(parse(&content, visited, depth + 1)?);
                     continue;
                 }
                 "dir-merge" => {

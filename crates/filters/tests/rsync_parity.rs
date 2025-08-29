@@ -1,4 +1,5 @@
 use filters::{parse, Matcher};
+use std::collections::HashSet;
 use std::fs;
 use std::process::Command;
 use tempfile::tempdir;
@@ -15,7 +16,8 @@ fn parity_with_stock_rsync() {
     fs::write(root.join("sub/keep.tmp"), "").unwrap();
     fs::write(root.join("sub/other.tmp"), "").unwrap();
 
-    let rules = parse(": /.rsync-filter\n- .rsync-filter\n").unwrap();
+    let mut v = HashSet::new();
+    let rules = parse(": /.rsync-filter\n- .rsync-filter\n", &mut v, 0).unwrap();
     let matcher = Matcher::new(rules).with_root(&root);
 
     let dest = tmp.path().join("dest");
