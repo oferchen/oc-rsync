@@ -788,14 +788,20 @@ impl Receiver {
                     }
                 },
                 chmod: self.opts.chmod.clone(),
+                owner: self.opts.owner,
+                group: self.opts.group,
+                perms: self.opts.perms,
+                times: self.opts.times,
+                atimes: self.opts.atimes,
+                crtimes: self.opts.crtimes,
             };
 
-            if self.opts.perms
-                || self.opts.times
-                || self.opts.atimes
-                || self.opts.crtimes
-                || self.opts.owner
-                || self.opts.group
+            if meta_opts.perms
+                || meta_opts.times
+                || meta_opts.atimes
+                || meta_opts.crtimes
+                || meta_opts.owner
+                || meta_opts.group
                 || meta_opts.xattrs
                 || meta_opts.acl
             {
