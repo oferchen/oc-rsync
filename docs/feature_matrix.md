@@ -12,8 +12,8 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--append-verify` | — | ✅ | ❌ | [tests/resume.rs](../tests/resume.rs) |  | ≤3.2 |
 | `--archive` | `-a` | ✅ | ❌ | [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) |  | ≤3.2 |
 | `--atimes` | `-U` | ✅ | ❌ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
-| `--backup` | `-b` | ❌ | — | — |  | ≤3.2 |
-| `--backup-dir` | — | ❌ | — | — |  | ≤3.2 |
+| `--backup` | `-b` | ✅ | ✅ | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | uses `~` suffix without `--backup-dir` | ≤3.2 |
+| `--backup-dir` | — | ✅ | ✅ | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | implies `--backup` | ≤3.2 |
 | `--block-size` | `-B` | ❌ | — | — |  | ≤3.2 |
 | `--blocking-io` | — | ❌ | — | — |  | ≤3.2 |
 | `--bwlimit` | — | ✅ | ❌ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) |  | ≤3.2 |

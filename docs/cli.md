@@ -89,6 +89,8 @@ copied:
 | | `--delete-delay` | off | find deletions during, delete after |
 | | `--delete-after` | off | receiver deletes after transfer, not during |
 | | `--delete-excluded` | off | also delete excluded files from dest dirs |
+| `-b` | `--backup` | off | make backups of replaced or removed files |
+| | `--backup-dir=DIR` | none | store backups under DIR |
 | | `--partial` | off | keep partially transferred files |
 | | `--partial-dir=DIR` | none | put a partially transferred file into DIR |
 | | `--numeric-ids` | off | don't map uid/gid values by user/group name |
