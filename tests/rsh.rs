@@ -1,15 +1,17 @@
-use std::fs;
-use tempfile::tempdir;
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
-#[cfg(unix)]
-use std::process::Command;
-#[cfg(unix)]
-use std::path::Path;
 #[cfg(unix)]
 use assert_cmd::cargo::cargo_bin;
 #[cfg(unix)]
+use cli::parse_rsh;
+#[cfg(unix)]
 use compress::available_codecs;
+use std::fs;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+#[cfg(unix)]
+use std::path::Path;
+#[cfg(unix)]
+use std::process::Command;
+use tempfile::tempdir;
 #[cfg(unix)]
 mod remote_utils;
 #[cfg(unix)]
@@ -79,10 +81,19 @@ fn custom_rsh_matches_stock_rsync() {
     // Use stock rsync with the same remote shell
     let dst_rsync_spec = format!("ignored:{}", dst_rsync.display());
     let output = Command::new("rsync")
-        .args(["-e", rsh.to_str().unwrap(), src.to_str().unwrap(), &dst_rsync_spec])
+        .args([
+            "-e",
+            rsh.to_str().unwrap(),
+            src.to_str().unwrap(),
+            &dst_rsync_spec,
+        ])
         .output()
         .unwrap();
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     let ours = fs::read(&dst_rr).unwrap();
     let theirs = fs::read(&dst_rsync).unwrap();
@@ -102,10 +113,16 @@ fn custom_rsh_negotiates_codecs() {
     fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
 
     let rsh_cmd = vec![rsh.to_str().unwrap().to_string()];
+    let rsh_env: Vec<(String, String)> = Vec::new();
+    let rsync_env: Vec<(String, String)> = std::env::vars()
+        .filter(|(k, _)| k.starts_with("RSYNC_"))
+        .collect();
     let (session, codecs) = SshStdioTransport::connect_with_rsh(
         "ignored",
         Path::new("."),
         &rsh_cmd,
+        &rsh_env,
+        &rsync_env,
         Some(&remote_bin),
         None,
         true,
@@ -113,4 +130,49 @@ fn custom_rsh_negotiates_codecs() {
     .unwrap();
     drop(session);
     assert_eq!(codecs, available_codecs());
+}
+
+#[cfg(unix)]
+#[test]
+fn rsh_parses_multi_argument_commands() {
+    let dir = tempdir().unwrap();
+    let script = dir.path().join("log_args.sh");
+    fs::write(
+        &script,
+        b"#!/bin/sh\nout=\"$1\"\nshift\nprintf '%s ' \"$@\" > \"$out\"\n",
+    )
+    .unwrap();
+    fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+    let log = dir.path().join("log.txt");
+    let cmd = format!(
+        "{} {} -p 2222 -o \"foo bar\"",
+        script.display(),
+        log.display()
+    );
+    let rsh = parse_rsh(Some(cmd)).unwrap();
+    let mut c = Command::new(&rsh.cmd[0]);
+    c.args(&rsh.cmd[1..]);
+    c.envs(rsh.env.clone());
+    c.status().unwrap();
+    let content = fs::read_to_string(&log).unwrap();
+    assert!(content.contains("-p 2222"));
+    assert!(content.contains("-o foo bar"));
+}
+
+#[cfg(unix)]
+#[test]
+fn rsh_environment_variables_are_propagated() {
+    let dir = tempdir().unwrap();
+    let out = dir.path().join("env.txt");
+    let cmd = format!(
+        "FOO=bar sh -c 'echo \"$FOO\" > {}'",
+        out.display()
+    );
+    let rsh = parse_rsh(Some(cmd)).unwrap();
+    let mut c = Command::new(&rsh.cmd[0]);
+    c.args(&rsh.cmd[1..]);
+    c.envs(rsh.env.clone());
+    c.status().unwrap();
+    let content = fs::read_to_string(&out).unwrap();
+    assert_eq!(content.trim(), "bar");
 }

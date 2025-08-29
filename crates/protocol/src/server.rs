@@ -42,6 +42,22 @@ impl<R: Read, W: Write> Server<R, W> {
     /// advertised codecs are returned, defaulting to `[Codec::Zlib]` when no
     /// explicit negotiation occurs.
     pub fn handshake(&mut self) -> io::Result<Vec<Codec>> {
+        // Consume any environment variables sent by the client. Each entry is
+        // a null-terminated string terminated by an additional null byte.
+        let mut b = [0u8; 1];
+        let mut cur = Vec::new();
+        loop {
+            self.reader.read_exact(&mut b)?;
+            if b[0] == 0 {
+                if cur.is_empty() {
+                    break;
+                }
+                cur.clear();
+            } else {
+                cur.push(b[0]);
+            }
+        }
+
         let mut buf = [0u8; 4];
         // Peer protocol version
         self.reader.read_exact(&mut buf)?;

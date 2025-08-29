@@ -126,6 +126,21 @@ copied:
 
 Flags such as `-P` and `--numeric-ids` mirror their `rsync` behavior. See the [CLI flag reference](cli/flags.md) for implementation details and notes.
 
+## Remote shell
+
+The `--rsh` (`-e`) flag accepts an arbitrary shell command. The command string
+is parsed using shell-style quoting, allowing multiple arguments and embedded
+quotes much like GNU `rsync`. Leading `VAR=value` tokens set environment
+variables for the spawned command. For example:
+
+```
+rsync-rs -e 'RUST_LOG=debug ssh -p 2222 -o "StrictHostKeyChecking=no"' src dst
+```
+
+During the connection handshake `rsync-rs` also forwards any environment
+variables from its own process whose names begin with `RSYNC_`, mirroring
+`rsync`'s environment propagation behavior.
+
 ## Configuration precedence
 
 1. Command-line flags
