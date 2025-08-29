@@ -373,9 +373,11 @@ impl Sender {
 
         let src = File::open(path)?;
         let mut src_reader = BufReader::new(src);
+        let file_name = dest
+            .file_name()
+            .ok_or_else(|| EngineError::Other("destination has no file name".into()))?;
         let partial_path = if let Some(dir) = &self.opts.partial_dir {
-            dir.join(dest.file_name().unwrap())
-                .with_extension("partial")
+            dir.join(file_name).with_extension("partial")
         } else {
             dest.with_extension("partial")
         };
@@ -455,9 +457,11 @@ impl Receiver {
         I: IntoIterator<Item = Result<Op>>,
     {
         self.state = ReceiverState::Applying;
+        let file_name = dest
+            .file_name()
+            .ok_or_else(|| EngineError::Other("destination has no file name".into()))?;
         let partial = if let Some(dir) = &self.opts.partial_dir {
-            dir.join(dest.file_name().unwrap())
-                .with_extension("partial")
+            dir.join(file_name).with_extension("partial")
         } else {
             dest.with_extension("partial")
         };
