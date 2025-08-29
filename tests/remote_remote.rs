@@ -1,6 +1,6 @@
 use assert_cmd::Command;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::time::{Duration, Instant};
 use tempfile::tempdir;
 use transport::ssh::SshStdioTransport;
@@ -236,9 +236,9 @@ fn remote_to_remote_failure_and_reconnect() {
     let dst_session = SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; sleep 1"]).unwrap();
     let (mut src_reader, _) = src_session.into_inner();
     let (_, mut dst_writer) = dst_session.into_inner();
-    let _ = std::io::copy(&mut src_reader, &mut dst_writer);
+    let copy_result = std::io::copy(&mut src_reader, &mut dst_writer);
     std::thread::sleep(std::time::Duration::from_millis(10));
-    assert!(dst_writer.flush().is_err());
+    assert_eq!(copy_result.unwrap_err().kind(), io::ErrorKind::BrokenPipe);
     drop(dst_writer);
     drop(src_reader);
     wait_for(|| !dst_file.exists());
