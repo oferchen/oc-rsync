@@ -13,7 +13,7 @@
 | --blocking-io | Error |  |
 | --bwlimit | Error |  |
 | --checksum | Supported |  |
-| --checksum-choice | Error |  |
+| --checksum-choice | Supported |  |
 | --checksum-seed | Error |  |
 | --chmod | Error |  |
 | --chown | Error |  |

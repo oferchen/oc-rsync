@@ -90,6 +90,14 @@ struct ClientOpts {
     /// use full checksums to determine file changes
     #[arg(short = 'c', long, help_heading = "Attributes")]
     checksum: bool,
+    /// choose the checksum algorithm (aka --cc)
+    #[arg(
+        long = "checksum-choice",
+        value_name = "STR",
+        help_heading = "Attributes",
+        visible_alias = "cc"
+    )]
+    checksum_choice: Option<String>,
     /// preserve permissions
     #[arg(long, help_heading = "Attributes")]
     perms: bool,
@@ -748,6 +756,47 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         rsync_env.push(("RSYNC_TIMEOUT".into(), to.as_secs().to_string()));
     }
 
+    if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
+        let mut list = vec!["md5", "sha1"];
+        if opts.modern || matches!(opts.checksum_choice.as_deref(), Some("blake3")) {
+            list.insert(0, "blake3");
+        }
+        rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
+    }
+
+    let strong = if let Some(choice) = opts.checksum_choice.as_deref() {
+        match choice {
+            "md5" => StrongHash::Md5,
+            "sha1" => StrongHash::Sha1,
+            "blake3" => StrongHash::Blake3,
+            other => {
+                return Err(EngineError::Other(format!("unknown checksum {other}")));
+            }
+        }
+    } else if let Ok(list) = env::var("RSYNC_CHECKSUM_LIST") {
+        let mut chosen = StrongHash::Md5;
+        for name in list.split(',') {
+            match name {
+                "blake3" if opts.modern => {
+                    chosen = StrongHash::Blake3;
+                    break;
+                }
+                "sha1" => {
+                    chosen = StrongHash::Sha1;
+                    break;
+                }
+                "md5" => {
+                    chosen = StrongHash::Md5;
+                    break;
+                }
+                _ => {}
+            }
+        }
+        chosen
+    } else {
+        StrongHash::Md5
+    };
+
     let src_trailing = match &src {
         RemoteSpec::Local(p) => p.trailing_slash,
         RemoteSpec::Remote { path, .. } => path.trailing_slash,
@@ -853,11 +902,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         #[cfg(feature = "acl")]
         acls: opts.acls,
         sparse: opts.sparse,
-        strong: if opts.modern {
-            StrongHash::Blake3
-        } else {
-            StrongHash::Md5
-        },
+        strong,
         compress_level: opts.compress_level,
         compress_choice,
         partial: opts.partial || opts.partial_progress,
@@ -1650,6 +1695,14 @@ mod tests {
         assert!(opts.compress);
         assert!(opts.stats);
         assert_eq!(opts.config, Some(PathBuf::from("file")));
+    }
+
+    #[test]
+    fn parses_checksum_choice_and_alias() {
+        let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "sha1", "src", "dst"]);
+        assert_eq!(opts.checksum_choice.as_deref(), Some("sha1"));
+        let opts = ClientOpts::parse_from(["prog", "--cc", "md5", "src", "dst"]);
+        assert_eq!(opts.checksum_choice.as_deref(), Some("md5"));
     }
 
     #[test]
