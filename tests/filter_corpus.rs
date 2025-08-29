@@ -43,9 +43,11 @@ fn filter_corpus_parity() {
         fs::create_dir_all(&src).unwrap();
         fs::create_dir_all(&rsync_dst).unwrap();
         fs::create_dir_all(&ours_dst).unwrap();
-        match path.file_stem().and_then(|s| s.to_str()).unwrap() {
-            "perdir" => setup_perdir(&src),
-            _ => setup_basic(&src),
+        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap();
+        if stem.starts_with("perdir") {
+            setup_perdir(&src);
+        } else {
+            setup_basic(&src);
         }
         let src_arg = format!("{}/", src.display());
 

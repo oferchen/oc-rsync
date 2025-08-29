@@ -1076,7 +1076,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             if count >= 1 {
                 add_rules(
                     idx,
-                    parse_filters(": /.rsync-filter")
+                    parse_filters("-F")
                         .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
             }

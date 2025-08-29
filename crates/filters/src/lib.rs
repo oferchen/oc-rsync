@@ -131,11 +131,15 @@ impl Matcher {
                 combined.extend(r.clone());
                 continue;
             }
-            let rel = self
-                .root
-                .as_ref()
-                .and_then(|r| dir.strip_prefix(r).ok())
-                .filter(|p| !p.as_os_str().is_empty());
+            let rel = if !pd.anchored {
+                self
+                    .root
+                    .as_ref()
+                    .and_then(|r| dir.strip_prefix(r).ok())
+                    .filter(|p| !p.as_os_str().is_empty())
+            } else {
+                None
+            };
             let rules = match fs::read_to_string(&path) {
                 Ok(content) => {
                     let adjusted = if let Some(rel) = rel {
@@ -232,7 +236,7 @@ pub fn parse(
             if rest.chars().all(|c| c == 'F') {
                 rules.push(Rule::DirMerge(PerDir {
                     file: ".rsync-filter".to_string(),
-                    anchored: true,
+                    anchored: false,
                 }));
                 if !rest.is_empty() {
                     let matcher = Glob::new("**/.rsync-filter")?.compile_matcher();
