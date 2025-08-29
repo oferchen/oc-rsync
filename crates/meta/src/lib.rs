@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -118,10 +117,7 @@ impl Metadata {
         )
         .map_err(nix_to_io)?;
 
-        let mode_t: libc::mode_t = self
-            .mode
-            .try_into()
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "mode does not fit into mode_t"))?;
+        let mode_t: libc::mode_t = self.mode as libc::mode_t;
         let mode = Mode::from_bits_truncate(mode_t);
         stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink).map_err(nix_to_io)?;
 
@@ -168,7 +164,7 @@ fn acl_to_io(err: posix_acl::ACLError) -> io::Error {
             io::Error::new(e.kind(), e.to_string())
         }
     } else {
-        io::Error::new(io::ErrorKind::Other, err)
+        io::Error::other(err)
     }
 }
 

@@ -76,6 +76,16 @@ The project is organized as a set of focused crates:
 - `cli` – exposes a user-facing command line built on top of the engine and transport layers.
 - `fuzz` – houses fuzz targets that stress protocol and parser logic for robustness.
 
+## Building
+
+The CLI entry point resides in the `bin/rsync-rs` crate. Build or run it with Cargo:
+
+```
+cargo build -p rsync-rs-bin --bin rsync-rs
+# or
+cargo run -p rsync-rs-bin -- <args>
+```
+
 ## Milestone Roadmap
 1. **M1—Bootstrap** – repository builds; `walk` and `checksums` crates generate file signatures.
 2. **M2—Delta Engine** – `engine` drives local delta transfers with metadata preservation.
