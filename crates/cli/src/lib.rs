@@ -168,6 +168,14 @@ struct ClientOpts {
     /// throttle I/O bandwidth to RATE bytes per second
     #[arg(long = "bwlimit", value_name = "RATE", help_heading = "Misc")]
     bwlimit: Option<u64>,
+    /// set block size used for rolling checksums
+    #[arg(
+        short = 'B',
+        long = "block-size",
+        value_name = "SIZE",
+        help_heading = "Misc"
+    )]
+    block_size: Option<usize>,
     /// hardlink to files in DIR when unchanged
     #[arg(long = "link-dest", value_name = "DIR", help_heading = "Misc")]
     link_dest: Option<PathBuf>,
@@ -678,6 +686,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     if delete_mode.is_none() && opts.delete_excluded {
         delete_mode = Some(DeleteMode::During);
     }
+    let block_size = opts.block_size.unwrap_or(1024);
     let sync_opts = SyncOptions {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
@@ -713,6 +722,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         numeric_ids: opts.numeric_ids,
         inplace: opts.inplace,
         bwlimit: opts.bwlimit,
+        block_size,
         link_dest: opts.link_dest.clone(),
         copy_dest: opts.copy_dest.clone(),
         compare_dest: opts.compare_dest.clone(),

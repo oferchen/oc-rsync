@@ -14,7 +14,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--atimes` | `-U` | ✅ | ❌ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--backup` | `-b` | ✅ | ✅ | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | uses `~` suffix without `--backup-dir` | ≤3.2 |
 | `--backup-dir` | — | ✅ | ✅ | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | implies `--backup` | ≤3.2 |
-| `--block-size` | `-B` | ❌ | — | — |  | ≤3.2 |
+| `--block-size` | `-B` | ✅ | ❌ | — | controls delta block size | ≤3.2 |
 | `--blocking-io` | — | ❌ | — | — |  | ≤3.2 |
 | `--bwlimit` | — | ✅ | ❌ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) |  | ≤3.2 |
 | `--cc` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--checksum-choice` | ≤3.2 |
