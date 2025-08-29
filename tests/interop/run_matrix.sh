@@ -23,6 +23,8 @@ SCENARIOS=(
   "delete_after --delete-after"
   "compress --compress"
   "rsh"
+  "drop_connection"
+  "vanished"
 )
 
 # Options used for all transfers. -a implies -rtgoD, we add -A and -X for ACLs
@@ -97,11 +99,18 @@ make_source() {
   local dir="$1"
   mkdir -p "$dir"
   echo "data" > "$dir/file.txt"
+  ln "$dir/file.txt" "$dir/hardlink.txt"
+  ln -s file.txt "$dir/symlink.txt"
+  mknod "$dir/char.dev" c 1 3
+  dd if=/dev/zero of="$dir/sparse.bin" bs=1 count=0 seek=1M >/dev/null 2>&1
   if command -v setfattr >/dev/null 2>&1; then
     setfattr -n user.test -v value "$dir/file.txt" || true
+    setfattr -n user.sparse -v value "$dir/sparse.bin" || true
+    setfattr -h -n user.link -v value "$dir/symlink.txt" || true
   fi
   if command -v setfacl >/dev/null 2>&1; then
     setfacl -m u:root:rwx "$dir/file.txt" || true
+    setfacl -m u:root:rwx "$dir/sparse.bin" || true
   fi
 }
 
@@ -114,9 +123,12 @@ snapshot_tree() {
       if [[ -f "$f" ]]; then
         sha1sum "$f" || true
       fi
-      stat --printf 'meta %n %f %u %g %a %s\n' "$f" || true
-      getfacl -p "$f" 2>/dev/null || true
-      getfattr -d -m- "$f" 2>/dev/null || true
+      if [[ -L "$f" ]]; then
+        printf 'link %s -> %s\n' "$f" "$(readlink "$f")" || true
+      fi
+      stat --printf 'meta %n %f %u %g %a %s %b %i %t:%T\n' "$f" || true
+      getfacl -h -p "$f" 2>/dev/null || true
+      getfattr -h -d -m- "$f" 2>/dev/null || true
       echo
     done
   ) > "$out"
@@ -163,7 +175,13 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             if [[ "$name" == delete* ]]; then
               touch "$tmpdir/stale.txt"
             fi
-            if [[ "$name" == rsh ]]; then
+            if [[ "$name" == drop_connection ]]; then
+              dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
+              timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
+            elif [[ "$name" == vanished ]]; then
+              (sleep 0.1 && rm -f "$src/file.txt") &
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
+            elif [[ "$name" == rsh ]]; then
               "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsh "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
             else
               "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
@@ -187,7 +205,15 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             if [[ "$name" == delete* ]]; then
               touch "$rootdir/stale.txt"
             fi
-            "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null
+            if [[ "$name" == drop_connection ]]; then
+              dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
+              timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
+            elif [[ "$name" == vanished ]]; then
+              (sleep 0.1 && rm -f "$src/file.txt") &
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
+            else
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null
+            fi
             base="${c}_${s}_rsync"
             gold="$GOLDEN/$base"
             if [[ "$name" != "base" ]]; then
