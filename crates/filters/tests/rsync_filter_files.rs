@@ -1,6 +1,6 @@
 use filters::{parse, Matcher};
-use std::collections::HashSet;
 use proptest::prelude::*;
+use std::collections::HashSet;
 use std::fs;
 use tempfile::tempdir;
 
