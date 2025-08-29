@@ -197,7 +197,7 @@ fn set_file_crtime(path: &Path, crtime: FileTime) -> io::Result<()> {
     let ret = unsafe {
         setattrlist(
             path.as_ptr(),
-            &mut attr,
+            &mut attr as *mut _ as *mut libc::c_void,
             &mut ts as *mut _ as *mut libc::c_void,
             mem::size_of::<timespec>() as libc::size_t,
             0,
