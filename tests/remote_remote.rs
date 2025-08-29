@@ -221,6 +221,47 @@ fn remote_to_remote_partial_and_resume() {
 }
 
 #[test]
+fn remote_partial_transfer_resumed_by_cli() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    fs::write(src_dir.join("a.txt"), b"hello").unwrap();
+
+    // Simulate an interrupted remote transfer writing a partial file
+    let partial = dst_dir.join("a.partial");
+    let src_session = SshStdioTransport::spawn(
+        "sh",
+        [
+            "-c",
+            &format!("head -c 2 {} 2>/dev/null", src_dir.join("a.txt").display()),
+        ],
+    )
+    .unwrap();
+    let dst_session = SshStdioTransport::spawn(
+        "sh",
+        ["-c", &format!("cat > {}", partial.display())],
+    )
+    .unwrap();
+    let (mut src_reader, _) = src_session.into_inner();
+    let (_, mut dst_writer) = dst_session.into_inner();
+    std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
+    drop(dst_writer);
+    drop(src_reader);
+
+    // Resume using the CLI which should detect the partial and finish it
+    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args(["--local", "--partial", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.assert().success();
+
+    let out = fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, b"hello");
+    assert!(!partial.exists());
+}
+
+#[test]
 fn remote_to_remote_failure_and_reconnect() {
     let dir = tempdir().unwrap();
     let src_file = dir.path().join("src.txt");

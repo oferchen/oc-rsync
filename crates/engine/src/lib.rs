@@ -304,18 +304,51 @@ fn apply_delta<R: Read + Seek, W: Write + Seek + Any, I>(
     ops: I,
     out: &mut W,
     opts: &SyncOptions,
+    mut skip: u64,
 ) -> Result<()>
 where
     I: IntoIterator<Item = Result<Op>>,
 {
     let mut buf = vec![0u8; 8192];
+    let mut adjust = |op: Op| -> Option<Op> {
+        if skip == 0 {
+            return Some(op);
+        }
+        match op {
+            Op::Data(d) => {
+                if (skip as usize) >= d.len() {
+                    skip -= d.len() as u64;
+                    None
+                } else {
+                    let start = skip as usize;
+                    skip = 0;
+                    Some(Op::Data(d[start..].to_vec()))
+                }
+            }
+            Op::Copy { offset, len } => {
+                if (skip as usize) >= len {
+                    skip -= len as u64;
+                    None
+                } else {
+                    let start = skip as usize;
+                    skip = 0;
+                    Some(Op::Copy {
+                        offset: offset + start,
+                        len: len - start,
+                    })
+                }
+            }
+        }
+    };
     if opts.inplace {
         let file = (&mut *out as &mut dyn Any)
             .downcast_mut::<File>()
             .ok_or_else(|| EngineError::Other("inplace output must be a File".into()))?;
         for op in ops {
             let op = op?;
-            apply_op_inplace(basis, op, file, &mut buf)?;
+            if let Some(op) = adjust(op) {
+                apply_op_inplace(basis, op, file, &mut buf)?;
+            }
         }
     } else if opts.sparse {
         let file = (&mut *out as &mut dyn Any)
@@ -323,7 +356,9 @@ where
             .ok_or_else(|| EngineError::Other("sparse output must be a File".into()))?;
         for op in ops {
             let op = op?;
-            apply_op_sparse(basis, op, file, &mut buf)?;
+            if let Some(op) = adjust(op) {
+                apply_op_sparse(basis, op, file, &mut buf)?;
+            }
         }
         // Ensure the final file length accounts for any trailing holes by
         // explicitly setting it to the current position. This avoids writing
@@ -333,7 +368,9 @@ where
     } else {
         for op in ops {
             let op = op?;
-            apply_op_plain(basis, op, out, &mut buf)?;
+            if let Some(op) = adjust(op) {
+                apply_op_plain(basis, op, out, &mut buf)?;
+            }
         }
     }
     Ok(())
@@ -526,15 +563,26 @@ impl Receiver {
             fs::create_dir_all(parent)?;
         }
 
-        let mut out = if self.opts.inplace {
-            OpenOptions::new()
+        let (mut out, resume) = if self.opts.inplace {
+            let f = OpenOptions::new()
                 .read(true)
                 .write(true)
                 .create(true)
-                .open(tmp_dest)?
+                .open(tmp_dest)?;
+            let len = f.metadata()?.len();
+            (f, len)
+        } else if self.opts.partial {
+            let f = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(tmp_dest)?;
+            let len = f.metadata()?.len();
+            (f, len)
         } else {
-            File::create(tmp_dest)?
+            (File::create(tmp_dest)?, 0)
         };
+        out.seek(SeekFrom::Start(resume))?;
         let ops = delta.into_iter().map(|op_res| {
             let mut op = op_res?;
             if let Some(codec) = self.codec {
@@ -557,7 +605,7 @@ impl Receiver {
             }
             Ok(op)
         });
-        apply_delta(&mut basis, ops, &mut out, &self.opts)?;
+        apply_delta(&mut basis, ops, &mut out, &self.opts, resume)?;
         let len = out.seek(SeekFrom::Current(0))?;
         out.set_len(len)?;
         if self.opts.partial && !self.opts.inplace {
@@ -859,7 +907,7 @@ mod tests {
         let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
         let mut basis = Cursor::new(b"hello world".to_vec());
         let mut out = Cursor::new(Vec::new());
-        apply_delta(&mut basis, delta, &mut out, &SyncOptions::default()).unwrap();
+        apply_delta(&mut basis, delta, &mut out, &SyncOptions::default(), 0).unwrap();
         assert_eq!(out.into_inner(), b"hello brave new world");
     }
 
@@ -891,6 +939,7 @@ mod tests {
             delta.into_iter().map(Ok),
             &mut out,
             &SyncOptions::default(),
+            0,
         )
         .unwrap();
         assert_eq!(out.into_inner(), basis);
@@ -1032,7 +1081,7 @@ mod tests {
         // delta should reconstruct target
         let mut basis = Cursor::new(data.clone());
         let mut out = Cursor::new(Vec::new());
-        apply_delta(&mut basis, delta, &mut out, &SyncOptions::default()).unwrap();
+        apply_delta(&mut basis, delta, &mut out, &SyncOptions::default(), 0).unwrap();
         assert_eq!(out.into_inner(), data);
         // Memory usage should stay under ~10MB
         assert!(
