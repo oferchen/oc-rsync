@@ -7,15 +7,14 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
 ### Protocol gaps
 - Remote shell (`--rsh`) negotiation is incomplete, lacking full `rsh` command parsing and environment handshakes.
 - Partial transfer resumption does not fully match `rsync` semantics; interrupted copies cannot reuse partially transferred data.
- - Compression support is limited to zlib and zstd; algorithms such as lz4 are not yet implemented.
+- Compression support includes zlib and zstd, with optional LZ4 available when the `lz4` feature is enabled.
 
 ### Metadata gaps
 - File time preservation is incomplete; creation times (`--crtimes`) may not be supported on all platforms.
 - Enhanced metadata such as permissions, owners, and groups lack full parity with GNU rsync.
 
 ### Filter gaps
-- Filter rules cover basic include/exclude patterns but still fall short of `rsync`'s full syntax.
-- Per-directory `.rsync-filter` handling and `-F` convenience flag semantics remain unimplemented.
+- Filter rules cover basic include/exclude patterns but still fall short of `rsync`'s full syntax, lacking advanced rule modifiers and merge directives.
 
 ### Daemon gaps
 - Many command-line options remain absent or lack parity; see `docs/feature_matrix.md` for the full matrix.
