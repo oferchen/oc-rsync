@@ -4,6 +4,11 @@ use std::path::{Path, PathBuf};
 use std::process::{ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{Arc, Mutex};
 
+use compress::{available_codecs, Codec};
+use protocol::{
+    negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION,
+};
+
 use crate::{LocalPipeTransport, SshTransport, Transport};
 
 const SSH_IO_BUF_SIZE: usize = 32 * 1024;
@@ -131,6 +136,145 @@ impl SshStdioTransport {
             ),
             stderr: stderr_buf,
         })
+    }
+
+    fn handshake<T: Transport>(transport: &mut T) -> io::Result<Vec<Codec>> {
+        transport.send(&LATEST_VERSION.to_be_bytes())?;
+
+        let mut ver_buf = [0u8; 4];
+        let mut read = 0;
+        while read < ver_buf.len() {
+            let n = transport.receive(&mut ver_buf[read..])?;
+            if n == 0 {
+                return Err(io::Error::other("failed to read version"));
+            }
+            read += n;
+        }
+        let peer = u32::from_be_bytes(ver_buf);
+        negotiate_version(peer).map_err(|e| io::Error::other(e.to_string()))?;
+
+        let caps = CAP_CODECS;
+        transport.send(&caps.to_be_bytes())?;
+
+        let mut cap_buf = [0u8; 4];
+        transport.receive(&mut cap_buf)?;
+        let server_caps = u32::from_be_bytes(cap_buf);
+
+        let mut peer_codecs = vec![Codec::Zlib];
+        if server_caps & CAP_CODECS != 0 {
+            let payload = compress::encode_codecs(available_codecs());
+            let frame = Message::Codecs(payload).to_frame(0);
+            let mut buf = Vec::new();
+            frame.encode(&mut buf).map_err(|e| io::Error::other(e.to_string()))?;
+            transport.send(&buf)?;
+
+            let mut hdr = [0u8; 8];
+            let mut read = 0;
+            while read < hdr.len() {
+                let n = transport.receive(&mut hdr[read..])?;
+                if n == 0 {
+                    return Err(io::Error::other("failed to read frame header"));
+                }
+                read += n;
+            }
+            let channel = u16::from_be_bytes([hdr[0], hdr[1]]);
+            let tag = Tag::try_from(hdr[2]).map_err(io::Error::from)?;
+            let msg = Msg::try_from(hdr[3]).map_err(io::Error::from)?;
+            let len = u32::from_be_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
+            let mut payload = vec![0u8; len];
+            let mut off = 0;
+            while off < len {
+                let n = transport.receive(&mut payload[off..])?;
+                if n == 0 {
+                    return Err(io::Error::other("failed to read frame payload"));
+                }
+                off += n;
+            }
+            let frame = Frame {
+                header: FrameHeader {
+                    channel,
+                    tag,
+                    msg,
+                    len: len as u32,
+                },
+                payload,
+            };
+            let msg = Message::from_frame(frame)
+                .map_err(|e| io::Error::other(e.to_string()))?;
+            if let Message::Codecs(data) = msg {
+                peer_codecs = compress::decode_codecs(&data)
+                    .map_err(|e| io::Error::other(e.to_string()))?;
+            }
+        }
+
+        Ok(peer_codecs)
+    }
+
+    pub fn spawn_with_rsh(
+        host: &str,
+        path: &Path,
+        rsh: &[String],
+        remote_bin: Option<&Path>,
+        known_hosts: Option<&Path>,
+        strict_host_key_checking: bool,
+    ) -> io::Result<Self> {
+        let program = rsh.get(0).map(|s| s.as_str()).unwrap_or("ssh");
+        if program == "ssh" {
+            let mut cmd = Command::new(program);
+            cmd.args(&rsh[1..]);
+            let known_hosts_path = known_hosts.map(Path::to_path_buf).or_else(|| {
+                std::env::var("HOME")
+                    .ok()
+                    .map(|h| PathBuf::from(h).join(".ssh/known_hosts"))
+            });
+            let checking = if strict_host_key_checking { "yes" } else { "no" };
+            cmd.arg("-o")
+                .arg(format!("StrictHostKeyChecking={checking}"));
+            if let Some(path) = known_hosts_path {
+                cmd.arg("-o")
+                    .arg(format!("UserKnownHostsFile={}", path.display()));
+            }
+            cmd.arg(host);
+            if let Some(bin) = remote_bin {
+                cmd.arg(bin);
+            } else {
+                cmd.arg("rsync");
+            }
+            cmd.arg("--server");
+            cmd.arg(path.as_os_str());
+            Self::spawn_from_command(cmd)
+        } else {
+            let mut args = rsh[1..].to_vec();
+            args.push(host.to_string());
+            if let Some(bin) = remote_bin {
+                args.push(bin.to_string_lossy().into_owned());
+            } else {
+                args.push("rsync".to_string());
+            }
+            args.push("--server".to_string());
+            args.push(path.to_string_lossy().into_owned());
+            Self::spawn(program, args)
+        }
+    }
+
+    pub fn connect_with_rsh(
+        host: &str,
+        path: &Path,
+        rsh: &[String],
+        remote_bin: Option<&Path>,
+        known_hosts: Option<&Path>,
+        strict_host_key_checking: bool,
+    ) -> io::Result<(Self, Vec<Codec>)> {
+        let mut t = Self::spawn_with_rsh(
+            host,
+            path,
+            rsh,
+            remote_bin,
+            known_hosts,
+            strict_host_key_checking,
+        )?;
+        let codecs = Self::handshake(&mut t)?;
+        Ok((t, codecs))
     }
 
     /// Return any data captured from stderr of the spawned process along with

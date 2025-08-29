@@ -594,9 +594,11 @@ dependencies = [
 name = "fuzz"
 version = "0.1.0"
 dependencies = [
+ "cli",
  "filters",
  "libfuzzer-sys",
  "protocol",
+ "walk",
 ]
 
 [[package]]
@@ -1335,6 +1337,8 @@ dependencies = [
 name = "transport"
 version = "0.1.0"
 dependencies = [
+ "compress",
+ "protocol",
  "tempfile",
 ]
 

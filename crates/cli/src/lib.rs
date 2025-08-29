@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
@@ -7,15 +6,12 @@ use std::net::{IpAddr, TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use clap::{ArgAction, Parser};
-use compress::{available_codecs, Codec};
+use compress::available_codecs;
 use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{parse as parse_filters, Matcher};
-use protocol::{
-    negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION,
-};
+use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
 use transport::{RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
 
@@ -417,68 +413,6 @@ where
     Ok(())
 }
 
-fn spawn_remote_session(
-    host: &str,
-    path: &Path,
-    rsh: &[String],
-    remote_bin: Option<&Path>,
-    known_hosts: Option<&Path>,
-    strict_host_key_checking: bool,
-) -> io::Result<SshStdioTransport> {
-    if host == "sh" {
-        let cmd = path
-            .to_str()
-            .ok_or_else(|| io::Error::other("invalid command"))?;
-        let program = rsh.get(0).map(|s| s.as_str()).unwrap_or("sh");
-        let mut args: Vec<String> = rsh.iter().skip(1).cloned().collect();
-        args.push("-c".to_string());
-        args.push(cmd.to_string());
-        SshStdioTransport::spawn(program, args)
-    } else {
-        let program = rsh.get(0).map(|s| s.as_str()).unwrap_or("ssh");
-        if program == "ssh" {
-            let mut cmd = Command::new(program);
-            cmd.args(&rsh[1..]);
-            let known_hosts_path = known_hosts.map(Path::to_path_buf).or_else(|| {
-                std::env::var("HOME")
-                    .ok()
-                    .map(|h| PathBuf::from(h).join(".ssh/known_hosts"))
-            });
-            let checking = if strict_host_key_checking {
-                "yes"
-            } else {
-                "no"
-            };
-            cmd.arg("-o")
-                .arg(format!("StrictHostKeyChecking={checking}"));
-            if let Some(path) = known_hosts_path {
-                cmd.arg("-o")
-                    .arg(format!("UserKnownHostsFile={}", path.display()));
-            }
-            cmd.arg(host);
-            if let Some(bin) = remote_bin {
-                cmd.arg(bin);
-            } else {
-                cmd.arg("rsync");
-            }
-            cmd.arg("--server");
-            cmd.arg(path.as_os_str());
-            SshStdioTransport::spawn_from_command(cmd)
-        } else {
-            let mut args = rsh[1..].to_vec();
-            args.push(host.to_string());
-            if let Some(bin) = remote_bin {
-                args.push(bin.to_string_lossy().into_owned());
-            } else {
-                args.push("rsync".to_string());
-            }
-            args.push("--server".to_string());
-            args.push(path.to_string_lossy().into_owned());
-            SshStdioTransport::spawn(program, args)
-        }
-    }
-}
-
 fn spawn_daemon_session(
     host: &str,
     module: &str,
@@ -536,89 +470,6 @@ fn spawn_daemon_session(
     Ok(t)
 }
 
-fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
-    transport
-        .send(&LATEST_VERSION.to_be_bytes())
-        .map_err(EngineError::from)?;
-
-    let mut ver_buf = [0u8; 4];
-    let mut read = 0;
-    while read < ver_buf.len() {
-        let n = transport
-            .receive(&mut ver_buf[read..])
-            .map_err(EngineError::from)?;
-        if n == 0 {
-            return Err(EngineError::Other("failed to read version".into()));
-        }
-        read += n;
-    }
-    let peer = u32::from_be_bytes(ver_buf);
-    negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
-
-    // Send our capability bitmask.
-    let caps = CAP_CODECS;
-    transport
-        .send(&caps.to_be_bytes())
-        .map_err(EngineError::from)?;
-
-    // Read server capability bitmask.
-    let mut cap_buf = [0u8; 4];
-    transport.receive(&mut cap_buf).map_err(EngineError::from)?;
-    let server_caps = u32::from_be_bytes(cap_buf);
-
-    let mut peer_codecs = vec![Codec::Zlib];
-    if server_caps & CAP_CODECS != 0 {
-        // Advertise our supported codecs via a codecs message frame.
-        let payload = compress::encode_codecs(available_codecs());
-        let frame = Message::Codecs(payload).to_frame(0);
-        let mut buf = Vec::new();
-        frame.encode(&mut buf).map_err(EngineError::from)?;
-        transport.send(&buf).map_err(EngineError::from)?;
-
-        // Read the peer's codecs message frame.
-        let mut hdr = [0u8; 8];
-        let mut read = 0;
-        while read < hdr.len() {
-            let n = transport
-                .receive(&mut hdr[read..])
-                .map_err(EngineError::from)?;
-            if n == 0 {
-                return Err(EngineError::Other("failed to read frame header".into()));
-            }
-            read += n;
-        }
-        let channel = u16::from_be_bytes([hdr[0], hdr[1]]);
-        let tag = Tag::try_from(hdr[2]).map_err(|e| EngineError::Other(e.to_string()))?;
-        let msg = Msg::try_from(hdr[3]).map_err(|e| EngineError::Other(e.to_string()))?;
-        let len = u32::from_be_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
-        let mut payload = vec![0u8; len];
-        let mut off = 0;
-        while off < len {
-            let n = transport
-                .receive(&mut payload[off..])
-                .map_err(EngineError::from)?;
-            if n == 0 {
-                return Err(EngineError::Other("failed to read frame payload".into()));
-            }
-            off += n;
-        }
-        let frame = Frame {
-            header: FrameHeader {
-                channel,
-                tag,
-                msg,
-                len: len as u32,
-            },
-            payload,
-        };
-        let msg = Message::from_frame(frame).map_err(EngineError::from)?;
-        if let Message::Codecs(data) = msg {
-            peer_codecs = compress::decode_codecs(&data).map_err(EngineError::from)?;
-        }
-    }
-
-    Ok(peer_codecs)
-}
 
 fn run_client(opts: ClientOpts) -> Result<()> {
     let matcher = build_matcher(&opts)?;
@@ -791,7 +642,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 },
                 RemoteSpec::Local(dst),
             ) => {
-                let mut session = spawn_remote_session(
+                let (session, codecs) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &src.path,
                     &rsh_cmd,
@@ -800,7 +651,6 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     strict_host_key_checking,
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
-                let codecs = handshake_with_peer(&mut session)?;
                 let (err, _) = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
@@ -837,7 +687,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     module: None,
                 },
             ) => {
-                let mut session = spawn_remote_session(
+                let (session, codecs) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &dst.path,
                     &rsh_cmd,
@@ -846,7 +696,6 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     strict_host_key_checking,
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
-                let codecs = handshake_with_peer(&mut session)?;
                 let (err, _) = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
@@ -876,7 +725,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
 
                 match (src_mod, dst_mod) {
                     (None, None) => {
-                        let mut dst_session = spawn_remote_session(
+                        let mut dst_session = SshStdioTransport::spawn_with_rsh(
                             &dst_host,
                             &dst_path.path,
                             &rsh_cmd,
@@ -885,7 +734,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                             strict_host_key_checking,
                         )
                         .map_err(|e| EngineError::Other(e.to_string()))?;
-                        let mut src_session = spawn_remote_session(
+                        let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
                             &src_path.path,
                             &rsh_cmd,
@@ -954,7 +803,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                         Stats::default()
                     }
                     (Some(sm), None) => {
-                        let mut dst_session = spawn_remote_session(
+                        let mut dst_session = SshStdioTransport::spawn_with_rsh(
                             &dst_host,
                             &dst_path.path,
                             &rsh_cmd,
@@ -999,7 +848,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                             opts.password_file.as_deref(),
                             opts.no_motd,
                         )?;
-                        let mut src_session = spawn_remote_session(
+                        let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
                             &src_path.path,
                             &rsh_cmd,
