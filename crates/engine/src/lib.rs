@@ -829,6 +829,9 @@ pub struct SyncOptions {
     pub owner: bool,
     pub group: bool,
     pub links: bool,
+    pub copy_links: bool,
+    pub copy_unsafe_links: bool,
+    pub safe_links: bool,
     pub hard_links: bool,
     pub devices: bool,
     pub specials: bool,
@@ -870,6 +873,9 @@ impl Default for SyncOptions {
             owner: false,
             group: false,
             links: false,
+            copy_links: false,
+            copy_unsafe_links: false,
+            safe_links: false,
             hard_links: false,
             devices: false,
             specials: false,
@@ -1058,19 +1064,56 @@ pub fn sync(
                     }
                 } else if file_type.is_dir() {
                     fs::create_dir_all(&dest_path)?;
-                } else if file_type.is_symlink() && opts.links {
+                } else if file_type.is_symlink() {
                     let target = fs::read_link(&path)?;
-                    if let Some(parent) = dest_path.parent() {
-                        fs::create_dir_all(parent)?;
+                    let target_path = if target.is_absolute() {
+                        target.clone()
+                    } else {
+                        path.parent().unwrap_or(Path::new("")).join(&target)
+                    };
+                    let is_unsafe = match fs::canonicalize(&target_path) {
+                        Ok(p) => !p.starts_with(src),
+                        Err(_) => true,
+                    };
+                    if opts.safe_links && is_unsafe {
+                        continue;
                     }
-                    #[cfg(unix)]
-                    std::os::unix::fs::symlink(&target, &dest_path)?;
-                    #[cfg(windows)]
-                    {
-                        if target.is_dir() {
-                            std::os::windows::fs::symlink_dir(&target, &dest_path)?;
-                        } else {
-                            std::os::windows::fs::symlink_file(&target, &dest_path)?;
+                    let meta = fs::metadata(&target_path).ok();
+                    if opts.copy_links || (opts.copy_unsafe_links && is_unsafe) {
+                        if let Some(meta) = meta {
+                            if meta.is_dir() {
+                                if let Some(parent) = dest_path.parent() {
+                                    fs::create_dir_all(parent)?;
+                                }
+                                let sub = sync(&target_path, &dest_path, &matcher, remote, opts)?;
+                                stats.files_transferred += sub.files_transferred;
+                                stats.files_deleted += sub.files_deleted;
+                                stats.bytes_transferred += sub.bytes_transferred;
+                            } else if meta.is_file() {
+                                if sender.process_file(
+                                    &target_path,
+                                    &dest_path,
+                                    rel,
+                                    &mut receiver,
+                                )? {
+                                    stats.files_transferred += 1;
+                                    stats.bytes_transferred += meta.len();
+                                }
+                            }
+                        }
+                    } else if opts.links {
+                        if let Some(parent) = dest_path.parent() {
+                            fs::create_dir_all(parent)?;
+                        }
+                        #[cfg(unix)]
+                        std::os::unix::fs::symlink(&target, &dest_path)?;
+                        #[cfg(windows)]
+                        {
+                            if meta.map_or(false, |m| m.is_dir()) {
+                                std::os::windows::fs::symlink_dir(&target, &dest_path)?;
+                            } else {
+                                std::os::windows::fs::symlink_file(&target, &dest_path)?;
+                            }
                         }
                     }
                 } else {

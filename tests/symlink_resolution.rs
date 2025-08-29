@@ -1,0 +1,96 @@
+use assert_cmd::Command;
+use std::fs;
+use std::path::Path;
+use tempfile::tempdir;
+
+#[cfg(unix)]
+fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) {
+    std::os::unix::fs::symlink(src, dst).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn copy_links_directory() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("dir")).unwrap();
+    fs::write(src.join("dir/file"), b"hi").unwrap();
+    symlink("dir", src.join("dirlink"));
+
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--copy-links",
+            &format!("{}/", src.display()),
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("dirlink").is_dir());
+    assert_eq!(fs::read(dst.join("dirlink/file")).unwrap(), b"hi");
+}
+
+#[cfg(unix)]
+#[test]
+fn copy_unsafe_links() {
+    let tmp = tempdir().unwrap();
+    let outside = tmp.path().join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    fs::write(outside.join("file"), b"hi").unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    symlink("../outside/file", src.join("link"));
+
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--copy-unsafe-links",
+            &format!("{}/", src.display()),
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("link").is_file());
+    assert_eq!(fs::read(dst.join("link")).unwrap(), b"hi");
+}
+
+#[cfg(unix)]
+#[test]
+fn safe_links_skip() {
+    let tmp = tempdir().unwrap();
+    let outside = tmp.path().join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    fs::write(outside.join("file"), b"hi").unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("inside"), b"ok").unwrap();
+    symlink("inside", src.join("safe"));
+    symlink("../outside/file", src.join("unsafe"));
+
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--links",
+            "--safe-links",
+            &format!("{}/", src.display()),
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst
+        .join("safe")
+        .symlink_metadata()
+        .unwrap()
+        .file_type()
+        .is_symlink());
+    assert!(!dst.join("unsafe").exists());
+}
