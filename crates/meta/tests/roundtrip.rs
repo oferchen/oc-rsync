@@ -1,4 +1,5 @@
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 
 use filetime::FileTime;
 use meta::{Metadata, Options};
@@ -36,7 +37,7 @@ fn roundtrip_basic_metadata() -> std::io::Result<()> {
     chown(&dst, Some(Uid::from_raw(1)), Some(Gid::from_raw(1)))?;
 
     let opts = Options::default();
-    let meta = Metadata::from_path(&src, opts)?;
+    let meta = Metadata::from_path(&src, opts.clone())?;
     meta.apply(&dst, opts)?;
     let applied = Metadata::from_path(&dst, opts)?;
 
@@ -64,7 +65,7 @@ fn roundtrip_xattrs() -> std::io::Result<()> {
         xattrs: true,
         ..Default::default()
     };
-    let meta = Metadata::from_path(&src, opts)?;
+    let meta = Metadata::from_path(&src, opts.clone())?;
     meta.apply(&dst, opts)?;
     let applied = Metadata::from_path(&dst, opts)?;
     let filter = |xs: &[(std::ffi::OsString, Vec<u8>)]| {
@@ -117,10 +118,35 @@ fn roundtrip_acl() -> std::io::Result<()> {
         acl: true,
         ..Default::default()
     };
-    let meta = Metadata::from_path(&src, opts)?;
+    let meta = Metadata::from_path(&src, opts.clone())?;
     meta.apply(&dst, opts)?;
     let applied = Metadata::from_path(&dst, opts)?;
 
     assert_eq!(meta.acl, applied.acl);
+    Ok(())
+}
+
+#[test]
+fn apply_chmod_rule() -> std::io::Result<()> {
+    use meta::{Chmod, ChmodOp, ChmodTarget};
+    let dir = tempdir()?;
+    let file = dir.path().join("file");
+    fs::write(&file, b"data")?;
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o640))?;
+
+    let opts = Options {
+        chmod: Some(vec![Chmod {
+            target: ChmodTarget::All,
+            op: ChmodOp::Add,
+            mask: 0o111,
+            bits: 0o111,
+            conditional: false,
+        }]),
+        ..Default::default()
+    };
+    let meta = Metadata::from_path(&file, opts.clone())?;
+    meta.apply(&file, opts)?;
+    let applied = fs::metadata(&file)?;
+    assert_eq!(applied.permissions().mode() & 0o777, 0o751);
     Ok(())
 }

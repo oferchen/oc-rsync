@@ -74,6 +74,7 @@ copied:
 | `-l` | `--links` | off | copy symlinks as symlinks |
 | | `--hard-links` | off | preserve hard links |
 | | `--perms` | off | preserve permissions |
+| | `--chmod=CHMOD` | none | affect file and/or directory permissions |
 | | `--acls` | off | preserve ACLs (implies --perms) |
 | | `--xattrs` | off | preserve extended attributes |
 | | `--owner` | off | preserve owner (super-user only) |
@@ -132,6 +133,21 @@ copied:
 | | `--motd=FILE` | none | path to message of the day file |
 
 Flags such as `-P` and `--numeric-ids` mirror their `rsync` behavior. See the [CLI flag reference](cli/flags.md) for implementation details and notes.
+
+### Permission tweaks with `--chmod`
+
+The `--chmod=CHMOD` option adjusts permission bits on transferred files. The
+syntax mirrors `chmod` and supports comma-separated rules. Prefix a rule with
+`D` or `F` to limit it to directories or files respectively.
+
+Examples:
+
+- `--chmod=Du+rwx` adds user read/write/execute for directories.
+- `--chmod=F644` forces regular files to mode `644`.
+- `--chmod=ug=rwX,o=rX` sets user and group read/write and conditional execute while
+  giving others read access.
+
+Multiple `--chmod` flags accumulate.
 
 ## Remote shell
 

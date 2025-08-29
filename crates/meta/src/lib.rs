@@ -14,10 +14,10 @@ use std::ffi::OsString;
 
 #[cfg(all(test, feature = "xattr"))]
 mod xattr {
-    use ::xattr as real_xattr;
     pub use real_xattr::{get, set};
     use std::ffi::OsString;
     use std::path::Path;
+    use xattr as real_xattr;
 
     pub fn list(path: &Path) -> std::io::Result<Vec<OsString>> {
         let attrs: Vec<OsString> = real_xattr::list(path)?.collect();
@@ -28,13 +28,52 @@ mod xattr {
     }
 }
 
+/// Target for a mode adjustment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChmodTarget {
+    /// Apply to files and directories.
+    All,
+    /// Apply only to regular files.
+    File,
+    /// Apply only to directories.
+    Dir,
+}
+
+/// Operation performed by a mode adjustment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChmodOp {
+    /// Add the specified bits.
+    Add,
+    /// Remove the specified bits.
+    Remove,
+    /// Set the specified bits, clearing others within the mask.
+    Set,
+}
+
+/// A single parsed `--chmod` rule.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Chmod {
+    /// Target of the rule.
+    pub target: ChmodTarget,
+    /// Operation to perform.
+    pub op: ChmodOp,
+    /// Mask of bits affected by this rule.
+    pub mask: u32,
+    /// Bits to set or clear depending on the operation.
+    pub bits: u32,
+    /// Whether execute bits are conditional (`X`).
+    pub conditional: bool,
+}
+
 /// Options controlling which metadata to capture and apply.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Options {
     /// Include extended attributes.
     pub xattrs: bool,
     /// Include POSIX ACL entries.
     pub acl: bool,
+    /// Adjust permissions based on parsed `--chmod` rules.
+    pub chmod: Option<Vec<Chmod>>,
 }
 
 /// Serialized file metadata.
@@ -109,7 +148,7 @@ impl Metadata {
     }
 
     /// Apply metadata to `path` using `opts`.
-    pub fn apply(&self, path: &Path, _opts: Options) -> io::Result<()> {
+    pub fn apply(&self, path: &Path, opts: Options) -> io::Result<()> {
         unistd::chown(
             path,
             Some(Uid::from_raw(self.uid)),
@@ -117,7 +156,31 @@ impl Metadata {
         )
         .map_err(nix_to_io)?;
 
-        let mode_t: libc::mode_t = self.mode as libc::mode_t;
+        let mut mode_val = self.mode;
+        if let Some(ref rules) = opts.chmod {
+            let is_dir = fs::metadata(path)?.is_dir();
+            let orig_mode = mode_val;
+            for rule in rules {
+                match rule.target {
+                    ChmodTarget::Dir if !is_dir => continue,
+                    ChmodTarget::File if is_dir => continue,
+                    _ => {}
+                }
+                let mut bits = rule.bits;
+                if rule.conditional && !(is_dir || (orig_mode & 0o111) != 0) {
+                    bits &= !0o111;
+                }
+                match rule.op {
+                    ChmodOp::Add => mode_val |= bits,
+                    ChmodOp::Remove => mode_val &= !bits,
+                    ChmodOp::Set => {
+                        mode_val = (mode_val & !rule.mask) | (bits & rule.mask);
+                    }
+                }
+            }
+        }
+
+        let mode_t: libc::mode_t = mode_val as libc::mode_t;
         let mode = Mode::from_bits_truncate(mode_t);
         stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink).map_err(nix_to_io)?;
 
@@ -132,14 +195,14 @@ impl Metadata {
         }
 
         #[cfg(feature = "xattr")]
-        if _opts.xattrs {
+        if opts.xattrs {
             for (name, value) in &self.xattrs {
                 xattr::set(path, name, value)?;
             }
         }
 
         #[cfg(feature = "acl")]
-        if _opts.acl {
+        if opts.acl {
             let mut acl = posix_acl::PosixACL::empty();
             for entry in &self.acl {
                 acl.set(entry.qual, entry.perm);
