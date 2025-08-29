@@ -434,12 +434,15 @@ impl Sender {
             if let Ok(dst_sum) = self.strong_file_checksum(dest) {
                 let src_sum = self.strong_file_checksum(path)?;
                 if src_sum == dst_sum {
+                    recv.copy_metadata(path, dest)?;
                     return Ok(false);
                 }
             } else if self.metadata_unchanged(path, dest) {
+                recv.copy_metadata(path, dest)?;
                 return Ok(false);
             }
         } else if self.metadata_unchanged(path, dest) {
+            recv.copy_metadata(path, dest)?;
             return Ok(false);
         }
 

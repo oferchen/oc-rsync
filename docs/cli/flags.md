@@ -4,7 +4,7 @@
 
 | short | long | summary | implemented? | notes | enhanced? |
 | --- | --- | --- | :---: | --- | :---: |
-| -A | --acls | preserve ACLs (implies --perms) | no |  | no |
+| -A | --acls | preserve ACLs (implies --perms) | yes | requires `acl` feature | no |
 | -U | --atimes | preserve access (use) times | no |  | no |
 |  | --chmod=CHMOD | affect file and/or directory permissions | no |  | no |
 |  | --chown=USER:GROUP | simple username/groupname mapping | no |  | no |
@@ -26,7 +26,7 @@
 |  | --times | preserve modification times | yes |  | no |
 |  | --usermap=STRING | custom username mapping | no |  | no |
 |  | --write-devices | write to devices as files (implies --inplace) | no |  | no |
-| -X | --xattrs | preserve extended attributes | no |  | no |
+| -X | --xattrs | preserve extended attributes | yes | requires `xattr` feature | no |
 
 ## Compression
 

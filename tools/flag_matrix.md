@@ -1,7 +1,7 @@
 | flag | status | notes |
 | --- | --- | --- |
 | --8-bit-output | Error |  |
-| --acls | Error |  |
+| --acls | Ok | requires acl feature |
 | --address | Error |  |
 | --append | Error |  |
 | --append-verify | Error |  |
@@ -141,13 +141,13 @@
 | --whole-file | Error |  |
 | --write-batch | Error |  |
 | --write-devices | Error |  |
-| --xattrs | Error |  |
+| --xattrs | Ok | requires xattr feature |
 | -0 | Error | alias for --from0 |
 | -4 | Error | alias for --ipv4 |
 | -6 | Error | alias for --ipv6 |
 | -8 | Error | alias for --8-bit-output |
 | -@ | Error | alias for --modify-window |
-| -A | Error | alias for --acls |
+| -A | Ok | alias for --acls |
 | -B | Error | alias for --block-size |
 | -C | Error | alias for --cvs-exclude |
 | -D | Error | same as --devices --specials |
@@ -168,7 +168,7 @@
 | -U | Error | alias for --atimes |
 | -V | Error | alias for --version |
 | -W | Error | alias for --whole-file |
-| -X | Error | alias for --xattrs |
+| -X | Ok | alias for --xattrs |
 | -a | Alias | alias for --archive |
 | -b | Error | alias for --backup |
 | -c | Alias | alias for --checksum |

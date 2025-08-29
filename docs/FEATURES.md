@@ -13,7 +13,7 @@ This document tracks the major capabilities planned for the project.
 | Symlink preservation | In progress | [M4—CLI Parity][M4] |
 | Hardlink support | Planned | [M7—Stabilization][M7] |
 | Sparse file handling | Planned | [M7—Stabilization][M7] |
-| Extended attributes (xattrs) & ACLs | Planned | [M7—Stabilization][M7] |
+| Extended attributes (xattrs) & ACLs | Implemented | [M7—Stabilization][M7] |
 | Include/exclude filters | In progress | [M5—Filters & Compression][M5] |
 | Compression negotiation | In progress | [M5—Filters & Compression][M5] |
 
