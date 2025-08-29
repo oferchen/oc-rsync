@@ -14,7 +14,7 @@ fn tcp_read_timeout() {
         let (_sock, _) = listener.accept().unwrap();
         thread::sleep(Duration::from_secs(5));
     });
-    let mut t = TcpTransport::connect(&addr.ip().to_string(), addr.port(), None).unwrap();
+    let mut t = TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_millis(100)))
         .unwrap();
     let mut buf = [0u8; 1];

@@ -10,7 +10,7 @@ pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 #[cfg(feature = "lz4")]
 use compress::Lz4;
-use compress::{available_codecs, Codec, Compressor, Decompressor, Zlib, Zstd};
+use compress::{available_codecs, should_compress, Codec, Compressor, Decompressor, Zlib, Zstd};
 use filters::Matcher;
 use thiserror::Error;
 
@@ -492,6 +492,11 @@ impl Sender {
 
         let src = File::open(path)?;
         let mut src_reader = BufReader::new(src);
+        let file_codec = if should_compress(path, &self.opts.skip_compress) {
+            self.codec
+        } else {
+            None
+        };
         let file_name = dest
             .file_name()
             .ok_or_else(|| EngineError::Other("destination has no file name".into()))?;
@@ -597,7 +602,7 @@ impl Sender {
         });
         let ops = adjusted.map(|op_res| {
             let mut op = op_res?;
-            if let Some(codec) = self.codec {
+            if let Some(codec) = file_codec {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
                         Codec::Zlib => {
@@ -738,9 +743,14 @@ impl Receiver {
             (File::create(tmp_dest)?, 0)
         };
         out.seek(SeekFrom::Start(resume))?;
+        let file_codec = if should_compress(src, &self.opts.skip_compress) {
+            self.codec
+        } else {
+            None
+        };
         let ops = delta.into_iter().map(|op_res| {
             let mut op = op_res?;
-            if let Some(codec) = self.codec {
+            if let Some(codec) = file_codec {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
                         Codec::Zlib => Zlib::default().decompress(d).map_err(EngineError::from)?,
@@ -866,6 +876,7 @@ pub struct SyncOptions {
     pub compress_level: Option<i32>,
     pub compress_choice: Option<Vec<Codec>>,
     pub whole_file: bool,
+    pub skip_compress: Vec<String>,
     pub partial: bool,
     pub progress: bool,
     pub itemize_changes: bool,
@@ -914,6 +925,7 @@ impl Default for SyncOptions {
             compress_level: None,
             compress_choice: None,
             whole_file: false,
+            skip_compress: Vec::new(),
             partial: false,
             progress: false,
             itemize_changes: false,

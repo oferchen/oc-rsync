@@ -15,7 +15,7 @@ use filters::{parse, Matcher, Rule};
 use meta::{Chmod, ChmodOp, ChmodTarget};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
-use transport::{RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
+use transport::{AddressFamily, RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
 
 fn parse_filters(s: &str) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
@@ -170,6 +170,14 @@ struct ClientOpts {
         visible_alias = "zl"
     )]
     compress_level: Option<i32>,
+    /// skip compression for files with suffix in LIST
+    #[arg(
+        long = "skip-compress",
+        value_name = "LIST",
+        help_heading = "Compression",
+        value_delimiter = ','
+    )]
+    skip_compress: Vec<String>,
     /// enable BLAKE3 checksums (zstd is negotiated automatically)
     #[arg(long, help_heading = "Compression")]
     modern: bool,
@@ -214,6 +222,12 @@ struct ClientOpts {
     /// specify the remote port
     #[arg(long, value_name = "PORT", help_heading = "Misc")]
     port: Option<u16>,
+    /// prefer IPv4 for remote connections
+    #[arg(short = '4', long = "ipv4", help_heading = "Misc", conflicts_with = "ipv6")]
+    ipv4: bool,
+    /// prefer IPv6 for remote connections
+    #[arg(short = '6', long = "ipv6", help_heading = "Misc", conflicts_with = "ipv4")]
+    ipv6: bool,
     /// set block size used for rolling checksums
     #[arg(
         short = 'B',
@@ -684,6 +698,7 @@ fn spawn_daemon_session(
     no_motd: bool,
     timeout: Option<Duration>,
     contimeout: Option<Duration>,
+    family: Option<AddressFamily>,
 ) -> Result<TcpTransport> {
     let (host, port) = if let Some((h, p)) = host.rsplit_once(':') {
         let p = p.parse().unwrap_or(873);
@@ -691,7 +706,7 @@ fn spawn_daemon_session(
     } else {
         (host, port.unwrap_or(873))
     };
-    let mut t = TcpTransport::connect(host, port, contimeout)
+    let mut t = TcpTransport::connect(host, port, contimeout, family)
         .map_err(|e| EngineError::Other(e.to_string()))?;
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
     t.send(&LATEST_VERSION.to_be_bytes())
@@ -741,6 +756,13 @@ fn spawn_daemon_session(
 
 fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let matcher = build_matcher(&opts, matches)?;
+    let addr_family = if opts.ipv4 {
+        Some(AddressFamily::V4)
+    } else if opts.ipv6 {
+        Some(AddressFamily::V6)
+    } else {
+        None
+    };
 
     if let Some(pf) = &opts.password_file {
         #[cfg(unix)]
@@ -948,6 +970,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         } else {
             opts.whole_file
         },
+        skip_compress: opts.skip_compress.clone(),
         partial: opts.partial || opts.partial_progress,
         progress: opts.progress || opts.partial_progress,
         itemize_changes: opts.itemize_changes,
@@ -1004,6 +1027,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.no_motd,
                     opts.timeout,
                     opts.contimeout,
+                    addr_family,
                 )?;
                 sync(
                     &src.path,
@@ -1032,6 +1056,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     strict_host_key_checking,
                     opts.port,
                     opts.contimeout,
+                    addr_family,
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
                 let (err, _) = session.stderr();
@@ -1056,6 +1081,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.no_motd,
                     opts.timeout,
                     opts.contimeout,
+                    addr_family,
                 )?;
                 sync(
                     &src.path,
@@ -1084,6 +1110,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     strict_host_key_checking,
                     opts.port,
                     opts.contimeout,
+                    addr_family,
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
                 let (err, _) = session.stderr();
@@ -1125,6 +1152,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             strict_host_key_checking,
                             opts.port,
                             opts.contimeout,
+                            addr_family,
                         )
                         .map_err(|e| EngineError::Other(e.to_string()))?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
@@ -1137,6 +1165,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             strict_host_key_checking,
                             opts.port,
                             opts.contimeout,
+                            addr_family,
                         )
                         .map_err(|e| EngineError::Other(e.to_string()))?;
 
@@ -1184,6 +1213,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.no_motd,
                             opts.timeout,
                             opts.contimeout,
+                            addr_family,
                         )?;
                         let mut src_session = spawn_daemon_session(
                             &src_host,
@@ -1193,6 +1223,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.no_motd,
                             opts.timeout,
                             opts.contimeout,
+                            addr_family,
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1215,6 +1246,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             strict_host_key_checking,
                             opts.port,
                             opts.contimeout,
+                            addr_family,
                         )
                         .map_err(|e| EngineError::Other(e.to_string()))?;
                         let mut src_session = spawn_daemon_session(
@@ -1225,6 +1257,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.no_motd,
                             opts.timeout,
                             opts.contimeout,
+                            addr_family,
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1258,6 +1291,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.no_motd,
                             opts.timeout,
                             opts.contimeout,
+                            addr_family,
                         )?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
@@ -1269,6 +1303,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             strict_host_key_checking,
                             opts.port,
                             opts.contimeout,
+                            addr_family,
                         )
                         .map_err(|e| EngineError::Other(e.to_string()))?;
                         if let Some(limit) = opts.bwlimit {

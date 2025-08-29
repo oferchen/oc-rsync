@@ -11,7 +11,7 @@ use protocol::{
     negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION,
 };
 
-use crate::{LocalPipeTransport, SshTransport, Transport};
+use crate::{AddressFamily, LocalPipeTransport, SshTransport, Transport};
 
 const SSH_IO_BUF_SIZE: usize = 32 * 1024;
 const SSH_STDERR_CAP: usize = 32 * 1024;
@@ -61,6 +61,7 @@ impl SshStdioTransport {
         server_args: I,
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
+        family: Option<AddressFamily>,
     ) -> io::Result<Self>
     where
         I: IntoIterator<Item = S>,
@@ -87,7 +88,11 @@ impl SshStdioTransport {
             cmd.arg("-o")
                 .arg(format!("UserKnownHostsFile={}", path.display()));
         }
-
+        if let Some(AddressFamily::V4) = family {
+            cmd.arg("-4");
+        } else if let Some(AddressFamily::V6) = family {
+            cmd.arg("-6");
+        }
         cmd.arg(host);
         cmd.arg("rsync");
         cmd.arg("--server");
@@ -256,6 +261,7 @@ impl SshStdioTransport {
         strict_host_key_checking: bool,
         port: Option<u16>,
         connect_timeout: Option<Duration>,
+        family: Option<AddressFamily>,
     ) -> io::Result<Self> {
         let program = rsh.get(0).map(|s| s.as_str()).unwrap_or("ssh");
         if program == "ssh" {
@@ -284,6 +290,11 @@ impl SshStdioTransport {
             }
             if let Some(p) = port {
                 cmd.arg("-p").arg(p.to_string());
+            }
+            if let Some(AddressFamily::V4) = family {
+                cmd.arg("-4");
+            } else if let Some(AddressFamily::V6) = family {
+                cmd.arg("-6");
             }
             cmd.arg(host);
             if let Some(bin) = remote_bin {
@@ -327,6 +338,7 @@ impl SshStdioTransport {
         strict_host_key_checking: bool,
         port: Option<u16>,
         connect_timeout: Option<Duration>,
+        family: Option<AddressFamily>,
     ) -> io::Result<(Self, Vec<Codec>)> {
         let mut t = Self::spawn_with_rsh(
             host,
@@ -338,6 +350,7 @@ impl SshStdioTransport {
             strict_host_key_checking,
             port,
             connect_timeout,
+            family,
         )?;
         let codecs = Self::handshake(&mut t, rsync_env)?;
         Ok((t, codecs))

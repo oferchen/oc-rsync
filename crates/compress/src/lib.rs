@@ -1,4 +1,5 @@
 use std::io::{self, Read, Write};
+use std::path::Path;
 
 /// Supported compression codecs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,6 +78,17 @@ pub fn encode_codecs(codecs: &[Codec]) -> Vec<u8> {
 /// Deserialize a list of codecs from their wire representation.
 pub fn decode_codecs(data: &[u8]) -> io::Result<Vec<Codec>> {
     data.iter().map(|b| Codec::from_byte(*b)).collect()
+}
+
+/// Determine if a file should be compressed given a list of suffixes to skip.
+pub fn should_compress(path: &Path, skip: &[String]) -> bool {
+    if skip.is_empty() {
+        return true;
+    }
+    match path.file_name().and_then(|n| n.to_str()) {
+        Some(name) => !skip.iter().any(|s| name.ends_with(s)),
+        None => true,
+    }
 }
 
 /// Zlib/Deflate codec adapter.
