@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::{self, Read, Write};
+use std::process::Command;
 use std::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -13,6 +14,7 @@ use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptio
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, LATEST_VERSION};
 use transport::{SshStdioTransport, TcpTransport, Transport};
+use shell_words::split as shell_split;
 
 /// Command line interface for rsync-rs.
 ///
@@ -340,6 +342,7 @@ where
 fn spawn_remote_session(
     host: &str,
     path: &Path,
+    rsh: &[String],
     known_hosts: Option<&Path>,
     strict_host_key_checking: bool,
 ) -> io::Result<SshStdioTransport> {
@@ -347,14 +350,41 @@ fn spawn_remote_session(
         let cmd = path
             .to_str()
             .ok_or_else(|| io::Error::other("invalid command"))?;
-        SshStdioTransport::spawn("sh", ["-c", cmd])
+        let program = rsh.get(0).map(|s| s.as_str()).unwrap_or("sh");
+        let mut args: Vec<String> = rsh.iter().skip(1).cloned().collect();
+        args.push("-c".to_string());
+        args.push(cmd.to_string());
+        SshStdioTransport::spawn(program, args)
     } else {
-        SshStdioTransport::spawn_server(
-            host,
-            [path.as_os_str()],
-            known_hosts,
-            strict_host_key_checking,
-        )
+        let program = rsh.get(0).map(|s| s.as_str()).unwrap_or("ssh");
+        if program == "ssh" {
+            let mut cmd = Command::new(program);
+            cmd.args(&rsh[1..]);
+            let known_hosts_path = known_hosts.map(Path::to_path_buf).or_else(|| {
+                std::env::var("HOME")
+                    .ok()
+                    .map(|h| PathBuf::from(h).join(".ssh/known_hosts"))
+            });
+            let checking = if strict_host_key_checking { "yes" } else { "no" };
+            cmd.arg("-o")
+                .arg(format!("StrictHostKeyChecking={checking}"));
+            if let Some(path) = known_hosts_path {
+                cmd.arg("-o")
+                    .arg(format!("UserKnownHostsFile={}", path.display()));
+            }
+            cmd.arg(host);
+            cmd.arg("rsync");
+            cmd.arg("--server");
+            cmd.arg(path.as_os_str());
+            SshStdioTransport::spawn_from_command(cmd)
+        } else {
+            let mut args = rsh[1..].to_vec();
+            args.push(host.to_string());
+            args.push("rsync".to_string());
+            args.push("--server".to_string());
+            args.push(path.to_string_lossy().into_owned());
+            SshStdioTransport::spawn(program, args)
+        }
     }
 }
 
@@ -443,6 +473,15 @@ fn run_client(opts: ClientOpts) -> Result<()> {
 
     let known_hosts = opts.known_hosts.clone();
     let strict_host_key_checking = !opts.no_host_key_checking;
+    let rsh_raw = opts
+        .rsh
+        .clone()
+        .or_else(|| env::var("RSYNC_RSH").ok());
+    let rsh_cmd = match rsh_raw {
+        Some(cmd) => shell_split(&cmd)
+            .map_err(|e| EngineError::Other(e.to_string()))?,
+        None => vec!["ssh".to_string()],
+    };
 
     let src_trailing = match &src {
         RemoteSpec::Local(p) => p.trailing_slash,
@@ -534,6 +573,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 let mut session = spawn_remote_session(
                     &host,
                     &src.path,
+                    &rsh_cmd,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
@@ -549,6 +589,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 let mut session = spawn_remote_session(
                     &host,
                     &dst.path,
+                    &rsh_cmd,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
@@ -580,6 +621,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 let mut dst_session = spawn_remote_session(
                     &dst_host,
                     &dst_path.path,
+                    &rsh_cmd,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
@@ -587,6 +629,7 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 let mut src_session = spawn_remote_session(
                     &src_host,
                     &src_path.path,
+                    &rsh_cmd,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                 )
