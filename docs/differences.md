@@ -1,10 +1,15 @@
 # Differences from rsync
 
-`rsync-rs` strives to mirror the traditional `rsync` command line. The table
-below highlights how common flags map to current support and how the
-`--modern` convenience flag influences behavior. For a complete listing see
+`rsync-rs` aims for parity with stock `rsync` 3.2.x. When run without the
+`--modern` flag, it intends zero behavioral differences from the traditional
+utility and mirrors the classic command line.
+
+The `--modern` convenience flag enables additional enhancements beyond
+classic `rsync` behavior. For a complete listing see
 [cli/flags.md](cli/flags.md). For detailed parity status see
 [feature_matrix.md](feature_matrix.md).
+
+## `--modern` enhancements
 
 | rsync flag | rsync-rs status | Tests | `--modern` notes |
 |------------|-----------------|-------|------------------|
