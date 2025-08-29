@@ -96,7 +96,7 @@
   },
   {
     "flag": "--compress-choice",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {

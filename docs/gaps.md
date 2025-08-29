@@ -7,7 +7,6 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
 ### Protocol gaps
 - Remote shell (`--rsh`) negotiation is incomplete, lacking full `rsh` command parsing and environment handshakes.
 - Partial transfer resumption does not fully match `rsync` semantics; interrupted copies cannot reuse partially transferred data.
-- Compression negotiation between peers is unimplemented.
 
 ### Metadata gaps
 - File time preservation is incomplete; creation times (`--crtimes`) may not be supported on all platforms.
@@ -29,7 +28,7 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
 ## Test coverage gaps
 - `tests/golden/cli_parity/delete.sh` skips parity checks for deletion flags that are unimplemented or fail, which can hide gaps in deletion behavior.
 - `tests/remote_remote.rs` exercises remote-to-remote transfers but only covers a basic pipe scenario; broader coverage for `--rsh` and related flows is missing (see `docs/feature_matrix.md` `--rsh`).
-- Filter and compression negotiation lack dedicated tests; see `docs/feature_matrix.md` entries for `--filter`, `--compress`, and `--compress-level`.
+- Filter rule handling still lacks comprehensive tests; see `docs/feature_matrix.md` entry for `--filter`.
 - Many CLI options listed in `docs/feature_matrix.md` have no associated tests.
 
 ## Continuous integration deficiencies

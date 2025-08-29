@@ -7,8 +7,8 @@ use std::net::{IpAddr, TcpListener, TcpStream};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
-use clap::{ArgAction, Parser, CommandFactory, FromArgMatches, ArgMatches};
-use compress::available_codecs;
+use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
+use compress::{available_codecs, Codec};
 use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{parse as parse_filters, Matcher, Rule};
 use protocol::{negotiate_version, LATEST_VERSION};
@@ -114,11 +114,20 @@ struct ClientOpts {
     /// compress file data during the transfer (zlib by default, negotiates zstd when supported)
     #[arg(short = 'z', long, help_heading = "Compression")]
     compress: bool,
+    /// choose the compression algorithm (aka --zc)
+    #[arg(
+        long = "compress-choice",
+        value_name = "STR",
+        help_heading = "Compression",
+        visible_alias = "zc"
+    )]
+    compress_choice: Option<String>,
     /// explicitly set compression level
     #[arg(
         long = "compress-level",
         value_name = "NUM",
-        help_heading = "Compression"
+        help_heading = "Compression",
+        visible_alias = "zl"
     )]
     compress_level: Option<i32>,
     /// enable BLAKE3 checksums (zstd is negotiated automatically)
@@ -481,7 +490,6 @@ fn spawn_daemon_session(
     Ok(t)
 }
 
-
 fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let matcher = build_matcher(&opts, matches)?;
 
@@ -556,7 +564,42 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         }
     }
 
-    let compress = opts.modern || opts.compress || opts.compress_level.map_or(false, |l| l > 0);
+    let compress_choice = match opts.compress_choice.as_deref() {
+        Some("none") => None,
+        Some(s) => {
+            let mut list = Vec::new();
+            for name in s.split(',') {
+                let codec = match name {
+                    "zlib" => Codec::Zlib,
+                    "zstd" => Codec::Zstd,
+                    "lz4" => Codec::Lz4,
+                    other => {
+                        return Err(EngineError::Other(format!("unknown codec {other}")));
+                    }
+                };
+                if !available_codecs().contains(&codec) {
+                    return Err(EngineError::Other(format!(
+                        "codec {name} not supported by this build"
+                    )));
+                }
+                list.push(codec);
+            }
+            if list.is_empty() {
+                None
+            } else {
+                Some(list)
+            }
+        }
+        None => None,
+    };
+    let compress = if opts.compress_choice.as_deref() == Some("none") {
+        false
+    } else {
+        opts.modern
+            || opts.compress
+            || opts.compress_level.map_or(false, |l| l > 0)
+            || compress_choice.is_some()
+    };
     let mut delete_mode = if opts.delete_before {
         Some(DeleteMode::Before)
     } else if opts.delete_after || opts.delete_delay {
@@ -595,6 +638,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             StrongHash::Md5
         },
         compress_level: opts.compress_level,
+        compress_choice,
         partial: opts.partial || opts.partial_progress,
         progress: opts.progress || opts.partial_progress,
         partial_dir: opts.partial_dir.clone(),
@@ -938,33 +982,51 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     if let Some(values) = matches.get_many::<String>("filter") {
         let idxs: Vec<_> = matches.indices_of("filter").unwrap().collect();
         for (idx, val) in idxs.into_iter().zip(values) {
-            add_rules(idx, parse_filters(val).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+            add_rules(
+                idx,
+                parse_filters(val).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+            );
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("filter_file") {
         let idxs: Vec<_> = matches.indices_of("filter_file").unwrap().collect();
         for (idx, file) in idxs.into_iter().zip(values) {
             let content = fs::read_to_string(file)?;
-            add_rules(idx, parse_filters(&content).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+            add_rules(
+                idx,
+                parse_filters(&content).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+            );
         }
     }
     if let Some(values) = matches.get_many::<String>("include") {
         let idxs: Vec<_> = matches.indices_of("include").unwrap().collect();
         for (idx, pat) in idxs.into_iter().zip(values) {
-            add_rules(idx, parse_filters(&format!("+ {}", pat)).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+            add_rules(
+                idx,
+                parse_filters(&format!("+ {}", pat))
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+            );
         }
     }
     if let Some(values) = matches.get_many::<String>("exclude") {
         let idxs: Vec<_> = matches.indices_of("exclude").unwrap().collect();
         for (idx, pat) in idxs.into_iter().zip(values) {
-            add_rules(idx, parse_filters(&format!("- {}", pat)).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+            add_rules(
+                idx,
+                parse_filters(&format!("- {}", pat))
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+            );
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("include_from") {
         let idxs: Vec<_> = matches.indices_of("include_from").unwrap().collect();
         for (idx, file) in idxs.into_iter().zip(values) {
             for pat in load_patterns(file, opts.from0)? {
-                add_rules(idx, parse_filters(&format!("+ {}", pat)).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+                add_rules(
+                    idx,
+                    parse_filters(&format!("+ {}", pat))
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                );
             }
         }
     }
@@ -972,7 +1034,11 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         let idxs: Vec<_> = matches.indices_of("exclude_from").unwrap().collect();
         for (idx, file) in idxs.into_iter().zip(values) {
             for pat in load_patterns(file, opts.from0)? {
-                add_rules(idx, parse_filters(&format!("- {}", pat)).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+                add_rules(
+                    idx,
+                    parse_filters(&format!("- {}", pat))
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                );
             }
         }
     }
@@ -980,7 +1046,11 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         let idxs: Vec<_> = matches.indices_of("files_from").unwrap().collect();
         for (idx, file) in idxs.into_iter().zip(values) {
             for pat in load_patterns(file, opts.from0)? {
-                add_rules(idx, parse_filters(&format!("+ {}", pat)).map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+                add_rules(
+                    idx,
+                    parse_filters(&format!("+ {}", pat))
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                );
             }
         }
     }
@@ -988,15 +1058,26 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         if let Some(idx) = matches.index_of("filter_shorthand") {
             let count = matches.get_count("filter_shorthand");
             if count >= 1 {
-                add_rules(idx, parse_filters(": /.rsync-filter").map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+                add_rules(
+                    idx,
+                    parse_filters(": /.rsync-filter")
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                );
             }
             if count >= 2 {
-                add_rules(idx, parse_filters("- .rsync-filter").map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+                add_rules(
+                    idx,
+                    parse_filters("- .rsync-filter")
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                );
             }
         }
     }
     if !opts.files_from.is_empty() {
-        add_rules(usize::MAX, parse_filters("- *").map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+        add_rules(
+            usize::MAX,
+            parse_filters("- *").map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+        );
     }
 
     entries.sort_by(|a, b| {

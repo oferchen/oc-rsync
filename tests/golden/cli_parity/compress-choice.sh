@@ -10,12 +10,12 @@ mkdir -p "$TMP/src" "$TMP/rsync_dst" "$TMP/rsync_rs_dst"
 
 echo data > "$TMP/src/a.txt"
 
-rsync_output=$(rsync --quiet --recursive --compress-level=1 "$TMP/src/" "$TMP/rsync_dst" 2>&1)
+rsync_output=$(rsync --quiet --recursive --compress-choice=zstd "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-rsync_rs_raw=$("$RSYNC_RS" --local --recursive --compress-level=1 "$TMP/src/" "$TMP/rsync_rs_dst" 2>&1)
+rsync_rs_raw=$("$RSYNC_RS" --local --recursive --compress-choice=zstd "$TMP/src/" "$TMP/rsync_rs_dst" 2>&1)
 rsync_rs_status=$?
-rsync_rs_output=$(echo "$rsync_rs_raw" | grep -v 'recursive mode enabled' || true)
+rsync_rs_output=$(echo "$rsync_rs_raw" | grep -v -e 'recursive mode enabled' -e 'compression enabled' || true)
 
 if [ "$rsync_status" -ne "$rsync_rs_status" ]; then
   echo "Exit codes differ: rsync=$rsync_status rsync-rs=$rsync_rs_status" >&2
@@ -37,12 +37,12 @@ fi
 rm -rf "$TMP/rsync_dst" "$TMP/rsync_rs_dst"
 mkdir -p "$TMP/rsync_dst" "$TMP/rsync_rs_dst"
 
-rsync_output=$(rsync --quiet --recursive --zl=1 "$TMP/src/" "$TMP/rsync_dst" 2>&1)
+rsync_output=$(rsync --quiet --recursive --zc=zlib "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-rsync_rs_raw=$("$RSYNC_RS" --local --recursive --zl=1 "$TMP/src/" "$TMP/rsync_rs_dst" 2>&1)
+rsync_rs_raw=$("$RSYNC_RS" --local --recursive --zc=zlib "$TMP/src/" "$TMP/rsync_rs_dst" 2>&1)
 rsync_rs_status=$?
-rsync_rs_output=$(echo "$rsync_rs_raw" | grep -v 'recursive mode enabled' || true)
+rsync_rs_output=$(echo "$rsync_rs_raw" | grep -v -e 'recursive mode enabled' -e 'compression enabled' || true)
 
 if [ "$rsync_status" -ne "$rsync_rs_status" ]; then
   echo "Exit codes differ: rsync=$rsync_status rsync-rs=$rsync_rs_status" >&2

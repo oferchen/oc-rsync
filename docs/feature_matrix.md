@@ -25,10 +25,10 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--chown` | — | ❌ | — | — | — | — |  |  |
 | `--compare-dest` | — | ✅ | ✅ | — | — | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  |  |
 | `--compress` | `-z` | ✅ | ✅ | off | — | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/compression_negotiation.sh](../tests/compression_negotiation.sh) | negotiates zstd when supported by both peers |  |
-| `--compress-choice` | — | ❌ | — | — | choose the compression algorithm (aka --zc) | — |  |  |
+| `--compress-choice` | — | ✅ | ❌ | — | choose the compression algorithm (aka --zc) | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) |  |  |
 | `--compress-level` | — | ✅ | ❌ | — | explicitly set compression level (aka --zl) | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) |  |  |
-| `--zc` | — | ❌ | — | off | alias for `--compress-choice` | [gaps.md](gaps.md) | alias for `--compress-choice` |  |
-| `--zl` | — | ❌ | — | off | alias for `--compress-level` | [gaps.md](gaps.md) | alias for `--compress-level` |  |
+| `--zc` | — | ✅ | ❌ | off | alias for `--compress-choice` | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | alias for `--compress-choice` |  |
+| `--zl` | — | ✅ | ❌ | off | alias for `--compress-level` | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | alias for `--compress-level` |  |
 | `--contimeout` | — | ❌ | — | — | — | — |  |  |
 | `--copy-as` | — | ❌ | — | — | — | — |  |  |
 | `--copy-dest` | — | ✅ | ✅ | — | — | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  |  |
