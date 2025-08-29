@@ -23,7 +23,12 @@ fn rsync_filter_merge_order_and_wildcards() {
 
     // Global rules mirror recorded rsync behaviour with -F.
     let mut v = HashSet::new();
-    let global = parse(": /.rsync-filter\n- .rsync-filter\n+ *.log\n- *\n", &mut v, 0).unwrap();
+    let global = parse(
+        ": /.rsync-filter\n- .rsync-filter\n+ *.log\n- *\n",
+        &mut v,
+        0,
+    )
+    .unwrap();
     let matcher = Matcher::new(global).with_root(root);
 
     // Root rule overrides global include.

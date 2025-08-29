@@ -9,9 +9,13 @@ const MAX_PARSE_DEPTH: usize = 64;
 /// A single rule compiled into a glob matcher or special directive.
 #[derive(Clone)]
 pub enum Rule {
-    Include(GlobMatcher),
-    Exclude(GlobMatcher),
-    Protect(GlobMatcher),
+    /// Include rule; `invert` flips match logic when `!` modifier is used.
+    Include(GlobMatcher, bool),
+    /// Exclude rule; `invert` flips match logic when `!` modifier is used.
+    Exclude(GlobMatcher, bool),
+    /// Protect rule used for receiver-side deletes; `invert` supported for
+    /// parity with rsync's `!` modifier.
+    Protect(GlobMatcher, bool),
     /// Clear all previously defined rules.
     Clear,
     /// Per-directory merge directive (e.g., `: .rsync-filter`).
@@ -23,6 +27,9 @@ pub struct PerDir {
     file: String,
     anchored: bool,
     root_only: bool,
+    /// When false, rules from this merge file are not inherited by
+    /// sub-directories (`n` modifier).
+    inherit: bool,
 }
 
 #[derive(Clone)]
@@ -112,18 +119,21 @@ impl Matcher {
 
         for rule in &active {
             match rule {
-                Rule::Protect(m) => {
-                    if m.is_match(path) {
+                Rule::Protect(m, inv) => {
+                    let matched = m.is_match(path);
+                    if (*inv && !matched) || (!*inv && matched) {
                         continue;
                     }
                 }
-                Rule::Include(m) => {
-                    if m.is_match(path) {
+                Rule::Include(m, inv) => {
+                    let matched = m.is_match(path);
+                    if (*inv && !matched) || (!*inv && matched) {
                         return Ok(true);
                     }
                 }
-                Rule::Exclude(m) => {
-                    if m.is_match(path) {
+                Rule::Exclude(m, inv) => {
+                    let matched = m.is_match(path);
+                    if (*inv && !matched) || (!*inv && matched) {
                         return Ok(false);
                     }
                 }
@@ -146,8 +156,8 @@ impl Matcher {
             }
         }
 
-        // Gather per-dir directives from globals and ancestors.
-        let mut per_dirs = self.per_dir.clone();
+        // Gather per-dir directives from ancestors (nearest first) and then globals.
+        let mut per_dirs = Vec::new();
         let mut anc = dir.parent();
         while let Some(a) = anc {
             if let Some(extra) = self.extra_per_dir.borrow().get(a) {
@@ -155,10 +165,10 @@ impl Matcher {
             }
             anc = a.parent();
         }
+        per_dirs.extend(self.per_dir.clone());
 
         let mut combined = Vec::new();
         let mut new_merges = Vec::new();
-        let mut seen_files = HashSet::new();
 
         for pd in per_dirs {
             let path = if pd.root_only {
@@ -170,10 +180,6 @@ impl Matcher {
             } else {
                 dir.join(&pd.file)
             };
-
-            if !seen_files.insert(path.clone()) {
-                continue;
-            }
 
             let rel = if pd.anchored {
                 None
@@ -209,7 +215,7 @@ impl Matcher {
             let mut map = self.extra_per_dir.borrow_mut();
             let entry = map.entry(dir.to_path_buf()).or_default();
             for pd in new_merges {
-                if !entry.contains(&pd) {
+                if pd.inherit && !entry.contains(&pd) {
                     entry.push(pd);
                 }
             }
@@ -337,6 +343,28 @@ pub fn parse(
     if depth >= MAX_PARSE_DEPTH {
         return Err(ParseError::RecursionLimit);
     }
+    fn split_mods<'a>(s: &'a str, allowed: &str) -> (&'a str, &'a str) {
+        if s.chars().next().map(|c| c.is_whitespace()).unwrap_or(true) {
+            return ("", s.trim_start());
+        }
+        let s = s.trim_start();
+        let mut idx = 0;
+        let bytes = s.as_bytes();
+        if bytes.get(0) == Some(&b',') {
+            idx += 1;
+        }
+        while let Some(&c) = bytes.get(idx) {
+            if allowed.as_bytes().contains(&c) {
+                idx += 1;
+            } else {
+                break;
+            }
+        }
+        let mods = &s[..idx];
+        let rest = s[idx..].trim_start();
+        (mods, rest)
+    }
+
     let mut rules = Vec::new();
 
     for raw_line in input.lines() {
@@ -356,23 +384,27 @@ pub fn parse(
                     file: ".rsync-filter".to_string(),
                     anchored: false,
                     root_only: false,
+                    inherit: true,
                 }));
                 if !rest.is_empty() {
                     let matcher = Glob::new("**/.rsync-filter")?.compile_matcher();
-                    rules.push(Rule::Exclude(matcher));
+                    rules.push(Rule::Exclude(matcher, false));
                 }
                 continue;
             }
         }
 
-        let (kind, rest) = if let Some(r) = line.strip_prefix('+') {
-            (Some(RuleKind::Include), r.trim_start())
+        let (kind, mods, rest) = if let Some(r) = line.strip_prefix('+') {
+            let (m, rest) = split_mods(r, "/!Csrpx");
+            (Some(RuleKind::Include), m, rest)
         } else if let Some(r) = line.strip_prefix('-') {
-            (Some(RuleKind::Exclude), r.trim_start())
+            let (m, rest) = split_mods(r, "/!Csrpx");
+            (Some(RuleKind::Exclude), m, rest)
         } else if let Some(r) = line.strip_prefix('P').or_else(|| line.strip_prefix('p')) {
-            (Some(RuleKind::Protect), r.trim_start())
+            let (m, rest) = split_mods(r, "/!Csrpx");
+            (Some(RuleKind::Protect), m, rest)
         } else if let Some(r) = line.strip_prefix('.') {
-            let file = r.trim_start();
+            let (m, file) = split_mods(r, "-+Cenw/!srpx");
             if file.is_empty() {
                 return Err(ParseError::InvalidRule(raw_line.to_string()));
             }
@@ -383,35 +415,43 @@ pub fn parse(
             let content = fs::read_to_string(&path)
                 .map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
             rules.extend(parse(&content, visited, depth + 1)?);
+            if m.contains('e') {
+                let pat = format!("**/{}", file);
+                let matcher = Glob::new(&pat)?.compile_matcher();
+                rules.push(Rule::Exclude(matcher, false));
+            }
             continue;
         } else if let Some(r) = line.strip_prefix(':') {
-            let r = r.trim_start();
-            let mut parts = r.splitn(2, |c: char| c.is_whitespace());
-            let first = parts.next().unwrap_or("");
-            let file = parts.next().unwrap_or(first).trim();
+            let (m, file) = split_mods(r, "-+Cenw/!srpx");
             if file.is_empty() {
                 return Err(ParseError::InvalidRule(raw_line.to_string()));
             }
-            let anchored = file.starts_with('/');
+            let anchored = file.starts_with('/') || m.contains('/');
             let fname = if anchored {
                 file.trim_start_matches('/').to_string()
             } else {
                 file.to_string()
             };
             rules.push(Rule::DirMerge(PerDir {
-                file: fname,
+                file: fname.clone(),
                 anchored,
                 root_only: false,
+                inherit: !m.contains('n'),
             }));
+            if m.contains('e') {
+                let pat = format!("**/{}", fname);
+                let matcher = Glob::new(&pat)?.compile_matcher();
+                rules.push(Rule::Exclude(matcher, false));
+            }
             continue;
         } else {
             let mut parts = line.split_whitespace();
             let token = parts.next().unwrap_or("");
             let rest = parts.next().unwrap_or("").trim();
             match token {
-                "include" => (Some(RuleKind::Include), rest),
-                "exclude" => (Some(RuleKind::Exclude), rest),
-                "protect" => (Some(RuleKind::Protect), rest),
+                "include" => (Some(RuleKind::Include), "", rest),
+                "exclude" => (Some(RuleKind::Exclude), "", rest),
+                "protect" => (Some(RuleKind::Protect), "", rest),
                 "merge" => {
                     let path = PathBuf::from(rest);
                     if !visited.insert(path.clone()) {
@@ -433,10 +473,11 @@ pub fn parse(
                         file: fname,
                         anchored,
                         root_only: anchored,
+                        inherit: true,
                     }));
                     continue;
                 }
-                _ => (None, rest),
+                _ => (None, "", rest),
             }
         };
 
@@ -448,7 +489,10 @@ pub fn parse(
             return Err(ParseError::InvalidRule(raw_line.to_string()));
         }
 
-        let pattern = rest;
+        let mut pattern = rest.to_string();
+        if mods.contains('/') && !pattern.starts_with('/') {
+            pattern = format!("/{}", pattern);
+        }
         let anchored = pattern.starts_with('/');
         let dir_only = pattern.ends_with('/');
         let mut base = pattern.trim_start_matches('/').to_string();
@@ -466,10 +510,11 @@ pub fn parse(
 
         for pat in pats {
             let matcher = Glob::new(&pat)?.compile_matcher();
+            let invert = mods.contains('!');
             match kind {
-                RuleKind::Include => rules.push(Rule::Include(matcher)),
-                RuleKind::Exclude => rules.push(Rule::Exclude(matcher)),
-                RuleKind::Protect => rules.push(Rule::Protect(matcher)),
+                RuleKind::Include => rules.push(Rule::Include(matcher, invert)),
+                RuleKind::Exclude => rules.push(Rule::Exclude(matcher, invert)),
+                RuleKind::Protect => rules.push(Rule::Protect(matcher, invert)),
             }
         }
     }
