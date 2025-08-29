@@ -1,11 +1,18 @@
-use assert_cmd::cargo::CommandCargoExt;
-use assert_cmd::Command;
+#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
+use assert_cmd::{cargo::CommandCargoExt, Command};
+#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
 use serial_test::serial;
+#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
 use std::fs;
+#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
 use std::net::{TcpListener, TcpStream};
+#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
 use std::process::{Child, Command as StdCommand};
+#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
 use std::thread::sleep;
+#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
 use std::time::Duration;
+#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
 use tempfile::tempdir;
 
 #[cfg(all(unix, feature = "acl"))]
@@ -13,6 +20,7 @@ use posix_acl::{PosixACL, Qualifier, ACL_READ};
 #[cfg(all(unix, feature = "xattr"))]
 use xattr;
 
+#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
 fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
@@ -33,6 +41,7 @@ fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
     (child, port)
 }
 
+#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
 fn wait_for_daemon(port: u16) {
     for _ in 0..20 {
         if TcpStream::connect(("127.0.0.1", port)).is_ok() {
