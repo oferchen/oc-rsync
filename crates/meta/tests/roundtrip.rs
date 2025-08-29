@@ -4,10 +4,11 @@ use std::os::unix::fs::PermissionsExt;
 use filetime::FileTime;
 use meta::{Metadata, Options};
 use nix::unistd::{chown, Gid, Uid};
+use std::time::SystemTime;
 use tempfile::tempdir;
 
 #[test]
-fn roundtrip_basic_metadata() -> std::io::Result<()> {
+fn roundtrip_full_metadata() -> std::io::Result<()> {
     let dir = tempdir()?;
     let src = dir.path().join("src");
     let dst = dir.path().join("dst");
@@ -18,13 +19,14 @@ fn roundtrip_basic_metadata() -> std::io::Result<()> {
     // Customize source metadata
     let mode = 0o741;
     let mtime = FileTime::from_unix_time(1_000_000, 123_456_789);
+    let atime = FileTime::from_system_time(SystemTime::now());
     nix::sys::stat::fchmodat(
         None,
         &src,
         nix::sys::stat::Mode::from_bits_truncate(mode),
         nix::sys::stat::FchmodatFlags::NoFollowSymlink,
     )?;
-    filetime::set_file_mtime(&src, mtime)?;
+    filetime::set_file_times(&src, atime, mtime)?;
 
     // Make destination different
     nix::sys::stat::fchmodat(
@@ -33,18 +35,69 @@ fn roundtrip_basic_metadata() -> std::io::Result<()> {
         nix::sys::stat::Mode::from_bits_truncate(0o600),
         nix::sys::stat::FchmodatFlags::NoFollowSymlink,
     )?;
-    filetime::set_file_mtime(&dst, FileTime::from_unix_time(1, 0))?;
+    filetime::set_file_times(
+        &dst,
+        FileTime::from_unix_time(1, 0),
+        FileTime::from_unix_time(1, 0),
+    )?;
     chown(&dst, Some(Uid::from_raw(1)), Some(Gid::from_raw(1)))?;
 
-    let opts = Options::default();
+    let opts = Options {
+        owner: true,
+        group: true,
+        perms: true,
+        times: true,
+        atimes: true,
+        crtimes: true,
+        ..Default::default()
+    };
     let meta = Metadata::from_path(&src, opts.clone())?;
-    meta.apply(&dst, opts)?;
+    meta.apply(&dst, opts.clone())?;
     let applied = Metadata::from_path(&dst, opts)?;
 
     assert_eq!(meta.uid, applied.uid);
     assert_eq!(meta.gid, applied.gid);
     assert_eq!(meta.mode, applied.mode);
     assert_eq!(meta.mtime, applied.mtime);
+    assert_eq!(meta.atime, applied.atime);
+    if meta.crtime.is_some() || applied.crtime.is_some() {
+        assert_eq!(meta.crtime, applied.crtime);
+    }
+    Ok(())
+}
+
+#[test]
+fn default_skips_owner_group_perms() -> std::io::Result<()> {
+    let dir = tempdir()?;
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+
+    fs::write(&src, b"hello")?;
+    fs::write(&dst, b"world")?;
+
+    // Set differing metadata
+    nix::sys::stat::fchmodat(
+        None,
+        &src,
+        nix::sys::stat::Mode::from_bits_truncate(0o741),
+        nix::sys::stat::FchmodatFlags::NoFollowSymlink,
+    )?;
+    nix::sys::stat::fchmodat(
+        None,
+        &dst,
+        nix::sys::stat::Mode::from_bits_truncate(0o600),
+        nix::sys::stat::FchmodatFlags::NoFollowSymlink,
+    )?;
+    chown(&dst, Some(Uid::from_raw(1)), Some(Gid::from_raw(1)))?;
+
+    let orig = Metadata::from_path(&dst, Options::default())?;
+    let meta = Metadata::from_path(&src, Options::default())?;
+    meta.apply(&dst, Options::default())?;
+    let applied = Metadata::from_path(&dst, Options::default())?;
+
+    assert_eq!(orig.uid, applied.uid);
+    assert_eq!(orig.gid, applied.gid);
+    assert_eq!(orig.mode, applied.mode);
     Ok(())
 }
 

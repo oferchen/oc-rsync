@@ -5,6 +5,7 @@ use std::path::Path;
 use filetime::{self, FileTime};
 use nix::sys::stat::{self, FchmodatFlags, Mode};
 use nix::unistd::{self, Gid, Uid};
+use std::os::unix::fs::PermissionsExt;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use std::os::unix::ffi::OsStrExt;
@@ -74,6 +75,18 @@ pub struct Options {
     pub acl: bool,
     /// Adjust permissions based on parsed `--chmod` rules.
     pub chmod: Option<Vec<Chmod>>,
+    /// Preserve file owner (`--owner`).
+    pub owner: bool,
+    /// Preserve file group (`--group`).
+    pub group: bool,
+    /// Preserve permission bits (`--perms`).
+    pub perms: bool,
+    /// Preserve modification times (`--times`).
+    pub times: bool,
+    /// Preserve access times (`--atimes`).
+    pub atimes: bool,
+    /// Preserve creation times (`--crtimes`).
+    pub crtimes: bool,
 }
 
 /// Serialized file metadata.
@@ -101,7 +114,7 @@ pub struct Metadata {
 
 impl Metadata {
     /// Read metadata from `path` using `opts`.
-    pub fn from_path(path: &Path, _opts: Options) -> io::Result<Self> {
+    pub fn from_path(path: &Path, opts: Options) -> io::Result<Self> {
         let st = stat::stat(path).map_err(nix_to_io)?;
         let uid = st.st_uid;
         let gid = st.st_gid;
@@ -109,11 +122,19 @@ impl Metadata {
         let mtime = FileTime::from_unix_time(st.st_mtime, st.st_mtime_nsec as u32);
 
         let std_meta = fs::metadata(path)?;
-        let atime = FileTime::from_last_access_time(&std_meta);
-        let crtime = FileTime::from_creation_time(&std_meta);
+        let atime = if opts.atimes {
+            Some(FileTime::from_last_access_time(&std_meta))
+        } else {
+            None
+        };
+        let crtime = if opts.crtimes {
+            FileTime::from_creation_time(&std_meta)
+        } else {
+            None
+        };
 
         #[cfg(feature = "xattr")]
-        let xattrs = if _opts.xattrs {
+        let xattrs = if opts.xattrs {
             let mut attrs = Vec::new();
             for attr in xattr::list(path)? {
                 if let Some(value) = xattr::get(path, &attr)? {
@@ -126,7 +147,7 @@ impl Metadata {
         };
 
         #[cfg(feature = "acl")]
-        let acl = if _opts.acl {
+        let acl = if opts.acl {
             let acl = posix_acl::PosixACL::read_acl(path).map_err(acl_to_io)?;
             acl.entries()
         } else {
@@ -138,7 +159,7 @@ impl Metadata {
             gid,
             mode,
             mtime,
-            atime: Some(atime),
+            atime,
             crtime,
             #[cfg(feature = "xattr")]
             xattrs,
@@ -149,49 +170,71 @@ impl Metadata {
 
     /// Apply metadata to `path` using `opts`.
     pub fn apply(&self, path: &Path, opts: Options) -> io::Result<()> {
-        unistd::chown(
-            path,
-            Some(Uid::from_raw(self.uid)),
-            Some(Gid::from_raw(self.gid)),
-        )
-        .map_err(nix_to_io)?;
+        if opts.owner || opts.group {
+            unistd::chown(
+                path,
+                if opts.owner {
+                    Some(Uid::from_raw(self.uid))
+                } else {
+                    None
+                },
+                if opts.group {
+                    Some(Gid::from_raw(self.gid))
+                } else {
+                    None
+                },
+            )
+            .map_err(nix_to_io)?;
+        }
 
-        let mut mode_val = self.mode;
-        if let Some(ref rules) = opts.chmod {
-            let is_dir = fs::metadata(path)?.is_dir();
+        if opts.perms || opts.chmod.is_some() {
+            let meta = fs::metadata(path)?;
+            let is_dir = meta.is_dir();
+            let mut mode_val = if opts.perms {
+                self.mode
+            } else {
+                meta.permissions().mode() & 0o7777
+            };
             let orig_mode = mode_val;
-            for rule in rules {
-                match rule.target {
-                    ChmodTarget::Dir if !is_dir => continue,
-                    ChmodTarget::File if is_dir => continue,
-                    _ => {}
-                }
-                let mut bits = rule.bits;
-                if rule.conditional && !(is_dir || (orig_mode & 0o111) != 0) {
-                    bits &= !0o111;
-                }
-                match rule.op {
-                    ChmodOp::Add => mode_val |= bits,
-                    ChmodOp::Remove => mode_val &= !bits,
-                    ChmodOp::Set => {
-                        mode_val = (mode_val & !rule.mask) | (bits & rule.mask);
+            if let Some(ref rules) = opts.chmod {
+                for rule in rules {
+                    match rule.target {
+                        ChmodTarget::Dir if !is_dir => continue,
+                        ChmodTarget::File if is_dir => continue,
+                        _ => {}
+                    }
+                    let mut bits = rule.bits;
+                    if rule.conditional && !(is_dir || (orig_mode & 0o111) != 0) {
+                        bits &= !0o111;
+                    }
+                    match rule.op {
+                        ChmodOp::Add => mode_val |= bits,
+                        ChmodOp::Remove => mode_val &= !bits,
+                        ChmodOp::Set => {
+                            mode_val = (mode_val & !rule.mask) | (bits & rule.mask);
+                        }
                     }
                 }
             }
+            let mode_t: libc::mode_t = mode_val as libc::mode_t;
+            let mode = Mode::from_bits_truncate(mode_t);
+            stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink).map_err(nix_to_io)?;
         }
 
-        let mode_t: libc::mode_t = mode_val as libc::mode_t;
-        let mode = Mode::from_bits_truncate(mode_t);
-        stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink).map_err(nix_to_io)?;
-
-        if let Some(atime) = self.atime {
-            filetime::set_file_times(path, atime, self.mtime)?;
-        } else {
+        if opts.atimes {
+            if let Some(atime) = self.atime {
+                filetime::set_file_times(path, atime, self.mtime)?;
+            } else {
+                filetime::set_file_mtime(path, self.mtime)?;
+            }
+        } else if opts.times {
             filetime::set_file_mtime(path, self.mtime)?;
         }
 
-        if let Some(crtime) = self.crtime {
-            let _ = set_file_crtime(path, crtime);
+        if opts.crtimes {
+            if let Some(crtime) = self.crtime {
+                let _ = set_file_crtime(path, crtime);
+            }
         }
 
         #[cfg(feature = "xattr")]
