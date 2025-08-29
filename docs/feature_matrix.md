@@ -11,7 +11,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--append` | — | ❌ | — | off | — | — |  |  |
 | `--append-verify` | — | ❌ | — | off | — | — |  |  |
 | `--archive` | `-a` | ✅ | ❌ | off | — | [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) |  |  |
-| `--atimes` | `-U` | ❌ | — | off | — | — |  |  |
+| `--atimes` | `-U` | ✅ | ❌ | off | — | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  |  |
 | `--backup` | `-b` | ❌ | — | off | — | — |  |  |
 | `--backup-dir` | — | ❌ | — | — | — | — |  |  |
 | `--block-size` | `-B` | ❌ | — | — | — | — |  |  |
@@ -36,7 +36,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--copy-dirlinks` | `-k` | ❌ | — | off | — | — |  |  |
 | `--copy-links` | `-L` | ❌ | — | off | — | — |  |  |
 | `--copy-unsafe-links` | — | ❌ | — | off | — | — |  |  |
-| `--crtimes` | `-N` | ❌ | — | off | — | — |  |  |
+| `--crtimes` | `-N` | ✅ | ❌ | off | — | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  |  |
 | `--cvs-exclude` | `-C` | ❌ | — | off | — | — |  |  |
 | `--daemon` | — | ✅ | ❌ | off | — | [tests/daemon.rs](../tests/daemon.rs) |  |  |
 | `--debug` | — | ❌ | — | — | — | — |  |  |
