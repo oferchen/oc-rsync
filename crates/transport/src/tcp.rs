@@ -1,8 +1,8 @@
 use std::io::{self, Read, Write};
-use std::net::{IpAddr, Ipv4Addr, TcpListener, TcpStream, ToSocketAddrs};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
-use crate::{DaemonTransport, Transport};
+use crate::{AddressFamily, DaemonTransport, Transport};
 
 /// Transport over a TCP stream to an rsync daemon.
 pub struct TcpTransport {
@@ -11,15 +11,23 @@ pub struct TcpTransport {
 
 impl TcpTransport {
     /// Connect to the given host and port and return a TCP transport.
-    pub fn connect(host: &str, port: u16, timeout: Option<Duration>) -> io::Result<Self> {
+    pub fn connect(
+        host: &str,
+        port: u16,
+        timeout: Option<Duration>,
+        family: Option<AddressFamily>,
+    ) -> io::Result<Self> {
+        let addrs: Vec<SocketAddr> = (host, port).to_socket_addrs()?.collect();
+        let addr = match family {
+            Some(AddressFamily::V4) => addrs.iter().find(|a| a.is_ipv4()).copied(),
+            Some(AddressFamily::V6) => addrs.iter().find(|a| a.is_ipv6()).copied(),
+            None => addrs.into_iter().next(),
+        }
+        .ok_or_else(|| io::Error::other("invalid address"))?;
         let stream = if let Some(dur) = timeout {
-            let addr = (host, port)
-                .to_socket_addrs()?
-                .next()
-                .ok_or_else(|| io::Error::other("invalid address"))?;
             TcpStream::connect_timeout(&addr, dur)?
         } else {
-            TcpStream::connect((host, port))?
+            TcpStream::connect(addr)?
         };
         Ok(Self { stream })
     }

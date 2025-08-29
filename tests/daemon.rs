@@ -139,7 +139,7 @@ fn probe_rejects_old_version() {
 fn daemon_accepts_connection_on_ephemeral_port() {
     let (mut child, port, _dir) = spawn_temp_daemon();
     wait_for_daemon(port);
-    TcpTransport::connect("127.0.0.1", port, None).unwrap();
+    TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -172,7 +172,7 @@ fn daemon_rejects_invalid_token() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -215,7 +215,7 @@ fn daemon_rejects_unauthorized_module() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -259,7 +259,7 @@ fn daemon_accepts_authorized_client() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -374,7 +374,7 @@ fn daemon_displays_motd() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -470,7 +470,7 @@ fn daemon_logs_connections() {
         .unwrap();
     wait_for_daemon(port);
     {
-        let mut t = TcpTransport::connect("127.0.0.1", port, None).unwrap();
+        let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
         t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
         let mut buf = [0u8; 4];
         t.receive(&mut buf).unwrap();
@@ -511,7 +511,7 @@ fn daemon_honors_bwlimit() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
