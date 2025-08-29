@@ -256,6 +256,50 @@ fn parse_module(s: &str) -> std::result::Result<Module, String> {
     })
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RshCommand {
+    pub env: Vec<(String, String)>,
+    pub cmd: Vec<String>,
+}
+
+pub fn parse_rsh(raw: Option<String>) -> Result<RshCommand> {
+    let parts = match raw {
+        Some(s) => shell_split(&s).map_err(|e| EngineError::Other(e.to_string()))?,
+        None => {
+            return Ok(RshCommand {
+                env: Vec::new(),
+                cmd: vec!["ssh".to_string()],
+            })
+        }
+    };
+
+    let mut env = Vec::new();
+    let mut iter = parts.into_iter().peekable();
+    while let Some(tok) = iter.peek() {
+        if let Some((k, _)) = tok.split_once('=') {
+            if !k.is_empty()
+                && (k.as_bytes()[0].is_ascii_alphabetic() || k.as_bytes()[0] == b'_')
+                && k.as_bytes()[1..]
+                    .iter()
+                    .all(|b| b.is_ascii_alphanumeric() || *b == b'_')
+            {
+                let tok = iter.next().unwrap();
+                let (k, v) = tok.split_once('=').unwrap();
+                env.push((k.to_string(), v.to_string()));
+                continue;
+            }
+        }
+        break;
+    }
+
+    let mut cmd: Vec<String> = iter.collect();
+    if cmd.is_empty() {
+        cmd.push("ssh".to_string());
+    }
+
+    Ok(RshCommand { env, cmd })
+}
+
 /// Options for daemon mode.
 #[derive(Parser, Debug)]
 struct DaemonOpts {
@@ -546,10 +590,10 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let known_hosts = opts.known_hosts.clone();
     let strict_host_key_checking = !opts.no_host_key_checking;
     let rsh_raw = opts.rsh.clone().or_else(|| env::var("RSYNC_RSH").ok());
-    let rsh_cmd = match rsh_raw {
-        Some(cmd) => shell_split(&cmd).map_err(|e| EngineError::Other(e.to_string()))?,
-        None => vec!["ssh".to_string()],
-    };
+    let rsh_cmd = parse_rsh(rsh_raw)?;
+    let rsync_env: Vec<(String, String)> = env::vars()
+        .filter(|(k, _)| k.starts_with("RSYNC_"))
+        .collect();
 
     let src_trailing = match &src {
         RemoteSpec::Local(p) => p.trailing_slash,
@@ -718,7 +762,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 let (session, codecs) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &src.path,
-                    &rsh_cmd,
+                    &rsh_cmd.cmd,
+                    &rsh_cmd.env,
+                    &rsync_env,
                     opts.rsync_path.as_deref(),
                     known_hosts.as_deref(),
                     strict_host_key_checking,
@@ -763,7 +809,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 let (session, codecs) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &dst.path,
-                    &rsh_cmd,
+                    &rsh_cmd.cmd,
+                    &rsh_cmd.env,
+                    &rsync_env,
                     opts.rsync_path.as_deref(),
                     known_hosts.as_deref(),
                     strict_host_key_checking,
@@ -801,7 +849,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         let mut dst_session = SshStdioTransport::spawn_with_rsh(
                             &dst_host,
                             &dst_path.path,
-                            &rsh_cmd,
+                            &rsh_cmd.cmd,
+                            &rsh_cmd.env,
                             opts.rsync_path.as_deref(),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
@@ -810,7 +859,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
                             &src_path.path,
-                            &rsh_cmd,
+                            &rsh_cmd.cmd,
+                            &rsh_cmd.env,
                             opts.rsync_path.as_deref(),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
@@ -879,7 +929,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         let mut dst_session = SshStdioTransport::spawn_with_rsh(
                             &dst_host,
                             &dst_path.path,
-                            &rsh_cmd,
+                            &rsh_cmd.cmd,
+                            &rsh_cmd.env,
                             opts.rsync_path.as_deref(),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
@@ -924,7 +975,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
                             &src_path.path,
-                            &rsh_cmd,
+                            &rsh_cmd.cmd,
+                            &rsh_cmd.env,
                             opts.rsync_path.as_deref(),
                             known_hosts.as_deref(),
                             strict_host_key_checking,

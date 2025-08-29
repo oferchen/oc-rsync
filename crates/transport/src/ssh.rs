@@ -160,7 +160,19 @@ impl SshStdioTransport {
         })
     }
 
-    fn handshake<T: Transport>(transport: &mut T) -> io::Result<Vec<Codec>> {
+    fn handshake<T: Transport>(
+        transport: &mut T,
+        env: &[(String, String)],
+    ) -> io::Result<Vec<Codec>> {
+        for (k, v) in env {
+            let mut buf = Vec::new();
+            buf.extend_from_slice(k.as_bytes());
+            buf.push(b'=');
+            buf.extend_from_slice(v.as_bytes());
+            buf.push(0);
+            transport.send(&buf)?;
+        }
+        transport.send(&[0])?;
         transport.send(&LATEST_VERSION.to_be_bytes())?;
 
         let mut ver_buf = [0u8; 4];
@@ -237,6 +249,7 @@ impl SshStdioTransport {
         host: &str,
         path: &Path,
         rsh: &[String],
+        rsh_env: &[(String, String)],
         remote_bin: Option<&Path>,
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
@@ -245,6 +258,7 @@ impl SshStdioTransport {
         if program == "ssh" {
             let mut cmd = Command::new(program);
             cmd.args(&rsh[1..]);
+            cmd.envs(rsh_env.iter().cloned());
             let known_hosts_path = known_hosts.map(Path::to_path_buf).or_else(|| {
                 std::env::var("HOME")
                     .ok()
@@ -280,7 +294,10 @@ impl SshStdioTransport {
             }
             args.push("--server".to_string());
             args.push(path.to_string_lossy().into_owned());
-            Self::spawn(program, args)
+            let mut cmd = Command::new(program);
+            cmd.args(args);
+            cmd.envs(rsh_env.iter().cloned());
+            Self::spawn_from_command(cmd)
         }
     }
 
@@ -288,6 +305,8 @@ impl SshStdioTransport {
         host: &str,
         path: &Path,
         rsh: &[String],
+        rsh_env: &[(String, String)],
+        rsync_env: &[(String, String)],
         remote_bin: Option<&Path>,
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
@@ -296,11 +315,12 @@ impl SshStdioTransport {
             host,
             path,
             rsh,
+            rsh_env,
             remote_bin,
             known_hosts,
             strict_host_key_checking,
         )?;
-        let codecs = Self::handshake(&mut t)?;
+        let codecs = Self::handshake(&mut t, rsync_env)?;
         Ok((t, codecs))
     }
 
