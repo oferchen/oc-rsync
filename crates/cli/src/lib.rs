@@ -3,19 +3,19 @@ use std::convert::TryFrom;
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
-use std::process::Command;
-use std::net::{TcpListener, TcpStream, IpAddr};
+use std::net::{IpAddr, TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use clap::{ArgAction, Parser};
 use compress::{available_codecs, Codec};
 use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{parse as parse_filters, Matcher};
 use protocol::{negotiate_version, Frame, FrameHeader, Message, Msg, Tag, LATEST_VERSION};
-use transport::{SshStdioTransport, TcpTransport, Transport};
 use shell_words::split as shell_split;
+use transport::{SshStdioTransport, TcpTransport, Transport};
 
 /// Command line interface for rsync-rs.
 ///
@@ -282,7 +282,11 @@ struct PathSpec {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum RemoteSpec {
     Local(PathSpec),
-    Remote { host: String, path: PathSpec },
+    Remote {
+        host: String,
+        path: PathSpec,
+        module: Option<String>,
+    },
 }
 
 fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
@@ -291,6 +295,36 @@ fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
     } else {
         (false, input)
     };
+    if let Some(rest) = s.strip_prefix("rsync://") {
+        let mut parts = rest.splitn(2, '/');
+        let host = parts.next().unwrap_or("");
+        let mod_path = parts.next().unwrap_or("");
+        let mut mp = mod_path.splitn(2, '/');
+        let module = mp.next().unwrap_or("");
+        let path = mp.next().unwrap_or("");
+        return Ok(RemoteSpec::Remote {
+            host: host.to_string(),
+            path: PathSpec {
+                path: PathBuf::from(path),
+                trailing_slash,
+            },
+            module: Some(module.to_string()),
+        });
+    }
+    if let Some(idx) = s.find("::") {
+        let host = &s[..idx];
+        let mut rest = s[idx + 2..].splitn(2, '/');
+        let module = rest.next().unwrap_or("");
+        let path = rest.next().unwrap_or("");
+        return Ok(RemoteSpec::Remote {
+            host: host.to_string(),
+            path: PathSpec {
+                path: PathBuf::from(path),
+                trailing_slash,
+            },
+            module: Some(module.to_string()),
+        });
+    }
     if let Some(rest) = s.strip_prefix('[') {
         if let Some(end) = rest.find(']') {
             let host = &rest[..end];
@@ -301,6 +335,7 @@ fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
                         path: PathBuf::from(path),
                         trailing_slash,
                     },
+                    module: None,
                 });
             }
         }
@@ -331,6 +366,7 @@ fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
                 path: PathBuf::from(&path[1..]),
                 trailing_slash,
             },
+            module: None,
         });
     }
     Ok(RemoteSpec::Local(PathSpec {
@@ -382,7 +418,11 @@ fn spawn_remote_session(
                     .ok()
                     .map(|h| PathBuf::from(h).join(".ssh/known_hosts"))
             });
-            let checking = if strict_host_key_checking { "yes" } else { "no" };
+            let checking = if strict_host_key_checking {
+                "yes"
+            } else {
+                "no"
+            };
             cmd.arg("-o")
                 .arg(format!("StrictHostKeyChecking={checking}"));
             if let Some(path) = known_hosts_path {
@@ -411,6 +451,52 @@ fn spawn_remote_session(
             SshStdioTransport::spawn(program, args)
         }
     }
+}
+
+fn spawn_daemon_session(
+    host: &str,
+    module: &str,
+    password_file: Option<&Path>,
+) -> Result<TcpTransport> {
+    let addr = if host.contains(':') {
+        host.to_string()
+    } else {
+        format!("{host}:873")
+    };
+    let mut t = TcpTransport::connect(&addr).map_err(|e| EngineError::Other(e.to_string()))?;
+    t.send(&LATEST_VERSION.to_be_bytes())
+        .map_err(EngineError::from)?;
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).map_err(EngineError::from)?;
+    let peer = u32::from_be_bytes(buf);
+    negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
+
+    let token = password_file
+        .and_then(|p| fs::read_to_string(p).ok())
+        .and_then(|s| s.lines().next().map(|l| l.to_string()));
+    t.authenticate(token.as_deref())
+        .map_err(EngineError::from)?;
+
+    // consume daemon greeting until OK
+    let mut line = Vec::new();
+    let mut b = [0u8; 1];
+    loop {
+        let n = t.receive(&mut b).map_err(EngineError::from)?;
+        if n == 0 {
+            break;
+        }
+        line.push(b[0]);
+        if b[0] == b'\n' {
+            if line == b"@RSYNCD: OK\n" {
+                break;
+            }
+            line.clear();
+        }
+    }
+
+    let line = format!("{module}\n");
+    t.send(line.as_bytes()).map_err(EngineError::from)?;
+    Ok(t)
 }
 
 fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
@@ -521,13 +607,9 @@ fn run_client(opts: ClientOpts) -> Result<()> {
 
     let known_hosts = opts.known_hosts.clone();
     let strict_host_key_checking = !opts.no_host_key_checking;
-    let rsh_raw = opts
-        .rsh
-        .clone()
-        .or_else(|| env::var("RSYNC_RSH").ok());
+    let rsh_raw = opts.rsh.clone().or_else(|| env::var("RSYNC_RSH").ok());
     let rsh_cmd = match rsh_raw {
-        Some(cmd) => shell_split(&cmd)
-            .map_err(|e| EngineError::Other(e.to_string()))?,
+        Some(cmd) => shell_split(&cmd).map_err(|e| EngineError::Other(e.to_string()))?,
         None => vec!["ssh".to_string()],
     };
 
@@ -617,7 +699,32 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                     "local sync requires --local flag".into(),
                 ))
             }
-            (RemoteSpec::Remote { host, path: src }, RemoteSpec::Local(dst)) => {
+            (
+                RemoteSpec::Remote {
+                    host,
+                    path: src,
+                    module: Some(module),
+                },
+                RemoteSpec::Local(dst),
+            ) => {
+                let mut _session =
+                    spawn_daemon_session(&host, &module, opts.password_file.as_deref())?;
+                sync(
+                    &src.path,
+                    &dst.path,
+                    &matcher,
+                    available_codecs(),
+                    &sync_opts,
+                )?
+            }
+            (
+                RemoteSpec::Remote {
+                    host,
+                    path: src,
+                    module: None,
+                },
+                RemoteSpec::Local(dst),
+            ) => {
                 let mut session = spawn_remote_session(
                     &host,
                     &src.path,
@@ -634,7 +741,32 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 }
                 sync(&src.path, &dst.path, &matcher, &codecs, &sync_opts)?
             }
-            (RemoteSpec::Local(src), RemoteSpec::Remote { host, path: dst }) => {
+            (
+                RemoteSpec::Local(src),
+                RemoteSpec::Remote {
+                    host,
+                    path: dst,
+                    module: Some(module),
+                },
+            ) => {
+                let mut _session =
+                    spawn_daemon_session(&host, &module, opts.password_file.as_deref())?;
+                sync(
+                    &src.path,
+                    &dst.path,
+                    &matcher,
+                    available_codecs(),
+                    &sync_opts,
+                )?
+            }
+            (
+                RemoteSpec::Local(src),
+                RemoteSpec::Remote {
+                    host,
+                    path: dst,
+                    module: None,
+                },
+            ) => {
                 let mut session = spawn_remote_session(
                     &host,
                     &dst.path,
@@ -655,49 +787,114 @@ fn run_client(opts: ClientOpts) -> Result<()> {
                 RemoteSpec::Remote {
                     host: src_host,
                     path: src_path,
+                    module: src_mod,
                 },
                 RemoteSpec::Remote {
                     host: dst_host,
                     path: dst_path,
+                    module: dst_mod,
                 },
             ) => {
                 if src_host.is_empty() || dst_host.is_empty() {
                     return Err(EngineError::Other("remote host missing".to_string()));
                 }
-                if src_path.path.as_os_str().is_empty() || dst_path.path.as_os_str().is_empty() {
+                if (src_mod.is_none() && src_path.path.as_os_str().is_empty())
+                    || (dst_mod.is_none() && dst_path.path.as_os_str().is_empty())
+                {
                     return Err(EngineError::Other("remote path missing".to_string()));
                 }
 
-                let mut dst_session = spawn_remote_session(
-                    &dst_host,
-                    &dst_path.path,
-                    &rsh_cmd,
-                    opts.rsync_path.as_deref(),
-                    known_hosts.as_deref(),
-                    strict_host_key_checking,
-                )
-                .map_err(|e| EngineError::Other(e.to_string()))?;
-                let mut src_session = spawn_remote_session(
-                    &src_host,
-                    &src_path.path,
-                    &rsh_cmd,
-                    opts.rsync_path.as_deref(),
-                    known_hosts.as_deref(),
-                    strict_host_key_checking,
-                )
-                .map_err(|e| EngineError::Other(e.to_string()))?;
+                match (src_mod, dst_mod) {
+                    (None, None) => {
+                        let mut dst_session = spawn_remote_session(
+                            &dst_host,
+                            &dst_path.path,
+                            &rsh_cmd,
+                            opts.rsync_path.as_deref(),
+                            known_hosts.as_deref(),
+                            strict_host_key_checking,
+                        )
+                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                        let mut src_session = spawn_remote_session(
+                            &src_host,
+                            &src_path.path,
+                            &rsh_cmd,
+                            opts.rsync_path.as_deref(),
+                            known_hosts.as_deref(),
+                            strict_host_key_checking,
+                        )
+                        .map_err(|e| EngineError::Other(e.to_string()))?;
 
-                pipe_transports(&mut src_session, &mut dst_session)
-                    .map_err(|e| EngineError::Other(e.to_string()))?;
-                let (src_err, _) = src_session.stderr();
-                if !src_err.is_empty() {
-                    return Err(EngineError::Other(String::from_utf8_lossy(&src_err).into()));
+                        pipe_transports(&mut src_session, &mut dst_session)
+                            .map_err(|e| EngineError::Other(e.to_string()))?;
+                        let (src_err, _) = src_session.stderr();
+                        if !src_err.is_empty() {
+                            return Err(EngineError::Other(
+                                String::from_utf8_lossy(&src_err).into(),
+                            ));
+                        }
+                        let (dst_err, _) = dst_session.stderr();
+                        if !dst_err.is_empty() {
+                            return Err(EngineError::Other(
+                                String::from_utf8_lossy(&dst_err).into(),
+                            ));
+                        }
+                        Stats::default()
+                    }
+                    (Some(sm), Some(dm)) => {
+                        let mut dst_session =
+                            spawn_daemon_session(&dst_host, &dm, opts.password_file.as_deref())?;
+                        let mut src_session =
+                            spawn_daemon_session(&src_host, &sm, opts.password_file.as_deref())?;
+                        pipe_transports(&mut src_session, &mut dst_session)
+                            .map_err(|e| EngineError::Other(e.to_string()))?;
+                        Stats::default()
+                    }
+                    (Some(sm), None) => {
+                        let mut dst_session = spawn_remote_session(
+                            &dst_host,
+                            &dst_path.path,
+                            &rsh_cmd,
+                            opts.rsync_path.as_deref(),
+                            known_hosts.as_deref(),
+                            strict_host_key_checking,
+                        )
+                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                        let mut src_session =
+                            spawn_daemon_session(&src_host, &sm, opts.password_file.as_deref())?;
+                        pipe_transports(&mut src_session, &mut dst_session)
+                            .map_err(|e| EngineError::Other(e.to_string()))?;
+                        let (dst_err, _) = dst_session.stderr();
+                        if !dst_err.is_empty() {
+                            return Err(EngineError::Other(
+                                String::from_utf8_lossy(&dst_err).into(),
+                            ));
+                        }
+                        Stats::default()
+                    }
+                    (None, Some(dm)) => {
+                        let mut dst_session =
+                            spawn_daemon_session(&dst_host, &dm, opts.password_file.as_deref())?;
+                        let mut src_session = spawn_remote_session(
+                            &src_host,
+                            &src_path.path,
+                            &rsh_cmd,
+                            opts.rsync_path.as_deref(),
+                            known_hosts.as_deref(),
+                            strict_host_key_checking,
+                        )
+                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                        pipe_transports(&mut src_session, &mut dst_session)
+                            .map_err(|e| EngineError::Other(e.to_string()))?;
+                        let (src_err, _) = src_session.stderr();
+                        if !src_err.is_empty() {
+                            return Err(EngineError::Other(
+                                String::from_utf8_lossy(&src_err).into(),
+                            ));
+                        }
+                        Stats::default()
+                    }
                 }
-                let (dst_err, _) = dst_session.stderr();
-                if !dst_err.is_empty() {
-                    return Err(EngineError::Other(String::from_utf8_lossy(&dst_err).into()));
-                }
-                Stats::default()
             }
         }
     };
@@ -995,8 +1192,48 @@ mod tests {
     fn ipv6_specs_are_remote() {
         let spec = parse_remote_spec("[::1]:/tmp").unwrap();
         match spec {
-            RemoteSpec::Remote { host, path } => {
+            RemoteSpec::Remote { host, path, module } => {
                 assert_eq!(host, "::1");
+                assert!(module.is_none());
+                assert_eq!(path.path, PathBuf::from("/tmp"));
+            }
+            _ => panic!("expected remote spec"),
+        }
+    }
+
+    #[test]
+    fn rsync_url_specs_are_remote() {
+        let spec = parse_remote_spec("rsync://host/mod/path").unwrap();
+        match spec {
+            RemoteSpec::Remote { host, module, path } => {
+                assert_eq!(host, "host");
+                assert_eq!(module.as_deref(), Some("mod"));
+                assert_eq!(path.path, PathBuf::from("path"));
+            }
+            _ => panic!("expected remote spec"),
+        }
+    }
+
+    #[test]
+    fn daemon_double_colon_specs_are_remote() {
+        let spec = parse_remote_spec("host::mod/path").unwrap();
+        match spec {
+            RemoteSpec::Remote { host, module, path } => {
+                assert_eq!(host, "host");
+                assert_eq!(module.as_deref(), Some("mod"));
+                assert_eq!(path.path, PathBuf::from("path"));
+            }
+            _ => panic!("expected remote spec"),
+        }
+    }
+
+    #[test]
+    fn host_path_specs_are_remote() {
+        let spec = parse_remote_spec("host:/tmp").unwrap();
+        match spec {
+            RemoteSpec::Remote { host, module, path } => {
+                assert_eq!(host, "host");
+                assert!(module.is_none());
                 assert_eq!(path.path, PathBuf::from("/tmp"));
             }
             _ => panic!("expected remote spec"),
