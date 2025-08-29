@@ -92,6 +92,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--max-size` | — | ❌ | — | — |  | ≤3.2 |
 | `--min-size` | — | ❌ | — | — |  | ≤3.2 |
 | `--mkpath` | — | ❌ | — | — |  | ≤3.2 |
+| `--modern` | — | ✅ | ✅ | [tests/interop/modern.rs](../tests/interop/modern.rs) | rsync-rs only; enables zstd compression and BLAKE3 checksums | — |
 | `--modify-window` | `-@` | ❌ | — | — |  | ≤3.2 |
 | `--munge-links` | — | ❌ | — | — |  | ≤3.2 |
 | `--no-D` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--no-devices --no-specials` | ≤3.2 |
