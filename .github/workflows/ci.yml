@@ -94,6 +94,8 @@ jobs:
         run: |
           timeout 60s cargo +nightly fuzz run filters_parse_fuzz -- -max_total_time=30
           timeout 60s cargo +nightly fuzz run filters -- -max_total_time=30
+          timeout 60s cargo +nightly fuzz run dirent_parser -- -max_total_time=30
+          timeout 60s cargo +nightly fuzz run daemon_auth_token_parser -- -max_total_time=30
 
       - name: Compression negotiation tests
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false

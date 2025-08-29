@@ -13,7 +13,9 @@ use clap::{ArgAction, Parser};
 use compress::{available_codecs, Codec};
 use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{parse as parse_filters, Matcher};
-use protocol::{negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION};
+use protocol::{
+    negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION,
+};
 use shell_words::split as shell_split;
 use transport::{RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
 
@@ -335,20 +337,6 @@ fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
             module: Some(module.to_string()),
         });
     }
-    if let Some(idx) = s.find("::") {
-        let host = &s[..idx];
-        let mut rest = s[idx + 2..].splitn(2, '/');
-        let module = rest.next().unwrap_or("");
-        let path = rest.next().unwrap_or("");
-        return Ok(RemoteSpec::Remote {
-            host: host.to_string(),
-            path: PathSpec {
-                path: PathBuf::from(path),
-                trailing_slash,
-            },
-            module: Some(module.to_string()),
-        });
-    }
     if let Some(rest) = s.strip_prefix('[') {
         if let Some(end) = rest.find(']') {
             let host = &rest[..end];
@@ -367,6 +355,20 @@ fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
             path: PathBuf::from(input),
             trailing_slash,
         }));
+    }
+    if let Some(idx) = s.find("::") {
+        let host = &s[..idx];
+        let mut rest = s[idx + 2..].splitn(2, '/');
+        let module = rest.next().unwrap_or("");
+        let path = rest.next().unwrap_or("");
+        return Ok(RemoteSpec::Remote {
+            host: host.to_string(),
+            path: PathSpec {
+                path: PathBuf::from(path),
+                trailing_slash,
+            },
+            module: Some(module.to_string()),
+        });
     }
     if let Some(idx) = s.find(':') {
         if idx == 1 {
@@ -561,9 +563,7 @@ fn handshake_with_peer<T: Transport>(transport: &mut T) -> Result<Vec<Codec>> {
 
     // Read server capability bitmask.
     let mut cap_buf = [0u8; 4];
-    transport
-        .receive(&mut cap_buf)
-        .map_err(EngineError::from)?;
+    transport.receive(&mut cap_buf).map_err(EngineError::from)?;
     let server_caps = u32::from_be_bytes(cap_buf);
 
     let mut peer_codecs = vec![Codec::Zlib];
@@ -1239,6 +1239,23 @@ fn handle_connection(
     Ok(())
 }
 
+/// Parse `token` against the provided `contents` of a secrets file.
+///
+/// Returns the list of authorized modules when the token matches an entry in
+/// the secrets file. Each line in `contents` is expected to contain a token
+/// followed by an optional whitespace separated list of module names.
+pub fn parse_auth_token(token: &str, contents: &str) -> Option<Vec<String>> {
+    for line in contents.lines() {
+        let mut parts = line.split_whitespace();
+        if let Some(tok) = parts.next() {
+            if tok == token {
+                return Some(parts.map(|s| s.to_string()).collect());
+            }
+        }
+    }
+    None
+}
+
 fn authenticate(t: &mut TcpTransport, path: Option<&Path>) -> std::io::Result<Vec<String>> {
     let auth_path = path.unwrap_or(Path::new("auth"));
     if !auth_path.exists() {
@@ -1264,19 +1281,15 @@ fn authenticate(t: &mut TcpTransport, path: Option<&Path>) -> std::io::Result<Ve
         ));
     }
     let token = String::from_utf8_lossy(&buf[..n]).trim().to_string();
-    for line in contents.lines() {
-        let mut parts = line.split_whitespace();
-        if let Some(tok) = parts.next() {
-            if tok == token {
-                return Ok(parts.map(|s| s.to_string()).collect());
-            }
-        }
+    if let Some(allowed) = parse_auth_token(&token, &contents) {
+        Ok(allowed)
+    } else {
+        let _ = t.send(b"@ERROR: access denied");
+        Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "unauthorized",
+        ))
     }
-    let _ = t.send(b"@ERROR: access denied");
-    Err(io::Error::new(
-        io::ErrorKind::PermissionDenied,
-        "unauthorized",
-    ))
 }
 
 fn run_probe(opts: ProbeOpts) -> Result<()> {

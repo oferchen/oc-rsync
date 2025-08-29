@@ -11,6 +11,8 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 protocol = { path = "../crates/protocol" }
 filters = { path = "../crates/filters" }
+walk = { path = "../crates/walk" }
+cli = { path = "../crates/cli" }
 
 [[bin]]
 name = "protocol_frame_decode_fuzz"
@@ -39,5 +41,17 @@ doc = false
 [[bin]]
 name = "filter_parser"
 path = "fuzz_targets/filter_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "dirent_parser"
+path = "fuzz_targets/dirent_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "daemon_auth_token_parser"
+path = "fuzz_targets/daemon_auth_token_parser.rs"
 test = false
 doc = false
