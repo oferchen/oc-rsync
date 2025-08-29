@@ -13,6 +13,18 @@ CLIENT_VERSIONS=("3.2.0" "3.2.7")
 SERVER_VERSIONS=("3.2.0" "3.2.7")
 TRANSPORTS=("ssh" "rsync")
 
+# Additional scenarios to exercise. Each entry is "name extra_flags" where
+# extra_flags are optional.
+SCENARIOS=(
+  "base"
+  "delete --delete"
+  "delete_before --delete-before"
+  "delete_during --delete-during"
+  "delete_after --delete-after"
+  "compress --compress"
+  "rsh"
+)
+
 # Options used for all transfers. -a implies -rtgoD, we add -A and -X for ACLs
 # and xattrs.
 COMMON_FLAGS=(--archive --acls --xattrs)
@@ -131,40 +143,68 @@ for c in "${CLIENT_VERSIONS[@]}"; do
   for s in "${SERVER_VERSIONS[@]}"; do
     server_bin="$ROOT/rsync-$s/rsync"
     for t in "${TRANSPORTS[@]}"; do
-      echo "Testing client $c server $s via $t" >&2
-      tmp="$(mktemp -d)"
-      src="$tmp/src"
-      dst="$tmp/dst"
-      make_source "$src"
-      case "$t" in
-        ssh)
-          read -r ssh tmpdir < <(setup_ssh "$server_bin")
-          "$client_bin" "${COMMON_FLAGS[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
-          gold="$GOLDEN/${c}_${s}_ssh"
-          if [[ "${UPDATE:-0}" == "1" ]]; then
-            rm -rf "$gold"
-            mv "$tmpdir" "$gold"
-          else
-            mkdir -p "$dst"
-            mv "$tmpdir" "$dst"
-            compare_trees "$gold" "$dst"
-          fi
-          ;;
-        rsync)
-          read -r port rootdir < <(setup_daemon "$server_bin")
-          "$client_bin" "${COMMON_FLAGS[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null
-          gold="$GOLDEN/${c}_${s}_rsync"
-          if [[ "${UPDATE:-0}" == "1" ]]; then
-            rm -rf "$gold"
-            mv "$rootdir" "$gold"
-          else
-            mkdir -p "$dst"
-            mv "$rootdir" "$dst"
-            compare_trees "$gold" "$dst"
-          fi
-          ;;
-      esac
-      rm -rf "$tmp"
+      for scenario in "${SCENARIOS[@]}"; do
+        IFS=' ' read -r name flag <<< "$scenario"
+        extra=()
+        if [[ -n "${flag:-}" ]]; then
+          extra=($flag)
+        fi
+        if [[ "$name" == "rsh" && "$t" != "ssh" ]]; then
+          continue
+        fi
+        echo "Testing client $c server $s via $t scenario $name" >&2
+        tmp="$(mktemp -d)"
+        src="$tmp/src"
+        dst="$tmp/dst"
+        make_source "$src"
+        case "$t" in
+          ssh)
+            read -r ssh tmpdir < <(setup_ssh "$server_bin")
+            if [[ "$name" == delete* ]]; then
+              touch "$tmpdir/stale.txt"
+            fi
+            if [[ "$name" == rsh ]]; then
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsh "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
+            else
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
+            fi
+            base="${c}_${s}_ssh"
+            gold="$GOLDEN/$base"
+            if [[ "$name" != "base" ]]; then
+              gold+="_${name}"
+            fi
+            if [[ "${UPDATE:-0}" == "1" ]]; then
+              rm -rf "$gold"
+              mv "$tmpdir" "$gold"
+            else
+              mkdir -p "$dst"
+              mv "$tmpdir" "$dst"
+              compare_trees "$gold" "$dst"
+            fi
+            ;;
+          rsync)
+            read -r port rootdir < <(setup_daemon "$server_bin")
+            if [[ "$name" == delete* ]]; then
+              touch "$rootdir/stale.txt"
+            fi
+            "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null
+            base="${c}_${s}_rsync"
+            gold="$GOLDEN/$base"
+            if [[ "$name" != "base" ]]; then
+              gold+="_${name}"
+            fi
+            if [[ "${UPDATE:-0}" == "1" ]]; then
+              rm -rf "$gold"
+              mv "$rootdir" "$gold"
+            else
+              mkdir -p "$dst"
+              mv "$rootdir" "$dst"
+              compare_trees "$gold" "$dst"
+            fi
+            ;;
+        esac
+        rm -rf "$tmp"
+      done
     done
   done
 done
