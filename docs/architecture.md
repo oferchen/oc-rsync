@@ -24,7 +24,7 @@ crate boundaries, data flow, and the key algorithms that power `rsync-rs`.
   ownership) and provides helper utilities.
 - [`cli`](../crates/cli) – exposes a user-facing command line built on top of
   the engine and transport layers.
-- [`fuzz`](../crates/fuzz) – houses fuzz targets that stress protocol and parser
+- [`fuzz`](../fuzz) – houses fuzz targets that stress protocol and parser
   logic for robustness.
 
 ### Transport
