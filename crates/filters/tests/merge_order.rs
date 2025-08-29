@@ -20,8 +20,8 @@ fn rsync_filter_merge_order_and_wildcards() {
     fs::create_dir_all(&nested).unwrap();
     fs::write(nested.join(".rsync-filter"), "- debug.log\n").unwrap();
 
-    // Global rules mirror recorded rsync behaviour.
-    let global = parse("+ *.log\n- *\n").unwrap();
+    // Global rules mirror recorded rsync behaviour with -F.
+    let global = parse(": /.rsync-filter\n- .rsync-filter\n+ *.log\n- *\n").unwrap();
     let matcher = Matcher::new(global).with_root(root);
 
     // Root rule overrides global include.
