@@ -34,12 +34,7 @@ fn partial_transfer_resumes_after_interrupt() {
     assert!(dst_dir.join("a.partial").exists());
 
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
-    cmd.args([
-        "--local",
-        "--partial",
-        &src_arg,
-        dst_dir.to_str().unwrap(),
-    ]);
+    cmd.args(["--local", "--partial", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
 
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
@@ -76,12 +71,7 @@ fn append_resumes_after_interrupt() {
     assert!(dest_file.exists());
 
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
-    cmd.args([
-        "--local",
-        "--append",
-        &src_arg,
-        dst_dir.to_str().unwrap(),
-    ]);
+    cmd.args(["--local", "--append", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
 
     let out = std::fs::read(dest_file).unwrap();
@@ -134,3 +124,45 @@ fn append_verify_restarts_on_mismatch() {
     assert_eq!(out, data);
 }
 
+#[test]
+fn partial_restarts_on_mismatch() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let data = vec![b'd'; 200_000];
+    std::fs::write(src_dir.join("a.txt"), &data).unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    let mut child = Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--partial",
+            "--bwlimit",
+            "10240",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+    thread::sleep(Duration::from_millis(100));
+    let _ = child.kill();
+    let _ = child.wait();
+
+    let partial_file = dst_dir.join("a.partial");
+    assert!(partial_file.exists());
+    let mut partial = std::fs::read(&partial_file).unwrap();
+    if !partial.is_empty() {
+        partial[0] ^= 1;
+        std::fs::write(&partial_file, &partial).unwrap();
+    }
+
+    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    cmd.args(["--local", "--partial", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.assert().success();
+
+    let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, data);
+}

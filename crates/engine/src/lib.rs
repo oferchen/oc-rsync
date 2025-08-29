@@ -517,7 +517,11 @@ impl Sender {
         } else {
             0
         };
-        if self.opts.append_verify && resume > 0 {
+        let src_len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+        if resume > src_len {
+            resume = src_len;
+        }
+        if (self.opts.partial || self.opts.append_verify) && resume > 0 {
             let mut src_f = File::open(path)?;
             let mut dst_f = File::open(&basis_path)?;
             let mut src_buf = vec![0u8; resume as usize];
@@ -698,7 +702,7 @@ impl Receiver {
             fs::create_dir_all(parent)?;
         }
 
-        let (mut out, resume) = if self.opts.inplace {
+        let (mut out, mut resume) = if self.opts.inplace {
             let f = OpenOptions::new()
                 .read(true)
                 .write(true)
@@ -720,28 +724,32 @@ impl Receiver {
                 .write(true)
                 .create(true)
                 .open(tmp_dest)?;
-            let mut len = f.metadata()?.len();
-            if self.opts.append_verify && len > 0 {
-                let mut src_f = File::open(src)?;
-                let mut dst_f = f.try_clone()?;
-                let mut src_buf = vec![0u8; len as usize];
-                let mut dst_buf = vec![0u8; len as usize];
-                src_f.read_exact(&mut src_buf)?;
-                dst_f.read_exact(&mut dst_buf)?;
-                let cfg = ChecksumConfigBuilder::new()
-                    .strong(self.opts.strong)
-                    .build();
-                let src_sum = cfg.checksum(&src_buf).strong;
-                let dst_sum = cfg.checksum(&dst_buf).strong;
-                if src_sum != dst_sum {
-                    f.set_len(0)?;
-                    len = 0;
-                }
-            }
+            let len = f.metadata()?.len();
             (f, len)
         } else {
             (File::create(tmp_dest)?, 0)
         };
+        let src_len = fs::metadata(src).map(|m| m.len()).unwrap_or(0);
+        if resume > src_len {
+            resume = src_len;
+        }
+        if (self.opts.partial || self.opts.append_verify) && resume > 0 {
+            let mut src_f = File::open(src)?;
+            let mut dst_f = out.try_clone()?;
+            let mut src_buf = vec![0u8; resume as usize];
+            let mut dst_buf = vec![0u8; resume as usize];
+            src_f.read_exact(&mut src_buf)?;
+            dst_f.read_exact(&mut dst_buf)?;
+            let cfg = ChecksumConfigBuilder::new()
+                .strong(self.opts.strong)
+                .build();
+            let src_sum = cfg.checksum(&src_buf).strong;
+            let dst_sum = cfg.checksum(&dst_buf).strong;
+            if src_sum != dst_sum {
+                out.set_len(0)?;
+                resume = 0;
+            }
+        }
         out.seek(SeekFrom::Start(resume))?;
         let file_codec = if should_compress(src, &self.opts.skip_compress) {
             self.codec
