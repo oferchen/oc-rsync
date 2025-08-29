@@ -29,7 +29,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--compress-level` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | applies to zlib or zstd | ≤3.2 |
 | `--zc` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | alias for `--compress-choice` | ≤3.2 |
 | `--zl` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | alias for `--compress-level` | ≤3.2 |
-| `--contimeout` | — | ❌ | — | — |  | ≤3.2 |
+| `--contimeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
 | `--copy-as` | — | ❌ | — | — |  | ≤3.2 |
 | `--copy-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
 | `--copy-devices` | — | ❌ | — | — |  | ≤3.2 |
@@ -144,7 +144,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--suffix` | — | ❌ | — | — |  | ≤3.2 |
 | `--super` | — | ❌ | — | — |  | ≤3.2 |
 | `--temp-dir` | `-T` | ❌ | — | — |  | ≤3.2 |
-| `--timeout` | — | ❌ | — | — |  | ≤3.2 |
+| `--timeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
 | `--times` | `-t` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--trust-sender` | — | ❌ | — | — |  | ≤3.2 |
 | `--update` | `-u` | ❌ | — | — |  | ≤3.2 |

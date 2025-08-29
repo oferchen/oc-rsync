@@ -141,7 +141,7 @@ fn daemon_rejects_invalid_token() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}")).unwrap();
+    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}"), None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -184,7 +184,7 @@ fn daemon_rejects_unauthorized_module() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}")).unwrap();
+    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}"), None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -228,7 +228,7 @@ fn daemon_accepts_authorized_client() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}")).unwrap();
+    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}"), None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -343,7 +343,7 @@ fn daemon_displays_motd() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}")).unwrap();
+    let mut t = TcpTransport::connect(&format!("127.0.0.1:{port}"), None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();

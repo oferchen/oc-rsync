@@ -1,5 +1,5 @@
 use std::io::{self, Read, Write};
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 use crate::{DaemonTransport, Transport};
@@ -11,10 +11,17 @@ pub struct TcpTransport {
 
 impl TcpTransport {
     /// Connect to the given address and return a TCP transport.
-    pub fn connect(addr: &str) -> io::Result<Self> {
-        Ok(Self {
-            stream: TcpStream::connect(addr)?,
-        })
+    pub fn connect(addr: &str, timeout: Option<Duration>) -> io::Result<Self> {
+        let stream = if let Some(dur) = timeout {
+            let addr = addr
+                .to_socket_addrs()?
+                .next()
+                .ok_or_else(|| io::Error::other("invalid address"))?;
+            TcpStream::connect_timeout(&addr, dur)?
+        } else {
+            TcpStream::connect(addr)?
+        };
+        Ok(Self { stream })
     }
 
     /// Create a transport from an existing `TcpStream`.

@@ -154,7 +154,7 @@
 |  | --checksum-choice=STR | choose the checksum algorithm (aka --cc) | no |  | no |
 |  | --checksum-seed=NUM | set block/file checksum seed (advanced) | no |  | no |
 |  | --compare-dest=DIR | also compare destination files relative to DIR | yes |  | no |
-|  | --contimeout=SECONDS | set daemon connection timeout in seconds | no |  | no |
+|  | --contimeout=SECONDS | set daemon connection timeout in seconds | yes |  | no |
 |  | --copy-dest=DIR | ... and include copies of unchanged files | yes |  | no |
 | -k | --copy-dirlinks | transform symlink to dir into referent dir | no |  | no |
 | -L | --copy-links | transform symlink into referent file/dir | no |  | no |
@@ -192,6 +192,6 @@
 | -S | --sparse | turn sequences of nulls into sparse blocks (requires filesystem support) | yes |  | no |
 |  | --suffix=SUFFIX | backup suffix (default ~ w/o --backup-dir) | no |  | no |
 | -T | --temp-dir=DIR | create temporary files in directory DIR | no |  | no |
-|  | --timeout=SECONDS | set I/O timeout in seconds | no |  | no |
+|  | --timeout=SECONDS | set I/O timeout in seconds | yes |  | no |
 | -u | --update | skip files that are newer on the receiver | no |  | no |
 | -W | --whole-file | copy files whole (w/o delta-xfer algorithm) | no |  | no |

@@ -126,6 +126,7 @@ fn custom_rsh_negotiates_codecs() {
         Some(&remote_bin),
         None,
         true,
+        None,
     )
     .unwrap();
     drop(session);
@@ -164,10 +165,7 @@ fn rsh_parses_multi_argument_commands() {
 fn rsh_environment_variables_are_propagated() {
     let dir = tempdir().unwrap();
     let out = dir.path().join("env.txt");
-    let cmd = format!(
-        "FOO=bar sh -c 'echo \"$FOO\" > {}'",
-        out.display()
-    );
+    let cmd = format!("FOO=bar sh -c 'echo \"$FOO\" > {}'", out.display());
     let rsh = parse_rsh(Some(cmd)).unwrap();
     let mut c = Command::new(&rsh.cmd[0]);
     c.args(&rsh.cmd[1..]);
