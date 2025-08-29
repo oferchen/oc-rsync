@@ -5,6 +5,12 @@ use std::os::unix::fs::PermissionsExt;
 #[cfg(unix)]
 use std::process::Command;
 #[cfg(unix)]
+use std::path::Path;
+#[cfg(unix)]
+use assert_cmd::cargo::cargo_bin;
+#[cfg(unix)]
+use compress::available_codecs;
+#[cfg(unix)]
 mod remote_utils;
 #[cfg(unix)]
 use remote_utils::{spawn_reader, spawn_writer};
@@ -81,4 +87,30 @@ fn custom_rsh_matches_stock_rsync() {
     let ours = fs::read(&dst_rr).unwrap();
     let theirs = fs::read(&dst_rsync).unwrap();
     assert_eq!(ours, theirs);
+}
+
+#[cfg(unix)]
+#[test]
+fn custom_rsh_negotiates_codecs() {
+    let dir = tempdir().unwrap();
+    let remote_bin = dir.path().join("rr-remote");
+    fs::copy(cargo_bin("rsync-rs"), &remote_bin).unwrap();
+    fs::set_permissions(&remote_bin, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let rsh = dir.path().join("fake_rsh.sh");
+    fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
+    fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let rsh_cmd = vec![rsh.to_str().unwrap().to_string()];
+    let (session, codecs) = SshStdioTransport::connect_with_rsh(
+        "ignored",
+        Path::new("."),
+        &rsh_cmd,
+        Some(&remote_bin),
+        None,
+        true,
+    )
+    .unwrap();
+    drop(session);
+    assert_eq!(codecs, available_codecs());
 }
