@@ -1,8 +1,9 @@
 use std::ffi::OsStr;
 use std::io::{self, BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::process::{ChildStdin, ChildStdout, Command, Stdio};
+use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
 
 use compress::{available_codecs, Codec};
 use protocol::{
@@ -16,8 +17,23 @@ const SSH_STDERR_CAP: usize = 32 * 1024;
 
 /// Transport over the stdio of a spawned `ssh` process.
 pub struct SshStdioTransport {
-    inner: LocalPipeTransport<BufReader<ChildStdout>, ChildStdin>,
+    inner: Option<LocalPipeTransport<BufReader<ChildStdout>, ChildStdin>>,
     stderr: Arc<Mutex<CapturedStderr>>,
+    handle: Option<ProcessHandle>,
+}
+
+struct ProcessHandle {
+    child: Child,
+    stderr_thread: Option<JoinHandle<()>>,
+}
+
+impl Drop for ProcessHandle {
+    fn drop(&mut self) {
+        if let Some(handle) = self.stderr_thread.take() {
+            let _ = handle.join();
+        }
+        let _ = self.child.wait();
+    }
 }
 
 #[derive(Default)]
@@ -100,7 +116,7 @@ impl SshStdioTransport {
 
         let stderr_buf = Arc::new(Mutex::new(CapturedStderr::default()));
         let stderr_buf_clone = Arc::clone(&stderr_buf);
-        std::thread::spawn(move || {
+        let stderr_thread = std::thread::spawn(move || {
             let mut reader = BufReader::new(stderr);
             let mut buf = Vec::new();
             let mut chunk = [0u8; SSH_IO_BUF_SIZE];
@@ -129,12 +145,18 @@ impl SshStdioTransport {
             }
         });
 
+        let handle = ProcessHandle {
+            child,
+            stderr_thread: Some(stderr_thread),
+        };
+
         Ok(Self {
-            inner: LocalPipeTransport::new(
+            inner: Some(LocalPipeTransport::new(
                 BufReader::with_capacity(SSH_IO_BUF_SIZE, stdout),
                 stdin,
-            ),
+            )),
             stderr: stderr_buf,
+            handle: Some(handle),
         })
     }
 
@@ -165,7 +187,9 @@ impl SshStdioTransport {
             let payload = compress::encode_codecs(available_codecs());
             let frame = Message::Codecs(payload).to_frame(0);
             let mut buf = Vec::new();
-            frame.encode(&mut buf).map_err(|e| io::Error::other(e.to_string()))?;
+            frame
+                .encode(&mut buf)
+                .map_err(|e| io::Error::other(e.to_string()))?;
             transport.send(&buf)?;
 
             let mut hdr = [0u8; 8];
@@ -199,11 +223,10 @@ impl SshStdioTransport {
                 },
                 payload,
             };
-            let msg = Message::from_frame(frame)
-                .map_err(|e| io::Error::other(e.to_string()))?;
+            let msg = Message::from_frame(frame).map_err(|e| io::Error::other(e.to_string()))?;
             if let Message::Codecs(data) = msg {
-                peer_codecs = compress::decode_codecs(&data)
-                    .map_err(|e| io::Error::other(e.to_string()))?;
+                peer_codecs =
+                    compress::decode_codecs(&data).map_err(|e| io::Error::other(e.to_string()))?;
             }
         }
 
@@ -227,7 +250,11 @@ impl SshStdioTransport {
                     .ok()
                     .map(|h| PathBuf::from(h).join(".ssh/known_hosts"))
             });
-            let checking = if strict_host_key_checking { "yes" } else { "no" };
+            let checking = if strict_host_key_checking {
+                "yes"
+            } else {
+                "no"
+            };
             cmd.arg("-o")
                 .arg(format!("StrictHostKeyChecking={checking}"));
             if let Some(path) = known_hosts_path {
@@ -288,14 +315,20 @@ impl SshStdioTransport {
     }
 
     /// Consume the transport returning the reader and writer.
-    pub fn into_inner(self) -> (BufReader<ChildStdout>, ChildStdin) {
-        self.inner.into_inner()
+    ///
+    /// This detaches the child process and stderr thread; the caller is
+    /// responsible for reaping the process.
+    pub fn into_inner(mut self) -> (BufReader<ChildStdout>, ChildStdin) {
+        if let Some(handle) = self.handle.take() {
+            std::mem::forget(handle);
+        }
+        self.inner.take().expect("inner").into_inner()
     }
 }
 
 impl Transport for SshStdioTransport {
     fn send(&mut self, data: &[u8]) -> io::Result<()> {
-        match self.inner.send(data) {
+        match self.inner.as_mut().expect("inner").send(data) {
             Ok(()) => Ok(()),
             Err(err) => {
                 let (stderr, _) = self.stderr();
@@ -311,7 +344,7 @@ impl Transport for SshStdioTransport {
     }
 
     fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match self.inner.receive(buf) {
+        match self.inner.as_mut().expect("inner").receive(buf) {
             Ok(n) => Ok(n),
             Err(err) => {
                 let (stderr, _) = self.stderr();
@@ -328,3 +361,13 @@ impl Transport for SshStdioTransport {
 }
 
 impl SshTransport for SshStdioTransport {}
+
+impl Drop for SshStdioTransport {
+    fn drop(&mut self) {
+        // Close stdin/stdout before waiting on the child process.
+        self.inner.take();
+        if let Some(handle) = self.handle.take() {
+            drop(handle);
+        }
+    }
+}

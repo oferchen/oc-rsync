@@ -1,4 +1,6 @@
+use std::time::Duration;
 use transport::ssh::SshStdioTransport;
+
 use transport::Transport;
 
 #[test]
@@ -11,7 +13,17 @@ fn caps_stderr_output() {
     let mut buf = [0u8; 1];
     let _ = transport.receive(&mut buf).unwrap();
 
-    let (stderr, truncated) = transport.stderr();
-    assert!(truncated, "stderr not truncated");
-    assert_eq!(stderr.len(), LIMIT);
+    // stderr is captured asynchronously; wait until the reader thread finishes
+    // writing to the buffer.
+    let mut attempts = 0;
+    loop {
+        let (stderr, truncated) = transport.stderr();
+        if truncated {
+            assert_eq!(stderr.len(), LIMIT);
+            break;
+        }
+        attempts += 1;
+        assert!(attempts < 100, "stderr not truncated");
+        std::thread::sleep(Duration::from_millis(10));
+    }
 }
