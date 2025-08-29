@@ -14,7 +14,7 @@
 - **fuzz**: fuzz targets validating protocol and filter robustness.
 
 ## Binaries
-- **rsync-rs**: main CLI entry point.
+- **rsync-rs** (`bin/rsync-rs` crate): main CLI entry point.
 - **protocol_frame_decode_fuzz**: fuzz target exercising protocol frame decoding.
 - **filters_parse_fuzz**: fuzz target exercising filter rule parsing.
 

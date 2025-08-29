@@ -109,7 +109,7 @@ impl Iterator for Walk {
                     #[cfg(unix)]
                     let meta = match std::fs::symlink_metadata(entry.path()) {
                         Ok(m) => m,
-                        Err(e) => return Some(Err(e.into())),
+                        Err(e) => return Some(Err(e)),
                     };
                     #[cfg(unix)]
                     let (uid, gid, dev) = (meta.uid(), meta.gid(), meta.dev());
@@ -144,7 +144,7 @@ impl Iterator for Walk {
                     let msg = err.to_string();
                     let io_err = match err.into_io_error() {
                         Some(inner) => inner,
-                        None => io::Error::new(io::ErrorKind::Other, msg),
+                        None => io::Error::other(msg),
                     };
                     return Some(Err(io_err));
                 }

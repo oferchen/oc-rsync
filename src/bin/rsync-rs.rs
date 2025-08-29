@@ -1,3 +1,1 @@
-fn main() -> engine::Result<()> {
-    cli::run()
-}
+include!("../../bin/rsync-rs/src/main.rs");

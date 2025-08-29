@@ -12,7 +12,7 @@ FLAGS=(--recursive --times --perms)
 mkdir -p "$WIRE_DIR" "$FILELIST_DIR"
 
 # Build rsync-rs binary
-cargo build --quiet --bin rsync-rs
+cargo build --quiet -p rsync-rs-bin --bin rsync-rs
 
 # Ensure sshd exists
 if ! command -v sshd >/dev/null 2>&1; then

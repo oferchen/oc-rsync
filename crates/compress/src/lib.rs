@@ -118,6 +118,7 @@ impl Decompressor for Zlib {
 }
 
 /// Zstandard codec adapter.
+#[derive(Default)]
 pub struct Zstd {
     level: i32,
 }
@@ -126,12 +127,6 @@ impl Zstd {
     /// Create a new zstd codec with the given compression level.
     pub fn new(level: i32) -> Self {
         Self { level }
-    }
-}
-
-impl Default for Zstd {
-    fn default() -> Self {
-        Self { level: 0 }
     }
 }
 
