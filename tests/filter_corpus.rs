@@ -23,6 +23,8 @@ fn setup_perdir(src: &Path) {
     fs::write(src.join("sub/keep.tmp"), "keep").unwrap();
     fs::write(src.join("sub/other.tmp"), "other").unwrap();
     fs::write(src.join("sub/other.txt"), "other").unwrap();
+    fs::create_dir_all(src.join("sub/nested")).unwrap();
+    fs::write(src.join("sub/nested/keep.tmp"), "nested").unwrap();
 }
 
 #[test]

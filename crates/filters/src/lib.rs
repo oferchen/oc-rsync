@@ -172,10 +172,8 @@ impl Matcher {
                             };
                             let new_pat = if pat.starts_with('/') {
                                 pat.to_string()
-                            } else if pat.contains('/') {
-                                format!("{}/{}", rel_str, pat)
                             } else {
-                                format!("{}/**/{}", rel_str, pat)
+                                format!("{}/{}", rel_str, pat)
                             };
                             buf.push(kind);
                             buf.push(' ');
