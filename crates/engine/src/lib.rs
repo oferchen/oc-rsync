@@ -657,7 +657,7 @@ impl Receiver {
             fs::create_dir_all(parent)?;
         }
 
-        let (mut out, mut resume) = if self.opts.inplace {
+        let (mut out, resume) = if self.opts.inplace {
             let f = OpenOptions::new()
                 .read(true)
                 .write(true)
