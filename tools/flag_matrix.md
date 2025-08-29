@@ -1,7 +1,7 @@
 | flag | status | notes |
 | --- | --- | --- |
 | --8-bit-output | Error |  |
-| --acls | Ok | requires acl feature |
+| --acls | Error |  |
 | --address | Error |  |
 | --append | Error |  |
 | --append-verify | Error |  |
@@ -68,7 +68,7 @@
 | --include | Supported |  |
 | --include-from | Supported |  |
 | --info | Error |  |
-| --inplace | Error |  |
+| --inplace | Supported |  |
 | --ipv4 | Error |  |
 | --ipv6 | Error |  |
 | --itemize-changes | Error |  |
@@ -141,20 +141,20 @@
 | --whole-file | Error |  |
 | --write-batch | Error |  |
 | --write-devices | Error |  |
-| --xattrs | Ok | requires xattr feature |
+| --xattrs | Error |  |
 | -0 | Error | alias for --from0 |
 | -4 | Error | alias for --ipv4 |
 | -6 | Error | alias for --ipv6 |
 | -8 | Error | alias for --8-bit-output |
 | -@ | Error | alias for --modify-window |
-| -A | Ok | alias for --acls |
+| -A | Error | alias for --acls |
 | -B | Error | alias for --block-size |
 | -C | Error | alias for --cvs-exclude |
 | -D | Error | same as --devices --specials |
 | -E | Error | alias for --executability |
 | -F | Error | same as --filter='dir-merge /.rsync-filter' |
 | -H | Error | alias for --hard-links |
-| -I | Error | alias for --ignore-times |
+| -I | Alias | alias for --ignore-times |
 | -J | Error | alias for --omit-link-times |
 | -K | Error | alias for --keep-dirlinks |
 | -L | Error | alias for --copy-links |
@@ -168,7 +168,7 @@
 | -U | Error | alias for --atimes |
 | -V | Error | alias for --version |
 | -W | Error | alias for --whole-file |
-| -X | Ok | alias for --xattrs |
+| -X | Error | alias for --xattrs |
 | -a | Alias | alias for --archive |
 | -b | Error | alias for --backup |
 | -c | Alias | alias for --checksum |
