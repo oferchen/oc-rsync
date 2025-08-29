@@ -67,7 +67,7 @@ pub struct DeltaIter<'a, R: Read + Seek> {
     block_size: usize,
     map: HashMap<u32, Vec<(Vec<u8>, usize, usize)>>,
     lit: Vec<u8>,
-    window: Vec<u8>,
+    window: VecDeque<u8>,
     byte: [u8; 1],
     done: bool,
 }
@@ -91,7 +91,7 @@ impl<'a, R: Read + Seek> Iterator for DeltaIter<'a, R> {
                             self.done = true;
                             break;
                         }
-                        Ok(_) => self.window.push(self.byte[0]),
+                        Ok(_) => self.window.push_back(self.byte[0]),
                         Err(e) => return Some(Err(e.into())),
                     }
                 }
@@ -105,7 +105,10 @@ impl<'a, R: Read + Seek> Iterator for DeltaIter<'a, R> {
             }
 
             let len = usize::min(self.window.len(), self.block_size);
-            let sum = self.cfg.checksum(&self.window[..len]);
+            self.window.make_contiguous();
+            let sum = self
+                .cfg
+                .checksum(&self.window.as_slices().0[..len]);
             if let Some(candidates) = self.map.get(&sum.weak) {
                 if let Some((_, off, blen)) = candidates
                     .iter()
@@ -123,7 +126,9 @@ impl<'a, R: Read + Seek> Iterator for DeltaIter<'a, R> {
             }
 
             // No match: emit first byte as literal and slide the window.
-            self.lit.push(self.window.remove(0));
+            if let Some(b) = self.window.pop_front() {
+                self.lit.push(b);
+            }
             if self.done && self.window.is_empty() {
                 return Some(Ok(Op::Data(std::mem::take(&mut self.lit))));
             }
@@ -190,7 +195,7 @@ pub fn compute_delta<'a, R1: Read + Seek, R2: Read + Seek>(
         block_size,
         map,
         lit: Vec::new(),
-        window: Vec::new(),
+        window: VecDeque::new(),
         byte: [0u8; 1],
         done: false,
     })
