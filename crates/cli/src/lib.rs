@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
-use std::net::{IpAddr, Ipv4Addr, TcpListener, TcpStream};
+use std::net::{IpAddr, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -200,6 +200,9 @@ struct ClientOpts {
     /// set daemon connection timeout in seconds
     #[arg(long = "contimeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     contimeout: Option<Duration>,
+    /// specify the remote port
+    #[arg(long, value_name = "PORT", help_heading = "Misc")]
+    port: Option<u16>,
     /// set block size used for rolling checksums
     #[arg(
         short = 'B',
@@ -650,18 +653,20 @@ where
 fn spawn_daemon_session(
     host: &str,
     module: &str,
+    port: Option<u16>,
     password_file: Option<&Path>,
     no_motd: bool,
     timeout: Option<Duration>,
     contimeout: Option<Duration>,
 ) -> Result<TcpTransport> {
-    let addr = if host.contains(':') {
-        host.to_string()
+    let (host, port) = if let Some((h, p)) = host.rsplit_once(':') {
+        let p = p.parse().unwrap_or(873);
+        (h, p)
     } else {
-        format!("{host}:873")
+        (host, port.unwrap_or(873))
     };
-    let mut t =
-        TcpTransport::connect(&addr, contimeout).map_err(|e| EngineError::Other(e.to_string()))?;
+    let mut t = TcpTransport::connect(host, port, contimeout)
+        .map_err(|e| EngineError::Other(e.to_string()))?;
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
     t.send(&LATEST_VERSION.to_be_bytes())
         .map_err(EngineError::from)?;
@@ -954,6 +959,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 let mut _session = spawn_daemon_session(
                     &host,
                     &module,
+                    opts.port,
                     opts.password_file.as_deref(),
                     opts.no_motd,
                     opts.timeout,
@@ -984,6 +990,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.rsync_path.as_deref(),
                     known_hosts.as_deref(),
                     strict_host_key_checking,
+                    opts.port,
                     opts.contimeout,
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1004,6 +1011,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 let mut _session = spawn_daemon_session(
                     &host,
                     &module,
+                    opts.port,
                     opts.password_file.as_deref(),
                     opts.no_motd,
                     opts.timeout,
@@ -1034,6 +1042,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.rsync_path.as_deref(),
                     known_hosts.as_deref(),
                     strict_host_key_checking,
+                    opts.port,
                     opts.contimeout,
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1074,6 +1083,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.rsync_path.as_deref(),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
+                            opts.port,
                             opts.contimeout,
                         )
                         .map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1085,6 +1095,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.rsync_path.as_deref(),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
+                            opts.port,
                             opts.contimeout,
                         )
                         .map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1128,6 +1139,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         let mut dst_session = spawn_daemon_session(
                             &dst_host,
                             &dm,
+                            opts.port,
                             opts.password_file.as_deref(),
                             opts.no_motd,
                             opts.timeout,
@@ -1136,6 +1148,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         let mut src_session = spawn_daemon_session(
                             &src_host,
                             &sm,
+                            opts.port,
                             opts.password_file.as_deref(),
                             opts.no_motd,
                             opts.timeout,
@@ -1160,12 +1173,14 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.rsync_path.as_deref(),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
+                            opts.port,
                             opts.contimeout,
                         )
                         .map_err(|e| EngineError::Other(e.to_string()))?;
                         let mut src_session = spawn_daemon_session(
                             &src_host,
                             &sm,
+                            opts.port,
                             opts.password_file.as_deref(),
                             opts.no_motd,
                             opts.timeout,
@@ -1198,6 +1213,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         let mut dst_session = spawn_daemon_session(
                             &dst_host,
                             &dm,
+                            opts.port,
                             opts.password_file.as_deref(),
                             opts.no_motd,
                             opts.timeout,
@@ -1211,6 +1227,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.rsync_path.as_deref(),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
+                            opts.port,
                             opts.contimeout,
                         )
                         .map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1405,8 +1422,7 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     let timeout = opts.timeout;
     let bwlimit = opts.bwlimit;
 
-    let addr = opts.address.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
-    let listener = TcpListener::bind((addr, opts.port))?;
+    let listener = TcpTransport::listen(opts.address, opts.port)?;
 
     loop {
         let (stream, addr) = listener.accept()?;

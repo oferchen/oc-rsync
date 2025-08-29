@@ -1,5 +1,5 @@
 use std::io::{self, Read, Write};
-use std::net::{TcpStream, ToSocketAddrs};
+use std::net::{IpAddr, Ipv4Addr, TcpListener, TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 use crate::{DaemonTransport, Transport};
@@ -10,18 +10,24 @@ pub struct TcpTransport {
 }
 
 impl TcpTransport {
-    /// Connect to the given address and return a TCP transport.
-    pub fn connect(addr: &str, timeout: Option<Duration>) -> io::Result<Self> {
+    /// Connect to the given host and port and return a TCP transport.
+    pub fn connect(host: &str, port: u16, timeout: Option<Duration>) -> io::Result<Self> {
         let stream = if let Some(dur) = timeout {
-            let addr = addr
+            let addr = (host, port)
                 .to_socket_addrs()?
                 .next()
                 .ok_or_else(|| io::Error::other("invalid address"))?;
             TcpStream::connect_timeout(&addr, dur)?
         } else {
-            TcpStream::connect(addr)?
+            TcpStream::connect((host, port))?
         };
         Ok(Self { stream })
+    }
+
+    /// Create a TCP listener bound to the given address and port.
+    pub fn listen(addr: Option<IpAddr>, port: u16) -> io::Result<TcpListener> {
+        let addr = addr.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+        TcpListener::bind((addr, port))
     }
 
     /// Create a transport from an existing `TcpStream`.
