@@ -254,6 +254,7 @@ impl SshStdioTransport {
         remote_bin: Option<&Path>,
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
+        port: Option<u16>,
         connect_timeout: Option<Duration>,
     ) -> io::Result<Self> {
         let program = rsh.get(0).map(|s| s.as_str()).unwrap_or("ssh");
@@ -281,6 +282,9 @@ impl SshStdioTransport {
                 cmd.arg("-o")
                     .arg(format!("ConnectTimeout={}", dur.as_secs()));
             }
+            if let Some(p) = port {
+                cmd.arg("-p").arg(p.to_string());
+            }
             cmd.arg(host);
             if let Some(bin) = remote_bin {
                 cmd.arg(bin);
@@ -292,7 +296,12 @@ impl SshStdioTransport {
             Self::spawn_from_command(cmd)
         } else {
             let mut args = rsh[1..].to_vec();
-            args.push(host.to_string());
+            let host = if let Some(p) = port {
+                format!("{host}:{p}")
+            } else {
+                host.to_string()
+            };
+            args.push(host);
             if let Some(bin) = remote_bin {
                 args.push(bin.to_string_lossy().into_owned());
             } else {
@@ -316,6 +325,7 @@ impl SshStdioTransport {
         remote_bin: Option<&Path>,
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
+        port: Option<u16>,
         connect_timeout: Option<Duration>,
     ) -> io::Result<(Self, Vec<Codec>)> {
         let mut t = Self::spawn_with_rsh(
@@ -326,6 +336,7 @@ impl SshStdioTransport {
             remote_bin,
             known_hosts,
             strict_host_key_checking,
+            port,
             connect_timeout,
         )?;
         let codecs = Self::handshake(&mut t, rsync_env)?;
