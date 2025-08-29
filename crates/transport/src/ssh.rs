@@ -74,7 +74,8 @@ impl SshStdioTransport {
         Self::spawn_from_command(cmd)
     }
 
-    fn spawn_from_command(mut cmd: Command) -> io::Result<Self> {
+    /// Spawn from a fully configured command.
+    pub fn spawn_from_command(mut cmd: Command) -> io::Result<Self> {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -150,11 +151,35 @@ impl SshStdioTransport {
 
 impl Transport for SshStdioTransport {
     fn send(&mut self, data: &[u8]) -> io::Result<()> {
-        self.inner.send(data)
+        match self.inner.send(data) {
+            Ok(()) => Ok(()),
+            Err(err) => {
+                let (stderr, _) = self.stderr();
+                if !stderr.is_empty() {
+                    return Err(io::Error::new(
+                        err.kind(),
+                        String::from_utf8_lossy(&stderr).into_owned(),
+                    ));
+                }
+                Err(err)
+            }
+        }
     }
 
     fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.inner.receive(buf)
+        match self.inner.receive(buf) {
+            Ok(n) => Ok(n),
+            Err(err) => {
+                let (stderr, _) = self.stderr();
+                if !stderr.is_empty() {
+                    return Err(io::Error::new(
+                        err.kind(),
+                        String::from_utf8_lossy(&stderr).into_owned(),
+                    ));
+                }
+                Err(err)
+            }
+        }
     }
 }
 
