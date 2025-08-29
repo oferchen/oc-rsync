@@ -59,80 +59,162 @@ copied:
 
 ## Options
 
-| Short | Long | Default | Description |
-|-------|------|---------|-------------|
-| `-v` | `--verbose` | off | increase verbosity |
-| `-q` | `--quiet` | off | suppress non-error messages |
-| | `--no-motd` | off | suppress daemon-mode MOTD |
-| `-c` | `--checksum` | off | skip based on checksum, not mod-time & size |
-| `-a` | `--archive` | off | archive mode is -rlptgoD (no -A,-X,-U,-N,-H) |
-| `-r` | `--recursive` | off | recurse into directories |
-| `-R` | `--relative` | off | use relative path names |
-| `-I` | `--inplace` | off | update destination files in-place |
-| | `--append` | off | append data onto shorter files |
-| | `--append-verify` | off | --append w/old data in file checksum |
-| `-l` | `--links` | off | copy symlinks as symlinks |
-| | `--hard-links` | off | preserve hard links |
-| | `--perms` | off | preserve permissions |
-| | `--chmod=CHMOD` | none | affect file and/or directory permissions |
-| | `--acls` | off | preserve ACLs (implies --perms) |
-| | `--xattrs` | off | preserve extended attributes |
-| | `--owner` | off | preserve owner (super-user only) |
-| | `--group` | off | preserve group |
-| | `--devices` | off | preserve device files (super-user only) |
-| | `--specials` | off | preserve special files |
-| | `--times` | off | preserve modification times |
-| `-U` | `--atimes` | off | preserve access (use) times |
-| `-N` | `--crtimes` | off | preserve create times (newness) |
-| `-S` | `--sparse` | off | turn sequences of nulls into sparse blocks |
-| `-n` | `--dry-run` | off | perform a trial run with no changes made |
-| `-e` | `--rsh=COMMAND` | `ssh` | specify the remote shell to use |
-| | `--rsync-path=PROGRAM` | none | specify the rsync to run on remote machine |
-| | `--delete` | off | delete extraneous files from dest dirs |
-| | `--delete-before` | off | receiver deletes before transfer, not during |
-| | `--delete-during` (`--del`) | off | receiver deletes during the transfer |
-| | `--delete-delay` | off | find deletions during, delete after |
-| | `--delete-after` | off | receiver deletes after transfer, not during |
-| | `--delete-excluded` | off | also delete excluded files from dest dirs |
-| `-b` | `--backup` | off | make backups of replaced or removed files |
-| | `--backup-dir=DIR` | none | store backups under DIR |
-| | `--partial` | off | keep partially transferred files |
-| | `--partial-dir=DIR` | none | put a partially transferred file into DIR |
-| | `--numeric-ids` | off | don't map uid/gid values by user/group name |
-| | `--compare-dest=DIR` | none | also compare destination files relative to DIR |
-| | `--copy-dest=DIR` | none | ... and include copies of unchanged files |
-| | `--link-dest=DIR` | none | hardlink to files in DIR when unchanged |
-| | `--config=FILE` | none | specify alternate config file |
-| `-z` | `--compress` | off | compress file data during the transfer |
-| | `--compress-choice=STR` | auto | choose the compression algorithm |
-| | `--compress-level=NUM` | auto | explicitly set compression level |
-| | `--modern` | off | enable zstd compression and BLAKE3 checksums (rsync-rs specific) |
-| `-f` | `--filter=RULE` | none | add a file-filtering RULE |
-| `-F` | | off | same as --filter='dir-merge /.rsync-filter' repeated: --filter='- .rsync-filter' |
-| | `--exclude=PATTERN` | none | exclude files matching PATTERN |
-| | `--exclude-from=FILE` | none | read exclude patterns from FILE |
-| | `--include=PATTERN` | none | don't exclude files matching PATTERN |
-| | `--include-from=FILE` | none | read include patterns from FILE |
-| | `--files-from=FILE` | none | read list of source-file names from FILE |
-| `-0` | `--from0` | off | all *-from/filter files are delimited by 0s |
-| | `--stats` | off | give some file-transfer stats |
-| | `--progress` | off | show progress during transfer |
-| `-P` | | off | same as --partial --progress |
-| | `--password-file=FILE` | none | read daemon-access password from FILE |
-| | `--bwlimit=RATE` | none | limit socket I/O bandwidth |
-| `-B` | `--block-size=SIZE` | 1024 | set block size used for rolling checksums |
-| | `--daemon` | off | run as an rsync daemon |
-| | `--module NAME=PATH` | none | module declaration (daemon mode) |
-| | `--address=ADDR` | 0.0.0.0 | bind address for daemon |
-| | `--port=PORT` | 873 | port to listen on (daemon mode) |
-| | `--secrets-file=FILE` | none | path to secrets file for authentication |
-| | `--hosts-allow=LIST` | none | list of hosts allowed to connect |
-| | `--hosts-deny=LIST` | none | list of hosts denied from connecting |
-| | `--log-file=FILE` | none | log what we're doing to the specified FILE |
-| | `--log-file-format=FMT` | none | log updates using the specified FMT |
-| | `--motd=FILE` | none | path to message of the day file |
+The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior of stock rsync; `off` means the flag is disabled unless specified. Each entry links to the corresponding row in [`feature_matrix.md`](feature_matrix.md) for implementation status and notes.
 
-Flags such as `-P` and `--numeric-ids` mirror their `rsync` behavior. See the [CLI flag reference](cli/flags.md) for implementation details and notes.
+| Short | Long | Default | Interactions | Matrix |
+|-------|------|---------|-------------|--------|
+| `-8` | `--8-bit-output` | off |  | [matrix](feature_matrix.md#--8-bit-output) |
+| `-A` | `--acls` | off | requires `acl` feature | [matrix](feature_matrix.md#--acls) |
+|  | `--address` | 0.0.0.0 |  | [matrix](feature_matrix.md#--address) |
+|  | `--append` | off |  | [matrix](feature_matrix.md#--append) |
+|  | `--append-verify` | off |  | [matrix](feature_matrix.md#--append-verify) |
+| `-a` | `--archive` | off |  | [matrix](feature_matrix.md#--archive) |
+| `-U` | `--atimes` | off |  | [matrix](feature_matrix.md#--atimes) |
+| `-b` | `--backup` | off | uses `~` suffix without `--backup-dir` | [matrix](feature_matrix.md#--backup) |
+|  | `--backup-dir` | off | implies `--backup` | [matrix](feature_matrix.md#--backup-dir) |
+| `-B` | `--block-size` | 1024 | controls delta block size | [matrix](feature_matrix.md#--block-size) |
+|  | `--blocking-io` | off |  | [matrix](feature_matrix.md#--blocking-io) |
+|  | `--bwlimit` | off |  | [matrix](feature_matrix.md#--bwlimit) |
+|  | `--cc` | off | alias for `--checksum-choice` | [matrix](feature_matrix.md#--cc) |
+| `-c` | `--checksum` | off | strong hashes: MD5 (default), SHA-1, BLAKE3 | [matrix](feature_matrix.md#--checksum) |
+|  | `--checksum-choice` | off |  | [matrix](feature_matrix.md#--checksum-choice) |
+|  | `--checksum-seed` | off |  | [matrix](feature_matrix.md#--checksum-seed) |
+|  | `--chmod` | off |  | [matrix](feature_matrix.md#--chmod) |
+|  | `--chown` | off |  | [matrix](feature_matrix.md#--chown) |
+|  | `--compare-dest` | off |  | [matrix](feature_matrix.md#--compare-dest) |
+| `-z` | `--compress` | off | negotiates zstd when supported by both peers | [matrix](feature_matrix.md#--compress) |
+|  | `--compress-choice` | auto | supports zstd and zlib only | [matrix](feature_matrix.md#--compress-choice) |
+|  | `--compress-level` | auto | applies to zlib or zstd | [matrix](feature_matrix.md#--compress-level) |
+|  | `--zc` | off | alias for `--compress-choice` | [matrix](feature_matrix.md#--zc) |
+|  | `--zl` | off | alias for `--compress-level` | [matrix](feature_matrix.md#--zl) |
+|  | `--contimeout` | off |  | [matrix](feature_matrix.md#--contimeout) |
+|  | `--copy-as` | off |  | [matrix](feature_matrix.md#--copy-as) |
+|  | `--copy-dest` | off |  | [matrix](feature_matrix.md#--copy-dest) |
+|  | `--copy-devices` | off |  | [matrix](feature_matrix.md#--copy-devices) |
+| `-k` | `--copy-dirlinks` | off |  | [matrix](feature_matrix.md#--copy-dirlinks) |
+| `-L` | `--copy-links` | off |  | [matrix](feature_matrix.md#--copy-links) |
+|  | `--copy-unsafe-links` | off |  | [matrix](feature_matrix.md#--copy-unsafe-links) |
+| `-N` | `--crtimes` | off |  | [matrix](feature_matrix.md#--crtimes) |
+| `-C` | `--cvs-exclude` | off |  | [matrix](feature_matrix.md#--cvs-exclude) |
+|  | `--daemon` | off |  | [matrix](feature_matrix.md#--daemon) |
+|  | `--debug` | off |  | [matrix](feature_matrix.md#--debug) |
+|  | `--del` | off | alias for `--delete-during` | [matrix](feature_matrix.md#--del) |
+|  | `--delay-updates` | off |  | [matrix](feature_matrix.md#--delay-updates) |
+|  | `--delete` | off |  | [matrix](feature_matrix.md#--delete) |
+|  | `--delete-after` | off |  | [matrix](feature_matrix.md#--delete-after) |
+|  | `--delete-before` | off |  | [matrix](feature_matrix.md#--delete-before) |
+|  | `--delete-delay` | off |  | [matrix](feature_matrix.md#--delete-delay) |
+|  | `--delete-during` | off |  | [matrix](feature_matrix.md#--delete-during) |
+|  | `--delete-excluded` | off |  | [matrix](feature_matrix.md#--delete-excluded) |
+|  | `--delete-missing-args` | off |  | [matrix](feature_matrix.md#--delete-missing-args) |
+|  | `--devices` | off |  | [matrix](feature_matrix.md#--devices) |
+| `-d` | `--dirs` | off |  | [matrix](feature_matrix.md#--dirs) |
+| `-n` | `--dry-run` | off |  | [matrix](feature_matrix.md#--dry-run) |
+|  | `--early-input` | off |  | [matrix](feature_matrix.md#--early-input) |
+|  | `--exclude` | off |  | [matrix](feature_matrix.md#--exclude) |
+|  | `--exclude-from` | off |  | [matrix](feature_matrix.md#--exclude-from) |
+| `-E` | `--executability` | off |  | [matrix](feature_matrix.md#--executability) |
+|  | `--existing` | off |  | [matrix](feature_matrix.md#--existing) |
+|  | `--fake-super` | off |  | [matrix](feature_matrix.md#--fake-super) |
+|  | `--files-from` | off |  | [matrix](feature_matrix.md#--files-from) |
+| `-f` | `--filter` | off |  | [matrix](feature_matrix.md#--filter) |
+|  | `--force` | off |  | [matrix](feature_matrix.md#--force) |
+| `-0` | `--from0` | off |  | [matrix](feature_matrix.md#--from0) |
+|  | `--fsync` | off |  | [matrix](feature_matrix.md#--fsync) |
+| `-y` | `--fuzzy` | off |  | [matrix](feature_matrix.md#--fuzzy) |
+| `-g` | `--group` | off |  | [matrix](feature_matrix.md#--group) |
+|  | `--groupmap` | off |  | [matrix](feature_matrix.md#--groupmap) |
+| `-H` | `--hard-links` | off |  | [matrix](feature_matrix.md#--hard-links) |
+| `-h (*)` | `--help` | off |  | [matrix](feature_matrix.md#--help) |
+| `-h` | `--human-readable` | off |  | [matrix](feature_matrix.md#--human-readable) |
+|  | `--iconv` | off |  | [matrix](feature_matrix.md#--iconv) |
+|  | `--ignore-errors` | off |  | [matrix](feature_matrix.md#--ignore-errors) |
+|  | `--ignore-existing` | off |  | [matrix](feature_matrix.md#--ignore-existing) |
+|  | `--ignore-missing-args` | off |  | [matrix](feature_matrix.md#--ignore-missing-args) |
+| `-I` | `--ignore-times` | off |  | [matrix](feature_matrix.md#--ignore-times) |
+|  | `--include` | off |  | [matrix](feature_matrix.md#--include) |
+|  | `--include-from` | off |  | [matrix](feature_matrix.md#--include-from) |
+|  | `--info` | off |  | [matrix](feature_matrix.md#--info) |
+|  | `--inplace` | off |  | [matrix](feature_matrix.md#--inplace) |
+| `-4` | `--ipv4` | off |  | [matrix](feature_matrix.md#--ipv4) |
+| `-6` | `--ipv6` | off |  | [matrix](feature_matrix.md#--ipv6) |
+| `-i` | `--itemize-changes` | off |  | [matrix](feature_matrix.md#--itemize-changes) |
+| `-K` | `--keep-dirlinks` | off |  | [matrix](feature_matrix.md#--keep-dirlinks) |
+|  | `--link-dest` | off |  | [matrix](feature_matrix.md#--link-dest) |
+| `-l` | `--links` | off |  | [matrix](feature_matrix.md#--links) |
+|  | `--list-only` | off |  | [matrix](feature_matrix.md#--list-only) |
+|  | `--log-file` | off |  | [matrix](feature_matrix.md#--log-file) |
+|  | `--log-file-format` | off |  | [matrix](feature_matrix.md#--log-file-format) |
+|  | `--max-alloc` | off |  | [matrix](feature_matrix.md#--max-alloc) |
+|  | `--max-delete` | off |  | [matrix](feature_matrix.md#--max-delete) |
+|  | `--max-size` | off |  | [matrix](feature_matrix.md#--max-size) |
+|  | `--min-size` | off |  | [matrix](feature_matrix.md#--min-size) |
+|  | `--mkpath` | off |  | [matrix](feature_matrix.md#--mkpath) |
+|  | `--modern` | off | rsync-rs only; enables zstd compression and BLAKE3 checksums | [matrix](feature_matrix.md#--modern) |
+| `-@` | `--modify-window` | off |  | [matrix](feature_matrix.md#--modify-window) |
+|  | `--munge-links` | off |  | [matrix](feature_matrix.md#--munge-links) |
+|  | `--no-D` | off | alias for `--no-devices --no-specials` | [matrix](feature_matrix.md#--no-d) |
+|  | `--no-OPTION` | off |  | [matrix](feature_matrix.md#--no-option) |
+|  | `--no-implied-dirs` | off |  | [matrix](feature_matrix.md#--no-implied-dirs) |
+|  | `--no-motd` | off |  | [matrix](feature_matrix.md#--no-motd) |
+|  | `--numeric-ids` | off |  | [matrix](feature_matrix.md#--numeric-ids) |
+|  | `--old-args` | off |  | [matrix](feature_matrix.md#--old-args) |
+|  | `--old-d` | off | alias for `--old-dirs` | [matrix](feature_matrix.md#--old-d) |
+|  | `--old-dirs` | off |  | [matrix](feature_matrix.md#--old-dirs) |
+| `-O` | `--omit-dir-times` | off |  | [matrix](feature_matrix.md#--omit-dir-times) |
+| `-J` | `--omit-link-times` | off |  | [matrix](feature_matrix.md#--omit-link-times) |
+| `-x` | `--one-file-system` | off |  | [matrix](feature_matrix.md#--one-file-system) |
+|  | `--only-write-batch` | off |  | [matrix](feature_matrix.md#--only-write-batch) |
+|  | `--open-noatime` | off |  | [matrix](feature_matrix.md#--open-noatime) |
+|  | `--out-format` | off |  | [matrix](feature_matrix.md#--out-format) |
+|  | `--outbuf` | off |  | [matrix](feature_matrix.md#--outbuf) |
+| `-o` | `--owner` | off |  | [matrix](feature_matrix.md#--owner) |
+|  | `--partial` | off |  | [matrix](feature_matrix.md#--partial) |
+|  | `--partial-dir` | off |  | [matrix](feature_matrix.md#--partial-dir) |
+|  | `--password-file` | — |  | [matrix](feature_matrix.md#--password-file) |
+| `-p` | `--perms` | off |  | [matrix](feature_matrix.md#--perms) |
+|  | `--port` | 873 |  | [matrix](feature_matrix.md#--port) |
+|  | `--preallocate` | off |  | [matrix](feature_matrix.md#--preallocate) |
+|  | `--progress` | off |  | [matrix](feature_matrix.md#--progress) |
+|  | `--protocol` | off |  | [matrix](feature_matrix.md#--protocol) |
+| `-m` | `--prune-empty-dirs` | off |  | [matrix](feature_matrix.md#--prune-empty-dirs) |
+| `-q` | `--quiet` | off |  | [matrix](feature_matrix.md#--quiet) |
+|  | `--read-batch` | off |  | [matrix](feature_matrix.md#--read-batch) |
+| `-r` | `--recursive` | off |  | [matrix](feature_matrix.md#--recursive) |
+| `-R` | `--relative` | off |  | [matrix](feature_matrix.md#--relative) |
+| `-M` | `--remote-option` | off |  | [matrix](feature_matrix.md#--remote-option) |
+|  | `--remove-source-files` | off |  | [matrix](feature_matrix.md#--remove-source-files) |
+| `-e` | `--rsh` | ssh | negotiation incomplete; lacks full command parsing and environment handshake | [matrix](feature_matrix.md#--rsh) |
+|  | `--rsync-path` | — | requires `--rsh`; remote path negotiation incomplete | [matrix](feature_matrix.md#--rsync-path) |
+|  | `--safe-links` | off |  | [matrix](feature_matrix.md#--safe-links) |
+| `-s` | `--secluded-args` | off |  | [matrix](feature_matrix.md#--secluded-args) |
+|  | `--secrets-file` | off |  | [matrix](feature_matrix.md#--secrets-file) |
+|  | `--server` | off | negotiates protocol version and codecs | [matrix](feature_matrix.md#--server) |
+|  | `--size-only` | off |  | [matrix](feature_matrix.md#--size-only) |
+|  | `--skip-compress` | off |  | [matrix](feature_matrix.md#--skip-compress) |
+|  | `--sockopts` | off |  | [matrix](feature_matrix.md#--sockopts) |
+| `-S` | `--sparse` | off | creates holes for long zero runs | [matrix](feature_matrix.md#--sparse) |
+|  | `--specials` | off |  | [matrix](feature_matrix.md#--specials) |
+|  | `--stats` | off |  | [matrix](feature_matrix.md#--stats) |
+|  | `--stderr` | off |  | [matrix](feature_matrix.md#--stderr) |
+|  | `--stop-after` | off |  | [matrix](feature_matrix.md#--stop-after) |
+|  | `--stop-at` | off |  | [matrix](feature_matrix.md#--stop-at) |
+|  | `--suffix` | off |  | [matrix](feature_matrix.md#--suffix) |
+|  | `--super` | off |  | [matrix](feature_matrix.md#--super) |
+| `-T` | `--temp-dir` | off |  | [matrix](feature_matrix.md#--temp-dir) |
+|  | `--timeout` | off |  | [matrix](feature_matrix.md#--timeout) |
+| `-t` | `--times` | off |  | [matrix](feature_matrix.md#--times) |
+|  | `--trust-sender` | off |  | [matrix](feature_matrix.md#--trust-sender) |
+| `-u` | `--update` | off |  | [matrix](feature_matrix.md#--update) |
+|  | `--usermap` | off |  | [matrix](feature_matrix.md#--usermap) |
+| `-v` | `--verbose` | off |  | [matrix](feature_matrix.md#--verbose) |
+| `-V` | `--version` | off |  | [matrix](feature_matrix.md#--version) |
+| `-W` | `--whole-file` | off |  | [matrix](feature_matrix.md#--whole-file) |
+|  | `--write-batch` | off |  | [matrix](feature_matrix.md#--write-batch) |
+|  | `--write-devices` | off |  | [matrix](feature_matrix.md#--write-devices) |
+| `-X` | `--xattrs` | off | requires `xattr` feature | [matrix](feature_matrix.md#--xattrs) |
+
+Implementation details for each flag live in the [feature matrix](feature_matrix.md) and the [CLI flag reference](cli/flags.md).
 
 ### Permission tweaks with `--chmod`
 
