@@ -23,7 +23,7 @@ use engine::{
 use engine::ModernHash;
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use meta::{parse_chmod, parse_chown};
-use protocol::{negotiate_version, LATEST_VERSION};
+use protocol::{negotiate_version, LATEST_VERSION, LEGACY_VERSION};
 use shell_words::split as shell_split;
 use transport::{AddressFamily, RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
 
@@ -1018,7 +1018,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
-                    opts.protocol.unwrap_or(LATEST_VERSION),
+                    opts.protocol.unwrap_or(if opts.modern {
+                        LATEST_VERSION
+                    } else {
+                        LEGACY_VERSION
+                    }),
                     opts.early_input.as_deref(),
                 )?;
                 sync(
@@ -1050,8 +1054,12 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.port,
                     opts.contimeout,
                     addr_family,
-                    modern_compress,
-                    opts.protocol.unwrap_or(LATEST_VERSION),
+                    opts.modern,
+                    opts.protocol.unwrap_or(if opts.modern {
+                        LATEST_VERSION
+                    } else {
+                        LEGACY_VERSION
+                    }),
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
                 let (err, _) = session.stderr();
@@ -1077,8 +1085,13 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
-                    opts.protocol.unwrap_or(LATEST_VERSION),
+                    opts.protocol.unwrap_or(if opts.modern {
+                        LATEST_VERSION
+                    } else {
+                        LEGACY_VERSION
+                    }),
                     opts.early_input.as_deref(),
+
                 )?;
                 sync(
                     &src.path,
@@ -1109,8 +1122,12 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.port,
                     opts.contimeout,
                     addr_family,
-                    modern_compress,
-                    opts.protocol.unwrap_or(LATEST_VERSION),
+                    opts.modern,
+                    opts.protocol.unwrap_or(if opts.modern {
+                        LATEST_VERSION
+                    } else {
+                        LEGACY_VERSION
+                    }),
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
                 let (err, _) = session.stderr();
@@ -1216,7 +1233,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            opts.protocol.unwrap_or(LATEST_VERSION),
+                            opts.protocol.unwrap_or(if opts.modern {
+                                LATEST_VERSION
+                            } else {
+                                LEGACY_VERSION
+                            }),
                             opts.early_input.as_deref(),
                         )?;
                         let mut src_session = spawn_daemon_session(
@@ -1228,7 +1249,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            opts.protocol.unwrap_or(LATEST_VERSION),
+                            opts.protocol.unwrap_or(if opts.modern {
+                                LATEST_VERSION
+                            } else {
+                                LEGACY_VERSION
+                            }),
                             opts.early_input.as_deref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
@@ -1265,7 +1290,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            opts.protocol.unwrap_or(LATEST_VERSION),
+                            opts.protocol.unwrap_or(if opts.modern {
+                                LATEST_VERSION
+                            } else {
+                                LEGACY_VERSION
+                            }),
                             opts.early_input.as_deref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
@@ -1301,7 +1330,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            opts.protocol.unwrap_or(LATEST_VERSION),
+                            opts.protocol.unwrap_or(if opts.modern {
+                                LATEST_VERSION
+                            } else {
+                                LEGACY_VERSION
+                            }),
                             opts.early_input.as_deref(),
                         )?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(

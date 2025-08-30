@@ -11,10 +11,14 @@ pub use demux::Demux;
 pub use mux::Mux;
 pub use server::Server;
 
-pub const LATEST_VERSION: u32 = 32;
+pub const LATEST_VERSION: u32 = 73;
+pub const LEGACY_VERSION: u32 = 32;
 pub const MIN_VERSION: u32 = 29;
+
 pub const CAP_CODECS: u32 = 1 << 0;
-pub const SUPPORTED_CAPS: u32 = CAP_CODECS;
+pub const CAP_BLAKE3: u32 = 1 << 1;
+pub const CAP_ZSTD: u32 = 1 << 2;
+pub const SUPPORTED_CAPS: u32 = CAP_CODECS | CAP_BLAKE3 | CAP_ZSTD;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VersionError(pub u32);
@@ -36,6 +40,10 @@ impl From<VersionError> for io::Error {
 pub fn negotiate_version(peer: u32) -> Result<u32, VersionError> {
     if peer >= LATEST_VERSION {
         Ok(LATEST_VERSION)
+    } else if peer >= LEGACY_VERSION {
+        Ok(LEGACY_VERSION)
+    } else if peer >= 31 {
+        Ok(31)
     } else if peer >= MIN_VERSION {
         Ok(peer)
     } else {
@@ -434,6 +442,8 @@ mod tests {
 
     #[test]
     fn version_negotiation() {
+        assert_eq!(negotiate_version(80), Ok(73));
+        assert_eq!(negotiate_version(73), Ok(73));
         assert_eq!(negotiate_version(40), Ok(32));
         assert_eq!(negotiate_version(32), Ok(32));
         assert_eq!(negotiate_version(31), Ok(31));

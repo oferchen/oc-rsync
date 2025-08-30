@@ -34,7 +34,7 @@ fn resume_from_partial_file() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(false),
         &opts,
     )
     .unwrap();
@@ -84,7 +84,7 @@ fn resume_large_file_minimal_network_io() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(false),
         &opts,
     )
     .unwrap();
