@@ -6,11 +6,18 @@ complete -c oc-rsync -l chown -r
 complete -c oc-rsync -l compress-choice -l zc -r
 complete -c oc-rsync -l compress-level -l zl -r
 complete -c oc-rsync -l skip-compress -r
+complete -c oc-rsync -l modern-compress -r -f -a "auto\t''
+zstd\t''
+lz4\t''"
+complete -c oc-rsync -l modern-hash -r -f -a ""
+complete -c oc-rsync -l modern-cdc -r -f -a "fastcdc\t''
+off\t''"
 complete -c oc-rsync -l partial-dir -r -F
 complete -c oc-rsync -s T -l temp-dir -r -F
 complete -c oc-rsync -l bwlimit -r
 complete -c oc-rsync -l timeout -r
 complete -c oc-rsync -l contimeout -r
+complete -c oc-rsync -l protocol -d 'force an older protocol version' -r
 complete -c oc-rsync -l port -r
 complete -c oc-rsync -s B -l block-size -r
 complete -c oc-rsync -l link-dest -r -F
@@ -19,6 +26,7 @@ complete -c oc-rsync -l compare-dest -r -F
 complete -c oc-rsync -l config -r -F
 complete -c oc-rsync -l known-hosts -r -F
 complete -c oc-rsync -l password-file -r -F
+complete -c oc-rsync -l early-input -r -F
 complete -c oc-rsync -s e -l rsh -r
 complete -c oc-rsync -l rsync-path -r
 complete -c oc-rsync -s f -l filter -r
@@ -44,6 +52,7 @@ complete -c oc-rsync -s v -l verbose
 complete -c oc-rsync -l human-readable
 complete -c oc-rsync -s q -l quiet
 complete -c oc-rsync -l no-motd
+complete -c oc-rsync -s 8 -l 8-bit-output
 complete -c oc-rsync -s i -l itemize-changes -d 'output a change-summary for all updates'
 complete -c oc-rsync -l delete
 complete -c oc-rsync -l delete-before
@@ -71,9 +80,10 @@ complete -c oc-rsync -l hard-links
 complete -c oc-rsync -l devices
 complete -c oc-rsync -l specials
 complete -c oc-rsync -s z -l compress
-complete -c oc-rsync -l modern -d 'Enable zstd compression and BLAKE3 checksums (requires `blake3` feature)'
+complete -c oc-rsync -l modern -d 'Enable modern compression (zstd or lz4) and BLAKE3 checksums (requires `blake3` feature)'
 complete -c oc-rsync -l partial
 complete -c oc-rsync -l progress
+complete -c oc-rsync -l blocking-io
 complete -c oc-rsync -s P
 complete -c oc-rsync -l append
 complete -c oc-rsync -l append-verify

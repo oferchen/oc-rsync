@@ -349,7 +349,8 @@ T}@T{
 T}@T{
 off
 T}@T{
-negotiates zstd when supported by both peers
+with \f[V]--modern\f[R], negotiates zstd or lz4 when supported by both
+peers
 T}@T{
 matrix
 T}
@@ -359,7 +360,7 @@ T}@T{
 T}@T{
 auto
 T}@T{
-supports zstd and zlib only
+supports zstd, lz4, and zlib
 T}@T{
 matrix
 T}
@@ -986,8 +987,39 @@ T}@T{
 T}@T{
 off
 T}@T{
-oc-rsync only; enables zstd compression and BLAKE3 checksums; requires
-\f[V]blake3\f[R] feature
+oc-rsync only; negotiates zstd or lz4 compression based on CPU features
+and BLAKE3 checksums; requires \f[V]blake3\f[R] feature
+T}@T{
+matrix
+T}
+T{
+T}@T{
+\f[V]--modern-compress\f[R]
+T}@T{
+auto
+T}@T{
+oc-rsync only; select \f[V]auto\f[R], \f[V]zstd\f[R], or \f[V]lz4\f[R]
+compression
+T}@T{
+matrix
+T}
+T{
+T}@T{
+\f[V]--modern-hash\f[R]
+T}@T{
+off
+T}@T{
+oc-rsync only; choose \f[V]blake3\f[R] strong hash
+T}@T{
+matrix
+T}
+T{
+T}@T{
+\f[V]--modern-cdc\f[R]
+T}@T{
+off
+T}@T{
+oc-rsync only; enable \f[V]fastcdc\f[R] chunking
 T}@T{
 matrix
 T}

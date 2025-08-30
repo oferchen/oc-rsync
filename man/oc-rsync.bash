@@ -14,7 +14,7 @@ _oc-rsync() {
     do
         case "${cmd},${i}" in
             ",$1")
-                cmd="rsync__rs"
+                cmd="oc__rsync"
                 ;;
             *)
                 ;;
@@ -22,8 +22,8 @@ _oc-rsync() {
     done
 
     case "${cmd}" in
-        rsync__rs)
-            opts="-a -r -d -R -n -S -u -I -v -q -i -b -c -E -U -N -O -J -L -k -z -T -P -4 -6 -B -W -e -f -F -C -h --local --archive --recursive --dirs --relative --dry-run --list-only --sparse --update --ignore-existing --size-only --ignore-times --verbose --human-readable --quiet --no-motd --itemize-changes --delete --delete-before --delete-during --delete-after --delete-delay --delete-excluded --backup --backup-dir --checksum --cc --checksum-choice --checksum-seed --perms --executability --chmod --chown --times --atimes --crtimes --omit-dir-times --omit-link-times --owner --group --links --copy-links --copy-dirlinks --copy-unsafe-links --safe-links --hard-links --devices --specials --compress --zc --compress-choice --zl --compress-level --skip-compress --modern --partial --partial-dir --temp-dir --progress --append --append-verify --inplace --bwlimit --timeout --contimeout --port --ipv4 --ipv6 --block-size --whole-file --no-whole-file --link-dest --copy-dest --compare-dest --numeric-ids --stats --config --known-hosts --no-host-key-checking --password-file --rsh --server --sender --rsync-path --filter --filter-file --cvs-exclude --include --exclude --include-from --exclude-from --files-from --from0 --help <SRC> <DST>"
+        oc__rsync)
+            opts="-a -r -d -R -n -S -u -I -v -q -8 -i -b -c -E -U -N -O -J -L -k -z -T -P -4 -6 -B -W -e -f -F -C -h --local --archive --recursive --dirs --relative --dry-run --list-only --sparse --update --ignore-existing --size-only --ignore-times --verbose --human-readable --quiet --no-motd --8-bit-output --itemize-changes --delete --delete-before --delete-during --delete-after --delete-delay --delete-excluded --backup --backup-dir --checksum --cc --checksum-choice --checksum-seed --perms --executability --chmod --chown --times --atimes --crtimes --omit-dir-times --omit-link-times --owner --group --links --copy-links --copy-dirlinks --copy-unsafe-links --safe-links --hard-links --devices --specials --compress --zc --compress-choice --zl --compress-level --skip-compress --modern --modern-compress --modern-hash --modern-cdc --partial --partial-dir --temp-dir --progress --blocking-io --append --append-verify --inplace --bwlimit --timeout --contimeout --protocol --port --ipv4 --ipv6 --block-size --whole-file --no-whole-file --link-dest --copy-dest --compare-dest --numeric-ids --stats --config --known-hosts --no-host-key-checking --password-file --early-input --rsh --server --sender --rsync-path --filter --filter-file --cvs-exclude --include --exclude --include-from --exclude-from --files-from --from0 --help <SRC> <DST>"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -73,6 +73,18 @@ _oc-rsync() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --modern-compress)
+                    COMPREPLY=($(compgen -W "auto zstd lz4" -- "${cur}"))
+                    return 0
+                    ;;
+                --modern-hash)
+                    COMPREPLY=($(compgen -W "" -- "${cur}"))
+                    return 0
+                    ;;
+                --modern-cdc)
+                    COMPREPLY=($(compgen -W "fastcdc off" -- "${cur}"))
+                    return 0
+                    ;;
                 --partial-dir)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
@@ -94,6 +106,10 @@ _oc-rsync() {
                     return 0
                     ;;
                 --contimeout)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --protocol)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -130,6 +146,10 @@ _oc-rsync() {
                     return 0
                     ;;
                 --password-file)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --early-input)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
