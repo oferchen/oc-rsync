@@ -21,7 +21,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--checksum` | `-c` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, BLAKE3 | ≤3.2 |
 | `--checksum-choice` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | choose the strong hash algorithm | ≤3.2 |
 | `--checksum-seed` | — | ✅ | ✅ | [tests/checksum_seed.rs](../tests/checksum_seed.rs)<br>[tests/checksum_seed_cli.rs](../tests/checksum_seed_cli.rs) | set block/file checksum seed | ≤3.2 |
-| `--chmod` | — | ❌ | — | — |  | ≤3.2 |
+| `--chmod` | — | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/golden/cli_parity/chmod.sh](../tests/golden/cli_parity/chmod.sh) |  | ≤3.2 |
 | `--chown` | — | ❌ | — | — |  | ≤3.2 |
 | `--compare-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
 | `--compress` | `-z` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/compression_negotiation.sh](../tests/compression_negotiation.sh) | negotiates zstd when supported by both peers | ≤3.2 |
@@ -55,7 +55,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--early-input` | — | ❌ | — | — |  | ≤3.2 |
 | `--exclude` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--exclude-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--executability` | `-E` | ❌ | — | — |  | ≤3.2 |
+| `--executability` | `-E` | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--existing` | — | ❌ | — | — |  | ≤3.2 |
 | `--fake-super` | — | ❌ | — | — |  | ≤3.2 |
 | `--files-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
@@ -71,7 +71,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--human-readable` |  | ✅ | ✅ | [tests/golden/cli_parity/human-readable.sh](../tests/golden/cli_parity/human-readable.sh) |  | ≤3.2 |
 | `--iconv` | — | ❌ | — | — |  | ≤3.2 |
 | `--ignore-errors` | — | ❌ | — | — |  | ≤3.2 |
-| `--ignore-existing` | — | ❌ | — | — |  | ≤3.2 |
+| `--ignore-existing` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--ignore-missing-args` | — | ❌ | — | — |  | ≤3.2 |
 | `--ignore-times` | `-I` | ❌ | — | — |  | ≤3.2 |
 | `--include` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
@@ -80,7 +80,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--inplace` | — | ✅ | ✅ | [tests/golden/cli_parity/inplace.sh](../tests/golden/cli_parity/inplace.sh) |  | ≤3.2 |
 | `--ipv4` | `-4` | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | select IPv4 transport or listener | ≤3.2 |
 | `--ipv6` | `-6` | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | select IPv6 transport or listener | ≤3.2 |
-| `--itemize-changes` | `-i` | ❌ | — | — |  | ≤3.2 |
+| `--itemize-changes` | `-i` | ✅ | ✅ | [tests/golden/cli_parity/itemize-changes.sh](../tests/golden/cli_parity/itemize-changes.sh) |  | 3.2 |
 | `--keep-dirlinks` | `-K` | ❌ | — | — |  | ≤3.2 |
 | `--link-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
 | `--links` | `-l` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
@@ -103,8 +103,8 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--old-args` | — | ❌ | — | — |  | ≤3.2 |
 | `--old-d` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--old-dirs` | ≤3.2 |
 | `--old-dirs` | — | ❌ | — | — |  | ≤3.2 |
-| `--omit-dir-times` | `-O` | ❌ | — | — |  | ≤3.2 |
-| `--omit-link-times` | `-J` | ❌ | — | — |  | ≤3.2 |
+| `--omit-dir-times` | `-O` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
+| `--omit-link-times` | `-J` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--one-file-system` | `-x` | ❌ | — | — |  | ≤3.2 |
 | `--only-write-batch` | — | ❌ | — | — |  | ≤3.2 |
 | `--open-noatime` | — | ❌ | — | — |  | ≤3.2 |
@@ -118,7 +118,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--port` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | overrides default port | ≤3.2 |
 | `--preallocate` | — | ❌ | — | — |  | ≤3.2 |
 | `--progress` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--protocol` | — | ❌ | — | — |  | ≤3.2 |
+| `--protocol` | — | ✅ | ❌ | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  | ≤3.2 |
 | `--prune-empty-dirs` | `-m` | ❌ | — | — |  | ≤3.2 |
 | `--quiet` | `-q` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--read-batch` | — | ❌ | — | — |  | ≤3.2 |
@@ -132,7 +132,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--secluded-args` | `-s` | ❌ | — | — |  | ≤3.2 |
 | `--secrets-file` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--server` | — | ✅ | ❌ | [tests/server.rs](../tests/server.rs) | negotiates protocol version and codecs | ≤3.2 |
-| `--size-only` | — | ❌ | — | — |  | ≤3.2 |
+| `--size-only` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--skip-compress` | — | ✅ | ✅ | [tests/skip_compress.rs](../tests/skip_compress.rs) | comma-separated list of file suffixes to avoid compressing | ≤3.2 |
 | `--sockopts` | — | ❌ | — | — |  | ≤3.2 |
 | `--sparse` | `-S` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | creates holes for long zero runs | ≤3.2 |
@@ -151,7 +151,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--usermap` | — | ❌ | — | — |  | ≤3.2 |
 | `--verbose` | `-v` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--version` | `-V` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--whole-file` | `-W` | ❌ | — | — |  | ≤3.2 |
+| `--whole-file` | `-W` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--write-batch` | — | ❌ | — | — |  | ≤3.2 |
 | `--write-devices` | — | ❌ | — | — |  | ≤3.2 |
 | `--xattrs` | `-X` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `xattr` feature | ≤3.2 |

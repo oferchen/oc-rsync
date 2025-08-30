@@ -3,31 +3,31 @@
 | --8-bit-output | Error |  |
 | --acls | Error |  |
 | --address | Error |  |
-| --append | Error |  |
-| --append-verify | Error |  |
+| --append | Supported |  |
+| --append-verify | Supported |  |
 | --archive | Supported |  |
 | --atimes | Supported |  |
 | --backup | Supported |  |
 | --backup-dir | Supported |  |
-| --block-size | Error |  |
+| --block-size | Supported |  |
 | --blocking-io | Error |  |
-| --bwlimit | Error |  |
+| --bwlimit | Supported |  |
 | --checksum | Supported |  |
 | --checksum-choice | Supported |  |
 | --checksum-seed | Supported |  |
-| --chmod | Error |  |
-| --chown | Error |  |
+| --chmod | Supported |  |
+| --chown | Supported |  |
 | --compare-dest | Supported |  |
 | --compress | Supported |  |
 | --compress-choice | Supported |  |
 | --compress-level | Supported |  |
-| --contimeout | Error |  |
+| --contimeout | Supported |  |
 | --copy-as | Error |  |
 | --copy-dest | Supported |  |
 | --copy-devices | Error |  |
-| --copy-dirlinks | Error |  |
-| --copy-links | Error |  |
-| --copy-unsafe-links | Error |  |
+| --copy-dirlinks | Supported |  |
+| --copy-links | Supported |  |
+| --copy-unsafe-links | Supported |  |
 | --crtimes | Supported |  |
 | --cvs-exclude | Supported |  |
 | --debug | Error |  |
@@ -38,15 +38,15 @@
 | --delete-before | Supported |  |
 | --delete-delay | Supported |  |
 | --delete-during | Supported |  |
-| --delete-excluded | Error |  |
+| --delete-excluded | Supported |  |
 | --delete-missing-args | Error |  |
 | --devices | Supported |  |
-| --dirs | Error |  |
+| --dirs | Supported |  |
 | --dry-run | Supported |  |
 | --early-input | Error |  |
 | --exclude | Supported |  |
 | --exclude-from | Supported |  |
-| --executability | Error |  |
+| --executability | Supported |  |
 | --existing | Error |  |
 | --fake-super | Error |  |
 | --files-from | Supported |  |
@@ -62,20 +62,20 @@
 | --human-readable | Supported |  |
 | --iconv | Error |  |
 | --ignore-errors | Error |  |
-| --ignore-existing | Error |  |
+| --ignore-existing | Supported |  |
 | --ignore-missing-args | Error |  |
-| --ignore-times | Error |  |
+| --ignore-times | Supported |  |
 | --include | Supported |  |
 | --include-from | Supported |  |
 | --info | Error |  |
 | --inplace | Supported |  |
-| --ipv4 | Error |  |
-| --ipv6 | Error |  |
-| --itemize-changes | Error |  |
+| --ipv4 | Supported |  |
+| --ipv6 | Supported |  |
+| --itemize-changes | Supported |  |
 | --keep-dirlinks | Error |  |
 | --link-dest | Supported |  |
 | --links | Supported |  |
-| --list-only | Error |  |
+| --list-only | Supported |  |
 | --log-file | Error |  |
 | --log-file-format | Error |  |
 | --max-alloc | Error |  |
@@ -87,13 +87,13 @@
 | --munge-links | Error |  |
 | --no-OPTION | Error |  |
 | --no-implied-dirs | Error |  |
-| --no-motd | Error |  |
+| --no-motd | Supported |  |
 | --numeric-ids | Supported |  |
 | --old-args | Error |  |
 | --old-d | Error | alias for --old-dirs |
 | --old-dirs | Error |  |
-| --omit-dir-times | Error |  |
-| --omit-link-times | Error |  |
+| --omit-dir-times | Supported |  |
+| --omit-link-times | Supported |  |
 | --one-file-system | Error |  |
 | --only-write-batch | Error |  |
 | --open-noatime | Error |  |
@@ -104,10 +104,10 @@
 | --partial-dir | Supported |  |
 | --password-file | Supported |  |
 | --perms | Supported |  |
-| --port | Error |  |
+| --port | Supported |  |
 | --preallocate | Error |  |
 | --progress | Supported |  |
-| --protocol | Error |  |
+| --protocol | Supported |  |
 | --prune-empty-dirs | Error |  |
 | --quiet | Supported |  |
 | --read-batch | Error |  |
@@ -117,10 +117,10 @@
 | --remove-source-files | Error |  |
 | --rsh | Supported |  |
 | --rsync-path | Supported |  |
-| --safe-links | Error |  |
+| --safe-links | Supported |  |
 | --secluded-args | Error |  |
-| --size-only | Error |  |
-| --skip-compress | Error |  |
+| --size-only | Supported |  |
+| --skip-compress | Supported |  |
 | --sockopts | Error |  |
 | --sparse | Supported |  |
 | --specials | Supported |  |
@@ -130,55 +130,55 @@
 | --stop-at | Error |  |
 | --suffix | Error |  |
 | --super | Error |  |
-| --temp-dir | Error |  |
-| --timeout | Error |  |
+| --temp-dir | Supported |  |
+| --timeout | Supported |  |
 | --times | Supported |  |
 | --trust-sender | Error |  |
-| --update | Error |  |
+| --update | Supported |  |
 | --usermap | Error |  |
 | --verbose | Error |  |
 | --version | Error |  |
-| --whole-file | Error |  |
+| --whole-file | Supported |  |
 | --write-batch | Error |  |
 | --write-devices | Error |  |
 | --xattrs | Error |  |
 | -0 | Error | alias for --from0 |
-| -4 | Error | alias for --ipv4 |
-| -6 | Error | alias for --ipv6 |
+| -4 | Alias | alias for --ipv4 |
+| -6 | Alias | alias for --ipv6 |
 | -8 | Error | alias for --8-bit-output |
 | -@ | Error | alias for --modify-window |
 | -A | Error | alias for --acls |
-| -B | Error | alias for --block-size |
-| -C | Supported | alias for --cvs-exclude |
+| -B | Alias | alias for --block-size |
+| -C | Alias | alias for --cvs-exclude |
 | -D | Error | same as --devices --specials |
-| -E | Error | alias for --executability |
+| -E | Alias | alias for --executability |
 | -F | Error | same as --filter='dir-merge /.rsync-filter' |
 | -H | Error | alias for --hard-links |
 | -I | Alias | alias for --ignore-times |
-| -J | Error | alias for --omit-link-times |
+| -J | Alias | alias for --omit-link-times |
 | -K | Error | alias for --keep-dirlinks |
-| -L | Error | alias for --copy-links |
+| -L | Alias | alias for --copy-links |
 | -M | Error | alias for --remote-option |
 | -N | Alias | alias for --crtimes |
-| -O | Error | alias for --omit-dir-times |
+| -O | Alias | alias for --omit-dir-times |
 | -P | Supported | same as --partial --progress |
 | -R | Alias | alias for --relative |
 | -S | Alias | alias for --sparse |
-| -T | Error | alias for --temp-dir |
+| -T | Alias | alias for --temp-dir |
 | -U | Alias | alias for --atimes |
 | -V | Error | alias for --version |
-| -W | Error | alias for --whole-file |
+| -W | Alias | alias for --whole-file |
 | -X | Error | alias for --xattrs |
 | -a | Alias | alias for --archive |
-| -b | Error | alias for --backup |
+| -b | Alias | alias for --backup |
 | -c | Alias | alias for --checksum |
-| -d | Error | alias for --dirs |
+| -d | Alias | alias for --dirs |
 | -e | Alias | alias for --rsh |
-| -f | Error | alias for --filter |
+| -f | Alias | alias for --filter |
 | -g | Error | alias for --group |
 | -h | Alias | alias for --help |
-| -i | Error | alias for --itemize-changes |
-| -k | Error | alias for --copy-dirlinks |
+| -i | Alias | alias for --itemize-changes |
+| -k | Alias | alias for --copy-dirlinks |
 | -l | Error | alias for --links |
 | -m | Error | alias for --prune-empty-dirs |
 | -n | Alias | alias for --dry-run |
@@ -188,7 +188,7 @@
 | -r | Alias | alias for --recursive |
 | -s | Error | alias for --secluded-args |
 | -t | Error | alias for --times |
-| -u | Error | alias for --update |
+| -u | Alias | alias for --update |
 | -v | Alias | alias for --verbose |
 | -x | Error | alias for --one-file-system |
 | -y | Error | alias for --fuzzy |

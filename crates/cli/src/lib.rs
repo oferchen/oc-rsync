@@ -203,6 +203,14 @@ struct ClientOpts {
     timeout: Option<Duration>,
     #[arg(long = "contimeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     contimeout: Option<Duration>,
+    #[arg(
+        long = "protocol",
+        value_name = "VER",
+        value_parser = clap::value_parser!(u32),
+        help_heading = "Misc",
+        help = "force an older protocol version"
+    )]
+    protocol: Option<u32>,
     #[arg(long, value_name = "PORT", help_heading = "Misc")]
     port: Option<u16>,
     #[arg(
@@ -558,6 +566,7 @@ fn spawn_daemon_session(
     timeout: Option<Duration>,
     contimeout: Option<Duration>,
     family: Option<AddressFamily>,
+    version: u32,
 ) -> Result<TcpTransport> {
     let (host, port) = if let Some((h, p)) = host.rsplit_once(':') {
         let p = p.parse().unwrap_or(873);
@@ -568,8 +577,7 @@ fn spawn_daemon_session(
     let mut t = TcpTransport::connect(host, port, contimeout, family)
         .map_err(|e| EngineError::Other(e.to_string()))?;
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
-    t.send(&LATEST_VERSION.to_be_bytes())
-        .map_err(EngineError::from)?;
+    t.send(&version.to_be_bytes()).map_err(EngineError::from)?;
     let mut buf = [0u8; 4];
     t.receive(&mut buf).map_err(EngineError::from)?;
     let peer = u32::from_be_bytes(buf);
@@ -926,6 +934,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
+                    opts.protocol.unwrap_or(LATEST_VERSION),
                 )?;
                 sync(
                     &src.path,
@@ -957,6 +966,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.contimeout,
                     addr_family,
                     opts.modern,
+                    opts.protocol.unwrap_or(LATEST_VERSION),
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
                 let (err, _) = session.stderr();
@@ -982,6 +992,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
+                    opts.protocol.unwrap_or(LATEST_VERSION),
                 )?;
                 sync(
                     &src.path,
@@ -1013,6 +1024,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.contimeout,
                     addr_family,
                     opts.modern,
+                    opts.protocol.unwrap_or(LATEST_VERSION),
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
                 let (err, _) = session.stderr();
@@ -1118,6 +1130,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
+                            opts.protocol.unwrap_or(LATEST_VERSION),
                         )?;
                         let mut src_session = spawn_daemon_session(
                             &src_host,
@@ -1128,6 +1141,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
+                            opts.protocol.unwrap_or(LATEST_VERSION),
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1163,6 +1177,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
+                            opts.protocol.unwrap_or(LATEST_VERSION),
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1197,6 +1212,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
+                            opts.protocol.unwrap_or(LATEST_VERSION),
                         )?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
@@ -1594,7 +1610,10 @@ fn handle_connection<T: Transport>(
             Path::new("."),
             &Matcher::default(),
             &available_codecs(modern),
-            &SyncOptions { modern, ..Default::default() },
+            &SyncOptions {
+                modern,
+                ..Default::default()
+            },
         )?;
     }
     Ok(())
@@ -1656,6 +1675,7 @@ fn run_server() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use daemon::authenticate;
 
     #[test]
     fn windows_paths_are_local() {
@@ -1786,6 +1806,62 @@ mod tests {
         assert!(opts.ignore_existing);
         assert!(opts.size_only);
         assert!(opts.ignore_times);
+    }
+
+    #[test]
+    fn parses_protocol_version() {
+        let opts = ClientOpts::parse_from(["prog", "--protocol", "30", "src", "dst"]);
+        assert_eq!(opts.protocol, Some(30));
+    }
+
+    #[test]
+    fn protocol_override_sent_to_server() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let handle = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 4];
+            stream.read_exact(&mut buf).unwrap();
+            assert_eq!(u32::from_be_bytes(buf), 30);
+            stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+            // read auth line
+            let mut b = [0u8; 1];
+            while stream.read(&mut b).unwrap() > 0 {
+                if b[0] == b'\n' {
+                    break;
+                }
+            }
+            // send daemon greeting
+            stream.write_all(b"@RSYNCD: OK\n").unwrap();
+            // read module line
+            let mut m = Vec::new();
+            loop {
+                stream.read_exact(&mut b).unwrap();
+                if b[0] == b'\n' {
+                    break;
+                }
+                m.push(b[0]);
+            }
+            assert_eq!(m, b"mod".to_vec());
+        });
+
+        let _t = spawn_daemon_session(
+            "127.0.0.1",
+            "mod",
+            Some(port),
+            None,
+            true,
+            None,
+            None,
+            None,
+            30,
+        )
+        .unwrap();
+        handle.join().unwrap();
     }
 
     #[test]
