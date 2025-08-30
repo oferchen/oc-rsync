@@ -1183,6 +1183,7 @@ pub fn sync(
                         println!("cd+++++++++ {}/", rel.display());
                     }
                 } else if file_type.is_symlink() {
+                    let created = !dest_path.exists();
                     let target = fs::read_link(&path)?;
                     let target_path = if target.is_absolute() {
                         target.clone()
@@ -1235,6 +1236,12 @@ pub fn sync(
                                 std::os::windows::fs::symlink_dir(&target, &dest_path)?;
                             } else {
                                 std::os::windows::fs::symlink_file(&target, &dest_path)?;
+                            }
+                        }
+                        if created {
+                            stats.files_transferred += 1;
+                            if opts.itemize_changes {
+                                println!("cL+++++++++ {} -> {}", rel.display(), target.display());
                             }
                         }
                     }
