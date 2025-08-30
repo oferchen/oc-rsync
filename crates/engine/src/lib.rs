@@ -5,6 +5,7 @@ use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
@@ -834,6 +835,32 @@ impl Receiver {
                 times: self.opts.times,
                 atimes: self.opts.atimes,
                 crtimes: self.opts.crtimes,
+                uid_map: if self.opts.numeric_ids {
+                    None
+                } else {
+                    Some(Arc::new(|uid: u32| {
+                        use nix::unistd::{Uid, User};
+                        if let Ok(Some(u)) = User::from_uid(Uid::from_raw(uid)) {
+                            if let Ok(Some(local)) = User::from_name(&u.name) {
+                                return local.uid.as_raw();
+                            }
+                        }
+                        uid
+                    }))
+                },
+                gid_map: if self.opts.numeric_ids {
+                    None
+                } else {
+                    Some(Arc::new(|gid: u32| {
+                        use nix::unistd::{Gid, Group};
+                        if let Ok(Some(g)) = Group::from_gid(Gid::from_raw(gid)) {
+                            if let Ok(Some(local)) = Group::from_name(&g.name) {
+                                return local.gid.as_raw();
+                            }
+                        }
+                        gid
+                    }))
+                },
             };
 
             if meta_opts.needs_metadata() {

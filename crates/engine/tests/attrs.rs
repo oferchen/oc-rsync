@@ -3,6 +3,7 @@
 use std::fs::{self, File};
 use std::io::{Seek, SeekFrom, Write};
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
+use std::process::Command;
 
 use compress::available_codecs;
 use engine::{sync, SyncOptions};
@@ -11,7 +12,6 @@ use filters::Matcher;
 use nix::sys::stat::{makedev, mknod, Mode, SFlag};
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 use tempfile::tempdir;
-use xattr;
 
 #[test]
 fn perms_roundtrip() {
@@ -391,4 +391,61 @@ fn sparse_creation_from_zeros() {
     assert_eq!(src_meta.len(), dst_meta.len());
     assert!(dst_meta.blocks() < src_meta.blocks());
     assert!(dst_meta.blocks() * 512 < dst_meta.len());
+}
+
+#[test]
+fn metadata_matches_rsync() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst_rrs = tmp.path().join("rrs");
+    let dst_rsync = tmp.path().join("rs");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst_rrs).unwrap();
+    fs::create_dir_all(&dst_rsync).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    let mtime = FileTime::from_unix_time(1_000_000, 123_456_789);
+    set_file_mtime(&file, mtime).unwrap();
+
+    sync(
+        &src,
+        &dst_rrs,
+        &Matcher::default(),
+        available_codecs(),
+        &SyncOptions {
+            owner: true,
+            group: true,
+            times: true,
+            crtimes: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let mut cmd = Command::new("rsync");
+    cmd.arg("-a");
+    let ver = Command::new("rsync").arg("--version").output().unwrap();
+    let ver_str = String::from_utf8_lossy(&ver.stdout);
+    let cr_supported = !ver_str.contains("no crtimes");
+    if cr_supported {
+        cmd.arg("--crtimes");
+    }
+    cmd.arg(format!("{}/", src.display()));
+    cmd.arg(dst_rsync.to_str().unwrap());
+    assert!(cmd.status().unwrap().success());
+
+    let meta_rrs = fs::metadata(dst_rrs.join("file")).unwrap();
+    let meta_rsync = fs::metadata(dst_rsync.join("file")).unwrap();
+    assert_eq!(meta_rrs.uid(), meta_rsync.uid());
+    assert_eq!(meta_rrs.gid(), meta_rsync.gid());
+    let mt_rrs = FileTime::from_last_modification_time(&meta_rrs);
+    let mt_rsync = FileTime::from_last_modification_time(&meta_rsync);
+    assert_eq!(mt_rrs, mt_rsync);
+    if cr_supported {
+        let cr_rrs = meta_rrs.created().ok();
+        let cr_rsync = meta_rsync.created().ok();
+        if cr_rrs.is_some() && cr_rsync.is_some() {
+            assert_eq!(cr_rrs, cr_rsync);
+        }
+    }
 }

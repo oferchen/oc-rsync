@@ -6,6 +6,7 @@ use filetime::{self, FileTime};
 use nix::sys::stat::{self, FchmodatFlags, Mode};
 use nix::unistd::{self, Gid, Uid};
 use std::os::unix::fs::PermissionsExt;
+use std::sync::Arc;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use std::os::unix::ffi::OsStrExt;
@@ -67,7 +68,7 @@ pub struct Chmod {
 }
 
 /// Options controlling which metadata to capture and apply.
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct Options {
     /// Include extended attributes.
     pub xattrs: bool,
@@ -87,6 +88,28 @@ pub struct Options {
     pub atimes: bool,
     /// Preserve creation times (`--crtimes`).
     pub crtimes: bool,
+    /// Map remote UIDs to local ones when applying metadata.
+    pub uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
+    /// Map remote GIDs to local ones when applying metadata.
+    pub gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
+}
+
+impl std::fmt::Debug for Options {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Options")
+            .field("xattrs", &self.xattrs)
+            .field("acl", &self.acl)
+            .field("chmod", &self.chmod)
+            .field("owner", &self.owner)
+            .field("group", &self.group)
+            .field("perms", &self.perms)
+            .field("times", &self.times)
+            .field("atimes", &self.atimes)
+            .field("crtimes", &self.crtimes)
+            .field("uid_map", &self.uid_map.is_some())
+            .field("gid_map", &self.gid_map.is_some())
+            .finish()
+    }
 }
 
 impl Options {
@@ -143,7 +166,7 @@ impl Metadata {
             None
         };
         let crtime = if opts.crtimes {
-            FileTime::from_creation_time(&std_meta)
+            get_file_crtime(path)?
         } else {
             None
         };
@@ -186,15 +209,25 @@ impl Metadata {
     /// Apply metadata to `path` using `opts`.
     pub fn apply(&self, path: &Path, opts: Options) -> io::Result<()> {
         if opts.owner || opts.group {
+            let uid = if let Some(ref map) = opts.uid_map {
+                map(self.uid)
+            } else {
+                self.uid
+            };
+            let gid = if let Some(ref map) = opts.gid_map {
+                map(self.gid)
+            } else {
+                self.gid
+            };
             unistd::chown(
                 path,
                 if opts.owner {
-                    Some(Uid::from_raw(self.uid))
+                    Some(Uid::from_raw(uid))
                 } else {
                     None
                 },
                 if opts.group {
-                    Some(Gid::from_raw(self.gid))
+                    Some(Gid::from_raw(gid))
                 } else {
                     None
                 },
@@ -289,6 +322,65 @@ fn acl_to_io(err: posix_acl::ACLError) -> io::Error {
     }
 }
 
+#[cfg(target_os = "linux")]
+fn get_file_crtime(path: &Path) -> io::Result<Option<FileTime>> {
+    use libc::{statx, AT_FDCWD, AT_STATX_SYNC_AS_STAT, STATX_BTIME};
+    use std::ffi::CString;
+    use std::mem::MaybeUninit;
+    use std::os::unix::ffi::OsStrExt;
+
+    let c_path = CString::new(path.as_os_str().as_bytes())?;
+    let mut stx = MaybeUninit::<libc::statx>::zeroed();
+    let ret = unsafe {
+        statx(
+            AT_FDCWD,
+            c_path.as_ptr(),
+            AT_STATX_SYNC_AS_STAT,
+            STATX_BTIME,
+            stx.as_mut_ptr(),
+        )
+    };
+    if ret != 0 {
+        let err = io::Error::last_os_error();
+        if err.raw_os_error() == Some(libc::EINVAL) || err.raw_os_error() == Some(libc::ENOSYS) {
+            return Ok(None);
+        } else {
+            return Err(err);
+        }
+    }
+    let stx = unsafe { stx.assume_init() };
+    if (stx.stx_mask & STATX_BTIME) == 0 {
+        Ok(None)
+    } else {
+        let ts = stx.stx_btime;
+        Ok(Some(FileTime::from_unix_time(
+            ts.tv_sec as i64,
+            ts.tv_nsec as u32,
+        )))
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+fn get_file_crtime(path: &Path) -> io::Result<Option<FileTime>> {
+    use std::ffi::CString;
+    use std::mem::MaybeUninit;
+    use std::os::unix::ffi::OsStrExt;
+
+    let c_path = CString::new(path.as_os_str().as_bytes())?;
+    let mut st = MaybeUninit::<libc::stat>::zeroed();
+    if unsafe { libc::stat(c_path.as_ptr(), st.as_mut_ptr()) } != 0 {
+        return Err(io::Error::last_os_error());
+    }
+    let st = unsafe { st.assume_init() };
+    let ts = st.st_birthtimespec;
+    Ok(Some(FileTime::from_unix_time(ts.tv_sec, ts.tv_nsec as u32)))
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "ios")))]
+fn get_file_crtime(_path: &Path) -> io::Result<Option<FileTime>> {
+    Ok(None)
+}
+
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 fn set_file_crtime(path: &Path, crtime: FileTime) -> io::Result<()> {
     use libc::{attrlist, setattrlist, timespec, ATTR_BIT_MAP_COUNT, ATTR_CMN_CRTIME};
@@ -350,6 +442,7 @@ mod tests {
             Options {
                 xattrs: true,
                 acl: false,
+                ..Default::default()
             },
         )?;
         assert!(meta
