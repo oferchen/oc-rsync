@@ -256,7 +256,7 @@ impl SshStdioTransport {
         path: &Path,
         rsh: &[String],
         rsh_env: &[(String, String)],
-        remote_bin: Option<&Path>,
+        remote_bin: Option<&[String]>,
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
         port: Option<u16>,
@@ -298,7 +298,7 @@ impl SshStdioTransport {
             }
             cmd.arg(host);
             if let Some(bin) = remote_bin {
-                cmd.arg(bin);
+                cmd.args(bin);
             } else {
                 cmd.arg("rsync");
             }
@@ -314,7 +314,7 @@ impl SshStdioTransport {
             };
             args.push(host);
             if let Some(bin) = remote_bin {
-                args.push(bin.to_string_lossy().into_owned());
+                args.extend_from_slice(bin);
             } else {
                 args.push("rsync".to_string());
             }
@@ -333,7 +333,7 @@ impl SshStdioTransport {
         rsh: &[String],
         rsh_env: &[(String, String)],
         rsync_env: &[(String, String)],
-        remote_bin: Option<&Path>,
+        remote_bin: Option<&[String]>,
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
         port: Option<u16>,

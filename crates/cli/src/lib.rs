@@ -302,7 +302,7 @@ struct ClientOpts {
     sender: bool,
     /// specify the rsync to run on remote machine
     #[arg(long = "rsync-path", value_name = "PATH", alias = "rsync_path")]
-    rsync_path: Option<PathBuf>,
+    rsync_path: Option<String>,
     /// source path or HOST:PATH
     src: String,
     /// destination path or HOST:PATH
@@ -499,6 +499,20 @@ pub fn parse_rsh(raw: Option<String>) -> Result<RshCommand> {
     }
 
     Ok(RshCommand { env, cmd })
+}
+
+pub fn parse_rsync_path(raw: Option<String>) -> Result<Option<Vec<String>>> {
+    match raw {
+        Some(s) => {
+            let parts = shell_split(&s).map_err(|e| EngineError::Other(e.to_string()))?;
+            if parts.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(parts))
+            }
+        }
+        None => Ok(None),
+    }
 }
 
 /// Options for daemon mode.
@@ -815,6 +829,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let strict_host_key_checking = !opts.no_host_key_checking;
     let rsh_raw = opts.rsh.clone().or_else(|| env::var("RSYNC_RSH").ok());
     let rsh_cmd = parse_rsh(rsh_raw)?;
+    let rsync_path_cmd = parse_rsync_path(opts.rsync_path.clone())?;
     let mut rsync_env: Vec<(String, String)> = env::vars()
         .filter(|(k, _)| k.starts_with("RSYNC_"))
         .collect();
@@ -1065,7 +1080,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &rsh_cmd.cmd,
                     &rsh_cmd.env,
                     &rsync_env,
-                    opts.rsync_path.as_deref(),
+                    rsync_path_cmd.as_deref(),
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                     opts.port,
@@ -1119,7 +1134,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &rsh_cmd.cmd,
                     &rsh_cmd.env,
                     &rsync_env,
-                    opts.rsync_path.as_deref(),
+                    rsync_path_cmd.as_deref(),
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                     opts.port,
@@ -1161,7 +1176,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &dst_path.path,
                             &rsh_cmd.cmd,
                             &rsh_cmd.env,
-                            opts.rsync_path.as_deref(),
+                            rsync_path_cmd.as_deref(),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1174,7 +1189,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &src_path.path,
                             &rsh_cmd.cmd,
                             &rsh_cmd.env,
-                            opts.rsync_path.as_deref(),
+                            rsync_path_cmd.as_deref(),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1255,7 +1270,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &dst_path.path,
                             &rsh_cmd.cmd,
                             &rsh_cmd.env,
-                            opts.rsync_path.as_deref(),
+                            rsync_path_cmd.as_deref(),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1312,7 +1327,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &src_path.path,
                             &rsh_cmd.cmd,
                             &rsh_cmd.env,
-                            opts.rsync_path.as_deref(),
+                            rsync_path_cmd.as_deref(),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1825,9 +1840,9 @@ mod tests {
     #[test]
     fn parses_rsync_path_and_alias() {
         let opts = ClientOpts::parse_from(["prog", "--rsync-path", "/bin/rsync", "src", "dst"]);
-        assert_eq!(opts.rsync_path, Some(PathBuf::from("/bin/rsync")));
+        assert_eq!(opts.rsync_path.as_deref(), Some("/bin/rsync"));
         let opts = ClientOpts::parse_from(["prog", "--rsync_path", "/bin/rsync", "src", "dst"]);
-        assert_eq!(opts.rsync_path, Some(PathBuf::from("/bin/rsync")));
+        assert_eq!(opts.rsync_path.as_deref(), Some("/bin/rsync"));
     }
 
     #[test]
