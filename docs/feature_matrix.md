@@ -1,7 +1,8 @@
 # Feature Matrix
 
-This table tracks the implementation status of rsync 3.2.x command-line options.
-See [differences.md](differences.md) for a summary of notable behavioral differences.
+This table tracks the implementation status of rsync 3.4.x command-line options.
+See [differences.md](differences.md) for a summary of notable behavioral differences and [gaps.md](gaps.md) for
+outstanding parity gaps.
 
 | Option | Short | Supported | Parity scope | Tests link | Notes | Version introduced |
 | --- | --- | --- | --- | --- | --- | --- |
