@@ -2,37 +2,37 @@
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
-RSYNC_RS="$ROOT/target/debug/rsync-rs"
+OC_RSYNC="$ROOT/target/debug/oc-rsync"
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-mkdir -p "$TMP/src" "$TMP/rsync_dst" "$TMP/rsync_rs_dst"
+mkdir -p "$TMP/src" "$TMP/rsync_dst" "$TMP/oc_rsync_dst"
 
 echo olddata > "$TMP/rsync_dst/file.txt"
-cp "$TMP/rsync_dst/file.txt" "$TMP/rsync_rs_dst/file.txt"
+cp "$TMP/rsync_dst/file.txt" "$TMP/oc_rsync_dst/file.txt"
 sleep 1
 echo newdata > "$TMP/src/file.txt"
 
 rsync_output=$(rsync --quiet --recursive --inplace "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-rsync_rs_raw=$("$RSYNC_RS" --local --recursive --inplace "$TMP/src/" "$TMP/rsync_rs_dst" 2>&1)
-rsync_rs_status=$?
-rsync_rs_output=$(echo "$rsync_rs_raw" | grep -v 'recursive mode enabled' || true)
+oc_rsync_raw=$("$OC_RSYNC" --local --recursive --inplace "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
+oc_rsync_status=$?
+oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v 'recursive mode enabled' || true)
 
-if [ "$rsync_status" -ne "$rsync_rs_status" ]; then
-  echo "Exit codes differ: rsync=$rsync_status rsync-rs=$rsync_rs_status" >&2
+if [ "$rsync_status" -ne "$oc_rsync_status" ]; then
+  echo "Exit codes differ: rsync=$rsync_status oc-rsync=$oc_rsync_status" >&2
   exit 1
 fi
 
-if [ "$rsync_output" != "$rsync_rs_output" ]; then
+if [ "$rsync_output" != "$oc_rsync_output" ]; then
   echo "Outputs differ" >&2
-  diff -u <(printf "%s" "$rsync_output") <(printf "%s" "$rsync_rs_output") >&2 || true
+  diff -u <(printf "%s" "$rsync_output") <(printf "%s" "$oc_rsync_output") >&2 || true
   exit 1
 fi
 
-if ! diff -r "$TMP/rsync_dst" "$TMP/rsync_rs_dst" >/dev/null; then
+if ! diff -r "$TMP/rsync_dst" "$TMP/oc_rsync_dst" >/dev/null; then
   echo "Directory trees differ" >&2
-  diff -r "$TMP/rsync_dst" "$TMP/rsync_rs_dst" >&2 || true
+  diff -r "$TMP/rsync_dst" "$TMP/oc_rsync_dst" >&2 || true
   exit 1
 fi

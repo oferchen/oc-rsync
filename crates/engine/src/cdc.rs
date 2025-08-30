@@ -66,7 +66,7 @@ pub struct Manifest {
 impl Manifest {
     pub fn load() -> Self {
         let home = std::env::var("HOME").unwrap_or_else(|_| String::from("."));
-        let path = Path::new(&home).join(".rsync-rs/manifest");
+        let path = Path::new(&home).join(".oc-rsync/manifest");
         let mut entries = HashMap::new();
         if let Ok(contents) = fs::read_to_string(&path) {
             for line in contents.lines() {

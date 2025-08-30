@@ -40,7 +40,7 @@ fn spawn_daemon(config: &str) -> (Child, u16, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let cfg_path = dir.path().join("rsyncd.conf");
     fs::write(&cfg_path, config).unwrap();
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
         .stdout(Stdio::piped())
@@ -98,7 +98,7 @@ fn daemon_config_motd_suppression() {
     );
     let (mut child, port, _tmp) = spawn_daemon(&config);
     wait_for_daemon(port);
-    let output = Command::cargo_bin("rsync-rs")
+    let output = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             &format!("rsync://127.0.0.1:{port}/data/"),
@@ -107,7 +107,7 @@ fn daemon_config_motd_suppression() {
         .output()
         .unwrap();
     assert!(String::from_utf8_lossy(&output.stdout).contains("Hello world"));
-    let output = Command::cargo_bin("rsync-rs")
+    let output = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--no-motd",
@@ -161,7 +161,7 @@ fn daemon_config_custom_port() {
     let cfg = format!("port = {port}\n[data]\n    path = {}\n", data.display());
     let cfg_path = dir.path().join("rsyncd.conf");
     fs::write(&cfg_path, cfg).unwrap();
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
         .spawn()

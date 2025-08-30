@@ -18,9 +18,9 @@ This document tracks the major capabilities planned for the project.
 | Compression negotiation | In progress | [M5—Filters & Compression][M5] |
 | Human-readable stats output (`--human-readable`) | Implemented | [M4—CLI Parity][M4] |
 
-[M1]: https://github.com/rsync-rs/rsync_rs/milestone/1
-[M2]: https://github.com/rsync-rs/rsync_rs/milestone/2
-[M3]: https://github.com/rsync-rs/rsync_rs/milestone/3
-[M4]: https://github.com/rsync-rs/rsync_rs/milestone/4
-[M5]: https://github.com/rsync-rs/rsync_rs/milestone/5
-[M7]: https://github.com/rsync-rs/rsync_rs/milestone/7
+[M1]: https://github.com/oc-rsync/oc_rsync/milestone/1
+[M2]: https://github.com/oc-rsync/oc_rsync/milestone/2
+[M3]: https://github.com/oc-rsync/oc_rsync/milestone/3
+[M4]: https://github.com/oc-rsync/oc_rsync/milestone/4
+[M5]: https://github.com/oc-rsync/oc_rsync/milestone/5
+[M7]: https://github.com/oc-rsync/oc_rsync/milestone/7

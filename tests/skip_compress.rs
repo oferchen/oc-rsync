@@ -13,7 +13,7 @@ fn skip_compress_option_transfers_files() {
     fs::write(src.join("b.txt"), b"text").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",

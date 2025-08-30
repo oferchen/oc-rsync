@@ -33,7 +33,7 @@ This document describes the agents, their responsibilities, and how they collabo
 - **Role**: Handles data compression and decompression streams.
 - **Responsibilities**:
   - Support zlib, zlibx, and zstd (compatibility-first).
-  - Support modern compression modes (lz4, tuned zstd) when both sides are rsync-rs.
+  - Support modern compression modes (lz4, tuned zstd) when both sides are oc-rsync.
   - Parse and apply `--compress-choice`, `--compress-level`, and `--skip-compress` arguments.
   - Maintain throughput and low latency for large trees.
 - **Design Pattern**: **Strategy** pattern for algorithm choice; **Pipeline** integration with ProtocolAgent.
@@ -152,7 +152,7 @@ This document describes the agents, their responsibilities, and how they collabo
 
 ## Modern Mode Agent (Optional Enhancements)
 - **ModernAgent**:
-  - Negotiates optional modern features if both peers are rsync-rs.
+  - Negotiates optional modern features if both peers are oc-rsync.
   - Enhancements:
     - Strong checksum upgrade (BLAKE3, XXH3).
     - Preferential zstd or lz4 compression.

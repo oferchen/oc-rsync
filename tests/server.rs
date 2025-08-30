@@ -30,7 +30,7 @@ fn server_remote_pair_reports_error() {
 
 #[test]
 fn server_handshake_succeeds() {
-    let exe = cargo_bin("rsync-rs");
+    let exe = cargo_bin("oc-rsync");
     let mut child = Command::new(exe)
         .arg("--server")
         .stdin(Stdio::piped())
@@ -88,7 +88,7 @@ fn server_handshake_succeeds() {
 
 #[test]
 fn server_rejects_unsupported_version() {
-    let exe = cargo_bin("rsync-rs");
+    let exe = cargo_bin("oc-rsync");
     let mut child = Command::new(exe)
         .arg("--server")
         .stdin(Stdio::piped())

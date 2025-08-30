@@ -1,10 +1,10 @@
 [package]
-name = "rsync-rs-bin"
+name = "oc-rsync-bin"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "rsync-rs"
+name = "oc-rsync"
 path = "src/main.rs"
 
 [dependencies]

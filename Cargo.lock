@@ -851,6 +851,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "oc-rsync"
+version = "0.1.0"
+dependencies = [
+ "assert_cmd",
+ "checksums",
+ "clap_complete",
+ "cli",
+ "compress",
+ "engine",
+ "filetime",
+ "filters",
+ "nix",
+ "posix-acl",
+ "predicates",
+ "protocol",
+ "serde",
+ "serde_json",
+ "serial_test",
+ "shell-words",
+ "tempfile",
+ "transport",
+ "wait-timeout",
+ "xattr",
+]
+
+[[package]]
+name = "oc-rsync-bin"
+version = "0.1.0"
+dependencies = [
+ "cli",
+ "engine",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1092,40 +1126,6 @@ name = "regex-syntax"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "caf4aa5b0f434c91fe5c7f1ecb6a5ece2130b02ad2a590589dda5146df959001"
-
-[[package]]
-name = "rsync-rs"
-version = "0.1.0"
-dependencies = [
- "assert_cmd",
- "checksums",
- "clap_complete",
- "cli",
- "compress",
- "engine",
- "filetime",
- "filters",
- "nix",
- "posix-acl",
- "predicates",
- "protocol",
- "serde",
- "serde_json",
- "serial_test",
- "shell-words",
- "tempfile",
- "transport",
- "wait-timeout",
- "xattr",
-]
-
-[[package]]
-name = "rsync-rs-bin"
-version = "0.1.0"
-dependencies = [
- "cli",
- "engine",
-]
 
 [[package]]
 name = "rustix"

@@ -1,6 +1,6 @@
-# rsync-rs
+# oc-rsync
 
-rsync-rs is a modular reimplementation of the classic `rsync` utility in Rust. It develops the protocol, transport and synchronization engine as a collection of reusable crates and aims for eventual compatibility with existing rsync deployments while leveraging Rust's safety and concurrency strengths.
+oc-rsync is a modular reimplementation of the classic `rsync` utility in Rust. It develops the protocol, transport and synchronization engine as a collection of reusable crates and aims for eventual compatibility with existing rsync deployments while leveraging Rust's safety and concurrency strengths.
 
 ## Summary
 
@@ -79,12 +79,12 @@ The project is organized as a set of focused crates:
 
 ## Building
 
-The CLI entry point resides in the `bin/rsync-rs` crate. Build or run it with Cargo:
+The CLI entry point resides in the `bin/oc-rsync` crate. Build or run it with Cargo:
 
 ```
-cargo build -p rsync-rs-bin --bin rsync-rs
+cargo build -p oc-rsync-bin --bin oc-rsync
 # or
-cargo run -p rsync-rs-bin -- <args>
+cargo run -p oc-rsync-bin -- <args>
 ```
 
 ## Milestone Roadmap

@@ -19,7 +19,7 @@ fn copy_links_directory() {
     fs::write(src.join("dir/file"), b"hi").unwrap();
     symlink("dir", src.join("dirlink"));
 
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -46,7 +46,7 @@ fn copy_unsafe_links() {
     fs::create_dir_all(&src).unwrap();
     symlink("../outside/file", src.join("link"));
 
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -75,7 +75,7 @@ fn safe_links_skip() {
     symlink("inside", src.join("safe"));
     symlink("../outside/file", src.join("unsafe"));
 
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",

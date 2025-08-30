@@ -19,7 +19,7 @@
 .hy
 .SH Command Line Interface
 .PP
-The \f[V]rsync-rs\f[R] binary aims to mirror the familiar
+The \f[V]oc-rsync\f[R] binary aims to mirror the familiar
 \f[V]rsync\f[R] experience.
 An overview of project goals and features is available in the README,
 and a high-level summary of CLI goals lives in the README\[cq]s CLI
@@ -28,7 +28,7 @@ section.
 .IP
 .nf
 \f[C]
-rsync-rs [OPTIONS] <SRC> <DEST>
+oc-rsync [OPTIONS] <SRC> <DEST>
 \f[R]
 .fi
 .SS Examples
@@ -38,7 +38,7 @@ Local directory sync:
 .IP
 .nf
 \f[C]
-rsync-rs ./src ./backup
+oc-rsync ./src ./backup
 \f[R]
 .fi
 .RE
@@ -48,7 +48,7 @@ Remote sync over SSH:
 .IP
 .nf
 \f[C]
-rsync-rs ./src user\[at]example.com:/var/www
+oc-rsync ./src user\[at]example.com:/var/www
 \f[R]
 .fi
 .RE
@@ -58,7 +58,7 @@ Dry run with statistics:
 .IP
 .nf
 \f[C]
-rsync-rs -n --stats ./src remote:/dst
+oc-rsync -n --stats ./src remote:/dst
 \f[R]
 .fi
 .RE
@@ -68,7 +68,7 @@ Sync using an explicit config file:
 .IP
 .nf
 \f[C]
-rsync-rs --config ./rsync-rs.toml ./src remote:/dst
+oc-rsync --config ./oc-rsync.toml ./src remote:/dst
 \f[R]
 .fi
 .RE
@@ -78,7 +78,7 @@ Mirror with exclusions and deletions:
 .IP
 .nf
 \f[C]
-rsync-rs -a --delete --exclude \[aq].cache/\[aq] ./src/ ./mirror/
+oc-rsync -a --delete --exclude \[aq].cache/\[aq] ./src/ ./mirror/
 \f[R]
 .fi
 .RE
@@ -88,7 +88,7 @@ Incremental backup using hard links:
 .IP
 .nf
 \f[C]
-rsync-rs -a --link-dest=../prev --compare-dest=../base ./src/ ./snapshot/
+oc-rsync -a --link-dest=../prev --compare-dest=../base ./src/ ./snapshot/
 \f[R]
 .fi
 .RE
@@ -98,7 +98,7 @@ Throttled modern compression:
 .IP
 .nf
 \f[C]
-rsync-rs -az --modern --bwlimit=1m ./src/ host:/archive/
+oc-rsync -az --modern --bwlimit=1m ./src/ host:/archive/
 \f[R]
 .fi
 .RE
@@ -108,7 +108,7 @@ Tune delta block size:
 .IP
 .nf
 \f[C]
-rsync-rs -B 65536 ./src remote:/dst
+oc-rsync -B 65536 ./src remote:/dst
 \f[R]
 .fi
 .RE
@@ -118,7 +118,7 @@ Show version:
 .IP
 .nf
 \f[C]
-rsync-rs --version
+oc-rsync --version
 \f[R]
 .fi
 .RE
@@ -127,13 +127,13 @@ rsync-rs --version
 Just like \f[V]rsync\f[R], adding a trailing slash to the source path
 changes what is copied:
 .IP \[bu] 2
-\f[V]rsync-rs src/ dest/\f[R] copies the \f[I]contents\f[R] of
+\f[V]oc-rsync src/ dest/\f[R] copies the \f[I]contents\f[R] of
 \f[V]src\f[R] into \f[V]dest\f[R].
 .IP \[bu] 2
-\f[V]rsync-rs src dest/\f[R] creates a \f[V]dest/src\f[R] directory
+\f[V]oc-rsync src dest/\f[R] creates a \f[V]dest/src\f[R] directory
 containing the original files.
 .IP \[bu] 2
-\f[V]rsync-rs remote:/src/ local/\f[R] pulls the contents of
+\f[V]oc-rsync remote:/src/ local/\f[R] pulls the contents of
 \f[V]/src\f[R] from the remote host into \f[V]local\f[R].
 .SS Options
 .PP
@@ -986,7 +986,7 @@ T}@T{
 T}@T{
 off
 T}@T{
-rsync-rs only; enables zstd compression and BLAKE3 checksums; requires
+oc-rsync only; enables zstd compression and BLAKE3 checksums; requires
 \f[V]blake3\f[R] feature
 T}@T{
 matrix
@@ -1612,11 +1612,11 @@ For example:
 .IP
 .nf
 \f[C]
-rsync-rs -e \[aq]RUST_LOG=debug ssh -p 2222 -o \[dq]StrictHostKeyChecking=no\[dq]\[aq] src dst
+oc-rsync -e \[aq]RUST_LOG=debug ssh -p 2222 -o \[dq]StrictHostKeyChecking=no\[dq]\[aq] src dst
 \f[R]
 .fi
 .PP
-During the connection handshake \f[V]rsync-rs\f[R] also forwards any
+During the connection handshake \f[V]oc-rsync\f[R] also forwards any
 environment variables from its own process whose names begin with
 \f[V]RSYNC_\f[R], mirroring \f[V]rsync\f[R]\[cq]s environment
 propagation behavior.
@@ -1624,7 +1624,7 @@ propagation behavior.
 .IP "1." 3
 Command-line flags
 .IP "2." 3
-Environment variables (prefixed with \f[V]RSYNC_RS_\f[R])
+Environment variables (prefixed with \f[V]OC_RSYNC_\f[R])
 .IP "3." 3
 Configuration file provided via \f[V]--config\f[R]
 .IP "4." 3
@@ -1634,7 +1634,7 @@ No configuration file is loaded unless \f[V]--config\f[R] is supplied.
 Settings specified earlier in the list override later sources.
 .SS Filters
 .PP
-\f[V]rsync-rs\f[R] supports include and exclude rules using the same
+\f[V]oc-rsync\f[R] supports include and exclude rules using the same
 syntax as \f[V]rsync\f[R].
 Rules can be supplied on the command line with \f[V]--filter\f[R] or
 placed in \f[V].rsync-filter\f[R] files located throughout the source

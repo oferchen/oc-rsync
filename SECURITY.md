@@ -13,7 +13,7 @@ Please report suspected vulnerabilities to [security@rsync.rs](mailto:security@r
 
 ## Threat Model & Mitigations
 
-`rsync-rs` assumes untrusted peers and adversarial networks. The daemon and transport stack employ multiple layers of defense:
+`oc-rsync` assumes untrusted peers and adversarial networks. The daemon and transport stack employ multiple layers of defense:
 
 ### Chroot jail and privilege drop
 Daemon modules are served from a chrooted view of the filesystem and run as an unprivileged user and group (UID/GID 65534) to limit the impact of compromise. See [daemon documentation](docs/daemon.md#L34-L36) and the [privilege drop implementation](crates/cli/src/lib.rs#L1225-L1229).

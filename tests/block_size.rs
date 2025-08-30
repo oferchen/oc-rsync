@@ -75,7 +75,7 @@ fn delta_block_size_matches_rsync() {
 
         fs::write(&dst_file, &basis).unwrap();
         let src_arg = format!("{}/", src_dir.display());
-        Command::cargo_bin("rsync-rs")
+        Command::cargo_bin("oc-rsync")
             .unwrap()
             .args([
                 "--local",

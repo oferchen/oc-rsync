@@ -1,7 +1,7 @@
 # Compatibility
 
 This page summarizes the operating systems and interoperability scenarios that
-have been exercised with `rsync-rs`. For a detailed status matrix see
+have been exercised with `oc-rsync`. For a detailed status matrix see
 [compat_matrix.md](compat_matrix.md).
 
 ## Tested platforms

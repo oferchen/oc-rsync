@@ -1,8 +1,8 @@
-#compdef rsync-rs
+#compdef oc-rsync
 
 autoload -U is-at-least
 
-_rsync-rs() {
+_oc-rsync() {
     typeset -A opt_args
     typeset -a _arguments_options
     local ret=1
@@ -146,14 +146,14 @@ _rsync-rs() {
 && ret=0
 }
 
-(( $+functions[_rsync-rs_commands] )) ||
-_rsync-rs_commands() {
+(( $+functions[_oc-rsync_commands] )) ||
+_oc-rsync_commands() {
     local commands; commands=()
-    _describe -t commands 'rsync-rs commands' commands "$@"
+    _describe -t commands 'oc-rsync commands' commands "$@"
 }
 
-if [ "$funcstack[1]" = "_rsync-rs" ]; then
-    _rsync-rs "$@"
+if [ "$funcstack[1]" = "_oc-rsync" ]; then
+    _oc-rsync "$@"
 else
-    compdef _rsync-rs rsync-rs
+    compdef _oc-rsync oc-rsync
 fi

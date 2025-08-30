@@ -11,4 +11,4 @@ cargo test -p engine --test compress --features blake3 -- codec_selection_prefer
 cargo test -p protocol --test server --features blake3 -- server_negotiates_version
 
 # Stock rsync falls back to zlib when it doesn't support codec lists
-cargo test -p rsync-rs --test rsync_zlib --features blake3 -- rsync_client_falls_back_to_zlib
+cargo test -p oc-rsync --test rsync_zlib --features blake3 -- rsync_client_falls_back_to_zlib

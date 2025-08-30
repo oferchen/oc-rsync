@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
-RSYNC_RS="$ROOT/target/debug/rsync-rs"
+OC_RSYNC="$ROOT/target/debug/oc-rsync"
 INTEROP_DIR="$ROOT/tests/interop"
 WIRE_DIR="$INTEROP_DIR/wire"
 FILELIST_DIR="$INTEROP_DIR/filelists"
@@ -11,8 +11,8 @@ FLAGS=(--recursive --times --perms)
 
 mkdir -p "$WIRE_DIR" "$FILELIST_DIR"
 
-# Build rsync-rs binary
-cargo build --quiet -p rsync-rs-bin --bin rsync-rs --features blake3
+# Build oc-rsync binary
+cargo build --quiet -p oc-rsync-bin --bin oc-rsync --features blake3
 
 # Ensure sshd exists
 if ! command -v sshd >/dev/null 2>&1; then
@@ -64,16 +64,16 @@ for ver in "${VERSIONS[@]}"; do
   "$BIN" "${FLAGS[@]}" -e "$SSH" "$SRC/" "root@localhost:/tmp/rsync_dst_$ver" >"$RSYNC_LOG" 2>&1
   "$BIN" "${FLAGS[@]}" -n --list-only -e "$SSH" "$SRC/" "root@localhost:/tmp/rsync_dst_$ver" >"$RSYNC_LIST" 2>&1
 
-  RSYNC_RS_LOG="$TMP/rsync_rs-$ver.log"
-  RSYNC_RS_LIST="$TMP/rsync_rs-$ver.list"
-  "$RSYNC_RS" "${FLAGS[@]}" "$SRC/" "root@localhost:/tmp/rsync_rs_dst_$ver" >"$RSYNC_RS_LOG" 2>&1
-  "$RSYNC_RS" --list-only "${FLAGS[@]}" "$SRC/" "root@localhost:/tmp/rsync_rs_dst_$ver" >"$RSYNC_RS_LIST" 2>&1
+  OC_RSYNC_LOG="$TMP/oc_rsync-$ver.log"
+  OC_RSYNC_LIST="$TMP/oc_rsync-$ver.list"
+  "$OC_RSYNC" "${FLAGS[@]}" "$SRC/" "root@localhost:/tmp/oc_rsync_dst_$ver" >"$OC_RSYNC_LOG" 2>&1
+  "$OC_RSYNC" --list-only "${FLAGS[@]}" "$SRC/" "root@localhost:/tmp/oc_rsync_dst_$ver" >"$OC_RSYNC_LIST" 2>&1
 
   if [ "${UPDATE:-0}" = "1" ]; then
     cp "$RSYNC_LOG" "$WIRE_DIR/rsync-$ver.log"
     cp "$RSYNC_LIST" "$FILELIST_DIR/rsync-$ver.txt"
   fi
 
-  diff -u "$WIRE_DIR/rsync-$ver.log" "$RSYNC_RS_LOG"
-  diff -u "$FILELIST_DIR/rsync-$ver.txt" "$RSYNC_RS_LIST"
+  diff -u "$WIRE_DIR/rsync-$ver.log" "$OC_RSYNC_LOG"
+  diff -u "$FILELIST_DIR/rsync-$ver.txt" "$OC_RSYNC_LIST"
 done

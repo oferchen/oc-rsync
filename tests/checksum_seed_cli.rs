@@ -11,7 +11,7 @@ fn checksum_seed_flag_transfers_files() {
     fs::write(src.join("a.txt"), b"seeded").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",

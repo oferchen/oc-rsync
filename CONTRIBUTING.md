@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for your interest in contributing to rsync_rs!
+Thank you for your interest in contributing to oc_rsync!
 
 ## Coding Standards
 - Format code with `cargo fmt --all`.

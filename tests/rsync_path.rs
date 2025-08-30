@@ -16,7 +16,7 @@ fn custom_rsync_path_performs_transfer() {
     let dst_dir = dir.path().join("dst");
 
     let remote_bin = dir.path().join("rr-remote");
-    fs::copy(assert_cmd::cargo::cargo_bin("rsync-rs"), &remote_bin).unwrap();
+    fs::copy(assert_cmd::cargo::cargo_bin("oc-rsync"), &remote_bin).unwrap();
     let mut perms = fs::metadata(&remote_bin).unwrap().permissions();
     perms.set_mode(0o755);
     fs::set_permissions(&remote_bin, perms).unwrap();
@@ -27,7 +27,7 @@ fn custom_rsync_path_performs_transfer() {
 
     let src_spec = format!("{}/", src_dir.display());
     let dst_spec = format!("ignored:{}", dst_dir.display());
-    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     cmd.args([
         "-e",
         rsh.to_str().unwrap(),
@@ -54,7 +54,7 @@ fn rsync_path_supports_wrapper_command() {
     let dst_dir = dir.path().join("dst");
 
     let remote_bin = dir.path().join("rr-remote");
-    fs::copy(assert_cmd::cargo::cargo_bin("rsync-rs"), &remote_bin).unwrap();
+    fs::copy(assert_cmd::cargo::cargo_bin("oc-rsync"), &remote_bin).unwrap();
     fs::set_permissions(&remote_bin, fs::Permissions::from_mode(0o755)).unwrap();
 
     let marker = dir.path().join("marker.txt");
@@ -78,7 +78,7 @@ fn rsync_path_supports_wrapper_command() {
 
     let src_spec = format!("{}/", src_dir.display());
     let dst_spec = format!("ignored:{}", dst_dir.display());
-    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     cmd.args([
         "-e",
         rsh.to_str().unwrap(),

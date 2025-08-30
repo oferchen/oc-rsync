@@ -10,12 +10,12 @@ members = [
     "crates/transport",
     "crates/daemon",
     "crates/cli",
-    "bin/rsync-rs",
+    "bin/oc-rsync",
 ]
 resolver = "2"
 
 [package]
-name = "rsync-rs"
+name = "oc-rsync"
 version = "0.1.0"
 edition = "2021"
 
