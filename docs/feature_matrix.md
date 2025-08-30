@@ -20,7 +20,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--cc` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | alias for `--checksum-choice` | ≤3.2 |
 | `--checksum` | `-c` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, BLAKE3 | ≤3.2 |
 | `--checksum-choice` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | choose the strong hash algorithm | ≤3.2 |
-| `--checksum-seed` | — | ❌ | — | — |  | ≤3.2 |
+| `--checksum-seed` | — | ✅ | ✅ | [tests/checksum_seed.rs](../tests/checksum_seed.rs)<br>[tests/checksum_seed_cli.rs](../tests/checksum_seed_cli.rs) | set block/file checksum seed | ≤3.2 |
 | `--chmod` | — | ❌ | — | — |  | ≤3.2 |
 | `--chown` | — | ❌ | — | — |  | ≤3.2 |
 | `--compare-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
@@ -133,7 +133,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--secrets-file` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--server` | — | ✅ | ❌ | [tests/server.rs](../tests/server.rs) | negotiates protocol version and codecs | ≤3.2 |
 | `--size-only` | — | ❌ | — | — |  | ≤3.2 |
-| `--skip-compress` | — | ❌ | — | — |  | ≤3.2 |
+| `--skip-compress` | — | ✅ | ✅ | [tests/skip_compress.rs](../tests/skip_compress.rs) | comma-separated list of file suffixes to avoid compressing | ≤3.2 |
 | `--sockopts` | — | ❌ | — | — |  | ≤3.2 |
 | `--sparse` | `-S` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | creates holes for long zero runs | ≤3.2 |
 | `--specials` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
