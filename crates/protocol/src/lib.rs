@@ -283,7 +283,7 @@ impl Message {
         match self {
             Message::Version(v) => {
                 let mut payload = Vec::new();
-                payload.write_u32::<BigEndian>(v).unwrap();
+                payload.extend_from_slice(&v.to_be_bytes());
                 let header = FrameHeader {
                     channel,
                     tag: Tag::Message,
@@ -351,7 +351,7 @@ impl Message {
             }
             Message::Progress(v) => {
                 let mut payload = Vec::new();
-                payload.write_u64::<BigEndian>(v).unwrap();
+                payload.extend_from_slice(&v.to_be_bytes());
                 let header = FrameHeader {
                     channel,
                     tag: Tag::Message,

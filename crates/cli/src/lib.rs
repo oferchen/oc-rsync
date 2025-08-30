@@ -420,34 +420,37 @@ pub struct RshCommand {
     pub cmd: Vec<String>,
 }
 
-fn parse_env_command(parts: Vec<String>) -> RshCommand {
+fn parse_env_command(parts: Vec<String>) -> Result<RshCommand> {
     let mut env = Vec::new();
-    let mut iter = parts.into_iter().peekable();
-    while let Some(tok) = iter.peek() {
-        if let Some((k, _)) = tok.split_once('=') {
-            if !k.is_empty()
+    let mut iter = parts.into_iter();
+    let mut cmd = Vec::new();
+
+    while let Some(tok) = iter.next() {
+        if let Some((k, v)) = tok.split_once('=') {
+            let valid = !k.is_empty()
                 && (k.as_bytes()[0].is_ascii_alphabetic() || k.as_bytes()[0] == b'_')
                 && k.as_bytes()[1..]
                     .iter()
-                    .all(|b| b.is_ascii_alphanumeric() || *b == b'_')
-            {
-                let tok = iter.next().unwrap();
-                let (k, v) = tok.split_once('=').unwrap();
+                    .all(|b| b.is_ascii_alphanumeric() || *b == b'_');
+            if valid {
                 env.push((k.to_string(), v.to_string()));
                 continue;
+            } else {
+                return Err(EngineError::Other("invalid environment assignment".into()));
             }
         }
-        break;
+        cmd.push(tok);
+        cmd.extend(iter);
+        return Ok(RshCommand { env, cmd });
     }
-    let cmd: Vec<String> = iter.collect();
-    RshCommand { env, cmd }
+    Ok(RshCommand { env, cmd })
 }
 
 pub fn parse_rsh(raw: Option<String>) -> Result<RshCommand> {
     match raw {
         Some(s) => {
             let parts = shell_split(&s).map_err(|e| EngineError::Other(e.to_string()))?;
-            let mut cmd = parse_env_command(parts);
+            let mut cmd = parse_env_command(parts)?;
             if cmd.cmd.is_empty() {
                 cmd.cmd.push("ssh".to_string());
             }
@@ -464,7 +467,7 @@ pub fn parse_rsync_path(raw: Option<String>) -> Result<Option<RshCommand>> {
     match raw {
         Some(s) => {
             let parts = shell_split(&s).map_err(|e| EngineError::Other(e.to_string()))?;
-            let cmd = parse_env_command(parts);
+            let cmd = parse_env_command(parts)?;
             if cmd.env.is_empty() && cmd.cmd.is_empty() {
                 Ok(None)
             } else {
@@ -535,7 +538,8 @@ pub fn run() -> Result<()> {
     } else {
         let cmd = ClientOpts::command();
         let matches = cmd.get_matches_from(&args);
-        let opts = ClientOpts::from_arg_matches(&matches).unwrap();
+        let opts = ClientOpts::from_arg_matches(&matches)
+            .map_err(|e| EngineError::Other(e.to_string()))?;
         run_client(opts, &matches)
     }
 }
@@ -1373,7 +1377,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     };
 
     if let Some(values) = matches.get_many::<String>("filter") {
-        let idxs: Vec<_> = matches.indices_of("filter").unwrap().collect();
+        let idxs: Vec<_> = matches
+            .indices_of("filter")
+            .map_or_else(Vec::new, |v| v.collect());
         for (idx, val) in idxs.into_iter().zip(values) {
             add_rules(
                 idx,
@@ -1382,7 +1388,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("filter_file") {
-        let idxs: Vec<_> = matches.indices_of("filter_file").unwrap().collect();
+        let idxs: Vec<_> = matches
+            .indices_of("filter_file")
+            .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
             let content = fs::read_to_string(file)?;
             add_rules(
@@ -1392,7 +1400,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         }
     }
     if let Some(values) = matches.get_many::<String>("include") {
-        let idxs: Vec<_> = matches.indices_of("include").unwrap().collect();
+        let idxs: Vec<_> = matches
+            .indices_of("include")
+            .map_or_else(Vec::new, |v| v.collect());
         for (idx, pat) in idxs.into_iter().zip(values) {
             add_rules(
                 idx,
@@ -1402,7 +1412,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         }
     }
     if let Some(values) = matches.get_many::<String>("exclude") {
-        let idxs: Vec<_> = matches.indices_of("exclude").unwrap().collect();
+        let idxs: Vec<_> = matches
+            .indices_of("exclude")
+            .map_or_else(Vec::new, |v| v.collect());
         for (idx, pat) in idxs.into_iter().zip(values) {
             add_rules(
                 idx,
@@ -1412,7 +1424,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("include_from") {
-        let idxs: Vec<_> = matches.indices_of("include_from").unwrap().collect();
+        let idxs: Vec<_> = matches
+            .indices_of("include_from")
+            .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
             for pat in load_patterns(file, opts.from0)? {
                 add_rules(
@@ -1424,7 +1438,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("exclude_from") {
-        let idxs: Vec<_> = matches.indices_of("exclude_from").unwrap().collect();
+        let idxs: Vec<_> = matches
+            .indices_of("exclude_from")
+            .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
             for pat in load_patterns(file, opts.from0)? {
                 add_rules(
@@ -1436,7 +1452,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("files_from") {
-        let idxs: Vec<_> = matches.indices_of("files_from").unwrap().collect();
+        let idxs: Vec<_> = matches
+            .indices_of("files_from")
+            .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
             for pat in load_patterns(file, opts.from0)? {
                 add_rules(
@@ -1833,6 +1851,12 @@ mod tests {
         let opts = ClientOpts::parse_from(["prog", "--server", "--sender", "src", "dst"]);
         assert!(opts.server);
         assert!(opts.sender);
+    }
+
+    #[test]
+    fn rejects_invalid_env_assignment() {
+        let err = parse_rsh(Some("1BAD=val ssh".into())).unwrap_err();
+        assert!(matches!(err, EngineError::Other(_)));
     }
 
     #[test]
