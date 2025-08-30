@@ -1461,15 +1461,7 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     let motd = opts.motd.clone();
     let timeout = opts.timeout;
     let bwlimit = opts.bwlimit;
-    let family = if opts.ipv4 {
-        Some(AddressFamily::V4)
-    } else if opts.ipv6 {
-        Some(AddressFamily::V6)
-    } else {
-        None
-    };
-
-    let (listener, port) = TcpTransport::listen(opts.address, opts.port, family)?;
+    let (listener, port) = TcpTransport::listen(opts.address, opts.port)?;
     if opts.port == 0 {
         println!("{}", port);
         let _ = io::stdout().flush();

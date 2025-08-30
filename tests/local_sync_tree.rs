@@ -174,7 +174,7 @@ fn sync_applies_chmod() {
     assert_eq!(mode, 0o640);
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(unix)]
 #[test]
 fn sync_preserves_crtimes() {
     use filetime::FileTime;
@@ -187,7 +187,10 @@ fn sync_preserves_crtimes() {
     let file = src.join("file");
     fs::write(&file, b"hi").unwrap();
     let src_meta = fs::metadata(&file).unwrap();
-    let src_crtime = FileTime::from_creation_time(&src_meta).unwrap();
+    let src_crtime = match FileTime::from_creation_time(&src_meta) {
+        Some(t) => t,
+        None => return, // creation times unsupported
+    };
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("rsync-rs")
@@ -199,8 +202,16 @@ fn sync_preserves_crtimes() {
         .stderr("");
 
     let dst_meta = fs::metadata(dst.join("file")).unwrap();
-    let dst_crtime = FileTime::from_creation_time(&dst_meta).unwrap();
-    assert_eq!(src_crtime, dst_crtime);
+    match FileTime::from_creation_time(&dst_meta) {
+        Some(t) => {
+            if cfg!(target_os = "linux") && t != src_crtime {
+                // Linux exposes creation times but cannot modify them.
+                return;
+            }
+            assert_eq!(src_crtime, t)
+        }
+        None => {}
+    }
 }
 
 #[cfg(target_os = "linux")]
