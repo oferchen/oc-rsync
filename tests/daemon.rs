@@ -192,6 +192,8 @@ fn daemon_binds_with_ipv4_flag() {
 fn daemon_binds_with_ipv6_flag() {
     if require_network().is_err() {
         eprintln!("skipping daemon test: network access required");
+        return;
+    }
     if !supports_ipv6() {
         eprintln!("IPv6 unsupported; skipping test");
         return;
