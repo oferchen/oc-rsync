@@ -1,9 +1,9 @@
-use md5::{Digest, Md5};
-use sha1::Sha1;
+// crates/checksums/src/lib.rs
 #[cfg(feature = "blake3")]
 use blake3::Hasher as Blake3;
+use md5::{Digest, Md5};
+use sha1::Sha1;
 
-/// Algorithms that can be used for the strong digest.
 #[derive(Clone, Copy, Debug)]
 pub enum StrongHash {
     Md5,
@@ -12,13 +12,11 @@ pub enum StrongHash {
     Blake3,
 }
 
-/// Configuration for checksum computation.
 #[derive(Clone, Debug)]
 pub struct ChecksumConfig {
     strong: StrongHash,
 }
 
-/// Builder for [`ChecksumConfig`].
 #[derive(Clone, Debug)]
 pub struct ChecksumConfigBuilder {
     strong: StrongHash,
@@ -33,18 +31,15 @@ impl Default for ChecksumConfigBuilder {
 }
 
 impl ChecksumConfigBuilder {
-    /// Create a new builder with default settings (MD5 strong digest).
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Choose the strong hash algorithm to use when building the config.
     pub fn strong(mut self, alg: StrongHash) -> Self {
         self.strong = alg;
         self
     }
 
-    /// Finalize the builder and produce a [`ChecksumConfig`].
     pub fn build(self) -> ChecksumConfig {
         ChecksumConfig {
             strong: self.strong,
@@ -52,7 +47,6 @@ impl ChecksumConfigBuilder {
     }
 }
 
-/// Result of computing both the rolling checksum and a strong digest.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Checksums {
     pub weak: u32,
@@ -60,7 +54,6 @@ pub struct Checksums {
 }
 
 impl ChecksumConfig {
-    /// Compute both the rolling checksum and strong digest for `data`.
     pub fn checksum(&self, data: &[u8]) -> Checksums {
         Checksums {
             weak: rolling_checksum(data),
@@ -69,7 +62,6 @@ impl ChecksumConfig {
     }
 }
 
-/// Compute a strong digest of the data using the requested algorithm.
 pub fn strong_digest(data: &[u8], alg: StrongHash) -> Vec<u8> {
     match alg {
         StrongHash::Md5 => {
@@ -91,7 +83,6 @@ pub fn strong_digest(data: &[u8], alg: StrongHash) -> Vec<u8> {
     }
 }
 
-/// Compute the rsync rolling checksum for a block of data.
 pub fn rolling_checksum(data: &[u8]) -> u32 {
     let mut s1: u32 = 0;
     let mut s2: u32 = 0;
@@ -103,7 +94,6 @@ pub fn rolling_checksum(data: &[u8]) -> u32 {
     (s1 & 0xffff) | (s2 << 16)
 }
 
-/// Rolling checksum state allowing incremental updates.
 #[derive(Debug, Clone)]
 pub struct Rolling {
     len: usize,
@@ -138,7 +128,6 @@ impl Rolling {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -146,7 +135,7 @@ mod tests {
     #[test]
     fn rolling_known() {
         let sum = rolling_checksum(b"hello world");
-        assert_eq!(sum, 436208732); // verified against rsync implementation
+        assert_eq!(sum, 436208732);
     }
 
     #[test]

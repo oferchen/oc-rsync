@@ -1,3 +1,4 @@
+// crates/transport/tests/tcp.rs
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::thread;
@@ -6,7 +7,6 @@ use transport::{tcp::TcpTransport, Transport};
 
 #[test]
 fn send_receive_over_tcp() {
-    // Start a simple echo server.
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
     let addr = listener.local_addr().unwrap();
 
@@ -18,8 +18,7 @@ fn send_receive_over_tcp() {
     });
 
     let mut transport =
-        TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None)
-            .expect("connect");
+        TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None).expect("connect");
     transport.send(b"ping").expect("send");
     let mut buf = [0u8; 4];
     let n = transport.receive(&mut buf).expect("receive");

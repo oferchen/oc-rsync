@@ -1,3 +1,4 @@
+// crates/transport/src/ssh.rs
 use std::ffi::OsStr;
 use std::io::{self, BufReader, Read};
 use std::path::{Path, PathBuf};
@@ -16,7 +17,6 @@ use crate::{AddressFamily, LocalPipeTransport, SshTransport, Transport};
 const SSH_IO_BUF_SIZE: usize = 32 * 1024;
 const SSH_STDERR_CAP: usize = 32 * 1024;
 
-/// Transport over the stdio of a spawned `ssh` process.
 pub struct SshStdioTransport {
     inner: Option<LocalPipeTransport<BufReader<ChildStdout>, ChildStdin>>,
     stderr: Arc<Mutex<CapturedStderr>>,
@@ -44,7 +44,6 @@ struct CapturedStderr {
 }
 
 impl SshStdioTransport {
-    /// Spawn an SSH-like command and return a transport over its stdio.
     pub fn spawn<I, S>(program: &str, args: I) -> io::Result<Self>
     where
         I: IntoIterator<Item = S>,
@@ -55,7 +54,6 @@ impl SshStdioTransport {
         Self::spawn_from_command(cmd)
     }
 
-    /// Spawn a real `ssh` process targeting an rsync server and capture stderr.
     pub fn spawn_server<I, S>(
         host: &str,
         server_args: I,
@@ -70,8 +68,6 @@ impl SshStdioTransport {
     {
         let mut cmd = Command::new("ssh");
 
-        // Determine the known hosts file. Use the provided path or default to
-        // the user's `~/.ssh/known_hosts` if available.
         let known_hosts_path = known_hosts.map(Path::to_path_buf).or_else(|| {
             std::env::var("HOME")
                 .ok()
@@ -105,7 +101,6 @@ impl SshStdioTransport {
         Self::spawn_from_command(cmd)
     }
 
-    /// Spawn from a fully configured command.
     pub fn spawn_from_command(mut cmd: Command) -> io::Result<Self> {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -369,8 +364,6 @@ impl SshStdioTransport {
         Ok((t, codecs))
     }
 
-    /// Return any data captured from stderr of the spawned process along with
-    /// a flag indicating if the data was truncated.
     pub fn stderr(&self) -> (Vec<u8>, bool) {
         if let Ok(buf) = self.stderr.lock() {
             (buf.data.clone(), buf.truncated)
@@ -379,10 +372,6 @@ impl SshStdioTransport {
         }
     }
 
-    /// Consume the transport returning the reader and writer.
-    ///
-    /// This detaches the child process and stderr thread; the caller is
-    /// responsible for reaping the process.
     pub fn into_inner(mut self) -> (BufReader<ChildStdout>, ChildStdin) {
         if let Some(handle) = self.handle.take() {
             std::mem::forget(handle);
@@ -429,7 +418,6 @@ impl SshTransport for SshStdioTransport {}
 
 impl Drop for SshStdioTransport {
     fn drop(&mut self) {
-        // Close stdin/stdout before waiting on the child process.
         self.inner.take();
         if let Some(handle) = self.handle.take() {
             drop(handle);

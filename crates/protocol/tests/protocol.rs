@@ -1,3 +1,4 @@
+// crates/protocol/tests/protocol.rs
 use protocol::{negotiate_version, Frame, Message, Msg, Tag};
 
 #[test]
@@ -11,7 +12,6 @@ fn frame_roundtrip() {
     let msg2 = Message::from_frame(decoded).unwrap();
     assert_eq!(msg2, msg);
 
-    // A 4-byte payload should not be misinterpreted as a version message
     let msg4 = Message::Data(b"1234".to_vec());
     let frame4 = msg4.to_frame(3);
     let mut buf4 = Vec::new();
@@ -46,7 +46,6 @@ fn version_negotiation() {
 
 #[test]
 fn captured_frames_roundtrip() {
-    // File list entry
     const FILE_LIST: [u8; 16] = [
         0, 0, 0, 4, 0, 0, 0, 8, b'f', b'i', b'l', b'e', b'.', b't', b'x', b't',
     ];
@@ -61,7 +60,6 @@ fn captured_frames_roundtrip() {
         .unwrap();
     assert_eq!(buf, FILE_LIST);
 
-    // Attributes
     const ATTRS: [u8; 16] = [
         0, 0, 0, 5, 0, 0, 0, 8, b'm', b'o', b'd', b'e', b'=', b'7', b'5', b'5',
     ];
@@ -76,7 +74,6 @@ fn captured_frames_roundtrip() {
         .unwrap();
     assert_eq!(buf, ATTRS);
 
-    // Error
     const ERR: [u8; 12] = [0, 0, 0, 6, 0, 0, 0, 4, b'o', b'o', b'p', b's'];
     let frame = Frame::decode(&ERR[..]).unwrap();
     assert_eq!(frame.header.msg, Msg::Error);
@@ -89,7 +86,6 @@ fn captured_frames_roundtrip() {
         .unwrap();
     assert_eq!(buf, ERR);
 
-    // Progress
     const PROG: [u8; 16] = [0, 0, 0, 7, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0x30, 0x39];
     let frame = Frame::decode(&PROG[..]).unwrap();
     assert_eq!(frame.header.msg, Msg::Progress);

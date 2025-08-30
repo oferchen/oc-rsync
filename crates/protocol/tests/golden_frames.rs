@@ -1,3 +1,4 @@
+// crates/protocol/tests/golden_frames.rs
 use protocol::{Frame, Message, Msg, Tag};
 
 #[test]

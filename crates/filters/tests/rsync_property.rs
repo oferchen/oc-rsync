@@ -1,3 +1,4 @@
+// crates/filters/tests/rsync_property.rs
 use filters::{parse, Matcher};
 use proptest::prelude::*;
 use std::collections::HashSet;
@@ -14,8 +15,6 @@ fn rule_strategy() -> impl Strategy<Value = String> {
         Just("P keep.tmp".to_string()),
         Just("-! */".to_string()),
         Just("+! */".to_string()),
-        // Clear rule is omitted from random generation to keep precedence
-        // behaviour focused on pattern modifiers.
     ]
 }
 

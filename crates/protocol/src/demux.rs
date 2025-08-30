@@ -1,3 +1,4 @@
+// crates/protocol/src/demux.rs
 use indexmap::IndexMap;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
@@ -9,15 +10,12 @@ struct Channel {
     last_recv: Instant,
 }
 
-/// Demultiplex incoming frames to per-channel message queues and monitor peer
-/// liveness.
 pub struct Demux {
     timeout: Duration,
     channels: IndexMap<u16, Channel>,
 }
 
 impl Demux {
-    /// Create a new demultiplexer with the specified peer timeout.
     pub fn new(timeout: Duration) -> Self {
         Demux {
             timeout,
@@ -25,8 +23,6 @@ impl Demux {
         }
     }
 
-    /// Register a channel and obtain a [`Receiver`] for reading decoded
-    /// messages.
     pub fn register_channel(&mut self, id: u16) -> Receiver<Message> {
         let (tx, rx) = mpsc::channel();
         let ch = Channel {
@@ -37,24 +33,12 @@ impl Demux {
         rx
     }
 
-    /// Unregister a previously registered channel.
-    ///
-    /// Dropping the channel discards any messages that have been queued but not yet
-    /// received. Any subsequent frames targeting this channel will be rejected by
-    /// [`Demux::ingest`].
     pub fn unregister_channel(&mut self, id: u16) {
-        // `IndexMap::remove` is deprecated as it invalidates ordering; `swap_remove`
-        // performs removal without shifting all elements and is sufficient here
-        // since channel ordering is not significant.
         if let Some(ch) = self.channels.swap_remove(&id) {
-            // Dropping the sender ensures pending messages are not delivered.
             drop(ch);
         }
     }
 
-    /// Process an incoming [`Frame`]. Keep-alive frames simply refresh the
-    /// channel's activity timestamp while other messages are forwarded to the
-    /// appropriate receiver.
     pub fn ingest(&mut self, frame: Frame) -> std::io::Result<()> {
         let id = frame.header.channel;
         let msg = Message::from_frame(frame)?;
@@ -75,8 +59,6 @@ impl Demux {
         }
     }
 
-    /// Check for channels that have not received any frames within the timeout
-    /// period. Returns an error if a timeout is detected.
     pub fn poll(&mut self) -> std::io::Result<()> {
         let now = Instant::now();
         for (&id, ch) in self.channels.iter() {

@@ -1,3 +1,4 @@
+// crates/protocol/tests/server.rs
 use compress::{available_codecs, encode_codecs};
 use protocol::{Server, CAP_CODECS, LATEST_VERSION};
 use std::io::Cursor;

@@ -1,16 +1,17 @@
-use assert_cmd::Command;
+// tests/cli.rs
 use assert_cmd::prelude::*;
+use assert_cmd::Command;
 use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 use predicates::prelude::PredicateBooleanExt;
 use std::io::{Seek, SeekFrom, Write};
-use std::thread;
-use std::time::Duration;
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
+use std::thread;
+use std::time::Duration;
 use tempfile::tempdir;
 
 #[test]
@@ -231,9 +232,6 @@ fn numeric_ids_are_preserved() {
     std::fs::create_dir_all(&src_dir).unwrap();
     let file = src_dir.join("id.txt");
     std::fs::write(&file, b"ids").unwrap();
-    // Changing ownership requires root privileges.  When run without them,
-    // `chown` will fail with `EPERM`, so fall back to using the current
-    // ownership to avoid spurious CI failures.
     #[cfg(unix)]
     let (uid, gid) = {
         let desired = (Uid::from_raw(12345), Gid::from_raw(12345));
@@ -738,12 +736,8 @@ fn sparse_files_preserved() {
     std::fs::create_dir_all(&dst).unwrap();
     let sp = src.join("sparse");
     let mut f = File::create(&sp).unwrap();
-    // Write non-zero data after an initial hole and then extend the file again
-    // to leave a trailing hole. This ensures that sparse regions at the end of
-    // the file are preserved by the sync engine.
     f.seek(SeekFrom::Start(1 << 20)).unwrap();
     f.write_all(b"end").unwrap();
-    // Create a trailing hole beyond the written data.
     f.set_len(1 << 21).unwrap();
 
     let src_arg = format!("{}/", src.display());
@@ -754,9 +748,6 @@ fn sparse_files_preserved() {
         .success();
 
     let src_meta = std::fs::metadata(&sp).unwrap();
-    // If the source file is not actually sparse, the underlying filesystem does
-    // not support sparse files; skip the remainder of the test. These tests
-    // require a filesystem with sparse-file support.
     if src_meta.blocks() * 512 >= src_meta.len() {
         eprintln!("skipping test: filesystem lacks sparse-file support");
         return;
@@ -790,8 +781,6 @@ fn sparse_files_created() {
         .success();
 
     let src_meta = std::fs::metadata(&zs).unwrap();
-    // If the source file occupies as many blocks as its length, the filesystem
-    // does not support sparse files; skip the remainder of the test.
     if src_meta.blocks() * 512 >= src_meta.len() {
         eprintln!("skipping test: filesystem lacks sparse-file support");
         return;

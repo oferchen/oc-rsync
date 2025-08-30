@@ -1,3 +1,4 @@
+// fuzz/fuzz_targets/dirent_parser.rs
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 use std::fs;

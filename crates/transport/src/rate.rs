@@ -1,9 +1,9 @@
+// crates/transport/src/rate.rs
 use std::io;
 use std::time::{Duration, Instant};
 
 use crate::Transport;
 
-/// Transport wrapper that throttles outgoing bandwidth.
 pub struct RateLimitedTransport<T> {
     inner: T,
     bwlimit: u64,
@@ -12,12 +12,15 @@ pub struct RateLimitedTransport<T> {
 }
 
 impl<T> RateLimitedTransport<T> {
-    /// Create a new rate limited transport.
     pub fn new(inner: T, bwlimit: u64) -> Self {
-        Self { inner, bwlimit, start: Instant::now(), sent: 0 }
+        Self {
+            inner,
+            bwlimit,
+            start: Instant::now(),
+            sent: 0,
+        }
     }
 
-    /// Consume the wrapper returning the inner transport.
     pub fn into_inner(self) -> T {
         self.inner
     }

@@ -1,3 +1,4 @@
+// tests/symlink_resolution.rs
 use assert_cmd::Command;
 use std::fs;
 use std::path::Path;

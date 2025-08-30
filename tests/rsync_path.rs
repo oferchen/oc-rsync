@@ -1,8 +1,9 @@
+// tests/rsync_path.rs
 use assert_cmd::Command;
 use std::fs;
-use tempfile::tempdir;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+use tempfile::tempdir;
 
 #[cfg(unix)]
 #[test]
@@ -14,14 +15,12 @@ fn custom_rsync_path_performs_transfer() {
     fs::write(&src_file, b"from custom binary").unwrap();
     let dst_dir = dir.path().join("dst");
 
-    // Copy the client binary to act as the remote rsync executable.
     let remote_bin = dir.path().join("rr-remote");
     fs::copy(assert_cmd::cargo::cargo_bin("rsync-rs"), &remote_bin).unwrap();
     let mut perms = fs::metadata(&remote_bin).unwrap().permissions();
     perms.set_mode(0o755);
     fs::set_permissions(&remote_bin, perms).unwrap();
 
-    // Create a fake remote shell that ignores the host argument.
     let rsh = dir.path().join("fake_rsh.sh");
     fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
     fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();

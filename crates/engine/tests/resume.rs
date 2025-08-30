@@ -1,6 +1,7 @@
+// crates/engine/tests/resume.rs
+use checksums::ChecksumConfigBuilder;
 use compress::available_codecs;
 use engine::{compute_delta, sync, Op, SyncOptions};
-use checksums::ChecksumConfigBuilder;
 use filters::Matcher;
 use std::fs::{self, File};
 use tempfile::tempdir;
@@ -22,7 +23,6 @@ fn resume_from_partial_file() {
     src_data.extend_from_slice(&block3);
     fs::write(src.join("file.bin"), &src_data).unwrap();
 
-    // create partial file with first block correct, second block corrupted
     let mut partial_data = Vec::new();
     partial_data.extend_from_slice(&block);
     partial_data.extend_from_slice(&vec![0u8; 1024]);
@@ -45,7 +45,7 @@ fn resume_large_file_minimal_network_io() {
     fs::create_dir_all(&dst).unwrap();
 
     let block_size = 1024;
-    let total_blocks = 256; // 256 KiB file
+    let total_blocks = 256;
     let total_len = block_size * total_blocks;
     let partial_len = total_len / 2;
     let mut data = Vec::with_capacity(total_len);
@@ -55,7 +55,6 @@ fn resume_large_file_minimal_network_io() {
 
     fs::write(dst.join("big.bin.partial"), &data[..partial_len]).unwrap();
 
-    // Estimate the amount of data that should be resent
     let cfg = ChecksumConfigBuilder::new().build();
     let mut basis = File::open(dst.join("big.bin.partial")).unwrap();
     let mut target = File::open(src.join("big.bin")).unwrap();

@@ -1,3 +1,4 @@
+// tests/modern.rs
 use checksums::{strong_digest, StrongHash};
 use compress::{available_codecs, Codec};
 use engine::{select_codec, SyncOptions};
@@ -30,4 +31,3 @@ fn modern_falls_back_without_compress() {
     );
     assert!(negotiated.is_none());
 }
-

@@ -1,3 +1,4 @@
+// tests/block_size.rs
 use assert_cmd::Command;
 use checksums::ChecksumConfigBuilder;
 use engine::{compute_delta, Op};
@@ -30,7 +31,7 @@ fn delta_block_size_matches_rsync() {
         let src_file = src_dir.join("file.bin");
         let dst_file = dst_dir.join("file.bin");
 
-        let size = 1 << 20; // 1 MiB
+        let size = 1 << 20;
         let mut basis = vec![0u8; size];
         for i in 0..size {
             basis[i] = (i % 256) as u8;
@@ -41,7 +42,6 @@ fn delta_block_size_matches_rsync() {
         fs::write(&src_file, &target).unwrap();
         fs::write(&dst_file, &basis).unwrap();
 
-        // compute delta using engine
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis_f = fs::File::open(&dst_file).unwrap();
         let mut target_f = fs::File::open(&src_file).unwrap();
@@ -51,10 +51,12 @@ fn delta_block_size_matches_rsync() {
             .collect();
         let literal: usize = ops
             .iter()
-            .map(|op| match op { Op::Data(d) => d.len(), _ => 0 })
+            .map(|op| match op {
+                Op::Data(d) => d.len(),
+                _ => 0,
+            })
             .sum();
 
-        // run rsync and parse literal data
         let output = StdCommand::new("rsync")
             .arg("--stats")
             .arg("--recursive")
@@ -71,7 +73,6 @@ fn delta_block_size_matches_rsync() {
         assert_eq!(literal, rsync_literal);
         assert_eq!(literal, block_size);
 
-        // reset dst and ensure rsync-rs accepts the flag
         fs::write(&dst_file, &basis).unwrap();
         let src_arg = format!("{}/", src_dir.display());
         Command::cargo_bin("rsync-rs")
@@ -92,8 +93,8 @@ fn delta_block_size_matches_rsync() {
 
 #[test]
 fn delta_block_size_large_file() {
-    let block_size = 8192usize; // 8 KiB
-    let size = 8 * 1024 * 1024; // 8 MiB
+    let block_size = 8192usize;
+    let size = 8 * 1024 * 1024;
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
@@ -112,7 +113,6 @@ fn delta_block_size_large_file() {
     fs::write(&src_file, &target).unwrap();
     fs::write(&dst_file, &basis).unwrap();
 
-    // engine delta
     let cfg = ChecksumConfigBuilder::new().build();
     let mut basis_f = fs::File::open(&dst_file).unwrap();
     let mut target_f = fs::File::open(&src_file).unwrap();
@@ -122,7 +122,10 @@ fn delta_block_size_large_file() {
         .collect();
     let literal: usize = ops
         .iter()
-        .map(|op| match op { Op::Data(d) => d.len(), _ => 0 })
+        .map(|op| match op {
+            Op::Data(d) => d.len(),
+            _ => 0,
+        })
         .sum();
 
     let output = StdCommand::new("rsync")

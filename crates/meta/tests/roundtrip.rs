@@ -1,3 +1,4 @@
+// crates/meta/tests/roundtrip.rs
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
@@ -16,7 +17,6 @@ fn roundtrip_full_metadata() -> std::io::Result<()> {
     fs::write(&src, b"hello")?;
     fs::write(&dst, b"world")?;
 
-    // Customize source metadata
     let mode = 0o741;
     let mtime = FileTime::from_unix_time(1_000_000, 123_456_789);
     let atime = FileTime::from_system_time(SystemTime::now());
@@ -28,7 +28,6 @@ fn roundtrip_full_metadata() -> std::io::Result<()> {
     )?;
     filetime::set_file_times(&src, atime, mtime)?;
 
-    // Make destination different
     nix::sys::stat::fchmodat(
         None,
         &dst,
@@ -75,7 +74,6 @@ fn default_skips_owner_group_perms() -> std::io::Result<()> {
     fs::write(&src, b"hello")?;
     fs::write(&dst, b"world")?;
 
-    // Set differing metadata
     nix::sys::stat::fchmodat(
         None,
         &src,
@@ -142,7 +140,6 @@ fn roundtrip_acl() -> std::io::Result<()> {
     fs::write(&src, b"hello")?;
     fs::write(&dst, b"world")?;
 
-    // Add extra ACL entry to source
     let mut acl = PosixACL::read_acl(&src).map_err(|e| {
         if let Some(ioe) = e.as_io_error() {
             if let Some(code) = ioe.raw_os_error() {
