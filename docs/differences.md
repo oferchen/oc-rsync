@@ -1,6 +1,6 @@
 # Differences from rsync
 
-`oc-rsync` aims for parity with stock `rsync` 3.2.x. When run without the
+`oc-rsync` aims for parity with stock `rsync` 3.4.x. When run without the
 `--modern` flag, it intends zero behavioral differences from the traditional
 utility and mirrors the classic command line.
 
@@ -14,7 +14,8 @@ unknown capabilities, allowing seamless fallback.
 The `--modern` convenience flag enables additional enhancements beyond
 classic `rsync` behavior. For a complete listing see
 [cli/flags.md](cli/flags.md). For detailed parity status see
-[feature_matrix.md](feature_matrix.md).
+[feature_matrix.md](feature_matrix.md) and outstanding
+[gaps.md](gaps.md).
 
 ## `--modern` enhancements
 
