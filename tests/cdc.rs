@@ -24,12 +24,26 @@ fn cdc_skips_renamed_file() {
         modern: false,
         ..Default::default()
     };
-    sync(&src, &dst, &Matcher::default(), &available_codecs(false), &opts).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(false),
+        &opts,
+    )
+    .unwrap();
 
     let file_b = src.join("b.txt");
     fs::rename(&file_a, &file_b).unwrap();
 
-    let stats = sync(&src, &dst, &Matcher::default(), &available_codecs(false), &opts).unwrap();
+    let stats = sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(false),
+        &opts,
+    )
+    .unwrap();
     assert_eq!(stats.bytes_transferred, 0);
     assert_eq!(fs::read(dst.join("b.txt")).unwrap(), b"hello world");
 }

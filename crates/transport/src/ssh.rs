@@ -194,12 +194,13 @@ impl SshStdioTransport {
         let peer = u32::from_be_bytes(ver_buf);
         negotiate_version(peer).map_err(|e| io::Error::other(e.to_string()))?;
 
-        transport.send(&SUPPORTED_CAPS.to_be_bytes())?;
+        let local_caps = if modern { SUPPORTED_CAPS } else { CAP_CODECS };
+        transport.send(&local_caps.to_be_bytes())?;
 
         let mut cap_buf = [0u8; 4];
         transport.receive(&mut cap_buf)?;
         let server_caps = u32::from_be_bytes(cap_buf);
-        let caps = server_caps & SUPPORTED_CAPS;
+        let caps = server_caps & local_caps;
 
         let mut peer_codecs = vec![Codec::Zlib];
         if caps & CAP_CODECS != 0 {
