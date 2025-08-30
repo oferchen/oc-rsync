@@ -16,6 +16,7 @@ This document tracks the major capabilities planned for the project.
 | Extended attributes (xattrs) & ACLs | Implemented | [M7—Stabilization][M7] |
 | Include/exclude filters | In progress | [M5—Filters & Compression][M5] |
 | Compression negotiation | In progress | [M5—Filters & Compression][M5] |
+| Human-readable stats output (`--human-readable`) | Implemented | [M4—CLI Parity][M4] |
 
 [M1]: https://github.com/rsync-rs/rsync_rs/milestone/1
 [M2]: https://github.com/rsync-rs/rsync_rs/milestone/2
