@@ -204,6 +204,7 @@ name = "checksums"
 version = "0.1.0"
 dependencies = [
  "blake3",
+ "cpufeatures",
  "hex",
  "md-5",
  "sha1",
@@ -312,6 +313,7 @@ checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 name = "compress"
 version = "0.1.0"
 dependencies = [
+ "cpufeatures",
  "flate2",
  "lz4_flex",
  "zstd",
