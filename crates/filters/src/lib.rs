@@ -530,6 +530,19 @@ pub fn parse(
                 rules.push(Rule::Exclude(data));
             }
             continue;
+        } else if let Some(rest) = line.strip_prefix(":include-merge") {
+            let file = rest.trim();
+            if file.is_empty() {
+                return Err(ParseError::InvalidRule(raw_line.to_string()));
+            }
+            let path = PathBuf::from(file);
+            if !visited.insert(path.clone()) {
+                return Err(ParseError::RecursiveInclude(path));
+            }
+            let content = fs::read_to_string(&path)
+                .map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
+            rules.extend(parse(&content, visited, depth + 1)?);
+            continue;
         } else if let Some(r) = line.strip_prefix(':') {
             let (m, file) = split_mods(r, "-+Cenw/!srpx");
             if file.is_empty() {

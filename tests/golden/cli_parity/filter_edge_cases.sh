@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
 RSYNC_RS="$ROOT/target/debug/rsync-rs"
+# This script mirrors the complex filter scenario exercised in tests/filter_corpus/edge.rules
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT

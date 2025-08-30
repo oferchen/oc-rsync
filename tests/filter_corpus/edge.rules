@@ -1,0 +1,5 @@
+--filter='- /root.txt'
+--filter='- tmp/'
+--filter='+ */'
+--filter='+ *.txt'
+--filter='- *'
