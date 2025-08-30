@@ -7,7 +7,7 @@ use std::net::{IpAddr, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use daemon::{authenticate, chroot_and_drop_privileges, parse_module, Module};
+use daemon::chroot_and_drop_privileges;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -1509,7 +1509,9 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     } else {
         None
     };
+
     let (listener, port) = TcpTransport::listen(opts.address, opts.port, addr_family)?;
+
     if opts.port == 0 {
         println!("{}", port);
         let _ = io::stdout().flush();
