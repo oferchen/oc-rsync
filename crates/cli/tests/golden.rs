@@ -1,5 +1,5 @@
 // crates/cli/tests/golden.rs
-use cli::parse_chmod_spec;
+use meta::parse_chmod_spec;
 
 #[test]
 fn invalid_mode_operator_returns_error() {

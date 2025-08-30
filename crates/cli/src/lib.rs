@@ -16,7 +16,7 @@ use compress::{available_codecs, Codec};
 use engine::human_bytes;
 use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse, Matcher, Rule};
-use meta::{Chmod, ChmodOp, ChmodTarget};
+use meta::{parse_chmod, parse_chown};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
 use transport::{AddressFamily, RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
@@ -102,6 +102,8 @@ struct ClientOpts {
     perms: bool,
     #[arg(long = "chmod", value_name = "CHMOD", help_heading = "Attributes")]
     chmod: Vec<String>,
+    #[arg(long = "chown", value_name = "USER:GROUP", help_heading = "Attributes")]
+    chown: Option<String>,
     #[arg(long, help_heading = "Attributes")]
     times: bool,
     #[arg(short = 'U', long, help_heading = "Attributes")]
@@ -299,111 +301,6 @@ fn parse_module(s: &str) -> std::result::Result<Module, String> {
 }
 
 #[doc(hidden)]
-pub fn parse_chmod_spec(spec: &str) -> std::result::Result<Chmod, String> {
-    let (target, rest) = if let Some(r) = spec.strip_prefix('D') {
-        (ChmodTarget::Dir, r)
-    } else if let Some(r) = spec.strip_prefix('F') {
-        (ChmodTarget::File, r)
-    } else {
-        (ChmodTarget::All, spec)
-    };
-
-    if rest.is_empty() {
-        return Err("missing mode".into());
-    }
-
-    if rest.chars().all(|c| c.is_ascii_digit()) {
-        let bits = u32::from_str_radix(rest, 8).map_err(|_| "invalid octal mode")?;
-        return Ok(Chmod {
-            target,
-            op: ChmodOp::Set,
-            mask: 0o7777,
-            bits,
-            conditional: false,
-        });
-    }
-
-    let (op_pos, op_char) = match rest.find(|c| c == '+' || c == '-' || c == '=') {
-        Some(p) => (p, rest.as_bytes()[p] as char),
-        None => {
-            if let Some(ch) = rest.chars().find(|c| !matches!(*c, 'u' | 'g' | 'o' | 'a')) {
-                return Err(format!("invalid operator '{ch}'"));
-            } else {
-                return Err("missing operator".into());
-            }
-        }
-    };
-    let who_part = &rest[..op_pos];
-    let perm_part = &rest[op_pos + 1..];
-    if perm_part.is_empty() {
-        return Err("missing permissions".into());
-    }
-
-    let mut who_mask = 0u32;
-    if who_part.is_empty() {
-        who_mask = 0o777;
-    } else {
-        for ch in who_part.chars() {
-            who_mask |= match ch {
-                'u' => 0o700,
-                'g' => 0o070,
-                'o' => 0o007,
-                'a' => 0o777,
-                _ => return Err(format!("invalid class '{ch}'")),
-            };
-        }
-    }
-
-    let mut bits = 0u32;
-    let mut mask = who_mask;
-    let mut conditional = false;
-    for ch in perm_part.chars() {
-        match ch {
-            'r' => bits |= 0o444 & who_mask,
-            'w' => bits |= 0o222 & who_mask,
-            'x' => bits |= 0o111 & who_mask,
-            'X' => {
-                bits |= 0o111 & who_mask;
-                conditional = true;
-            }
-            's' => {
-                if who_mask & 0o700 != 0 {
-                    bits |= 0o4000;
-                    mask |= 0o4000;
-                }
-                if who_mask & 0o070 != 0 {
-                    bits |= 0o2000;
-                    mask |= 0o2000;
-                }
-            }
-            't' => {
-                bits |= 0o1000;
-                mask |= 0o1000;
-            }
-            _ => return Err(format!("invalid permission '{ch}'")),
-        }
-    }
-
-    let op = match op_char {
-        '+' => ChmodOp::Add,
-        '-' => ChmodOp::Remove,
-        '=' => ChmodOp::Set,
-        other => return Err(format!("invalid operator '{other}'")),
-    };
-
-    Ok(Chmod {
-        target,
-        op,
-        mask,
-        bits,
-        conditional,
-    })
-}
-
-fn parse_chmod(s: &str) -> std::result::Result<Vec<Chmod>, String> {
-    s.split(',').map(parse_chmod_spec).collect()
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RshCommand {
     pub env: Vec<(String, String)>,
@@ -916,6 +813,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     for spec in &opts.chmod {
         chmod_rules.extend(parse_chmod(spec).map_err(|e| EngineError::Other(e))?);
     }
+    let chown_ids = if let Some(ref spec) = opts.chown {
+        Some(parse_chown(spec).map_err(|e| EngineError::Other(e))?)
+    } else {
+        None
+    };
     let sync_opts = SyncOptions {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
@@ -928,8 +830,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         times: opts.times || opts.archive,
         atimes: opts.atimes,
         crtimes: opts.crtimes,
-        owner: opts.owner || opts.archive,
-        group: opts.group || opts.archive,
+        owner: opts.owner || opts.archive || chown_ids.map_or(false, |(u, _)| u.is_some()),
+        group: opts.group || opts.archive || chown_ids.map_or(false, |(_, g)| g.is_some()),
         links: opts.links || opts.archive,
         copy_links: opts.copy_links,
         copy_dirlinks: opts.copy_dirlinks,
@@ -975,6 +877,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         } else {
             Some(chmod_rules)
         },
+        chown: chown_ids,
     };
     let stats = if opts.local {
         match (src, dst) {

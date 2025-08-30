@@ -801,6 +801,43 @@ impl Receiver {
     fn copy_metadata(&self, src: &Path, dest: &Path) -> Result<()> {
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         {
+            let chown_uid = self.opts.chown.map(|(u, _)| u).flatten();
+            let chown_gid = self.opts.chown.map(|(_, g)| g).flatten();
+
+            let uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> =
+                if let Some(uid) = chown_uid {
+                    Some(Arc::new(move |_| uid))
+                } else if self.opts.numeric_ids {
+                    None
+                } else {
+                    Some(Arc::new(|uid: u32| {
+                        use nix::unistd::{Uid, User};
+                        if let Ok(Some(u)) = User::from_uid(Uid::from_raw(uid)) {
+                            if let Ok(Some(local)) = User::from_name(&u.name) {
+                                return local.uid.as_raw();
+                            }
+                        }
+                        uid
+                    }))
+                };
+
+            let gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> =
+                if let Some(gid) = chown_gid {
+                    Some(Arc::new(move |_| gid))
+                } else if self.opts.numeric_ids {
+                    None
+                } else {
+                    Some(Arc::new(|gid: u32| {
+                        use nix::unistd::{Gid, Group};
+                        if let Ok(Some(g)) = Group::from_gid(Gid::from_raw(gid)) {
+                            if let Ok(Some(local)) = Group::from_name(&g.name) {
+                                return local.gid.as_raw();
+                            }
+                        }
+                        gid
+                    }))
+                };
+
             let meta_opts = meta::Options {
                 xattrs: {
                     #[cfg(feature = "xattr")]
@@ -829,32 +866,8 @@ impl Receiver {
                 times: self.opts.times,
                 atimes: self.opts.atimes,
                 crtimes: self.opts.crtimes,
-                uid_map: if self.opts.numeric_ids {
-                    None
-                } else {
-                    Some(Arc::new(|uid: u32| {
-                        use nix::unistd::{Uid, User};
-                        if let Ok(Some(u)) = User::from_uid(Uid::from_raw(uid)) {
-                            if let Ok(Some(local)) = User::from_name(&u.name) {
-                                return local.uid.as_raw();
-                            }
-                        }
-                        uid
-                    }))
-                },
-                gid_map: if self.opts.numeric_ids {
-                    None
-                } else {
-                    Some(Arc::new(|gid: u32| {
-                        use nix::unistd::{Gid, Group};
-                        if let Ok(Some(g)) = Group::from_gid(Gid::from_raw(gid)) {
-                            if let Ok(Some(local)) = Group::from_name(&g.name) {
-                                return local.gid.as_raw();
-                            }
-                        }
-                        gid
-                    }))
-                },
+                uid_map,
+                gid_map,
             };
 
             if meta_opts.needs_metadata() {
@@ -928,6 +941,7 @@ pub struct SyncOptions {
     pub backup: bool,
     pub backup_dir: Option<PathBuf>,
     pub chmod: Option<Vec<meta::Chmod>>,
+    pub chown: Option<(Option<u32>, Option<u32>)>,
 }
 
 impl Default for SyncOptions {
@@ -983,6 +997,7 @@ impl Default for SyncOptions {
             backup: false,
             backup_dir: None,
             chmod: None,
+            chown: None,
         }
     }
 }

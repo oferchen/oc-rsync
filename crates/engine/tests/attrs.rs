@@ -10,6 +10,7 @@ use compress::available_codecs;
 use engine::{sync, SyncOptions};
 use filetime::{set_file_atime, set_file_mtime, FileTime};
 use filters::Matcher;
+use meta::{parse_chmod, parse_chown};
 use nix::sys::stat::{makedev, mknod, Mode, SFlag};
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 use tempfile::tempdir;
@@ -37,6 +38,59 @@ fn perms_roundtrip() {
     .unwrap();
     let meta = fs::metadata(dst.join("file")).unwrap();
     assert_eq!(meta.permissions().mode() & 0o777, 0o640);
+}
+
+#[test]
+fn chmod_applies() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o644)).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        available_codecs(),
+        &SyncOptions {
+            perms: true,
+            chmod: Some(parse_chmod("F600").unwrap()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let meta = fs::metadata(dst.join("file")).unwrap();
+    assert_eq!(meta.permissions().mode() & 0o777, 0o600);
+}
+
+#[test]
+fn chown_applies() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        available_codecs(),
+        &SyncOptions {
+            owner: true,
+            group: true,
+            chown: Some(parse_chown("1:1").unwrap()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let meta = fs::metadata(dst.join("file")).unwrap();
+    assert_eq!(meta.uid(), 1);
+    assert_eq!(meta.gid(), 1);
 }
 
 #[test]
