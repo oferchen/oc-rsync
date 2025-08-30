@@ -965,6 +965,9 @@ pub struct SyncOptions {
     pub backup_dir: Option<PathBuf>,
     pub chmod: Option<Vec<meta::Chmod>>,
     pub chown: Option<(Option<u32>, Option<u32>)>,
+    pub eight_bit_output: bool,
+    pub blocking_io: bool,
+    pub early_input: Option<PathBuf>,
 }
 
 impl Default for SyncOptions {
@@ -1029,6 +1032,9 @@ impl Default for SyncOptions {
             backup_dir: None,
             chmod: None,
             chown: None,
+            eight_bit_output: false,
+            blocking_io: false,
+            early_input: None,
         }
     }
 }

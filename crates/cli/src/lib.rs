@@ -66,6 +66,8 @@ struct ClientOpts {
     quiet: bool,
     #[arg(long, help_heading = "Output")]
     no_motd: bool,
+    #[arg(short = '8', long = "8-bit-output", help_heading = "Output")]
+    eight_bit_output: bool,
     #[arg(
         short = 'i',
         long = "itemize-changes",
@@ -189,6 +191,8 @@ struct ClientOpts {
     temp_dir: Option<PathBuf>,
     #[arg(long, help_heading = "Misc")]
     progress: bool,
+    #[arg(long, help_heading = "Misc")]
+    blocking_io: bool,
     #[arg(short = 'P', help_heading = "Misc")]
     partial_progress: bool,
     #[arg(long, help_heading = "Misc")]
@@ -265,6 +269,8 @@ struct ClientOpts {
     no_host_key_checking: bool,
     #[arg(long = "password-file", value_name = "FILE")]
     password_file: Option<PathBuf>,
+    #[arg(long = "early-input", value_name = "FILE")]
+    early_input: Option<PathBuf>,
     #[arg(short = 'e', long, value_name = "COMMAND")]
     rsh: Option<String>,
     #[arg(long, hide = true)]
@@ -567,6 +573,7 @@ fn spawn_daemon_session(
     contimeout: Option<Duration>,
     family: Option<AddressFamily>,
     version: u32,
+    early_input: Option<&Path>,
 ) -> Result<TcpTransport> {
     let (host, port) = if let Some((h, p)) = host.rsplit_once(':') {
         let p = p.parse().unwrap_or(873);
@@ -577,6 +584,11 @@ fn spawn_daemon_session(
     let mut t = TcpTransport::connect(host, port, contimeout, family)
         .map_err(|e| EngineError::Other(e.to_string()))?;
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
+    if let Some(p) = early_input {
+        if let Ok(data) = fs::read(p) {
+            t.send(&data).map_err(EngineError::from)?;
+        }
+    }
     t.send(&version.to_be_bytes()).map_err(EngineError::from)?;
     let mut buf = [0u8; 4];
     t.receive(&mut buf).map_err(EngineError::from)?;
@@ -898,6 +910,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             Some(chmod_rules)
         },
         chown: chown_ids,
+        eight_bit_output: opts.eight_bit_output,
+        blocking_io: opts.blocking_io,
+        early_input: opts.early_input.clone(),
     };
     let stats = if opts.local {
         match (src, dst) {
@@ -935,6 +950,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.contimeout,
                     addr_family,
                     opts.protocol.unwrap_or(LATEST_VERSION),
+                    opts.early_input.as_deref(),
                 )?;
                 sync(
                     &src.path,
@@ -993,6 +1009,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.contimeout,
                     addr_family,
                     opts.protocol.unwrap_or(LATEST_VERSION),
+                    opts.early_input.as_deref(),
                 )?;
                 sync(
                     &src.path,
@@ -1131,6 +1148,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                             opts.protocol.unwrap_or(LATEST_VERSION),
+                            opts.early_input.as_deref(),
                         )?;
                         let mut src_session = spawn_daemon_session(
                             &src_host,
@@ -1142,6 +1160,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                             opts.protocol.unwrap_or(LATEST_VERSION),
+                            opts.early_input.as_deref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1178,6 +1197,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                             opts.protocol.unwrap_or(LATEST_VERSION),
+                            opts.early_input.as_deref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1213,6 +1233,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                             opts.protocol.unwrap_or(LATEST_VERSION),
+                            opts.early_input.as_deref(),
                         )?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
@@ -1815,6 +1836,24 @@ mod tests {
     }
 
     #[test]
+    fn parses_8_bit_output() {
+        let opts = ClientOpts::parse_from(["prog", "-8", "src", "dst"]);
+        assert!(opts.eight_bit_output);
+    }
+
+    #[test]
+    fn parses_blocking_io() {
+        let opts = ClientOpts::parse_from(["prog", "--blocking-io", "src", "dst"]);
+        assert!(opts.blocking_io);
+    }
+
+    #[test]
+    fn parses_early_input() {
+        let opts = ClientOpts::parse_from(["prog", "--early-input", "file", "src", "dst"]);
+        assert_eq!(opts.early_input.as_deref(), Some(Path::new("file")));
+    }
+
+    #[test]
     fn protocol_override_sent_to_server() {
         use std::io::{Read, Write};
         use std::net::TcpListener;
@@ -1859,6 +1898,63 @@ mod tests {
             None,
             None,
             30,
+            None,
+        )
+        .unwrap();
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn sends_early_input_to_daemon() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("input.txt");
+        fs::write(&path, b"hello\n").unwrap();
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let handle = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 6];
+            stream.read_exact(&mut buf).unwrap();
+            assert_eq!(&buf, b"hello\n");
+            let mut ver = [0u8; 4];
+            stream.read_exact(&mut ver).unwrap();
+            assert_eq!(u32::from_be_bytes(ver), 30);
+            stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+            let mut b = [0u8; 1];
+            while stream.read(&mut b).unwrap() > 0 {
+                if b[0] == b'\n' {
+                    break;
+                }
+            }
+            stream.write_all(b"@RSYNCD: OK\n").unwrap();
+            let mut m = Vec::new();
+            loop {
+                stream.read_exact(&mut b).unwrap();
+                if b[0] == b'\n' {
+                    break;
+                }
+                m.push(b[0]);
+            }
+            assert_eq!(m, b"mod".to_vec());
+        });
+
+        let _t = spawn_daemon_session(
+            "127.0.0.1",
+            "mod",
+            Some(port),
+            None,
+            true,
+            None,
+            None,
+            None,
+            30,
+            Some(&path),
         )
         .unwrap();
         handle.join().unwrap();
