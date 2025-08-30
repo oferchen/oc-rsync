@@ -75,7 +75,12 @@ struct ClientOpts {
     quiet: bool,
     #[arg(long, help_heading = "Output")]
     no_motd: bool,
-    #[arg(short = 'i', long = "itemize-changes", help_heading = "Output")]
+    #[arg(
+        short = 'i',
+        long = "itemize-changes",
+        help_heading = "Output",
+        help = "output a change-summary for all updates"
+    )]
     itemize_changes: bool,
     #[arg(long, help_heading = "Delete")]
     delete: bool,

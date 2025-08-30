@@ -10,10 +10,11 @@ mkdir -p "$TMP/src/subdir" "$TMP/rsync_dst" "$TMP/rsync_rs_dst"
 
 echo data > "$TMP/src/a.txt"
 echo data > "$TMP/src/subdir/b.txt"
+ln -s a.txt "$TMP/src/link"
 
-rsync_output=$(rsync --recursive --itemize-changes "$TMP/src/" "$TMP/rsync_dst" 2>&1 | grep -v 'sending incremental file list')
+rsync_output=$(rsync --recursive --links --itemize-changes "$TMP/src/" "$TMP/rsync_dst" 2>&1 | grep -v 'sending incremental file list')
 
-rsync_rs_raw=$("$RSYNC_RS" --local --recursive --itemize-changes "$TMP/src/" "$TMP/rsync_rs_dst" 2>&1)
+rsync_rs_raw=$("$RSYNC_RS" --local --recursive --links --itemize-changes "$TMP/src/" "$TMP/rsync_rs_dst" 2>&1)
 rsync_rs_output=$(echo "$rsync_rs_raw" | grep -v -e 'recursive mode enabled' || true)
 
 if [ "$rsync_output" != "$rsync_rs_output" ]; then
