@@ -11,6 +11,14 @@ use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use tempfile::tempdir;
 
 #[test]
+fn prints_version() {
+    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    cmd.arg("--version");
+    let expected = format!("rsync-rs {}\n", env!("CARGO_PKG_VERSION"));
+    cmd.assert().success().stdout(expected).stderr("");
+}
+
+#[test]
 fn client_local_sync() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
