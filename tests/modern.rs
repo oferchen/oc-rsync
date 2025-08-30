@@ -72,3 +72,4 @@ fn modern_negotiates_blake3_and_zstd() {
     let status = child.wait().unwrap();
     assert!(status.success());
 }
+
