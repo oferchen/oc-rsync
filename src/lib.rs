@@ -9,7 +9,7 @@ pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
         src,
         dst,
         &Matcher::default(),
-        available_codecs(),
+        &available_codecs(false),
         &SyncOptions::default(),
     )
     .map(|_| ())

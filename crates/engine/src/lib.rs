@@ -909,6 +909,7 @@ pub struct SyncOptions {
     pub delete_excluded: bool,
     pub checksum: bool,
     pub compress: bool,
+    pub modern: bool,
     pub cdc: bool,
     pub dirs: bool,
     pub list_only: bool,
@@ -973,6 +974,7 @@ impl Default for SyncOptions {
             delete_excluded: false,
             checksum: false,
             compress: false,
+            modern: false,
             cdc: false,
             perms: false,
             executability: false,
@@ -1038,6 +1040,17 @@ pub struct Stats {
     pub bytes_transferred: u64,
 }
 
+fn cpu_prefers_lz4() -> bool {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        !std::arch::is_x86_feature_detected!("sse4.2")
+    }
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+    {
+        false
+    }
+}
+
 pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     if !opts.compress || opts.compress_level == Some(0) {
         return None;
@@ -1045,8 +1058,14 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     if let Some(choice) = &opts.compress_choice {
         return choice.iter().copied().find(|c| remote.contains(c));
     }
-    let local = available_codecs();
-    if local.contains(&Codec::Zstd) && remote.contains(&Codec::Zstd) {
+    if !opts.modern {
+        return remote.contains(&Codec::Zlib).then_some(Codec::Zlib);
+    }
+    let local = available_codecs(true);
+    let prefer_lz4 = cpu_prefers_lz4();
+    if prefer_lz4 && local.contains(&Codec::Lz4) && remote.contains(&Codec::Lz4) {
+        Some(Codec::Lz4)
+    } else if local.contains(&Codec::Zstd) && remote.contains(&Codec::Zstd) {
         Some(Codec::Zstd)
     } else if local.contains(&Codec::Lz4) && remote.contains(&Codec::Lz4) {
         Some(Codec::Lz4)
@@ -1530,7 +1549,7 @@ mod tests {
             &src,
             &dst,
             &Matcher::default(),
-            available_codecs(),
+            &available_codecs(false),
             &SyncOptions::default(),
         )
         .unwrap();

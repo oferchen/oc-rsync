@@ -21,7 +21,7 @@ fn update_skips_newer_dest() {
     set_file_mtime(dst.join("file.txt"), dst_time).unwrap();
     let mut opts = SyncOptions::default();
     opts.update = true;
-    sync(&src, &dst, &Matcher::default(), available_codecs(), &opts).unwrap();
+    sync(&src, &dst, &Matcher::default(), &available_codecs(false), &opts).unwrap();
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"old");
 }
 
@@ -40,6 +40,6 @@ fn update_replaces_older_dest() {
     set_file_mtime(dst.join("file.txt"), dst_time).unwrap();
     let mut opts = SyncOptions::default();
     opts.update = true;
-    sync(&src, &dst, &Matcher::default(), available_codecs(), &opts).unwrap();
+    sync(&src, &dst, &Matcher::default(), &available_codecs(false), &opts).unwrap();
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"new");
 }

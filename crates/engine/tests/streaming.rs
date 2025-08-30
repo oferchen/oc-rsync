@@ -22,7 +22,7 @@ fn sync_large_file_streaming() {
         &src,
         &dst,
         &Matcher::default(),
-        available_codecs(),
+        &available_codecs(false),
         &SyncOptions::default(),
     )
     .unwrap();

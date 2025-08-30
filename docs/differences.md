@@ -13,7 +13,7 @@ classic `rsync` behavior. For a complete listing see
 
 | rsync flag | oc-rsync status | Tests | `--modern` notes |
 |------------|-----------------|-------|------------------|
-| `-z`, `--compress` | ✅ uses zlib by default | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh) | negotiates zstd if both peers support it |
+| `-z`, `--compress` | ✅ uses zlib by default | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh) | with `--modern`, negotiates zstd or lz4 if supported |
 | `--compress-choice` | ✅ choose zstd or zlib | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | n/a |
 | `--compress-level` | ✅ maps numeric levels | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | applies to zlib or zstd |
 | `-c`, `--checksum` | ✅ strong hashes: MD5 (default), SHA-1, BLAKE3 | [tests/cli.rs](../tests/cli.rs) | `--modern` selects BLAKE3 |
@@ -21,7 +21,7 @@ classic `rsync` behavior. For a complete listing see
 | `-R`, `--relative` | ✅ preserves ancestor directories | [tests/cli.rs](../tests/cli.rs) | n/a |
 | `-P` | ✅ keeps partial files and shows progress | [tests/cli.rs](../tests/cli.rs) | n/a |
 | `--numeric-ids` | ✅ uses numeric uid/gid values | [tests/cli.rs](../tests/cli.rs) | n/a |
-| `--modern` | oc-rsync only | [tests/interop/modern.rs](../tests/interop/modern.rs) | enables zstd compression and BLAKE3 checksums (requires `blake3` feature) |
+| `--modern` | oc-rsync only | [tests/interop/modern.rs](../tests/interop/modern.rs) | negotiates zstd or lz4 compression and BLAKE3 checksums (requires `blake3` feature) |
 
 ## Additional notes
 
