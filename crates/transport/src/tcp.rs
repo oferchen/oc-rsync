@@ -31,8 +31,12 @@ impl TcpTransport {
         Ok(Self { stream })
     }
 
-    pub fn listen(addr: Option<IpAddr>, port: u16) -> io::Result<(TcpListener, u16)> {
-        let addr = addr.unwrap_or(IpAddr::V4(Ipv4Add
+    pub fn listen(
+        addr: Option<IpAddr>,
+        port: u16,
+        family: Option<AddressFamily>,
+    ) -> io::Result<(TcpListener, u16)> {
+        let addr = match (addr, family) {
             (Some(ip), _) => ip,
             (None, Some(AddressFamily::V4)) => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
             (None, Some(AddressFamily::V6)) => IpAddr::V6(Ipv6Addr::UNSPECIFIED),
