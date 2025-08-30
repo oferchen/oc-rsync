@@ -270,7 +270,7 @@ struct ClientOpts {
         short = 'C',
         long = "cvs-exclude",
         help_heading = "Selection",
-        help = "auto-ignore files in the same way CVS does",
+        help = "auto-ignore files in the same way CVS does"
     )]
     cvs_exclude: bool,
     #[arg(long, value_name = "PATTERN")]
@@ -1818,6 +1818,12 @@ mod tests {
         assert_eq!(opts.rsync_path.as_deref(), Some("/bin/rsync"));
         let opts = ClientOpts::parse_from(["prog", "--rsync_path", "/bin/rsync", "src", "dst"]);
         assert_eq!(opts.rsync_path.as_deref(), Some("/bin/rsync"));
+    }
+
+    #[test]
+    fn parses_skip_compress_list() {
+        let opts = ClientOpts::parse_from(["prog", "--skip-compress=gz,zip", "src", "dst"]);
+        assert_eq!(opts.skip_compress, vec!["gz", "zip"]);
     }
 
     #[test]
