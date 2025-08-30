@@ -45,7 +45,8 @@ An overview of tested operating systems and interoperability notes lives in
 Documentation for invoking the command line interface, available flags, and
 configuration precedence lives in [docs/cli.md](docs/cli.md). Differences from
 classic `rsync`, including how `--modern` mode alters behavior, are covered in
-[docs/differences.md](docs/differences.md).
+[docs/differences.md](docs/differences.md). The `--modern` flag requires the
+binary to be built with the `blake3` feature.
 
 Quick links:
 

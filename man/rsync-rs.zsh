@@ -15,86 +15,134 @@ _rsync-rs() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
-'--compress-choice=[choose the compression algorithm (aka --zc)]:STR:_default' \
-'--zc=[choose the compression algorithm (aka --zc)]:STR:_default' \
-'--compress-level=[explicitly set compression level]:NUM:_default' \
-'--zl=[explicitly set compression level]:NUM:_default' \
-'--partial-dir=[put a partially transferred file into DIR]:DIR:_files' \
-'--bwlimit=[throttle I/O bandwidth to RATE bytes per second]:RATE:_default' \
-'--link-dest=[hardlink to files in DIR when unchanged]:DIR:_files' \
-'--copy-dest=[copy files from DIR when unchanged]:DIR:_files' \
-'--compare-dest=[skip files that match in DIR]:DIR:_files' \
-'--config=[supply a custom configuration file]:FILE:_files' \
-'--known-hosts=[path to SSH known hosts file]:FILE:_files' \
-'--password-file=[read daemon-access password from FILE]:FILE:_files' \
-'-e+[specify the remote shell to use]:COMMAND:_default' \
-'--rsh=[specify the remote shell to use]:COMMAND:_default' \
-'--rsync-path=[specify the rsync to run on remote machine]:PATH:_files' \
-'*-f+[filter rules provided directly]:RULE:_default' \
-'*--filter=[filter rules provided directly]:RULE:_default' \
-'*--filter-file=[files containing filter rules]:FILE:_files' \
-'*--include=[include files matching PATTERN]:PATTERN:_default' \
-'*--exclude=[exclude files matching PATTERN]:PATTERN:_default' \
-'*--include-from=[read include patterns from FILE]:FILE:_files' \
-'*--exclude-from=[read exclude patterns from FILE]:FILE:_files' \
-'*--files-from=[read list of files from FILE]:FILE:_files' \
-'--local[perform a local sync]' \
-'-a[archive mode]' \
-'--archive[archive mode]' \
-'-r[copy directories recursively]' \
-'--recursive[copy directories recursively]' \
-'-R[use relative path names]' \
-'--relative[use relative path names]' \
-'-n[perform a trial run with no changes made]' \
-'--dry-run[perform a trial run with no changes made]' \
-'-S[turn sequences of nulls into sparse blocks and preserve existing holes (requires filesystem support)]' \
-'--sparse[turn sequences of nulls into sparse blocks and preserve existing holes (requires filesystem support)]' \
-'*-v[increase logging verbosity]' \
-'*--verbose[increase logging verbosity]' \
-'-q[suppress non-error messages]' \
-'--quiet[suppress non-error messages]' \
-'--no-motd[suppress daemon-mode MOTD]' \
-'--delete[remove extraneous files from the destination]' \
-'--delete-before[receiver deletes before transfer, not during]' \
-'--delete-during[receiver deletes during the transfer]' \
-'--delete-after[receiver deletes after transfer, not during]' \
-'--delete-delay[find deletions during, delete after]' \
-'--delete-excluded[also delete excluded files from destination]' \
-'-c[use full checksums to determine file changes]' \
-'--checksum[use full checksums to determine file changes]' \
-'--perms[preserve permissions]' \
-'--times[preserve modification times]' \
-'-U[preserve access times]' \
-'--atimes[preserve access times]' \
-'-N[preserve create times]' \
-'--crtimes[preserve create times]' \
-'--owner[preserve owner]' \
-'--group[preserve group]' \
-'--links[copy symlinks as symlinks]' \
-'--hard-links[preserve hard links]' \
-'--devices[preserve device files]' \
-'--specials[preserve special files]' \
-'-z[compress file data during the transfer (zlib by default, negotiates zstd when supported)]' \
-'--compress[compress file data during the transfer (zlib by default, negotiates zstd when supported)]' \
-'--modern[enable BLAKE3 checksums (zstd is negotiated automatically)]' \
-'--partial[keep partially transferred files]' \
-'--progress[show progress during transfer]' \
-'-P[keep partially transferred files and show progress]' \
-'--append[append data onto shorter files]' \
-'--append-verify[--append with old data verification]' \
-'-I[update destination files in-place]' \
-'--inplace[update destination files in-place]' \
-'--numeric-ids[don'\''t map uid/gid values by user/group name]' \
-'--stats[display transfer statistics on completion]' \
-'--no-host-key-checking[disable strict host key checking (not recommended)]' \
-'--server[run in server mode (internal use)]' \
-'--sender[run in sender mode (internal use)]' \
-'*-F[shorthand for per-directory filter files]' \
-'--from0[treat file lists as null-separated]' \
-'-h[Print help (see more with '\''--help'\'')]' \
-'--help[Print help (see more with '\''--help'\'')]' \
-':src -- source path or HOST\:PATH:_default' \
-':dst -- destination path or HOST\:PATH:_default' \
+'--backup-dir=[]:DIR:_files' \
+'--checksum-choice=[]:STR:_default' \
+'--cc=[]:STR:_default' \
+'--checksum-seed=[set block/file checksum seed (advanced)]:NUM:_default' \
+'*--chmod=[]:CHMOD:_default' \
+'--chown=[]:USER:GROUP:_default' \
+'--compress-choice=[]:STR:_default' \
+'--zc=[]:STR:_default' \
+'--compress-level=[]:NUM:_default' \
+'--zl=[]:NUM:_default' \
+'*--skip-compress=[]:LIST:_default' \
+'--partial-dir=[]:DIR:_files' \
+'-T+[]:DIR:_files' \
+'--temp-dir=[]:DIR:_files' \
+'--bwlimit=[]:RATE:_default' \
+'--timeout=[]:SECONDS:_default' \
+'--contimeout=[]:SECONDS:_default' \
+'--port=[]:PORT:_default' \
+'-B+[]:SIZE:_default' \
+'--block-size=[]:SIZE:_default' \
+'--link-dest=[]:DIR:_files' \
+'--copy-dest=[]:DIR:_files' \
+'--compare-dest=[]:DIR:_files' \
+'--config=[]:FILE:_files' \
+'--known-hosts=[]:FILE:_files' \
+'--password-file=[]:FILE:_files' \
+'-e+[]:COMMAND:_default' \
+'--rsh=[]:COMMAND:_default' \
+'--rsync-path=[]:PATH:_default' \
+'*-f+[]:RULE:_default' \
+'*--filter=[]:RULE:_default' \
+'*--filter-file=[]:FILE:_files' \
+'*--include=[]:PATTERN:_default' \
+'*--exclude=[]:PATTERN:_default' \
+'*--include-from=[]:FILE:_files' \
+'*--exclude-from=[]:FILE:_files' \
+'*--files-from=[]:FILE:_files' \
+'--local[]' \
+'-a[]' \
+'--archive[]' \
+'-r[]' \
+'--recursive[]' \
+'-d[]' \
+'--dirs[]' \
+'-R[]' \
+'--relative[]' \
+'-n[]' \
+'--dry-run[]' \
+'--list-only[]' \
+'-S[]' \
+'--sparse[]' \
+'-u[]' \
+'--update[]' \
+'--ignore-existing[]' \
+'--size-only[]' \
+'-I[]' \
+'--ignore-times[]' \
+'*-v[]' \
+'*--verbose[]' \
+'--human-readable[]' \
+'-q[]' \
+'--quiet[]' \
+'--no-motd[]' \
+'-i[output a change-summary for all updates]' \
+'--itemize-changes[output a change-summary for all updates]' \
+'--delete[]' \
+'--delete-before[]' \
+'--delete-during[]' \
+'--delete-after[]' \
+'--delete-delay[]' \
+'--delete-excluded[]' \
+'-b[]' \
+'--backup[]' \
+'-c[]' \
+'--checksum[]' \
+'--perms[]' \
+'-E[]' \
+'--executability[]' \
+'--times[]' \
+'-U[]' \
+'--atimes[]' \
+'-N[]' \
+'--crtimes[]' \
+'-O[]' \
+'--omit-dir-times[]' \
+'-J[]' \
+'--omit-link-times[]' \
+'--owner[]' \
+'--group[]' \
+'--links[]' \
+'-L[]' \
+'--copy-links[]' \
+'-k[]' \
+'--copy-dirlinks[]' \
+'--copy-unsafe-links[]' \
+'--safe-links[]' \
+'--hard-links[]' \
+'--devices[]' \
+'--specials[]' \
+'-z[]' \
+'--compress[]' \
+'--modern[Enable zstd compression and BLAKE3 checksums (requires \`blake3\` feature)]' \
+'--partial[]' \
+'--progress[]' \
+'-P[]' \
+'--append[]' \
+'--append-verify[]' \
+'--inplace[]' \
+'(-6 --ipv6)-4[]' \
+'(-6 --ipv6)--ipv4[]' \
+'(-4 --ipv4)-6[]' \
+'(-4 --ipv4)--ipv6[]' \
+'-W[]' \
+'--whole-file[]' \
+'--no-whole-file[]' \
+'--numeric-ids[]' \
+'--stats[]' \
+'--no-host-key-checking[]' \
+'--server[]' \
+'--sender[]' \
+'*-F[]' \
+'-C[auto-ignore files in the same way CVS does]' \
+'--cvs-exclude[auto-ignore files in the same way CVS does]' \
+'--from0[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':src:_default' \
+':dst:_default' \
 && ret=0
 }
 

@@ -22,6 +22,13 @@
 port 873 and serves one or more exported modules.
 The daemon is started with \f[V]--daemon\f[R] and at least one
 \f[V]--module\f[R] declaration of the form \f[V]name=path\f[R].
+.PP
+The default listener binds to all IPv4 interfaces on port 873.
+Supply \f[V]--port\f[R] to choose a different port.
+The \f[V]-4\f[R] and \f[V]-6\f[R] flags restrict the listener to IPv4 or
+IPv6 addresses respectively.
+These can be combined with \f[V]--address\f[R] to bind a specific
+interface.
 .SS Module setup
 .PP
 Modules map a name to a directory on disk.

@@ -171,6 +171,7 @@ struct ClientOpts {
         value_delimiter = ','
     )]
     skip_compress: Vec<String>,
+    /// Enable zstd compression and BLAKE3 checksums (requires `blake3` feature)
     #[arg(long, help_heading = "Compression")]
     modern: bool,
     #[arg(long, help_heading = "Misc")]
@@ -700,7 +701,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     }
 
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
+        #[cfg_attr(not(feature = "blake3"), allow(unused_mut))]
         let mut list = vec!["md5", "sha1"];
+        #[cfg(feature = "blake3")]
         if opts.modern || matches!(opts.checksum_choice.as_deref(), Some("blake3")) {
             list.insert(0, "blake3");
         }
@@ -714,6 +717,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         match choice {
             "md5" => StrongHash::Md5,
             "sha1" => StrongHash::Sha1,
+            #[cfg(feature = "blake3")]
             "blake3" => StrongHash::Blake3,
             other => {
                 return Err(EngineError::Other(format!("unknown checksum {other}")));
@@ -723,6 +727,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         let mut chosen = StrongHash::Md5;
         for name in list.split(',') {
             match name {
+                #[cfg(feature = "blake3")]
                 "blake3" if opts.modern => {
                     chosen = StrongHash::Blake3;
                     break;

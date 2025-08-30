@@ -23,12 +23,36 @@ _rsync-rs() {
 
     case "${cmd}" in
         rsync__rs)
-            opts="-a -r -R -n -S -v -q -c -U -N -z -P -I -e -f -F -h --local --archive --recursive --relative --dry-run --sparse --verbose --quiet --no-motd --delete --delete-before --delete-during --delete-after --delete-delay --delete-excluded --checksum --perms --times --atimes --crtimes --owner --group --links --hard-links --devices --specials --compress --zc --compress-choice --zl --compress-level --modern --partial --partial-dir --progress --append --append-verify --inplace --bwlimit --link-dest --copy-dest --compare-dest --numeric-ids --stats --config --known-hosts --no-host-key-checking --password-file --rsh --server --sender --rsync-path --filter --filter-file --include --exclude --include-from --exclude-from --files-from --from0 --help <SRC> <DST>"
+            opts="-a -r -d -R -n -S -u -I -v -q -i -b -c -E -U -N -O -J -L -k -z -T -P -4 -6 -B -W -e -f -F -C -h --local --archive --recursive --dirs --relative --dry-run --list-only --sparse --update --ignore-existing --size-only --ignore-times --verbose --human-readable --quiet --no-motd --itemize-changes --delete --delete-before --delete-during --delete-after --delete-delay --delete-excluded --backup --backup-dir --checksum --cc --checksum-choice --checksum-seed --perms --executability --chmod --chown --times --atimes --crtimes --omit-dir-times --omit-link-times --owner --group --links --copy-links --copy-dirlinks --copy-unsafe-links --safe-links --hard-links --devices --specials --compress --zc --compress-choice --zl --compress-level --skip-compress --modern --partial --partial-dir --temp-dir --progress --append --append-verify --inplace --bwlimit --timeout --contimeout --port --ipv4 --ipv6 --block-size --whole-file --no-whole-file --link-dest --copy-dest --compare-dest --numeric-ids --stats --config --known-hosts --no-host-key-checking --password-file --rsh --server --sender --rsync-path --filter --filter-file --cvs-exclude --include --exclude --include-from --exclude-from --files-from --from0 --help <SRC> <DST>"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                --backup-dir)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --checksum-choice)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --cc)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --checksum-seed)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --chmod)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --chown)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 --compress-choice)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
@@ -45,11 +69,43 @@ _rsync-rs() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --skip-compress)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 --partial-dir)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --temp-dir)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -T)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 --bwlimit)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --timeout)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --contimeout)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --port)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --block-size)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -B)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
