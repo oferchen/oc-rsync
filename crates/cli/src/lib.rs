@@ -7,7 +7,7 @@ use std::net::{IpAddr, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use daemon::chroot_and_drop_privileges;
+use daemon::{chroot_and_drop_privileges, parse_config_file};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -382,6 +382,8 @@ pub fn parse_rsync_path(raw: Option<String>) -> Result<Option<RshCommand>> {
 struct DaemonOpts {
     #[arg(long)]
     daemon: bool,
+    #[arg(long = "config", value_name = "FILE")]
+    config: Option<PathBuf>,
     #[arg(long, value_parser = parse_module, value_name = "NAME=PATH")]
     module: Vec<Module>,
     #[arg(long)]
@@ -1426,18 +1428,44 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
 
 fn run_daemon(opts: DaemonOpts) -> Result<()> {
     let mut modules = HashMap::new();
+    let mut secrets = opts.secrets_file.clone();
+    let mut hosts_allow = opts.hosts_allow.clone();
+    let mut hosts_deny = opts.hosts_deny.clone();
+    let mut log_file = opts.log_file.clone();
+    let mut log_format = opts.log_file_format.clone();
+    let mut motd = opts.motd.clone();
+    let timeout = opts.timeout;
+    let bwlimit = opts.bwlimit;
+    let mut port = opts.port;
+
+    if let Some(cfg_path) = &opts.config {
+        let cfg = parse_config_file(cfg_path).map_err(|e| EngineError::Other(e.to_string()))?;
+        for m in cfg.modules {
+            modules.insert(m.name.clone(), m.path);
+        }
+        if let Some(p) = cfg.port {
+            port = p;
+        }
+        if let Some(m) = cfg.motd_file {
+            motd = Some(m);
+        }
+        if let Some(l) = cfg.log_file {
+            log_file = Some(l);
+        }
+        if let Some(s) = cfg.secrets_file {
+            secrets = Some(s);
+        }
+        if !cfg.hosts_allow.is_empty() {
+            hosts_allow = cfg.hosts_allow;
+        }
+        if !cfg.hosts_deny.is_empty() {
+            hosts_deny = cfg.hosts_deny;
+        }
+    }
+
     for m in opts.module {
         modules.insert(m.name, m.path);
     }
-
-    let secrets = opts.secrets_file.clone();
-    let hosts_allow = opts.hosts_allow.clone();
-    let hosts_deny = opts.hosts_deny.clone();
-    let log_file = opts.log_file.clone();
-    let log_format = opts.log_file_format.clone();
-    let motd = opts.motd.clone();
-    let timeout = opts.timeout;
-    let bwlimit = opts.bwlimit;
     let addr_family = if opts.ipv4 {
         Some(AddressFamily::V4)
     } else if opts.ipv6 {
@@ -1446,21 +1474,16 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
         None
     };
 
-    let (listener, port) = TcpTransport::listen(opts.address, opts.port, addr_family)?;
+    let (listener, real_port) = TcpTransport::listen(opts.address, port, addr_family)?;
 
-    if opts.port == 0 {
-        println!("{}", port);
+    if port == 0 {
+        println!("{}", real_port);
         let _ = io::stdout().flush();
     }
 
     loop {
-        let (stream, addr) = listener.accept()?;
-        let ip = addr.ip();
-        if !host_allowed(&ip, &hosts_allow, &hosts_deny) {
-            let _ = stream.shutdown(std::net::Shutdown::Both);
-            continue;
-        }
-        let peer = ip.to_string();
+        let (stream, addr) = TcpTransport::accept(&listener, &hosts_allow, &hosts_deny)?;
+        let peer = addr.ip().to_string();
         let modules = modules.clone();
         let secrets = secrets.clone();
         let log_file = log_file.clone();
@@ -1495,23 +1518,6 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
             }
         });
     }
-}
-
-fn host_matches(ip: &IpAddr, pat: &str) -> bool {
-    if pat == "*" {
-        return true;
-    }
-    pat.parse::<IpAddr>().map_or(false, |p| &p == ip)
-}
-
-fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
-    if !allow.is_empty() && !allow.iter().any(|p| host_matches(ip, p)) {
-        return false;
-    }
-    if deny.iter().any(|p| host_matches(ip, p)) {
-        return false;
-    }
-    true
 }
 
 fn handle_connection<T: Transport>(

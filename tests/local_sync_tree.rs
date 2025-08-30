@@ -189,7 +189,12 @@ fn sync_preserves_executability() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("rsync-rs")
         .unwrap()
-        .args(["--local", "--executability", &src_arg, dst.to_str().unwrap()])
+        .args([
+            "--local",
+            "--executability",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
         .assert()
         .success()
         .stdout("")

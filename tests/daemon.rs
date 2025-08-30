@@ -207,7 +207,8 @@ fn daemon_allows_module_access() {
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
     t.send(b"data\n").unwrap();
-    t.set_read_timeout(Some(Duration::from_millis(200))).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200)))
+        .unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
     assert!(n == 0 || !String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR"));
     let _ = child.kill();

@@ -47,6 +47,20 @@ impl TcpTransport {
         Ok((listener, port))
     }
 
+    pub fn accept(
+        listener: &TcpListener,
+        hosts_allow: &[String],
+        hosts_deny: &[String],
+    ) -> io::Result<(TcpStream, SocketAddr)> {
+        loop {
+            let (stream, addr) = listener.accept()?;
+            if host_allowed(&addr.ip(), hosts_allow, hosts_deny) {
+                return Ok((stream, addr));
+            }
+            let _ = stream.shutdown(std::net::Shutdown::Both);
+        }
+    }
+
     pub fn from_stream(stream: TcpStream) -> Self {
         Self { stream }
     }
@@ -61,6 +75,23 @@ impl TcpTransport {
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.stream.set_read_timeout(dur)
     }
+}
+
+fn host_matches(ip: &IpAddr, pat: &str) -> bool {
+    if pat == "*" {
+        return true;
+    }
+    pat.parse::<IpAddr>().map_or(false, |p| &p == ip)
+}
+
+fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
+    if !allow.is_empty() && !allow.iter().any(|p| host_matches(ip, p)) {
+        return false;
+    }
+    if deny.iter().any(|p| host_matches(ip, p)) {
+        return false;
+    }
+    true
 }
 
 impl Transport for TcpTransport {
