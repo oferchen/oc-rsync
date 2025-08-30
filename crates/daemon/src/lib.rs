@@ -160,6 +160,28 @@ pub fn parse_auth_token(token: &str, contents: &str) -> Option<Vec<String>> {
     None
 }
 
+pub fn authenticate_token(token: &str, path: &Path) -> io::Result<Vec<String>> {
+    #[cfg(unix)]
+    {
+        let mode = fs::metadata(path)?.permissions().mode();
+        if mode & 0o077 != 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "auth file permissions are too open",
+            ));
+        }
+    }
+    let contents = fs::read_to_string(path)?;
+    if let Some(allowed) = parse_auth_token(token, &contents) {
+        Ok(allowed)
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "unauthorized",
+        ))
+    }
+}
+
 pub fn authenticate<T: Transport>(t: &mut T, path: Option<&Path>) -> io::Result<Vec<String>> {
     let auth_path = path.unwrap_or(Path::new("auth"));
     if !auth_path.exists() {

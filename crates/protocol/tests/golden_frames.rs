@@ -3,11 +3,11 @@ use protocol::{Frame, Message, Msg, Tag};
 
 #[test]
 fn decode_version_golden() {
-    const VERSION: [u8; 12] = [0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 31];
+    const VERSION: [u8; 12] = [0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 32];
     let frame = Frame::decode(&VERSION[..]).unwrap();
     assert_eq!(frame.header.msg, Msg::Version);
     let msg = Message::from_frame(frame).unwrap();
-    assert_eq!(msg, Message::Version(31));
+    assert_eq!(msg, Message::Version(32));
 }
 
 #[test]

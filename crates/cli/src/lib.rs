@@ -7,7 +7,9 @@ use std::net::{IpAddr, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use daemon::{chroot_and_drop_privileges, parse_config_file};
+use daemon::{
+    authenticate_token, chroot_and_drop_privileges, parse_config_file, parse_module, Module,
+};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -290,27 +292,6 @@ struct ClientOpts {
     files_from: Vec<PathBuf>,
     #[arg(long)]
     from0: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Module {
-    name: String,
-    path: PathBuf,
-}
-
-fn parse_module(s: &str) -> std::result::Result<Module, String> {
-    let mut parts = s.splitn(2, '=');
-    let name = parts
-        .next()
-        .ok_or_else(|| "missing module name".to_string())?
-        .to_string();
-    let path = parts
-        .next()
-        .ok_or_else(|| "missing module path".to_string())?;
-    Ok(Module {
-        name,
-        path: PathBuf::from(path),
-    })
 }
 
 #[doc(hidden)]
@@ -1434,7 +1415,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
 }
 
 fn run_daemon(opts: DaemonOpts) -> Result<()> {
-    let mut modules = HashMap::new();
+    let mut modules: HashMap<String, Module> = HashMap::new();
     let mut secrets = opts.secrets_file.clone();
     let mut hosts_allow = opts.hosts_allow.clone();
     let mut hosts_deny = opts.hosts_deny.clone();
@@ -1448,7 +1429,7 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     if let Some(cfg_path) = &opts.config {
         let cfg = parse_config_file(cfg_path).map_err(|e| EngineError::Other(e.to_string()))?;
         for m in cfg.modules {
-            modules.insert(m.name.clone(), m.path);
+            modules.insert(m.name.clone(), m);
         }
         if let Some(p) = cfg.port {
             port = p;
@@ -1471,7 +1452,7 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     }
 
     for m in opts.module {
-        modules.insert(m.name, m.path);
+        modules.insert(m.name.clone(), m);
     }
     let addr_family = if opts.ipv4 {
         Some(AddressFamily::V4)
@@ -1529,7 +1510,7 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
 
 fn handle_connection<T: Transport>(
     transport: &mut T,
-    modules: &HashMap<String, PathBuf>,
+    modules: &HashMap<String, Module>,
     secrets: Option<&Path>,
     log_file: Option<&Path>,
     log_format: Option<&str>,
@@ -1545,7 +1526,13 @@ fn handle_connection<T: Transport>(
     transport.send(&LATEST_VERSION.to_be_bytes())?;
     negotiate_version(peer_ver).map_err(|e| EngineError::Other(e.to_string()))?;
 
-    let allowed = authenticate(transport, secrets).map_err(EngineError::from)?;
+    let mut tok_buf = [0u8; 256];
+    let tn = transport.receive(&mut tok_buf)?;
+    let token = if tn == 0 {
+        None
+    } else {
+        Some(String::from_utf8_lossy(&tok_buf[..tn]).trim().to_string())
+    };
 
     if let Some(mpath) = motd {
         if let Ok(content) = fs::read_to_string(mpath) {
@@ -1560,8 +1547,33 @@ fn handle_connection<T: Transport>(
     let mut name_buf = [0u8; 256];
     let n = transport.receive(&mut name_buf)?;
     let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
-    if let Some(path) = modules.get(&name) {
+    if let Some(module) = modules.get(&name) {
+        if let Ok(ip) = peer.parse::<IpAddr>() {
+            if !host_allowed(&ip, &module.hosts_allow, &module.hosts_deny) {
+                let _ = transport.send(b"@ERROR: access denied");
+                return Err(EngineError::Other("host denied".into()));
+            }
+        }
+        let secrets_path = module.secrets_file.as_deref().or(secrets);
+        let allowed = if let Some(path) = secrets_path {
+            match token.as_deref() {
+                Some(tok) => match authenticate_token(tok, path) {
+                    Ok(list) => list,
+                    Err(e) => {
+                        let _ = transport.send(b"@ERROR: access denied");
+                        return Err(EngineError::Other(e.to_string()));
+                    }
+                },
+                None => {
+                    let _ = transport.send(b"@ERROR: access denied");
+                    return Err(EngineError::Other("missing token".into()));
+                }
+            }
+        } else {
+            Vec::new()
+        };
         if !allowed.is_empty() && !allowed.iter().any(|m| m == &name) {
+            let _ = transport.send(b"@ERROR: access denied");
             return Err(EngineError::Other("unauthorized module".into()));
         }
         if let Some(path) = log_file {
@@ -1573,7 +1585,7 @@ fn handle_connection<T: Transport>(
         }
         #[cfg(unix)]
         {
-            chroot_and_drop_privileges(path, 65534, 65534)
+            chroot_and_drop_privileges(&module.path, 65534, 65534)
                 .map_err(|e| EngineError::Other(e.to_string()))?;
         }
         let modern = env::var("RSYNC_MODERN").ok().as_deref() == Some("1");
@@ -1588,52 +1600,21 @@ fn handle_connection<T: Transport>(
     Ok(())
 }
 
-pub fn parse_auth_token(token: &str, contents: &str) -> Option<Vec<String>> {
-    for line in contents.lines() {
-        let mut parts = line.split_whitespace();
-        if let Some(tok) = parts.next() {
-            if tok == token {
-                return Some(parts.map(|s| s.to_string()).collect());
-            }
-        }
+fn host_matches(ip: &IpAddr, pat: &str) -> bool {
+    if pat == "*" {
+        return true;
     }
-    None
+    pat.parse::<IpAddr>().map_or(false, |p| &p == ip)
 }
 
-fn authenticate<T: Transport>(t: &mut T, path: Option<&Path>) -> std::io::Result<Vec<String>> {
-    let auth_path = path.unwrap_or(Path::new("auth"));
-    if !auth_path.exists() {
-        return Ok(Vec::new());
+fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
+    if !allow.is_empty() && !allow.iter().any(|p| host_matches(ip, p)) {
+        return false;
     }
-    #[cfg(unix)]
-    {
-        let mode = fs::metadata(auth_path)?.permissions().mode();
-        if mode & 0o077 != 0 {
-            return Err(io::Error::new(
-                io::ErrorKind::PermissionDenied,
-                "auth file permissions are too open",
-            ));
-        }
+    if deny.iter().any(|p| host_matches(ip, p)) {
+        return false;
     }
-    let contents = fs::read_to_string(auth_path)?;
-    let mut buf = [0u8; 256];
-    let n = t.receive(&mut buf)?;
-    if n == 0 {
-        return Err(io::Error::new(
-            io::ErrorKind::PermissionDenied,
-            "missing token",
-        ));
-    }
-    let token = String::from_utf8_lossy(&buf[..n]).trim().to_string();
-    if let Some(allowed) = parse_auth_token(&token, &contents) {
-        Ok(allowed)
-    } else {
-        let _ = t.send(b"@ERROR: access denied");
-        Err(io::Error::new(
-            io::ErrorKind::PermissionDenied,
-            "unauthorized",
-        ))
-    }
+    true
 }
 
 fn run_probe(opts: ProbeOpts) -> Result<()> {

@@ -151,6 +151,37 @@ fn daemon_config_host_filtering() {
 
 #[test]
 #[serial]
+fn daemon_config_module_secrets_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let data = dir.path().join("data");
+    fs::create_dir(&data).unwrap();
+    let secrets = dir.path().join("auth");
+    fs::write(&secrets, "secret data\n").unwrap();
+    #[cfg(unix)]
+    fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
+    let config = format!(
+        "port = 0\n[data]\n    path = {}\n    secrets file = {}\n",
+        data.display(),
+        secrets.display()
+    );
+    let (mut child, port, _tmp) = spawn_daemon(&config);
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    t.authenticate(Some("secret")).unwrap();
+    t.send(b"data\n").unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200)))
+        .unwrap();
+    let n = t.receive(&mut buf).unwrap_or(0);
+    assert!(n == 0 || !String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR"));
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
 fn daemon_config_custom_port() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();

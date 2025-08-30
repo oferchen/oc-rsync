@@ -11,9 +11,10 @@ pub use demux::Demux;
 pub use mux::Mux;
 pub use server::Server;
 
-pub const LATEST_VERSION: u32 = 31;
+pub const LATEST_VERSION: u32 = 32;
 pub const MIN_VERSION: u32 = 29;
 pub const CAP_CODECS: u32 = 1 << 0;
+pub const SUPPORTED_CAPS: u32 = CAP_CODECS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VersionError(pub u32);
@@ -433,7 +434,8 @@ mod tests {
 
     #[test]
     fn version_negotiation() {
-        assert_eq!(negotiate_version(40), Ok(31));
+        assert_eq!(negotiate_version(40), Ok(32));
+        assert_eq!(negotiate_version(32), Ok(32));
         assert_eq!(negotiate_version(31), Ok(31));
         assert_eq!(negotiate_version(30), Ok(30));
         assert!(negotiate_version(28).is_err());
