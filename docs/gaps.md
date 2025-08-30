@@ -39,10 +39,8 @@ This document tracks outstanding gaps in `oc-rsync` compared to the reference `r
 - `--from0` — null-separated list handling incomplete. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L64)
 - `--include` — filter syntax coverage incomplete. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L77)
 - `--include-from` — partial support for external lists. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L78)
-- `--existing` — not implemented. [feature_matrix](feature_matrix.md#L59) ([TODO](#testing-gaps))
- - `--delete-missing-args` — not implemented. [feature_matrix](feature_matrix.md#L51) ([TODO](#testing-gaps))
+ - `--existing` — not implemented. [feature_matrix](feature_matrix.md#L59) ([TODO](#testing-gaps))
  - `--prune-empty-dirs` — not implemented. [feature_matrix](feature_matrix.md#L122) ([TODO](#testing-gaps))
- - `--remove-source-files` — not implemented. [feature_matrix](feature_matrix.md#L128) ([TODO](#testing-gaps))
 
 ## Daemon gaps
 - `--address` — binding to specific address lacks parity. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L10)
@@ -53,6 +51,34 @@ This document tracks outstanding gaps in `oc-rsync` compared to the reference `r
 - `--ipv4`/`--ipv6` — protocol selection lacks parity. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L81) [feature_matrix](feature_matrix.md#L82)
 - `--secrets-file` — module authentication incomplete. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L133)
 - `--timeout` — connection timeout semantics differ. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L147)
+
+## Resume/partials gaps
+- `--append`/`--append-verify` — remote resume semantics untested. [tests/resume.rs](../tests/resume.rs) [feature_matrix](feature_matrix.md#L11) [feature_matrix](feature_matrix.md#L12) ([TODO](#testing-gaps))
+- `--partial-dir` — remote partial directory handling lacks parity. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L118) ([TODO](#testing-gaps))
+
+## Deletion policy gaps
+- `--delete-missing-args` — not implemented. [feature_matrix](feature_matrix.md#L51) ([TODO](#testing-gaps))
+- `--ignore-errors` — not implemented. [feature_matrix](feature_matrix.md#L73) ([TODO](#testing-gaps))
+- `--max-delete` — not implemented. [feature_matrix](feature_matrix.md#L91) ([TODO](#testing-gaps))
+- `--remove-source-files` — not implemented. [feature_matrix](feature_matrix.md#L131) ([TODO](#testing-gaps))
+
+## Progress & exit code gaps
+- `--progress` — progress output differs from upstream. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L123)
+- Exit code propagation across transports lacks coverage. [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs) [tests/partial_transfer_resume.sh](../tests/partial_transfer_resume.sh) ([TODO](#testing-gaps))
+
+## Error propagation gaps
+- Error forwarding between remote endpoints not thoroughly tested. [tests/server.rs](../tests/server.rs) [tests/remote_remote.rs](../tests/remote_remote.rs) ([TODO](#testing-gaps))
+
+## Performance knob gaps
+- `--max-alloc` — not implemented. [feature_matrix](feature_matrix.md#L90) ([TODO](#testing-gaps))
+- `--max-size` — not implemented. [feature_matrix](feature_matrix.md#L92) ([TODO](#testing-gaps))
+- `--min-size` — not implemented. [feature_matrix](feature_matrix.md#L93) ([TODO](#testing-gaps))
+- `--preallocate` — not implemented. [feature_matrix](feature_matrix.md#L122) ([TODO](#testing-gaps))
+- `--temp-dir` — cross-filesystem behavior differs. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L149)
+
+## CI gaps
+- CI covers only Linux builds; other platforms are cross-compiled without tests. [compatibility.md](compatibility.md#L11) [compatibility.md](compatibility.md#L13) ([TODO](#testing-gaps))
+- Interop matrix lacks scenarios for resume and progress flags. [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) ([TODO](#testing-gaps))
 
 ## Testing gaps
 Many options above lack automated tests. Options marked with `[TODO](#testing-gaps)` need dedicated coverage in `tests/` before gaps can be closed.
