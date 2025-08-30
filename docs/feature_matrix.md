@@ -1,6 +1,6 @@
 # Feature Matrix
 
-This table tracks the implementation status of rsync 3.2.x command-line options.
+This table tracks the implementation status of rsync 3.4.x command-line options.
 See [differences.md](differences.md) for a summary of notable behavioral differences.
 
 | Option | Short | Supported | Parity scope | Tests link | Notes | Version introduced |
@@ -29,6 +29,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--compress-level` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | applies to zlib or zstd | ≤3.2 |
 | `--zc` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | alias for `--compress-choice` | ≤3.2 |
 | `--zl` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | alias for `--compress-level` | ≤3.2 |
+| `--config` | — | ✅ | ❌ | [tests/daemon_config.rs](../tests/daemon_config.rs) |  | ≤3.2 |
 | `--contimeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
 | `--copy-as` | — | ❌ | — | — |  | ≤3.2 |
 | `--copy-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
@@ -51,6 +52,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--delete-missing-args` | — | ❌ | — | — |  | ≤3.2 |
 | `--devices` | — | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--dirs` | `-d` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
+| `--dparam` | `-M` | ❌ | — | — |  | ≤3.2 |
 | `--dry-run` | `-n` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--early-input` | — | ✅ | ❌ | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  | ≤3.2 |
 | `--exclude` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
@@ -98,6 +100,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--modern-cdc` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; enable `fastcdc` chunking | — |
 | `--modify-window` | `-@` | ❌ | — | — |  | ≤3.2 |
 | `--munge-links` | — | ❌ | — | — |  | ≤3.2 |
+| `--no-detach` | — | ❌ | — | — |  | ≤3.2 |
 | `--no-D` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--no-devices --no-specials` | ≤3.2 |
 | `--no-OPTION` | — | ❌ | — | — |  | ≤3.2 |
 | `--no-implied-dirs` | — | ❌ | — | — |  | ≤3.2 |
