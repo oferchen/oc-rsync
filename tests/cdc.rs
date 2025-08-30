@@ -19,7 +19,10 @@ fn cdc_skips_renamed_file() {
     let file_a = src.join("a.txt");
     fs::write(&file_a, b"hello world").unwrap();
 
-    let opts = SyncOptions { cdc: true, ..Default::default() };
+    let opts = SyncOptions {
+        cdc: true,
+        ..Default::default()
+    };
     sync(&src, &dst, &Matcher::default(), available_codecs(), &opts).unwrap();
 
     let file_b = src.join("b.txt");

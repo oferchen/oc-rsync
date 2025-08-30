@@ -30,7 +30,11 @@ pub fn chunk_bytes(data: &[u8]) -> Vec<Chunk> {
         return chunks;
     }
     if data.len() <= WINDOW {
-        chunks.push(Chunk { hash: blake3::hash(data), offset: 0, len: data.len() });
+        chunks.push(Chunk {
+            hash: blake3::hash(data),
+            offset: 0,
+            len: data.len(),
+        });
         return chunks;
     }
     let mut start = 0usize;
