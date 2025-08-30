@@ -15,8 +15,6 @@ const MASK: u32 = (AVG_CHUNK as u32) - 1;
 #[derive(Debug, Clone)]
 pub struct Chunk {
     pub hash: Hash,
-    pub offset: u64,
-    pub len: usize,
 }
 
 pub fn chunk_file(path: &Path) -> io::Result<Vec<Chunk>> {
@@ -32,8 +30,6 @@ pub fn chunk_bytes(data: &[u8]) -> Vec<Chunk> {
     if data.len() <= WINDOW {
         chunks.push(Chunk {
             hash: blake3::hash(data),
-            offset: 0,
-            len: data.len(),
         });
         return chunks;
     }
@@ -48,8 +44,6 @@ pub fn chunk_bytes(data: &[u8]) -> Vec<Chunk> {
             let chunk = &data[start..=i];
             chunks.push(Chunk {
                 hash: blake3::hash(chunk),
-                offset: start as u64,
-                len: chunk.len(),
             });
             start = i + 1;
         }
@@ -58,8 +52,6 @@ pub fn chunk_bytes(data: &[u8]) -> Vec<Chunk> {
         let chunk = &data[start..];
         chunks.push(Chunk {
             hash: blake3::hash(chunk),
-            offset: start as u64,
-            len: chunk.len(),
         });
     }
     chunks
