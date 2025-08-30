@@ -199,6 +199,23 @@ fn daemon_accepts_connection_on_ephemeral_port() {
 
 #[test]
 #[serial]
+fn daemon_allows_module_access() {
+    let (mut child, port, _dir) = spawn_temp_daemon();
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    t.send(b"data\n").unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200))).unwrap();
+    let n = t.receive(&mut buf).unwrap_or(0);
+    assert!(n == 0 || !String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR"));
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
 fn daemon_rejects_invalid_token() {
     let dir = tempfile::tempdir().unwrap();
     let secrets = dir.path().join("auth");
@@ -286,7 +303,7 @@ fn daemon_rejects_unauthorized_module() {
 
 #[test]
 #[serial]
-fn daemon_accepts_authorized_client() {
+fn daemon_authenticates_valid_token() {
     let dir = tempfile::tempdir().unwrap();
     let secrets = dir.path().join("auth");
     fs::write(&secrets, "secret data\n").unwrap();
@@ -496,7 +513,7 @@ fn client_respects_no_motd() {
 
 #[test]
 #[serial]
-fn daemon_logs_connections() {
+fn daemon_writes_log_file() {
     let dir = tempfile::tempdir().unwrap();
     let log = dir.path().join("log");
     let port = TcpListener::bind("127.0.0.1:0")
