@@ -6,6 +6,26 @@ use tempfile::tempdir;
 
 #[test]
 fn cvs_exclude_parity() {
+    // Older rsync releases (e.g. 2.x shipped on macOS) have different
+    // `--cvs-exclude` semantics. The parity check only makes sense when a
+    // modern rsync (>=3) is available, so skip the test otherwise.
+    let rsync_version = StdCommand::new("rsync")
+        .arg("--version")
+        .output()
+        .ok()
+        .and_then(|out| String::from_utf8(out.stdout).ok())
+        .and_then(|out| {
+            out.lines()
+                .next()
+                .and_then(|l| l.split_whitespace().nth(2))
+                .and_then(|v| v.split('.').next())
+                .and_then(|v| v.parse::<u32>().ok())
+        });
+    if rsync_version.map_or(true, |v| v < 3) {
+        eprintln!("skipping cvs_exclude_parity test; rsync >=3 required");
+        return;
+    }
+
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     fs::create_dir_all(&src).unwrap();
