@@ -93,7 +93,9 @@ struct ClientOpts {
     #[arg(
         long = "checksum-seed",
         value_name = "NUM",
-        help_heading = "Attributes"
+        value_parser = clap::value_parser!(u32),
+        help_heading = "Attributes",
+        help = "set block/file checksum seed (advanced)"
     )]
     checksum_seed: Option<u32>,
     #[arg(long, help_heading = "Attributes")]

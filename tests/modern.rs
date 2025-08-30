@@ -15,7 +15,7 @@ fn modern_negotiates_blake3_and_zstd() {
     )
     .unwrap();
     assert_eq!(negotiated, Codec::Zstd);
-    let digest = strong_digest(b"hello world", StrongHash::Blake3);
+    let digest = strong_digest(b"hello world", StrongHash::Blake3, 0);
     assert_eq!(digest.len(), 32);
 }
 

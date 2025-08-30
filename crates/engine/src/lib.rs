@@ -904,6 +904,7 @@ pub struct SyncOptions {
     pub acls: bool,
     pub sparse: bool,
     pub strong: StrongHash,
+    /// Seed value mixed into rolling and strong checksums.
     pub checksum_seed: u32,
     pub compress_level: Option<i32>,
     pub compress_choice: Option<Vec<Codec>>,
