@@ -50,7 +50,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--delete-excluded` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | ≤3.2 |
 | `--delete-missing-args` | — | ❌ | — | — |  | ≤3.2 |
 | `--devices` | — | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
-| `--dirs` | `-d` | ❌ | — | — |  | ≤3.2 |
+| `--dirs` | `-d` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--dry-run` | `-n` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--early-input` | — | ❌ | — | — |  | ≤3.2 |
 | `--exclude` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
@@ -84,7 +84,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--keep-dirlinks` | `-K` | ❌ | — | — |  | ≤3.2 |
 | `--link-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
 | `--links` | `-l` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--list-only` | — | ❌ | — | — |  | ≤3.2 |
+| `--list-only` | — | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--log-file` | — | ❌ | — | — |  | ≤3.2 |
 | `--log-file-format` | — | ❌ | — | — |  | ≤3.2 |
 | `--max-alloc` | — | ❌ | — | — |  | ≤3.2 |
@@ -147,7 +147,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--timeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
 | `--times` | `-t` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--trust-sender` | — | ❌ | — | — |  | ≤3.2 |
-| `--update` | `-u` | ❌ | — | — |  | ≤3.2 |
+| `--update` | `-u` | ✅ | ❌ | [crates/engine/tests/update.rs](../crates/engine/tests/update.rs) |  | ≤3.2 |
 | `--usermap` | — | ❌ | — | — |  | ≤3.2 |
 | `--verbose` | `-v` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--version` | `-V` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
