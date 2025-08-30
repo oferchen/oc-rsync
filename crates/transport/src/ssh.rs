@@ -194,7 +194,16 @@ impl SshStdioTransport {
         let peer = u32::from_be_bytes(ver_buf);
         negotiate_version(peer).map_err(|e| io::Error::other(e.to_string()))?;
 
-        let local_caps = if modern { SUPPORTED_CAPS } else { CAP_CODECS };
+        // If a modern compression algorithm is requested, advertise support for all
+        // capabilities (including modern compression). Otherwise, only advertise
+        // support for the legacy codecs capability. The `modern` argument is an
+        // `Option`, so we check for the presence of a value rather than treating it
+        // as a boolean directly.
+        let local_caps = if modern.is_some() {
+            SUPPORTED_CAPS
+        } else {
+            CAP_CODECS
+        };
         transport.send(&local_caps.to_be_bytes())?;
 
         let mut cap_buf = [0u8; 4];

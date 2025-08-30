@@ -27,7 +27,7 @@ fn cdc_skips_renamed_file() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(false),
+        &available_codecs(None),
         &opts,
     )
     .unwrap();
@@ -39,7 +39,7 @@ fn cdc_skips_renamed_file() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(false),
+        &available_codecs(None),
         &opts,
     )
     .unwrap();

@@ -1054,7 +1054,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.port,
                     opts.contimeout,
                     addr_family,
-                    opts.modern,
+                    modern_compress,
                     opts.protocol.unwrap_or(if opts.modern {
                         LATEST_VERSION
                     } else {
@@ -1122,7 +1122,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.port,
                     opts.contimeout,
                     addr_family,
-                    opts.modern,
+                    modern_compress,
                     opts.protocol.unwrap_or(if opts.modern {
                         LATEST_VERSION
                     } else {

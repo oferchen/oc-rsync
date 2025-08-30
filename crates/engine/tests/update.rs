@@ -25,7 +25,7 @@ fn update_skips_newer_dest() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(false),
+        &available_codecs(None),
         &opts,
     )
     .unwrap();
@@ -51,7 +51,7 @@ fn update_replaces_older_dest() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(false),
+        &available_codecs(None),
         &opts,
     )
     .unwrap();
