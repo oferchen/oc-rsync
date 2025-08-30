@@ -120,6 +120,7 @@ fn custom_rsh_negotiates_codecs() {
     let rsync_env: Vec<(String, String)> = std::env::vars()
         .filter(|(k, _)| k.starts_with("RSYNC_"))
         .collect();
+    let remote_env: Vec<(String, String)> = Vec::new();
     let (session, codecs) = SshStdioTransport::connect_with_rsh(
         "ignored",
         Path::new("."),
@@ -127,6 +128,7 @@ fn custom_rsh_negotiates_codecs() {
         &rsh_env,
         &rsync_env,
         Some(&remote_cmd),
+        &remote_env,
         None,
         true,
         None,
@@ -194,7 +196,10 @@ fn rsh_env_var_assignments_are_honored() {
     let rsh = dir.path().join("fake_rsh.sh");
     fs::write(
         &rsh,
-        format!("#!/bin/sh\necho \"$FOO\" > {}\nshift\nexec \"$@\"\n", out.display()),
+        format!(
+            "#!/bin/sh\necho \"$FOO\" > {}\nshift\nexec \"$@\"\n",
+            out.display()
+        ),
     )
     .unwrap();
     fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
@@ -256,4 +261,51 @@ fn rsync_path_respects_rsh_env_var() {
 
     let out = fs::read(dst_dir.join("file.txt")).unwrap();
     assert_eq!(out, b"from env var");
+}
+
+#[cfg(unix)]
+#[test]
+fn complex_rsh_and_rsync_path_env() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    fs::create_dir(&src_dir).unwrap();
+    let src_file = src_dir.join("file.txt");
+    fs::write(&src_file, b"complex").unwrap();
+    let dst_dir = dir.path().join("dst");
+
+    let remote_bin = dir.path().join("rr-remote");
+    fs::copy(cargo_bin("rsync-rs"), &remote_bin).unwrap();
+    fs::set_permissions(&remote_bin, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let env_out = dir.path().join("env.txt");
+    let wrapper = dir.path().join("remote wrapper.sh");
+    fs::write(
+        &wrapper,
+        format!(
+            "#!/bin/sh\necho \"$BAZ\" > {}\nexec {} \"$@\"\n",
+            env_out.display(),
+            remote_bin.display()
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let src_spec = format!("{}/", src_dir.display());
+    let dst_spec = format!("ignored:{}", dst_dir.display());
+    let mut cmd = AssertCommand::cargo_bin("rsync-rs").unwrap();
+    cmd.args([
+        "--rsh",
+        "sh -c 'exec \"$@\"'",
+        "--rsync-path",
+        &format!("env BAZ=qux '{}'", wrapper.display()),
+        "-r",
+        &src_spec,
+        &dst_spec,
+    ]);
+    cmd.assert().success();
+
+    let out = fs::read(dst_dir.join("file.txt")).unwrap();
+    assert_eq!(out, b"complex");
+    let env_val = fs::read_to_string(&env_out).unwrap();
+    assert_eq!(env_val.trim(), "qux");
 }

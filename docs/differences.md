@@ -26,7 +26,7 @@ classic `rsync` behavior. For a complete listing see
 ## Additional notes
 
 - `--daemon` and `--server` have the same syntax and defaults as `rsync`; see [cli.md](cli.md#daemon-and-server-modes).
-- `-e`/`--rsh` defaults to `ssh` and honors the `RSYNC_RSH` environment variable; see [cli.md](cli.md#remote-shell).
+- `-e`/`--rsh` defaults to `ssh`, honors the `RSYNC_RSH` environment variable, and supports shell-style quoting and environment variable assignments. `--rsync-path` uses the same parsing to invoke alternative remote commands.
 - Deletion flags `--delete-before`, `--delete-during`, `--delete-delay`,
   `--delete-after`, and `--delete-excluded` are implemented. See
   [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)

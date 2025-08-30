@@ -466,17 +466,7 @@ pub struct RshCommand {
     pub cmd: Vec<String>,
 }
 
-pub fn parse_rsh(raw: Option<String>) -> Result<RshCommand> {
-    let parts = match raw {
-        Some(s) => shell_split(&s).map_err(|e| EngineError::Other(e.to_string()))?,
-        None => {
-            return Ok(RshCommand {
-                env: Vec::new(),
-                cmd: vec!["ssh".to_string()],
-            })
-        }
-    };
-
+fn parse_env_command(parts: Vec<String>) -> RshCommand {
     let mut env = Vec::new();
     let mut iter = parts.into_iter().peekable();
     while let Some(tok) = iter.peek() {
@@ -495,23 +485,36 @@ pub fn parse_rsh(raw: Option<String>) -> Result<RshCommand> {
         }
         break;
     }
-
-    let mut cmd: Vec<String> = iter.collect();
-    if cmd.is_empty() {
-        cmd.push("ssh".to_string());
-    }
-
-    Ok(RshCommand { env, cmd })
+    let cmd: Vec<String> = iter.collect();
+    RshCommand { env, cmd }
 }
 
-pub fn parse_rsync_path(raw: Option<String>) -> Result<Option<Vec<String>>> {
+pub fn parse_rsh(raw: Option<String>) -> Result<RshCommand> {
     match raw {
         Some(s) => {
             let parts = shell_split(&s).map_err(|e| EngineError::Other(e.to_string()))?;
-            if parts.is_empty() {
+            let mut cmd = parse_env_command(parts);
+            if cmd.cmd.is_empty() {
+                cmd.cmd.push("ssh".to_string());
+            }
+            Ok(cmd)
+        }
+        None => Ok(RshCommand {
+            env: Vec::new(),
+            cmd: vec!["ssh".to_string()],
+        }),
+    }
+}
+
+pub fn parse_rsync_path(raw: Option<String>) -> Result<Option<RshCommand>> {
+    match raw {
+        Some(s) => {
+            let parts = shell_split(&s).map_err(|e| EngineError::Other(e.to_string()))?;
+            let cmd = parse_env_command(parts);
+            if cmd.env.is_empty() && cmd.cmd.is_empty() {
                 Ok(None)
             } else {
-                Ok(Some(parts))
+                Ok(Some(cmd))
             }
         }
         None => Ok(None),
@@ -847,6 +850,14 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             .filter(|(k, _)| k.starts_with("RSYNC_"))
             .cloned(),
     );
+    if let Some(cmd) = &rsync_path_cmd {
+        rsync_env.extend(
+            cmd.env
+                .iter()
+                .filter(|(k, _)| k.starts_with("RSYNC_"))
+                .cloned(),
+        );
+    }
     if let Some(to) = opts.timeout {
         rsync_env.push(("RSYNC_TIMEOUT".into(), to.as_secs().to_string()));
     }
@@ -858,6 +869,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         }
         rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
     }
+
+    let remote_bin_vec = rsync_path_cmd.as_ref().map(|c| c.cmd.clone());
+    let remote_env_vec = rsync_path_cmd.as_ref().map(|c| c.env.clone());
 
     let strong = if let Some(choice) = opts.checksum_choice.as_deref() {
         match choice {
@@ -1087,7 +1101,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &rsh_cmd.cmd,
                     &rsh_cmd.env,
                     &rsync_env,
-                    rsync_path_cmd.as_deref(),
+                    remote_bin_vec.as_deref(),
+                    remote_env_vec.as_deref().unwrap_or(&[]),
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                     opts.port,
@@ -1141,7 +1156,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &rsh_cmd.cmd,
                     &rsh_cmd.env,
                     &rsync_env,
-                    rsync_path_cmd.as_deref(),
+                    remote_bin_vec.as_deref(),
+                    remote_env_vec.as_deref().unwrap_or(&[]),
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                     opts.port,
@@ -1183,7 +1199,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &dst_path.path,
                             &rsh_cmd.cmd,
                             &rsh_cmd.env,
-                            rsync_path_cmd.as_deref(),
+                            remote_bin_vec.as_deref(),
+                            remote_env_vec.as_deref().unwrap_or(&[]),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1196,7 +1213,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &src_path.path,
                             &rsh_cmd.cmd,
                             &rsh_cmd.env,
-                            rsync_path_cmd.as_deref(),
+                            remote_bin_vec.as_deref(),
+                            remote_env_vec.as_deref().unwrap_or(&[]),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1277,7 +1295,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &dst_path.path,
                             &rsh_cmd.cmd,
                             &rsh_cmd.env,
-                            rsync_path_cmd.as_deref(),
+                            remote_bin_vec.as_deref(),
+                            remote_env_vec.as_deref().unwrap_or(&[]),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1334,7 +1353,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &src_path.path,
                             &rsh_cmd.cmd,
                             &rsh_cmd.env,
-                            rsync_path_cmd.as_deref(),
+                            remote_bin_vec.as_deref(),
+                            remote_env_vec.as_deref().unwrap_or(&[]),
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
