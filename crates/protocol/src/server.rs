@@ -3,7 +3,7 @@ use std::io::{self, Read, Write};
 use std::time::Duration;
 
 use crate::{negotiate_version, Demux, Frame, Message, Mux, CAP_CODECS, SUPPORTED_CAPS};
-use compress::{available_codecs, decode_codecs, encode_codecs, Codec};
+use compress::{decode_codecs, encode_codecs, Codec};
 
 pub struct Server<R: Read, W: Write> {
     reader: R,
