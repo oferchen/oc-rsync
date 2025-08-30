@@ -1,14 +1,14 @@
-use assert_cmd::Command;
 use assert_cmd::cargo::cargo_bin;
+use assert_cmd::Command;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Command as StdCommand;
-use wait_timeout::ChildExt;
 use std::time::{Duration, Instant};
 use tempfile::tempdir;
 use transport::ssh::SshStdioTransport;
+use wait_timeout::ChildExt;
 
 /// Wait until the provided condition evaluates to true.
 ///
@@ -46,14 +46,34 @@ fn assert_same_tree(a: &Path, b: &Path) {
             let pb = b.join(&name);
             let ma = fs::symlink_metadata(&pa).unwrap();
             let mb = fs::symlink_metadata(&pb).unwrap();
-            assert_eq!(ma.file_type(), mb.file_type(), "file type differs for {:?}", name);
-            assert_eq!(ma.permissions().mode(), mb.permissions().mode(), "permissions differ for {:?}", name);
+            assert_eq!(
+                ma.file_type(),
+                mb.file_type(),
+                "file type differs for {:?}",
+                name
+            );
+            assert_eq!(
+                ma.permissions().mode(),
+                mb.permissions().mode(),
+                "permissions differ for {:?}",
+                name
+            );
             if ma.file_type().is_file() {
-                assert_eq!(fs::read(&pa).unwrap(), fs::read(&pb).unwrap(), "file contents differ for {:?}", name);
+                assert_eq!(
+                    fs::read(&pa).unwrap(),
+                    fs::read(&pb).unwrap(),
+                    "file contents differ for {:?}",
+                    name
+                );
             } else if ma.file_type().is_dir() {
                 walk(&pa, &pb);
             } else if ma.file_type().is_symlink() {
-                assert_eq!(fs::read_link(&pa).unwrap(), fs::read_link(&pb).unwrap(), "symlink target differs for {:?}", name);
+                assert_eq!(
+                    fs::read_link(&pa).unwrap(),
+                    fs::read_link(&pb).unwrap(),
+                    "symlink target differs for {:?}",
+                    name
+                );
             }
         }
     }
@@ -140,8 +160,7 @@ fn remote_to_remote_reports_errors() {
     let src_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     // Destination process closes its stdin and signals when that has happened
-    let dst_session =
-        SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready"]).unwrap();
+    let dst_session = SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready"]).unwrap();
 
     let (mut src_reader, _) = src_session.into_inner();
     let (mut dst_reader, mut dst_writer) = dst_session.into_inner();
@@ -153,6 +172,28 @@ fn remote_to_remote_reports_errors() {
 
     let err = std::io::copy(&mut src_reader, &mut dst_writer).unwrap_err();
     assert_eq!(err.kind(), std::io::ErrorKind::BrokenPipe);
+}
+
+#[test]
+fn remote_to_remote_empty_file() {
+    let dir = tempdir().unwrap();
+    let src_file = dir.path().join("empty.txt");
+    let dst_file = dir.path().join("copy.txt");
+    fs::File::create(&src_file).unwrap();
+
+    let src_session =
+        SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
+    let dst_session =
+        SshStdioTransport::spawn("sh", ["-c", &format!("cat > {}", dst_file.display())]).unwrap();
+    let (mut src_reader, _) = src_session.into_inner();
+    let (_, mut dst_writer) = dst_session.into_inner();
+    std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
+    drop(dst_writer);
+    drop(src_reader);
+    wait_for(|| dst_file.exists());
+
+    let out = fs::read(&dst_file).unwrap();
+    assert!(out.is_empty());
 }
 
 #[test]
@@ -276,11 +317,8 @@ fn remote_partial_transfer_resumed_by_cli() {
         ],
     )
     .unwrap();
-    let dst_session = SshStdioTransport::spawn(
-        "sh",
-        ["-c", &format!("cat > {}", partial.display())],
-    )
-    .unwrap();
+    let dst_session =
+        SshStdioTransport::spawn("sh", ["-c", &format!("cat > {}", partial.display())]).unwrap();
     let (mut src_reader, _) = src_session.into_inner();
     let (_, mut dst_writer) = dst_session.into_inner();
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
@@ -308,8 +346,7 @@ fn remote_to_remote_failure_and_reconnect() {
     // Initial transfer fails because destination immediately closes
     let src_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
-    let dst_session =
-        SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready"]).unwrap();
+    let dst_session = SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready"]).unwrap();
     let (mut src_reader, _) = src_session.into_inner();
     let (mut dst_reader, mut dst_writer) = dst_session.into_inner();
 
