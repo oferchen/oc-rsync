@@ -446,7 +446,10 @@ impl Sender {
     ) -> Self {
         Self {
             state: SenderState::Idle,
-            cfg: ChecksumConfigBuilder::new().strong(opts.strong).build(),
+            cfg: ChecksumConfigBuilder::new()
+                .strong(opts.strong)
+                .seed(opts.checksum_seed)
+                .build(),
             block_size,
             _matcher: matcher,
             codec,
@@ -702,6 +705,7 @@ impl Receiver {
         }
         let cfg = ChecksumConfigBuilder::new()
             .strong(self.opts.strong)
+            .seed(self.opts.checksum_seed)
             .build();
         let mut resume = if self.opts.partial || self.opts.append || self.opts.append_verify {
             if self.opts.append && !self.opts.append_verify {
@@ -881,6 +885,7 @@ pub struct SyncOptions {
     pub acls: bool,
     pub sparse: bool,
     pub strong: StrongHash,
+    pub checksum_seed: u32,
     pub compress_level: Option<i32>,
     pub compress_choice: Option<Vec<Codec>>,
     pub whole_file: bool,
@@ -934,6 +939,7 @@ impl Default for SyncOptions {
             list_only: false,
             update: false,
             strong: StrongHash::Md5,
+            checksum_seed: 0,
             compress_level: None,
             compress_choice: None,
             whole_file: false,
