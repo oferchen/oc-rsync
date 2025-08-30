@@ -29,7 +29,7 @@
 | --copy-links | Error |  |
 | --copy-unsafe-links | Error |  |
 | --crtimes | Supported |  |
-| --cvs-exclude | Error |  |
+| --cvs-exclude | Supported |  |
 | --debug | Error |  |
 | --del | Error | an alias for --delete-during |
 | --delay-updates | Error |  |
@@ -149,7 +149,7 @@
 | -@ | Error | alias for --modify-window |
 | -A | Error | alias for --acls |
 | -B | Error | alias for --block-size |
-| -C | Error | alias for --cvs-exclude |
+| -C | Supported | alias for --cvs-exclude |
 | -D | Error | same as --devices --specials |
 | -E | Error | alias for --executability |
 | -F | Error | same as --filter='dir-merge /.rsync-filter' |
