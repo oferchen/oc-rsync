@@ -1,5 +1,8 @@
 # Project Overview
 
+## Specifications
+The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.x are included under [spec/](spec) as authoritative references for expected behavior: [spec/rsync.1](spec/rsync.1) and [spec/rsyncd.conf.5](spec/rsyncd.conf.5).
+
 ## Crates
 - **protocol**: core frame and message types for the rsync protocol.
 - **checksums**: rolling checksum and strong hash algorithms.
