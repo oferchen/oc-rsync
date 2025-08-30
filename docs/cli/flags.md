@@ -68,7 +68,7 @@
 
 | short | long | summary | implemented? | notes | enhanced? |
 | --- | --- | --- | :---: | --- | :---: |
-| -C | --cvs-exclude | auto-ignore files in the same way CVS does | no |  | no |
+| -C | --cvs-exclude | auto-ignore files in the same way CVS does | yes |  | no |
 |  | --exclude-from=FILE | read exclude patterns from FILE | no |  | no |
 |  | --exclude=PATTERN | exclude files matching PATTERN | no |  | no |
 |  | --files-from=FILE | read list of source-file names from FILE | no |  | no |
