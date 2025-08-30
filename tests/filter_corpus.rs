@@ -30,6 +30,14 @@ fn setup_perdir(src: &Path) {
     fs::write(src.join("sub/nested/keep.tmp"), "nested").unwrap();
 }
 
+fn setup_edge(src: &Path) {
+    fs::create_dir_all(src.join("dir")).unwrap();
+    fs::create_dir_all(src.join("tmp")).unwrap();
+    fs::write(src.join("root.txt"), "root").unwrap();
+    fs::write(src.join("dir/root.txt"), "sub").unwrap();
+    fs::write(src.join("tmp/file.txt"), "junk").unwrap();
+}
+
 #[test]
 fn filter_corpus_parity() {
     let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/filter_corpus");
@@ -51,6 +59,8 @@ fn filter_corpus_parity() {
         let stem = path.file_stem().and_then(|s| s.to_str()).unwrap();
         if stem.starts_with("perdir") {
             setup_perdir(&src);
+        } else if stem == "edge" {
+            setup_edge(&src);
         } else {
             setup_basic(&src);
         }
