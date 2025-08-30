@@ -18,9 +18,13 @@ echo sub > "$TMP/src/keep/sub/file.md"
 echo tmp > "$TMP/src/keep/tmp/file.tmp"
 echo skip > "$TMP/src/skip/file.txt"
 echo root > "$TMP/src/root.tmp"
+echo core > "$TMP/src/core"
+echo obj > "$TMP/src/foo.o"
 
 # Run reference rsync
 rsync_output=$(rsync --quiet --recursive \
+  --filter='+ core' \
+  --filter='-C' \
   --filter='- *.tmp' \
   --filter='+ keep/tmp/file.tmp' \
   --filter='- skip/' \
@@ -32,6 +36,8 @@ rsync_status=$?
 
 # Run rsync-rs
 rsync_rs_raw=$("$RSYNC_RS" --local --recursive \
+  --filter='+ core' \
+  --filter='-C' \
   --filter='- *.tmp' \
   --filter='+ keep/tmp/file.tmp' \
   --filter='- skip/' \

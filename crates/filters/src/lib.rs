@@ -6,16 +6,45 @@ use std::path::{Path, PathBuf};
 
 const MAX_PARSE_DEPTH: usize = 64;
 
+/// Additional attributes that can modify how a rule is applied.
+#[derive(Clone, Default)]
+pub struct RuleFlags {
+    /// Rule only affects the sending side.
+    sender: bool,
+    /// Rule only affects the receiving side.
+    receiver: bool,
+    /// Rule is ignored when the parent directory is deleted.
+    perishable: bool,
+    /// Rule applies to xattr names, not file paths.
+    xattr: bool,
+}
+
+impl RuleFlags {
+    fn applies_to_sender(&self) -> bool {
+        if self.receiver && !self.sender {
+            return false;
+        }
+        true
+    }
+}
+
+#[derive(Clone)]
+struct RuleData {
+    matcher: GlobMatcher,
+    invert: bool,
+    flags: RuleFlags,
+}
+
 /// A single rule compiled into a glob matcher or special directive.
 #[derive(Clone)]
 pub enum Rule {
     /// Include rule; `invert` flips match logic when `!` modifier is used.
-    Include(GlobMatcher, bool),
+    Include(RuleData),
     /// Exclude rule; `invert` flips match logic when `!` modifier is used.
-    Exclude(GlobMatcher, bool),
+    Exclude(RuleData),
     /// Protect rule used for receiver-side deletes; `invert` supported for
     /// parity with rsync's `!` modifier.
-    Protect(GlobMatcher, bool),
+    Protect(RuleData),
     /// Clear all previously defined rules.
     Clear,
     /// Per-directory merge directive (e.g., `: .rsync-filter`).
@@ -119,21 +148,30 @@ impl Matcher {
 
         for rule in &active {
             match rule {
-                Rule::Protect(m, inv) => {
-                    let matched = m.is_match(path);
-                    if (*inv && !matched) || (!*inv && matched) {
+                Rule::Protect(data) => {
+                    if !data.flags.applies_to_sender() {
+                        continue;
+                    }
+                    let matched = data.matcher.is_match(path);
+                    if (data.invert && !matched) || (!data.invert && matched) {
                         continue;
                     }
                 }
-                Rule::Include(m, inv) => {
-                    let matched = m.is_match(path);
-                    if (*inv && !matched) || (!*inv && matched) {
+                Rule::Include(data) => {
+                    if !data.flags.applies_to_sender() {
+                        continue;
+                    }
+                    let matched = data.matcher.is_match(path);
+                    if (data.invert && !matched) || (!data.invert && matched) {
                         return Ok(true);
                     }
                 }
-                Rule::Exclude(m, inv) => {
-                    let matched = m.is_match(path);
-                    if (*inv && !matched) || (!*inv && matched) {
+                Rule::Exclude(data) => {
+                    if !data.flags.applies_to_sender() {
+                        continue;
+                    }
+                    let matched = data.matcher.is_match(path);
+                    if (data.invert && !matched) || (!data.invert && matched) {
                         return Ok(false);
                     }
                 }
@@ -266,7 +304,7 @@ impl Matcher {
                     continue;
                 };
                 let new_pat = if pat.starts_with('/') {
-                    pat.to_string()
+                    format!("/{}/{}", rel_str, pat.trim_start_matches('/'))
                 } else {
                     format!("{}/{}", rel_str, pat)
                 };
@@ -388,7 +426,12 @@ pub fn parse(
                 }));
                 if !rest.is_empty() {
                     let matcher = Glob::new("**/.rsync-filter")?.compile_matcher();
-                    rules.push(Rule::Exclude(matcher, false));
+                    let data = RuleData {
+                        matcher,
+                        invert: false,
+                        flags: RuleFlags::default(),
+                    };
+                    rules.push(Rule::Exclude(data));
                 }
                 continue;
             }
@@ -418,7 +461,12 @@ pub fn parse(
             if m.contains('e') {
                 let pat = format!("**/{}", file);
                 let matcher = Glob::new(&pat)?.compile_matcher();
-                rules.push(Rule::Exclude(matcher, false));
+                let data = RuleData {
+                    matcher,
+                    invert: false,
+                    flags: RuleFlags::default(),
+                };
+                rules.push(Rule::Exclude(data));
             }
             continue;
         } else if let Some(r) = line.strip_prefix(':') {
@@ -441,7 +489,12 @@ pub fn parse(
             if m.contains('e') {
                 let pat = format!("**/{}", fname);
                 let matcher = Glob::new(&pat)?.compile_matcher();
-                rules.push(Rule::Exclude(matcher, false));
+                let data = RuleData {
+                    matcher,
+                    invert: false,
+                    flags: RuleFlags::default(),
+                };
+                rules.push(Rule::Exclude(data));
             }
             continue;
         } else {
@@ -481,12 +534,32 @@ pub fn parse(
             }
         };
 
+        // Handle special CVS-exclude insertion when using the C modifier with no pattern.
+        if mods.contains('C') && rest.is_empty() {
+            rules.extend(default_cvs_rules()?);
+            continue;
+        }
+
         let kind = match kind {
             Some(k) => k,
             None => return Err(ParseError::InvalidRule(raw_line.to_string())),
         };
         if rest.is_empty() {
             return Err(ParseError::InvalidRule(raw_line.to_string()));
+        }
+
+        let mut flags = RuleFlags::default();
+        if mods.contains('s') {
+            flags.sender = true;
+        }
+        if mods.contains('r') {
+            flags.receiver = true;
+        }
+        if mods.contains('p') {
+            flags.perishable = true;
+        }
+        if mods.contains('x') {
+            flags.xattr = true;
         }
 
         let mut pattern = rest.to_string();
@@ -508,16 +581,89 @@ pub fn parse(
             vec![base]
         };
 
+        let invert = mods.contains('!');
         for pat in pats {
             let matcher = Glob::new(&pat)?.compile_matcher();
-            let invert = mods.contains('!');
+            let data = RuleData {
+                matcher,
+                invert,
+                flags: flags.clone(),
+            };
             match kind {
-                RuleKind::Include => rules.push(Rule::Include(matcher, invert)),
-                RuleKind::Exclude => rules.push(Rule::Exclude(matcher, invert)),
-                RuleKind::Protect => rules.push(Rule::Protect(matcher, invert)),
+                RuleKind::Include => rules.push(Rule::Include(data)),
+                RuleKind::Exclude => rules.push(Rule::Exclude(data)),
+                RuleKind::Protect => rules.push(Rule::Protect(data)),
             }
         }
     }
 
     Ok(rules)
+}
+
+const CVS_DEFAULTS: &[&str] = &[
+    "RCS",
+    "SCCS",
+    "CVS",
+    "CVS.adm",
+    "RCSLOG",
+    "cvslog.*",
+    "tags",
+    "TAGS",
+    ".make.state",
+    ".nse_depinfo",
+    "*~",
+    "#*",
+    ".#*",
+    ",*",
+    "_$*",
+    "*$",
+    "*.old",
+    "*.bak",
+    "*.BAK",
+    "*.orig",
+    "*.rej",
+    ".del-*",
+    "*.a",
+    "*.olb",
+    "*.o",
+    "*.obj",
+    "*.so",
+    "*.exe",
+    "*.Z",
+    "*.elc",
+    "*.ln",
+    "core",
+    ".svn/",
+    ".git/",
+    ".hg/",
+    ".bzr/",
+];
+
+fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
+    let mut out = Vec::new();
+    for pat in CVS_DEFAULTS {
+        let dir_only = pat.ends_with('/');
+        let mut base = pat.trim_end_matches('/').to_string();
+        if !base.contains('/') {
+            base = format!("**/{}", base);
+        }
+        let pats = if dir_only {
+            vec![base.clone(), format!("{}/**", base)]
+        } else {
+            vec![base]
+        };
+        for p in pats {
+            let matcher = Glob::new(&p)?.compile_matcher();
+            let data = RuleData {
+                matcher,
+                invert: false,
+                flags: RuleFlags {
+                    perishable: true,
+                    ..Default::default()
+                },
+            };
+            out.push(Rule::Exclude(data));
+        }
+    }
+    Ok(out)
 }

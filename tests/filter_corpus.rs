@@ -15,6 +15,8 @@ fn setup_basic(src: &Path) {
     fs::write(src.join("skip/file.txt"), "skip").unwrap();
     fs::write(src.join("root.tmp"), "root").unwrap();
     fs::write(src.join("note.md"), "note").unwrap();
+    fs::write(src.join("core"), "core").unwrap();
+    fs::write(src.join("foo.o"), "obj").unwrap();
 }
 
 fn setup_perdir(src: &Path) {
