@@ -68,6 +68,85 @@ fn whole_file_direct_copy() {
 }
 
 #[test]
+fn ignore_existing_skips_file() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    fs::write(src_dir.join("a.txt"), b"new").unwrap();
+    fs::write(dst_dir.join("a.txt"), b"old").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--ignore-existing",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let out = fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, b"old");
+}
+
+#[test]
+fn size_only_skips_same_sized_file() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    fs::write(src_dir.join("a.txt"), b"new").unwrap();
+    let dst_file = dst_dir.join("a.txt");
+    fs::write(&dst_file, b"old").unwrap();
+    set_file_mtime(&dst_file, FileTime::from_unix_time(0, 0)).unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--size-only",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let out = fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, b"old");
+}
+
+#[test]
+fn ignore_times_forces_update() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let src_file = src_dir.join("a.txt");
+    let dst_file = dst_dir.join("a.txt");
+    fs::write(&src_file, b"new").unwrap();
+    fs::write(&dst_file, b"old").unwrap();
+    let t = FileTime::from_unix_time(1_000_000_000, 0);
+    set_file_mtime(&src_file, t).unwrap();
+    set_file_mtime(&dst_file, t).unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--ignore-times",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let out = fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, b"new");
+}
+
+#[test]
 fn local_sync_without_flag_fails() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");

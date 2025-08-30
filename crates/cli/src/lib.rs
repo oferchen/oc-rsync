@@ -50,6 +50,12 @@ struct ClientOpts {
     sparse: bool,
     #[arg(short = 'u', long, help_heading = "Misc")]
     update: bool,
+    #[arg(long, help_heading = "Misc")]
+    ignore_existing: bool,
+    #[arg(long = "size-only", help_heading = "Misc")]
+    size_only: bool,
+    #[arg(short = 'I', long = "ignore-times", help_heading = "Misc")]
+    ignore_times: bool,
     #[arg(short, long, action = ArgAction::Count, help_heading = "Output")]
     verbose: u8,
     #[arg(long = "human-readable", help_heading = "Output")]
@@ -186,7 +192,7 @@ struct ClientOpts {
     append: bool,
     #[arg(long = "append-verify", help_heading = "Misc")]
     append_verify: bool,
-    #[arg(short = 'I', long, help_heading = "Misc")]
+    #[arg(long, help_heading = "Misc")]
     inplace: bool,
     #[arg(long = "bwlimit", value_name = "RATE", help_heading = "Misc")]
     bwlimit: Option<u64>,
@@ -832,6 +838,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         dirs: opts.dirs,
         list_only: opts.list_only,
         update: opts.update,
+        ignore_existing: opts.ignore_existing,
+        size_only: opts.size_only,
+        ignore_times: opts.ignore_times,
         perms: opts.perms || opts.archive,
         executability: opts.executability,
         times: opts.times || opts.archive,
@@ -1759,6 +1768,21 @@ mod tests {
     fn parses_skip_compress_list() {
         let opts = ClientOpts::parse_from(["prog", "--skip-compress=gz,zip", "src", "dst"]);
         assert_eq!(opts.skip_compress, vec!["gz", "zip"]);
+    }
+
+    #[test]
+    fn parses_skip_flags() {
+        let opts = ClientOpts::parse_from([
+            "prog",
+            "--ignore-existing",
+            "--size-only",
+            "--ignore-times",
+            "src",
+            "dst",
+        ]);
+        assert!(opts.ignore_existing);
+        assert!(opts.size_only);
+        assert!(opts.ignore_times);
     }
 
     #[test]
