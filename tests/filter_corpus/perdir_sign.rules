@@ -1,0 +1,1 @@
+--filter=':+ .rsync-filter' --filter='- .rsync-filter'

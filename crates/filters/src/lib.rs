@@ -52,6 +52,8 @@ pub struct PerDir {
     root_only: bool,
     inherit: bool,
     cvs: bool,
+    word_split: bool,
+    sign: Option<char>,
 }
 
 #[derive(Clone)]
@@ -66,7 +68,7 @@ pub struct Matcher {
     rules: Vec<(usize, Rule)>,
     per_dir: Vec<(usize, PerDir)>,
     extra_per_dir: RefCell<HashMap<PathBuf, Vec<(usize, PerDir)>>>,
-    cached: RefCell<HashMap<PathBuf, Cached>>,
+    cached: RefCell<HashMap<(PathBuf, Option<char>, bool), Cached>>,
 }
 
 impl Matcher {
@@ -253,18 +255,28 @@ impl Matcher {
             };
 
             let mut cache = self.cached.borrow_mut();
-            let state = if let Some(c) = cache.get(&path) {
+            let key = (path.clone(), pd.sign, pd.word_split);
+            let state = if let Some(c) = cache.get(&key) {
                 c.clone()
             } else {
                 let mut visited = HashSet::new();
                 visited.insert(path.clone());
-                let (rules, merges) =
-                    self.load_merge_file(dir, &path, rel.as_deref(), pd.cvs, &mut visited, 0, idx)?;
+                let (rules, merges) = self.load_merge_file(
+                    dir,
+                    &path,
+                    rel.as_deref(),
+                    pd.cvs,
+                    pd.word_split,
+                    pd.sign,
+                    &mut visited,
+                    0,
+                    idx,
+                )?;
                 let cached = Cached {
                     rules: rules.clone(),
                     merges: merges.clone(),
                 };
-                cache.insert(path.clone(), cached.clone());
+                cache.insert(key, cached.clone());
                 cached
             };
 
@@ -291,6 +303,8 @@ impl Matcher {
         path: &Path,
         rel: Option<&Path>,
         cvs: bool,
+        word_split: bool,
+        sign: Option<char>,
         visited: &mut HashSet<PathBuf>,
         depth: usize,
         index: usize,
@@ -299,12 +313,12 @@ impl Matcher {
             return Err(ParseError::RecursionLimit);
         }
 
-        let content = match fs::read_to_string(path) {
+        let mut content = match fs::read_to_string(path) {
             Ok(c) => c,
             Err(_) => return Ok((Vec::new(), Vec::new())),
         };
 
-        let adjusted = if cvs || path.file_name().map_or(false, |f| f == ".cvsignore") {
+        let mut adjusted = if cvs || path.file_name().map_or(false, |f| f == ".cvsignore") {
             let rel_str = rel.map(|p| p.to_string_lossy().to_string());
             let mut buf = String::new();
             for token in content.split_whitespace() {
@@ -325,44 +339,72 @@ impl Matcher {
                 buf.push('\n');
             }
             buf
-        } else if let Some(rel) = rel {
-            let rel_str = rel.to_string_lossy();
-            let mut buf = String::new();
-            for raw_line in content.lines() {
-                let line = raw_line.trim();
-                if line.is_empty() || line.starts_with('#') {
-                    continue;
-                }
-                if line == "!" {
-                    buf.push_str("!\n");
-                    continue;
-                }
-                let (kind, pat) = if let Some(rest) = line.strip_prefix('+') {
-                    ('+', rest.trim_start())
-                } else if let Some(rest) = line.strip_prefix('-') {
-                    ('-', rest.trim_start())
-                } else if let Some(rest) = line.strip_prefix('P').or_else(|| line.strip_prefix('p'))
-                {
-                    ('P', rest.trim_start())
-                } else {
-                    buf.push_str(raw_line);
-                    buf.push('\n');
-                    continue;
-                };
-                let new_pat = if pat.starts_with('/') {
-                    format!("/{}/{}", rel_str, pat.trim_start_matches('/'))
-                } else {
-                    format!("{}/{}", rel_str, pat)
-                };
-                buf.push(kind);
-                buf.push(' ');
-                buf.push_str(&new_pat);
-                buf.push('\n');
-            }
-            buf
         } else {
-            content
+            if word_split {
+                let mut buf = String::new();
+                for token in content.split_whitespace() {
+                    buf.push_str(token);
+                    buf.push('\n');
+                }
+                content = buf;
+            }
+            if let Some(rel) = rel {
+                let rel_str = rel.to_string_lossy();
+                let mut buf = String::new();
+                for raw_line in content.lines() {
+                    let line = raw_line.trim();
+                    if line.is_empty() || line.starts_with('#') {
+                        continue;
+                    }
+                    if line == "!" {
+                        buf.push_str("!\n");
+                        continue;
+                    }
+                    let (kind, pat) = if let Some(rest) = line.strip_prefix('+') {
+                        ('+', rest.trim_start())
+                    } else if let Some(rest) = line.strip_prefix('-') {
+                        ('-', rest.trim_start())
+                    } else if let Some(rest) =
+                        line.strip_prefix('P').or_else(|| line.strip_prefix('p'))
+                    {
+                        ('P', rest.trim_start())
+                    } else {
+                        buf.push_str(raw_line);
+                        buf.push('\n');
+                        continue;
+                    };
+                    let new_pat = if pat.starts_with('/') {
+                        format!("/{}/{}", rel_str, pat.trim_start_matches('/'))
+                    } else {
+                        format!("{}/{}", rel_str, pat)
+                    };
+                    buf.push(kind);
+                    buf.push(' ');
+                    buf.push_str(&new_pat);
+                    buf.push('\n');
+                }
+                buf
+            } else {
+                content
+            }
         };
+
+        if !cvs {
+            if let Some(ch) = sign {
+                let mut buf = String::new();
+                for raw in adjusted.lines() {
+                    let line = raw.trim();
+                    if line.is_empty() || line.starts_with('#') {
+                        continue;
+                    }
+                    buf.push(ch);
+                    buf.push(' ');
+                    buf.push_str(line);
+                    buf.push('\n');
+                }
+                adjusted = buf;
+            }
+        }
 
         let mut rules = Vec::new();
         let mut merges = Vec::new();
@@ -385,8 +427,17 @@ impl Matcher {
                         return Err(ParseError::RecursiveInclude(nested));
                     }
                     let rel2 = if pd.anchored { None } else { rel };
-                    let (mut nr, mut nm) =
-                        self.load_merge_file(dir, &nested, rel2, pd.cvs, visited, depth + 1, index)?;
+                    let (mut nr, mut nm) = self.load_merge_file(
+                        dir,
+                        &nested,
+                        rel2,
+                        pd.cvs,
+                        pd.word_split,
+                        pd.sign,
+                        visited,
+                        depth + 1,
+                        index,
+                    )?;
                     rules.append(&mut nr);
                     merges.append(&mut nm);
                 }
@@ -469,6 +520,8 @@ pub fn parse(
                     root_only: false,
                     inherit: true,
                     cvs: false,
+                    word_split: false,
+                    sign: None,
                 }));
                 if !rest.is_empty() {
                     let matcher = Glob::new("**/.rsync-filter")?.compile_matcher();
@@ -539,20 +592,30 @@ pub fn parse(
                     buf.push('\n');
                 }
                 content = buf;
-            } else if m.contains('+') || m.contains('-') {
-                let sign = if m.contains('+') { '+' } else { '-' };
-                let mut buf = String::new();
-                for raw in content.lines() {
-                    let line = raw.trim();
-                    if line.is_empty() || line.starts_with('#') {
-                        continue;
+            } else {
+                if m.contains('w') {
+                    let mut buf = String::new();
+                    for token in content.split_whitespace() {
+                        buf.push_str(token);
+                        buf.push('\n');
                     }
-                    buf.push(sign);
-                    buf.push(' ');
-                    buf.push_str(line);
-                    buf.push('\n');
+                    content = buf;
                 }
-                content = buf;
+                if m.contains('+') || m.contains('-') {
+                    let sign = if m.contains('+') { '+' } else { '-' };
+                    let mut buf = String::new();
+                    for raw in content.lines() {
+                        let line = raw.trim();
+                        if line.is_empty() || line.starts_with('#') {
+                            continue;
+                        }
+                        buf.push(sign);
+                        buf.push(' ');
+                        buf.push_str(line);
+                        buf.push('\n');
+                    }
+                    content = buf;
+                }
             }
             let mut sub = parse(&content, visited, depth + 1)?;
             if m.contains('s') || m.contains('r') || m.contains('p') || m.contains('x') {
@@ -611,6 +674,8 @@ pub fn parse(
                         root_only: false,
                         inherit: true,
                         cvs: true,
+                        word_split: false,
+                        sign: None,
                     }));
                     continue;
                 } else {
@@ -623,12 +688,21 @@ pub fn parse(
             } else {
                 file.to_string()
             };
+            let sign = if m.contains('+') {
+                Some('+')
+            } else if m.contains('-') {
+                Some('-')
+            } else {
+                None
+            };
             rules.push(Rule::DirMerge(PerDir {
                 file: fname.clone(),
                 anchored,
                 root_only: false,
                 inherit: !m.contains('n'),
                 cvs: m.contains('C'),
+                word_split: m.contains('w'),
+                sign,
             }));
             if m.contains('e') {
                 let pat = format!("**/{}", fname);
@@ -675,6 +749,8 @@ pub fn parse(
                         root_only: anchored,
                         inherit: true,
                         cvs: false,
+                        word_split: false,
+                        sign: None,
                     }));
                     continue;
                 }
