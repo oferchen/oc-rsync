@@ -78,8 +78,8 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--include-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--info` | — | ❌ | — | — |  | ≤3.2 |
 | `--inplace` | — | ✅ | ✅ | [tests/golden/cli_parity/inplace.sh](../tests/golden/cli_parity/inplace.sh) |  | ≤3.2 |
-| `--ipv4` | `-4` | ❌ | — | — |  | ≤3.2 |
-| `--ipv6` | `-6` | ❌ | — | — |  | ≤3.2 |
+| `--ipv4` | `-4` | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | select IPv4 transport or listener | ≤3.2 |
+| `--ipv6` | `-6` | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | select IPv6 transport or listener | ≤3.2 |
 | `--itemize-changes` | `-i` | ❌ | — | — |  | ≤3.2 |
 | `--keep-dirlinks` | `-K` | ❌ | — | — |  | ≤3.2 |
 | `--link-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
@@ -115,7 +115,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--partial-dir` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--password-file` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--perms` | `-p` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--port` | — | ❌ | — | — |  | ≤3.2 |
+| `--port` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | overrides default port | ≤3.2 |
 | `--preallocate` | — | ❌ | — | — |  | ≤3.2 |
 | `--progress` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--protocol` | — | ❌ | — | — |  | ≤3.2 |

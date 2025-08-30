@@ -73,6 +73,38 @@ fn spawn_daemon_with_address(addr: &str) -> (Child, u16) {
     (child, port)
 }
 
+fn spawn_daemon_ipv4() -> (Child, u16) {
+    let mut child = StdCommand::cargo_bin("rsync-rs")
+        .unwrap()
+        .args(["--daemon", "--module", "data=/tmp", "--port", "0", "-4"])
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let port = read_port(&mut child);
+    (child, port)
+}
+
+fn spawn_daemon_ipv6() -> (Child, u16) {
+    let mut child = StdCommand::cargo_bin("rsync-rs")
+        .unwrap()
+        .args(["--daemon", "--module", "data=/tmp", "--port", "0", "-6"])
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let port = read_port(&mut child);
+    (child, port)
+}
+
+fn wait_for_daemon_v6(port: u16) {
+    for _ in 0..20 {
+        if TcpStream::connect(("::1", port)).is_ok() {
+            return;
+        }
+        sleep(Duration::from_millis(50));
+    }
+    panic!("daemon did not start");
+}
+
 fn wait_for_daemon(port: u16) {
     for _ in 0..20 {
         if TcpStream::connect(("127.0.0.1", port)).is_ok() {
@@ -105,6 +137,27 @@ fn daemon_binds_to_specified_address() {
     wait_for_daemon(port);
     TcpStream::connect(("127.0.0.1", port)).unwrap();
     assert!(TcpStream::connect(("127.0.0.2", port)).is_err());
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_binds_with_ipv4_flag() {
+    let (mut child, port) = spawn_daemon_ipv4();
+    wait_for_daemon(port);
+    TcpStream::connect(("127.0.0.1", port)).unwrap();
+    assert!(TcpStream::connect(("::1", port)).is_err());
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_binds_with_ipv6_flag() {
+    let (mut child, port) = spawn_daemon_ipv6();
+    wait_for_daemon_v6(port);
+    TcpStream::connect(("::1", port)).unwrap();
     let _ = child.kill();
     let _ = child.wait();
 }

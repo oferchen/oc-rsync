@@ -2,6 +2,11 @@
 
 `rsync-rs` can act as a standalone daemon that listens on TCP port 873 and serves one or more exported modules. The daemon is started with `--daemon` and at least one `--module` declaration of the form `name=path`.
 
+The default listener binds to all IPv4 interfaces on port 873. Supply
+`--port` to choose a different port. The `-4` and `-6` flags restrict the
+listener to IPv4 or IPv6 addresses respectively. These can be combined with
+`--address` to bind a specific interface.
+
 ## Module setup
 
 Modules map a name to a directory on disk. Each module is supplied on the command line:

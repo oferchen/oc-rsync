@@ -1,5 +1,5 @@
 use std::io::{self, Read, Write};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 use crate::{AddressFamily, DaemonTransport, Transport};
@@ -39,8 +39,17 @@ impl TcpTransport {
     /// port which is reported in the returned tuple.  This mirrors the
     /// behaviour of `rsyncd.conf` where specifying `port 0` asks the daemon to
     /// bind to any available port.
-    pub fn listen(addr: Option<IpAddr>, port: u16) -> io::Result<(TcpListener, u16)> {
-        let addr = addr.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+    pub fn listen(
+        addr: Option<IpAddr>,
+        port: u16,
+        family: Option<AddressFamily>,
+    ) -> io::Result<(TcpListener, u16)> {
+        let addr = match (addr, family) {
+            (Some(a), _) => a,
+            (None, Some(AddressFamily::V4)) => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+            (None, Some(AddressFamily::V6)) => IpAddr::V6(Ipv6Addr::UNSPECIFIED),
+            (None, None) => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+        };
         let listener = TcpListener::bind((addr, port))?;
         let port = listener.local_addr()?.port();
         Ok((listener, port))
