@@ -16,12 +16,12 @@
   },
   {
     "flag": "--append",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--append-verify",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -46,7 +46,7 @@
   },
   {
     "flag": "--block-size",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -56,7 +56,7 @@
   },
   {
     "flag": "--bwlimit",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -76,12 +76,12 @@
   },
   {
     "flag": "--chmod",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--chown",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -106,7 +106,7 @@
   },
   {
     "flag": "--contimeout",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -126,17 +126,17 @@
   },
   {
     "flag": "--copy-dirlinks",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--copy-links",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--copy-unsafe-links",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -191,7 +191,7 @@
   },
   {
     "flag": "--delete-excluded",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -206,7 +206,7 @@
   },
   {
     "flag": "--dirs",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -231,7 +231,7 @@
   },
   {
     "flag": "--executability",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -311,7 +311,7 @@
   },
   {
     "flag": "--ignore-existing",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -321,7 +321,7 @@
   },
   {
     "flag": "--ignore-times",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -346,17 +346,17 @@
   },
   {
     "flag": "--ipv4",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--ipv6",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--itemize-changes",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -376,7 +376,7 @@
   },
   {
     "flag": "--list-only",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -436,7 +436,7 @@
   },
   {
     "flag": "--no-motd",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -461,12 +461,12 @@
   },
   {
     "flag": "--omit-dir-times",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--omit-link-times",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -521,7 +521,7 @@
   },
   {
     "flag": "--port",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -536,7 +536,7 @@
   },
   {
     "flag": "--protocol",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -586,7 +586,7 @@
   },
   {
     "flag": "--safe-links",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -596,12 +596,12 @@
   },
   {
     "flag": "--size-only",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--skip-compress",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -651,12 +651,12 @@
   },
   {
     "flag": "--temp-dir",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--timeout",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -671,7 +671,7 @@
   },
   {
     "flag": "--update",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -691,7 +691,7 @@
   },
   {
     "flag": "--whole-file",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -716,12 +716,12 @@
   },
   {
     "flag": "-4",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --ipv4"
   },
   {
     "flag": "-6",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --ipv6"
   },
   {
@@ -741,12 +741,12 @@
   },
   {
     "flag": "-B",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --block-size"
   },
   {
     "flag": "-C",
-    "status": "Supported",
+    "status": "Alias",
     "notes": "alias for --cvs-exclude"
   },
   {
@@ -756,7 +756,7 @@
   },
   {
     "flag": "-E",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --executability"
   },
   {
@@ -776,7 +776,7 @@
   },
   {
     "flag": "-J",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --omit-link-times"
   },
   {
@@ -786,7 +786,7 @@
   },
   {
     "flag": "-L",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --copy-links"
   },
   {
@@ -801,7 +801,7 @@
   },
   {
     "flag": "-O",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --omit-dir-times"
   },
   {
@@ -821,7 +821,7 @@
   },
   {
     "flag": "-T",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --temp-dir"
   },
   {
@@ -836,7 +836,7 @@
   },
   {
     "flag": "-W",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --whole-file"
   },
   {
@@ -851,7 +851,7 @@
   },
   {
     "flag": "-b",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --backup"
   },
   {
@@ -861,7 +861,7 @@
   },
   {
     "flag": "-d",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --dirs"
   },
   {
@@ -871,7 +871,7 @@
   },
   {
     "flag": "-f",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --filter"
   },
   {
@@ -886,12 +886,12 @@
   },
   {
     "flag": "-i",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --itemize-changes"
   },
   {
     "flag": "-k",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --copy-dirlinks"
   },
   {
@@ -941,7 +941,7 @@
   },
   {
     "flag": "-u",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --update"
   },
   {

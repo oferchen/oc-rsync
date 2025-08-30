@@ -9,8 +9,7 @@ use std::time::Duration;
 
 use compress::{available_codecs, Codec};
 use protocol::{
-    negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION,
-    SUPPORTED_CAPS,
+    negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, SUPPORTED_CAPS,
 };
 
 use crate::{AddressFamily, LocalPipeTransport, SshTransport, Transport};
@@ -170,6 +169,7 @@ impl SshStdioTransport {
         transport: &mut T,
         env: &[(String, String)],
         modern: bool,
+        version: u32,
     ) -> io::Result<Vec<Codec>> {
         for (k, v) in env {
             let mut buf = Vec::new();
@@ -180,7 +180,7 @@ impl SshStdioTransport {
             transport.send(&buf)?;
         }
         transport.send(&[0])?;
-        transport.send(&LATEST_VERSION.to_be_bytes())?;
+        transport.send(&version.to_be_bytes())?;
 
         let mut ver_buf = [0u8; 4];
         let mut read = 0;
@@ -203,7 +203,7 @@ impl SshStdioTransport {
 
         let mut peer_codecs = vec![Codec::Zlib];
         if caps & CAP_CODECS != 0 {
-            let payload = compress::encode_codecs(available_codecs());
+            let payload = compress::encode_codecs(&available_codecs(modern));
             let frame = Message::Codecs(payload).to_frame(0);
             let mut buf = Vec::new();
             frame
@@ -349,6 +349,7 @@ impl SshStdioTransport {
         connect_timeout: Option<Duration>,
         family: Option<AddressFamily>,
         modern: bool,
+        version: u32,
     ) -> io::Result<(Self, Vec<Codec>)> {
         let mut t = Self::spawn_with_rsh(
             host,
@@ -363,7 +364,7 @@ impl SshStdioTransport {
             connect_timeout,
             family,
         )?;
-        let codecs = Self::handshake(&mut t, rsync_env, modern)?;
+        let codecs = Self::handshake(&mut t, rsync_env, modern, version)?;
         Ok((t, codecs))
     }
 
