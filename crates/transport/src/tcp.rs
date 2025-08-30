@@ -33,9 +33,17 @@ impl TcpTransport {
     }
 
     /// Create a TCP listener bound to the given address and port.
-    pub fn listen(addr: Option<IpAddr>, port: u16) -> io::Result<TcpListener> {
+    ///
+    /// Returns the listener along with the actual port it was bound to.  When
+    /// `port` is set to 0 the operating system will select a free ephemeral
+    /// port which is reported in the returned tuple.  This mirrors the
+    /// behaviour of `rsyncd.conf` where specifying `port 0` asks the daemon to
+    /// bind to any available port.
+    pub fn listen(addr: Option<IpAddr>, port: u16) -> io::Result<(TcpListener, u16)> {
         let addr = addr.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
-        TcpListener::bind((addr, port))
+        let listener = TcpListener::bind((addr, port))?;
+        let port = listener.local_addr()?.port();
+        Ok((listener, port))
     }
 
     /// Create a transport from an existing `TcpStream`.

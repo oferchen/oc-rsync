@@ -7,71 +7,69 @@ use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use std::process::{Child, Command as StdCommand};
+use std::process::{Child, Command as StdCommand, Stdio};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use transport::{TcpTransport, Transport};
 
+fn read_port(child: &mut Child) -> u16 {
+    let stdout = child.stdout.as_mut().unwrap();
+    let mut buf = Vec::new();
+    let mut byte = [0u8; 1];
+    while stdout.read(&mut byte).unwrap() == 1 {
+        if byte[0] == b'\n' {
+            break;
+        }
+        buf.push(byte[0]);
+    }
+    String::from_utf8(buf).unwrap().trim().parse().unwrap()
+}
+
 fn spawn_daemon() -> (Child, u16) {
-    let port = TcpListener::bind("127.0.0.1:0")
+    let mut child = StdCommand::cargo_bin("rsync-rs")
         .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-    let child = StdCommand::cargo_bin("rsync-rs")
-        .unwrap()
-        .args([
-            "--daemon",
-            "--module",
-            "data=/tmp",
-            "--port",
-            &port.to_string(),
-        ])
+        .args(["--daemon", "--module", "data=/tmp", "--port", "0"])
+        .stdout(Stdio::piped())
         .spawn()
         .unwrap();
+    let port = read_port(&mut child);
     (child, port)
 }
 
 fn spawn_temp_daemon() -> (Child, u16, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
-    let port = TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-    let child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("rsync-rs")
         .unwrap()
         .args([
             "--daemon",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
-            &port.to_string(),
+            "0",
         ])
+        .stdout(Stdio::piped())
         .spawn()
         .unwrap();
+    let port = read_port(&mut child);
     (child, port, dir)
 }
 
 fn spawn_daemon_with_address(addr: &str) -> (Child, u16) {
-    let port = TcpListener::bind((addr, 0))
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-    let child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("rsync-rs")
         .unwrap()
         .args([
             "--daemon",
             "--module",
             "data=/tmp",
             "--port",
-            &port.to_string(),
+            "0",
             "--address",
             addr,
         ])
+        .stdout(Stdio::piped())
         .spawn()
         .unwrap();
+    let port = read_port(&mut child);
     (child, port)
 }
 
@@ -89,6 +87,7 @@ fn wait_for_daemon(port: u16) {
 #[serial]
 fn daemon_negotiates_version_with_client() {
     let (mut child, port) = spawn_daemon();
+    assert_ne!(port, 873);
     wait_for_daemon(port);
     let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
     stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();

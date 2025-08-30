@@ -1511,7 +1511,11 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     let timeout = opts.timeout;
     let bwlimit = opts.bwlimit;
 
-    let listener = TcpTransport::listen(opts.address, opts.port)?;
+    let (listener, port) = TcpTransport::listen(opts.address, opts.port)?;
+    if opts.port == 0 {
+        println!("{}", port);
+        let _ = io::stdout().flush();
+    }
 
     loop {
         let (stream, addr) = listener.accept()?;
