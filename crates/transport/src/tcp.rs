@@ -1,6 +1,6 @@
 // crates/transport/src/tcp.rs
 use std::io::{self, Read, Write};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 use crate::{AddressFamily, DaemonTransport, Transport};

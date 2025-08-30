@@ -452,6 +452,10 @@ struct DaemonOpts {
     address: Option<IpAddr>,
     #[arg(long, default_value_t = 873)]
     port: u16,
+    #[arg(short = '4', long = "ipv4", conflicts_with = "ipv6")]
+    ipv4: bool,
+    #[arg(short = '6', long = "ipv6", conflicts_with = "ipv4")]
+    ipv6: bool,
     #[arg(long = "timeout", value_name = "SECONDS", value_parser = parse_duration)]
     timeout: Option<Duration>,
     #[arg(long = "contimeout", value_name = "SECONDS", value_parser = parse_duration)]
@@ -1457,8 +1461,15 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     let motd = opts.motd.clone();
     let timeout = opts.timeout;
     let bwlimit = opts.bwlimit;
+    let family = if opts.ipv4 {
+        Some(AddressFamily::V4)
+    } else if opts.ipv6 {
+        Some(AddressFamily::V6)
+    } else {
+        None
+    };
 
-    let (listener, port) = TcpTransport::listen(opts.address, opts.port)?;
+    let (listener, port) = TcpTransport::listen(opts.address, opts.port, family)?;
     if opts.port == 0 {
         println!("{}", port);
         let _ = io::stdout().flush();
