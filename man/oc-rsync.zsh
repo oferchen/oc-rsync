@@ -26,12 +26,16 @@ _oc-rsync() {
 '--compress-level=[]:NUM:_default' \
 '--zl=[]:NUM:_default' \
 '*--skip-compress=[]:LIST:_default' \
+'--modern-compress=[]:MODERN_COMPRESS:(auto zstd lz4)' \
+'--modern-hash=[]:MODERN_HASH:()' \
+'--modern-cdc=[]:MODERN_CDC:(fastcdc off)' \
 '--partial-dir=[]:DIR:_files' \
 '-T+[]:DIR:_files' \
 '--temp-dir=[]:DIR:_files' \
 '--bwlimit=[]:RATE:_default' \
 '--timeout=[]:SECONDS:_default' \
 '--contimeout=[]:SECONDS:_default' \
+'--protocol=[force an older protocol version]:VER:_default' \
 '--port=[]:PORT:_default' \
 '-B+[]:SIZE:_default' \
 '--block-size=[]:SIZE:_default' \
@@ -41,6 +45,7 @@ _oc-rsync() {
 '--config=[]:FILE:_files' \
 '--known-hosts=[]:FILE:_files' \
 '--password-file=[]:FILE:_files' \
+'--early-input=[]:FILE:_files' \
 '-e+[]:COMMAND:_default' \
 '--rsh=[]:COMMAND:_default' \
 '--rsync-path=[]:PATH:_default' \
@@ -78,6 +83,8 @@ _oc-rsync() {
 '-q[]' \
 '--quiet[]' \
 '--no-motd[]' \
+'-8[]' \
+'--8-bit-output[]' \
 '-i[output a change-summary for all updates]' \
 '--itemize-changes[output a change-summary for all updates]' \
 '--delete[]' \
@@ -116,9 +123,10 @@ _oc-rsync() {
 '--specials[]' \
 '-z[]' \
 '--compress[]' \
-'--modern[Enable zstd compression and BLAKE3 checksums (requires \`blake3\` feature)]' \
+'--modern[Enable modern compression (zstd or lz4) and BLAKE3 checksums (requires \`blake3\` feature)]' \
 '--partial[]' \
 '--progress[]' \
+'--blocking-io[]' \
 '-P[]' \
 '--append[]' \
 '--append-verify[]' \
