@@ -203,7 +203,7 @@ impl SshStdioTransport {
 
         let mut peer_codecs = vec![Codec::Zlib];
         if caps & CAP_CODECS != 0 {
-            let payload = compress::encode_codecs(available_codecs());
+            let payload = compress::encode_codecs(&available_codecs(modern));
             let frame = Message::Codecs(payload).to_frame(0);
             let mut buf = Vec::new();
             frame
