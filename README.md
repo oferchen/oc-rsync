@@ -25,6 +25,9 @@ Platform support status is tracked in the [compatibility matrix](docs/compat_mat
 An overview of tested operating systems and interoperability notes lives in
 [docs/compatibility.md](docs/compatibility.md).
 
+## Specifications
+The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.x are bundled in [docs/spec](docs/spec) and serve as the project's authoritative specification. See [docs/spec/rsync.1](docs/spec/rsync.1) and [docs/spec/rsyncd.conf.5](docs/spec/rsyncd.conf.5).
+
 ## In-Scope Features
 - Local and remote file synchronization over SSH and `rsync://`.
 - Delta-transfer algorithm with rolling checksum.
