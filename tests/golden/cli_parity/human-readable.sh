@@ -14,12 +14,20 @@ dd if=/dev/zero of="$TMP/src/file" bs=1024 count=2 >/dev/null 2>&1
 # Reference copy using rsync
 rsync --stats --recursive "$TMP/src/" "$TMP/rsync_dst/" >/dev/null
 
-rsync_rs_raw=$("$RSYNC_RS" --local --stats --human-readable --recursive "$TMP/src/" "$TMP/rsync_rs_dst/" 2>&1)
+rsync_rs_raw=$("$RSYNC_RS" --local --stats --progress --human-readable --recursive "$TMP/src/" "$TMP/rsync_rs_dst/" 2>&1)
 rsync_rs_status=$?
+rsync_rs_progress=$(echo "$rsync_rs_raw" | grep -F "$TMP/rsync_rs_dst/file" || true)
 rsync_rs_output=$(echo "$rsync_rs_raw" | grep 'bytes transferred' || true)
 
 if [ "$rsync_rs_status" -ne 0 ]; then
   echo "rsync-rs exited with $rsync_rs_status" >&2
+  exit 1
+fi
+
+expected_progress="$TMP/rsync_rs_dst/file: 2.00KiB"
+if [ "$rsync_rs_progress" != "$expected_progress" ]; then
+  echo "Progress outputs differ" >&2
+  diff -u <(printf "%s" "$expected_progress") <(printf "%s" "$rsync_rs_progress") >&2 || true
   exit 1
 fi
 

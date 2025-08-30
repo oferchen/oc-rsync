@@ -59,7 +59,7 @@
 | --groupmap | Error |  |
 | --hard-links | Supported |  |
 | --help | Supported |  |
-| --human-readable | Error |  |
+| --human-readable | Supported |  |
 | --iconv | Error |  |
 | --ignore-errors | Error |  |
 | --ignore-existing | Error |  |

@@ -130,7 +130,7 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--groupmap` | off |  | [matrix](feature_matrix.md#--groupmap) |
 | `-H` | `--hard-links` | off |  | [matrix](feature_matrix.md#--hard-links) |
 | `-h (*)` | `--help` | off |  | [matrix](feature_matrix.md#--help) |
-| `-h` | `--human-readable` | off |  | [matrix](feature_matrix.md#--human-readable) |
+|  | `--human-readable` | off |  | [matrix](feature_matrix.md#--human-readable) |
 |  | `--iconv` | off |  | [matrix](feature_matrix.md#--iconv) |
 |  | `--ignore-errors` | off |  | [matrix](feature_matrix.md#--ignore-errors) |
 |  | `--ignore-existing` | off |  | [matrix](feature_matrix.md#--ignore-existing) |
