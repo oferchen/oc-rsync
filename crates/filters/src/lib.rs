@@ -331,8 +331,10 @@ impl Matcher {
                     } else {
                         format!("{}/{}", rel_str, token)
                     }
-                } else {
+                } else if token.starts_with('/') {
                     token.to_string()
+                } else {
+                    format!("/{}", token)
                 };
                 buf.push_str("- ");
                 buf.push_str(&pat);

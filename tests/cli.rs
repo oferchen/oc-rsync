@@ -959,5 +959,5 @@ fn cvs_exclude_skips_ignored_files() {
     assert!(!dst.join("env_ignored").exists());
     assert!(!dst.join("home_ignored").exists());
     assert!(!dst.join("local_ignored").exists());
-    assert!(!dst.join(".cvsignore").exists());
+    assert!(dst.join(".cvsignore").exists());
 }

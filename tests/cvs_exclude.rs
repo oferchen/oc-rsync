@@ -19,6 +19,18 @@ fn cvs_exclude_parity() {
     fs::write(src.join("local_ignored"), "local").unwrap();
     fs::write(src.join(".cvsignore"), "local_ignored\n").unwrap();
 
+    let sub = src.join("sub");
+    fs::create_dir_all(&sub).unwrap();
+    fs::write(sub.join("local_ignored"), "sublocal").unwrap();
+    fs::write(sub.join("env_ignored"), "env").unwrap();
+    fs::write(sub.join("home_ignored"), "home").unwrap();
+    fs::write(sub.join("sub_ignored"), "sub").unwrap();
+    fs::write(sub.join(".cvsignore"), "sub_ignored\n").unwrap();
+
+    let nested = sub.join("nested");
+    fs::create_dir_all(&nested).unwrap();
+    fs::write(nested.join("sub_ignored"), "nested").unwrap();
+
     let home = tempdir().unwrap();
     fs::write(home.path().join(".cvsignore"), "home_ignored\n").unwrap();
 
