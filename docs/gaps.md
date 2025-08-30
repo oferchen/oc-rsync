@@ -25,13 +25,9 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
 - No `TODO` markers are present in the repository at this time.
 
 ## Test coverage gaps
-- `tests/remote_remote.rs` exercises remote-to-remote transfers but only covers a basic pipe scenario; broader coverage for `--rsh` and related flows is missing (see `docs/feature_matrix.md` `--rsh`).
-- Filter rule handling still lacks comprehensive tests; see `docs/feature_matrix.md` entry for `--filter`.
-- Many CLI options listed in `docs/feature_matrix.md` have no associated tests.
-- The `--modern` convenience flag lacks dedicated tests.
+ - Many CLI options listed in `docs/feature_matrix.md` have no associated tests.
 
 ## Continuous integration deficiencies
 - Coverage is collected on Linux and Windows using `cargo-llvm-cov` with `--fail-under-lines 80` and `--fail-under-functions 80` thresholds.
   Raise these thresholds as the test suite stabilizes.
 - Nightly jobs fuzz all targets for longer runs, yet pull requests still rely on brief smoke tests.
-- Remote-to-remote transfers and filter rules lack dedicated CI coverage.
