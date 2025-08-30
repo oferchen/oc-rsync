@@ -6,6 +6,8 @@ use std::io::{self, Read, Write};
 use std::net::{IpAddr, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+
+use daemon::{authenticate, chroot_and_drop_privileges, parse_module, Module};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -258,27 +260,6 @@ struct ClientOpts {
     files_from: Vec<PathBuf>,
     #[arg(long)]
     from0: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Module {
-    name: String,
-    path: PathBuf,
-}
-
-fn parse_module(s: &str) -> std::result::Result<Module, String> {
-    let mut parts = s.splitn(2, '=');
-    let name = parts
-        .next()
-        .ok_or_else(|| "missing module name".to_string())?
-        .to_string();
-    let path = parts
-        .next()
-        .ok_or_else(|| "missing module path".to_string())?;
-    Ok(Module {
-        name,
-        path: PathBuf::from(path),
-    })
 }
 
 #[doc(hidden)]
@@ -1581,11 +1562,8 @@ fn handle_connection<T: Transport>(
         }
         #[cfg(unix)]
         {
-            use nix::unistd::{chdir, chroot, setgid, setuid, Gid, Uid};
-            chroot(path).map_err(|e| EngineError::Other(e.to_string()))?;
-            chdir("/").map_err(|e| EngineError::Other(e.to_string()))?;
-            setgid(Gid::from_raw(65534)).map_err(|e| EngineError::Other(e.to_string()))?;
-            setuid(Uid::from_raw(65534)).map_err(|e| EngineError::Other(e.to_string()))?;
+            chroot_and_drop_privileges(path, 65534, 65534)
+                .map_err(|e| EngineError::Other(e.to_string()))?;
         }
         sync(
             Path::new("."),
@@ -1596,54 +1574,6 @@ fn handle_connection<T: Transport>(
         )?;
     }
     Ok(())
-}
-
-pub fn parse_auth_token(token: &str, contents: &str) -> Option<Vec<String>> {
-    for line in contents.lines() {
-        let mut parts = line.split_whitespace();
-        if let Some(tok) = parts.next() {
-            if tok == token {
-                return Some(parts.map(|s| s.to_string()).collect());
-            }
-        }
-    }
-    None
-}
-
-fn authenticate<T: Transport>(t: &mut T, path: Option<&Path>) -> std::io::Result<Vec<String>> {
-    let auth_path = path.unwrap_or(Path::new("auth"));
-    if !auth_path.exists() {
-        return Ok(Vec::new());
-    }
-    #[cfg(unix)]
-    {
-        let mode = fs::metadata(auth_path)?.permissions().mode();
-        if mode & 0o077 != 0 {
-            return Err(io::Error::new(
-                io::ErrorKind::PermissionDenied,
-                "auth file permissions are too open",
-            ));
-        }
-    }
-    let contents = fs::read_to_string(auth_path)?;
-    let mut buf = [0u8; 256];
-    let n = t.receive(&mut buf)?;
-    if n == 0 {
-        return Err(io::Error::new(
-            io::ErrorKind::PermissionDenied,
-            "missing token",
-        ));
-    }
-    let token = String::from_utf8_lossy(&buf[..n]).trim().to_string();
-    if let Some(allowed) = parse_auth_token(&token, &contents) {
-        Ok(allowed)
-    } else {
-        let _ = t.send(b"@ERROR: access denied");
-        Err(io::Error::new(
-            io::ErrorKind::PermissionDenied,
-            "unauthorized",
-        ))
-    }
 }
 
 fn run_probe(opts: ProbeOpts) -> Result<()> {

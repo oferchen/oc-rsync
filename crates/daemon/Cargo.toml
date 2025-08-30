@@ -1,0 +1,8 @@
+[package]
+name = "daemon"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+transport = { path = "../transport" }
+nix = { version = "0.27", features = ["user", "fs"] }
