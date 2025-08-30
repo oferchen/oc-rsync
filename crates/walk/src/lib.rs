@@ -1,3 +1,4 @@
+// crates/walk/src/lib.rs
 use std::collections::HashMap;
 use std::fs::FileType;
 use std::io;
@@ -6,33 +7,17 @@ use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-/// Entry produced by the directory walker.
-///
-/// Paths are delta encoded relative to the previous entry. `prefix_len`
-/// indicates how many bytes from the previous path should be reused and
-/// `suffix` is appended to form the current path. The `uid`, `gid` and `dev`
-/// fields reference indexes into the corresponding tables accumulated by
-/// [`Walk`].
 #[derive(Debug, Clone)]
 pub struct Entry {
-    /// Number of bytes from the previous path to keep.
     pub prefix_len: usize,
-    /// Remaining path bytes to append.
     pub suffix: String,
-    /// File type for this entry.
     pub file_type: FileType,
-    /// Index into the UID table.
     pub uid: usize,
-    /// Index into the GID table.
     pub gid: usize,
-    /// Index into the device table.
     pub dev: usize,
 }
 
 impl Entry {
-    /// Reconstruct the full path using `state` as the previous path buffer.
-    /// The buffer is updated to the current path and the full [`PathBuf`] is
-    /// returned.
     pub fn apply(&self, state: &mut String) -> PathBuf {
         state.truncate(self.prefix_len);
         state.push_str(&self.suffix);
@@ -40,9 +25,6 @@ impl Entry {
     }
 }
 
-/// Generator walking a directory tree and yielding batches of delta encoded
-/// [`Entry`] values. Batching bounds memory usage while preserving the
-/// ordering semantics of `rsync`/`walkdir` (preorder traversal).
 pub struct Walk {
     iter: walkdir::IntoIter,
     prev_path: String,
@@ -72,24 +54,19 @@ impl Walk {
         }
     }
 
-    /// Return the accumulated UID table.
     pub fn uids(&self) -> &[u32] {
         &self.uid_table
     }
 
-    /// Return the accumulated GID table.
     pub fn gids(&self) -> &[u32] {
         &self.gid_table
     }
 
-    /// Return the accumulated device table.
     pub fn devs(&self) -> &[u64] {
         &self.dev_table
     }
 }
 
-/// Create a new [`Walk`] generator for `root` producing batches of at most
-/// `batch_size` entries.
 pub fn walk(root: impl AsRef<Path>, batch_size: usize) -> Walk {
     Walk::new(root.as_ref().to_path_buf(), batch_size)
 }

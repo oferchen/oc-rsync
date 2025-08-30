@@ -1,3 +1,4 @@
+// crates/cli/src/lib.rs
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, OpenOptions};
@@ -26,83 +27,52 @@ fn parse_duration(s: &str) -> std::result::Result<Duration, std::num::ParseIntEr
     Ok(Duration::from_secs(s.parse()?))
 }
 
-/// Command line interface for rsync-rs.
-///
-/// This binary follows the flag based interface of the real `rsync` where the
-/// mode of operation is selected via top level flags such as `--daemon` or
-/// `--probe`.  When neither of those flags are supplied it runs in client mode
-/// and expects positional `SRC` and `DST` arguments.
-/// Options for client mode.
 #[derive(Parser, Debug)]
 struct ClientOpts {
-    /// perform a local sync
     #[arg(long)]
     local: bool,
-    /// archive mode
     #[arg(short = 'a', long, help_heading = "Selection")]
     archive: bool,
-    /// copy directories recursively
     #[arg(short, long, help_heading = "Selection")]
     recursive: bool,
-    /// transfer directories without recursing
     #[arg(short = 'd', long, help_heading = "Selection")]
     dirs: bool,
-    /// use relative path names
     #[arg(short = 'R', long, help_heading = "Selection")]
     relative: bool,
-    /// perform a trial run with no changes made
     #[arg(short = 'n', long, help_heading = "Selection")]
     dry_run: bool,
-    /// list the files instead of copying
     #[arg(long = "list-only", help_heading = "Output")]
     list_only: bool,
-    /// turn sequences of nulls into sparse blocks and preserve existing holes
-    /// (requires filesystem support)
     #[arg(short = 'S', long, help_heading = "Selection")]
     sparse: bool,
-    /// skip files that are newer on the receiver
     #[arg(short = 'u', long, help_heading = "Misc")]
     update: bool,
-    /// increase logging verbosity
     #[arg(short, long, action = ArgAction::Count, help_heading = "Output")]
     verbose: u8,
-    /// suppress non-error messages
     #[arg(short, long, help_heading = "Output")]
     quiet: bool,
-    /// suppress daemon-mode MOTD
     #[arg(long, help_heading = "Output")]
     no_motd: bool,
-    /// output a change-summary for all updates
     #[arg(short = 'i', long = "itemize-changes", help_heading = "Output")]
     itemize_changes: bool,
-    /// remove extraneous files from the destination
     #[arg(long, help_heading = "Delete")]
     delete: bool,
-    /// receiver deletes before transfer, not during
     #[arg(long = "delete-before", help_heading = "Delete")]
     delete_before: bool,
-    /// receiver deletes during the transfer
     #[arg(long = "delete-during", help_heading = "Delete", alias = "del")]
     delete_during: bool,
-    /// receiver deletes after transfer, not during
     #[arg(long = "delete-after", help_heading = "Delete")]
     delete_after: bool,
-    /// find deletions during, delete after
     #[arg(long = "delete-delay", help_heading = "Delete")]
     delete_delay: bool,
-    /// also delete excluded files from destination
     #[arg(long = "delete-excluded", help_heading = "Delete")]
     delete_excluded: bool,
-    /// make backups (see --backup-dir)
     #[arg(short = 'b', long, help_heading = "Backup")]
     backup: bool,
-    /// make backups into hierarchy based in DIR
     #[arg(long = "backup-dir", value_name = "DIR", help_heading = "Backup")]
     backup_dir: Option<PathBuf>,
-    /// use full checksums to determine file changes
     #[arg(short = 'c', long, help_heading = "Attributes")]
     checksum: bool,
-    /// choose the checksum algorithm (aka --cc)
     #[arg(
         long = "checksum-choice",
         value_name = "STR",
@@ -110,63 +80,44 @@ struct ClientOpts {
         visible_alias = "cc"
     )]
     checksum_choice: Option<String>,
-    /// preserve permissions
     #[arg(long, help_heading = "Attributes")]
     perms: bool,
-    /// affect file and/or directory permissions
     #[arg(long = "chmod", value_name = "CHMOD", help_heading = "Attributes")]
     chmod: Vec<String>,
-    /// preserve modification times
     #[arg(long, help_heading = "Attributes")]
     times: bool,
-    /// preserve access times
     #[arg(short = 'U', long, help_heading = "Attributes")]
     atimes: bool,
-    /// preserve create times
     #[arg(short = 'N', long, help_heading = "Attributes")]
     crtimes: bool,
-    /// preserve owner
     #[arg(long, help_heading = "Attributes")]
     owner: bool,
-    /// preserve group
     #[arg(long, help_heading = "Attributes")]
     group: bool,
-    /// copy symlinks as symlinks
     #[arg(long, help_heading = "Attributes")]
     links: bool,
-    /// transform symlink into referent file/dir
     #[arg(short = 'L', long, help_heading = "Attributes")]
     copy_links: bool,
-    /// transform symlink to directory into referent
     #[arg(short = 'k', long, help_heading = "Attributes")]
     copy_dirlinks: bool,
-    /// only "unsafe" symlinks are transformed
     #[arg(long, help_heading = "Attributes")]
     copy_unsafe_links: bool,
-    /// ignore symlinks that point outside the tree
     #[arg(long, help_heading = "Attributes")]
     safe_links: bool,
-    /// preserve hard links
     #[arg(long = "hard-links", help_heading = "Attributes")]
     hard_links: bool,
-    /// preserve device files
     #[arg(long, help_heading = "Attributes")]
     devices: bool,
-    /// preserve special files
     #[arg(long, help_heading = "Attributes")]
     specials: bool,
-    /// preserve extended attributes
     #[cfg(feature = "xattr")]
     #[arg(long, help_heading = "Attributes")]
     xattrs: bool,
-    /// preserve ACLs
     #[cfg(feature = "acl")]
     #[arg(long, help_heading = "Attributes")]
     acls: bool,
-    /// compress file data during the transfer (zlib by default, negotiates zstd when supported)
     #[arg(short = 'z', long, help_heading = "Compression")]
     compress: bool,
-    /// choose the compression algorithm (aka --zc)
     #[arg(
         long = "compress-choice",
         value_name = "STR",
@@ -174,7 +125,6 @@ struct ClientOpts {
         visible_alias = "zc"
     )]
     compress_choice: Option<String>,
-    /// explicitly set compression level
     #[arg(
         long = "compress-level",
         value_name = "NUM",
@@ -182,7 +132,6 @@ struct ClientOpts {
         visible_alias = "zl"
     )]
     compress_level: Option<i32>,
-    /// skip compression for files with suffix in LIST
     #[arg(
         long = "skip-compress",
         value_name = "LIST",
@@ -190,16 +139,12 @@ struct ClientOpts {
         value_delimiter = ','
     )]
     skip_compress: Vec<String>,
-    /// enable BLAKE3 checksums (zstd is negotiated automatically)
     #[arg(long, help_heading = "Compression")]
     modern: bool,
-    /// keep partially transferred files
     #[arg(long, help_heading = "Misc")]
     partial: bool,
-    /// put a partially transferred file into DIR
     #[arg(long = "partial-dir", value_name = "DIR", help_heading = "Misc")]
     partial_dir: Option<PathBuf>,
-    /// create temporary files in directory DIR
     #[arg(
         short = 'T',
         long = "temp-dir",
@@ -207,34 +152,24 @@ struct ClientOpts {
         help_heading = "Misc"
     )]
     temp_dir: Option<PathBuf>,
-    /// show progress during transfer
     #[arg(long, help_heading = "Misc")]
     progress: bool,
-    /// keep partially transferred files and show progress
     #[arg(short = 'P', help_heading = "Misc")]
     partial_progress: bool,
-    /// append data onto shorter files
     #[arg(long, help_heading = "Misc")]
     append: bool,
-    /// --append with old data verification
     #[arg(long = "append-verify", help_heading = "Misc")]
     append_verify: bool,
-    /// update destination files in-place
     #[arg(short = 'I', long, help_heading = "Misc")]
     inplace: bool,
-    /// throttle I/O bandwidth to RATE bytes per second
     #[arg(long = "bwlimit", value_name = "RATE", help_heading = "Misc")]
     bwlimit: Option<u64>,
-    /// set I/O timeout in seconds
     #[arg(long = "timeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     timeout: Option<Duration>,
-    /// set daemon connection timeout in seconds
     #[arg(long = "contimeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     contimeout: Option<Duration>,
-    /// specify the remote port
     #[arg(long, value_name = "PORT", help_heading = "Misc")]
     port: Option<u16>,
-    /// prefer IPv4 for remote connections
     #[arg(
         short = '4',
         long = "ipv4",
@@ -242,7 +177,6 @@ struct ClientOpts {
         conflicts_with = "ipv6"
     )]
     ipv4: bool,
-    /// prefer IPv6 for remote connections
     #[arg(
         short = '6',
         long = "ipv6",
@@ -250,7 +184,6 @@ struct ClientOpts {
         conflicts_with = "ipv4"
     )]
     ipv6: bool,
-    /// set block size used for rolling checksums
     #[arg(
         short = 'B',
         long = "block-size",
@@ -258,7 +191,6 @@ struct ClientOpts {
         help_heading = "Misc"
     )]
     block_size: Option<usize>,
-    /// copy files whole (w/o delta-xfer algorithm)
     #[arg(
         short = 'W',
         long,
@@ -266,89 +198,62 @@ struct ClientOpts {
         overrides_with = "no_whole_file"
     )]
     whole_file: bool,
-    /// disable whole-file transfer
     #[arg(
         long = "no-whole-file",
         help_heading = "Misc",
         overrides_with = "whole_file"
     )]
     no_whole_file: bool,
-    /// hardlink to files in DIR when unchanged
     #[arg(long = "link-dest", value_name = "DIR", help_heading = "Misc")]
     link_dest: Option<PathBuf>,
-    /// copy files from DIR when unchanged
     #[arg(long = "copy-dest", value_name = "DIR", help_heading = "Misc")]
     copy_dest: Option<PathBuf>,
-    /// skip files that match in DIR
     #[arg(long = "compare-dest", value_name = "DIR", help_heading = "Misc")]
     compare_dest: Option<PathBuf>,
-    /// don't map uid/gid values by user/group name
     #[arg(long, help_heading = "Attributes")]
     numeric_ids: bool,
-    /// display transfer statistics on completion
     #[arg(long, help_heading = "Output")]
     stats: bool,
-    /// supply a custom configuration file
     #[arg(long, value_name = "FILE")]
     config: Option<PathBuf>,
-    /// path to SSH known hosts file
     #[arg(long, value_name = "FILE", env = "RSYNC_KNOWN_HOSTS")]
     known_hosts: Option<PathBuf>,
-    /// disable strict host key checking (not recommended)
     #[arg(long, env = "RSYNC_NO_HOST_KEY_CHECKING")]
     no_host_key_checking: bool,
-    /// read daemon-access password from FILE
     #[arg(long = "password-file", value_name = "FILE")]
     password_file: Option<PathBuf>,
-    /// specify the remote shell to use
     #[arg(short = 'e', long, value_name = "COMMAND")]
     rsh: Option<String>,
-    /// run in server mode (internal use)
     #[arg(long, hide = true)]
     server: bool,
-    /// run in sender mode (internal use)
     #[arg(long, hide = true)]
     sender: bool,
-    /// specify the rsync to run on remote machine
     #[arg(long = "rsync-path", value_name = "PATH", alias = "rsync_path")]
     rsync_path: Option<String>,
-    /// source path or HOST:PATH
     src: String,
-    /// destination path or HOST:PATH
     dst: String,
-    /// filter rules provided directly
     #[arg(short = 'f', long, value_name = "RULE", help_heading = "Selection")]
     filter: Vec<String>,
-    /// files containing filter rules
     #[arg(long, value_name = "FILE", help_heading = "Selection")]
     filter_file: Vec<PathBuf>,
-    /// shorthand for per-directory filter files
     #[arg(short = 'F', action = ArgAction::Count, help_heading = "Selection")]
     filter_shorthand: u8,
-    /// auto-ignore files in the same way CVS does
     #[arg(short = 'C', long = "cvs-exclude", help_heading = "Selection")]
     cvs_exclude: bool,
-    /// include files matching PATTERN
     #[arg(long, value_name = "PATTERN")]
     include: Vec<String>,
-    /// exclude files matching PATTERN
     #[arg(long, value_name = "PATTERN")]
     exclude: Vec<String>,
-    /// read include patterns from FILE
     #[arg(long, value_name = "FILE")]
     include_from: Vec<PathBuf>,
-    /// read exclude patterns from FILE
     #[arg(long, value_name = "FILE")]
     exclude_from: Vec<PathBuf>,
-    /// read list of files from FILE
     #[arg(long, value_name = "FILE")]
     files_from: Vec<PathBuf>,
-    /// treat file lists as null-separated
     #[arg(long)]
     from0: bool,
 }
 
-/// A module exported by the daemon.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Module {
     name: String,
@@ -537,64 +442,45 @@ pub fn parse_rsync_path(raw: Option<String>) -> Result<Option<RshCommand>> {
     }
 }
 
-/// Options for daemon mode.
 #[derive(Parser, Debug)]
 struct DaemonOpts {
-    /// run in daemon mode
     #[arg(long)]
     daemon: bool,
-    /// module declarations of the form NAME=PATH
     #[arg(long, value_parser = parse_module, value_name = "NAME=PATH")]
     module: Vec<Module>,
-    /// address to listen on
     #[arg(long)]
     address: Option<IpAddr>,
-    /// port to listen on
     #[arg(long, default_value_t = 873)]
     port: u16,
-    /// set I/O timeout in seconds
     #[arg(long = "timeout", value_name = "SECONDS", value_parser = parse_duration)]
     timeout: Option<Duration>,
-    /// set daemon connection timeout in seconds
     #[arg(long = "contimeout", value_name = "SECONDS", value_parser = parse_duration)]
     contimeout: Option<Duration>,
-    /// throttle I/O bandwidth to RATE bytes per second
     #[arg(long = "bwlimit", value_name = "RATE")]
     bwlimit: Option<u64>,
-    /// path to secrets file
     #[arg(long = "secrets-file", value_name = "FILE")]
     secrets_file: Option<PathBuf>,
-    /// list of hosts allowed to connect
     #[arg(long = "hosts-allow", value_delimiter = ',', value_name = "LIST")]
     hosts_allow: Vec<String>,
-    /// list of hosts denied from connecting
     #[arg(long = "hosts-deny", value_delimiter = ',', value_name = "LIST")]
     hosts_deny: Vec<String>,
-    /// log file path
     #[arg(long = "log-file", value_name = "FILE")]
     log_file: Option<PathBuf>,
-    /// log file format (supports %h for host and %m for module)
     #[arg(long = "log-file-format", value_name = "FMT")]
     log_file_format: Option<String>,
-    /// path to message of the day file
     #[arg(long = "motd", value_name = "FILE")]
     motd: Option<PathBuf>,
 }
 
-/// Options for the probe mode.
 #[derive(Parser, Debug)]
 struct ProbeOpts {
-    /// run in probe mode
     #[arg(long)]
     probe: bool,
-    /// Optional address of peer in HOST:PORT form
     addr: Option<String>,
-    /// version reported by peer
     #[arg(long, default_value_t = LATEST_VERSION, value_name = "VER")]
     peer_version: u32,
 }
 
-/// Execute the CLI using `std::env::args()`.
 pub fn run() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     if args.iter().any(|a| a == "--version" || a == "-V") {
@@ -617,10 +503,6 @@ pub fn run() -> Result<()> {
     }
 }
 
-/// Construct the client mode [`clap::Command`].
-///
-/// External tooling uses this to generate shell completion scripts without
-/// duplicating the flag definitions.
 pub fn cli_command() -> clap::Command {
     ClientOpts::command()
 }
@@ -775,7 +657,6 @@ fn spawn_daemon_session(
     t.authenticate(token.as_deref())
         .map_err(EngineError::from)?;
 
-    // consume daemon greeting until OK
     let mut line = Vec::new();
     let mut b = [0u8; 1];
     loop {
@@ -1707,11 +1588,6 @@ fn handle_connection<T: Transport>(
     Ok(())
 }
 
-/// Parse `token` against the provided `contents` of a secrets file.
-///
-/// Returns the list of authorized modules when the token matches an entry in
-/// the secrets file. Each line in `contents` is expected to contain a token
-/// followed by an optional whitespace separated list of module names.
 pub fn parse_auth_token(token: &str, contents: &str) -> Option<Vec<String>> {
     for line in contents.lines() {
         let mut parts = line.split_whitespace();

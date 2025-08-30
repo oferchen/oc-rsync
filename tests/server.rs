@@ -1,3 +1,4 @@
+// tests/server.rs
 use assert_cmd::cargo::cargo_bin;
 use compress::{available_codecs, decode_codecs, encode_codecs};
 use protocol::{Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION, MIN_VERSION};
@@ -39,21 +40,17 @@ fn server_handshake_succeeds() {
     let mut stdin = child.stdin.take().unwrap();
     let mut stdout = child.stdout.take().unwrap();
 
-    // Send our version.
     stdin.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
 
-    // Receive negotiated version.
     let mut ver_buf = [0u8; 4];
     stdout.read_exact(&mut ver_buf).unwrap();
     assert_eq!(u32::from_be_bytes(ver_buf), LATEST_VERSION);
 
-    // Advertise capability bitmask and read server response.
     stdin.write_all(&CAP_CODECS.to_be_bytes()).unwrap();
     let mut cap_buf = [0u8; 4];
     stdout.read_exact(&mut cap_buf).unwrap();
     assert_eq!(u32::from_be_bytes(cap_buf) & CAP_CODECS, CAP_CODECS);
 
-    // Send codec list as a frame.
     let codecs = available_codecs();
     let payload = encode_codecs(codecs);
     let frame = Message::Codecs(payload).to_frame(0);
@@ -61,7 +58,6 @@ fn server_handshake_succeeds() {
     frame.encode(&mut buf).unwrap();
     stdin.write_all(&buf).unwrap();
 
-    // Receive server codec list as a frame.
     let mut hdr = [0u8; 8];
     stdout.read_exact(&mut hdr).unwrap();
     let channel = u16::from_be_bytes([hdr[0], hdr[1]]);
@@ -101,7 +97,6 @@ fn server_rejects_unsupported_version() {
         .unwrap();
     let mut stdin = child.stdin.take().unwrap();
 
-    // Send an unsupported version.
     let bad = (MIN_VERSION - 1) as u32;
     stdin.write_all(&bad.to_be_bytes()).unwrap();
     drop(stdin);

@@ -1,3 +1,4 @@
+// crates/engine/tests/attrs.rs
 #![cfg(unix)]
 
 use std::fs::{self, File};
@@ -110,7 +111,7 @@ fn crtimes_roundtrip() {
     let src_meta = fs::metadata(&file).unwrap();
     let src_crtime = match src_meta.created() {
         Ok(t) => t,
-        Err(_) => return, // platform does not support creation time
+        Err(_) => return,
     };
 
     std::thread::sleep(Duration::from_secs(1));

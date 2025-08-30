@@ -1,4 +1,5 @@
-use checksums::{rolling_checksum, Rolling, ChecksumConfigBuilder, StrongHash};
+// crates/checksums/tests/golden.rs
+use checksums::{rolling_checksum, ChecksumConfigBuilder, Rolling, StrongHash};
 
 #[test]
 fn rolling_golden_windows() {
@@ -17,10 +18,9 @@ fn rolling_golden_windows() {
     ];
 
     for (i, &exp) in expected.iter().enumerate() {
-        assert_eq!(rolling_checksum(&data[i..i+win]), exp);
+        assert_eq!(rolling_checksum(&data[i..i + win]), exp);
     }
 
-    // Cross-check using incremental rolling state
     let mut r = Rolling::new(&data[0..win]);
     for (i, &exp) in expected.iter().enumerate() {
         assert_eq!(r.digest(), exp);
@@ -33,12 +33,17 @@ fn rolling_golden_windows() {
 #[test]
 fn builder_strong_digests() {
     let cfg_md5 = ChecksumConfigBuilder::new().strong(StrongHash::Md5).build();
-    let cfg_sha1 = ChecksumConfigBuilder::new().strong(StrongHash::Sha1).build();
+    let cfg_sha1 = ChecksumConfigBuilder::new()
+        .strong(StrongHash::Sha1)
+        .build();
     let data = b"hello world";
 
     let cs_md5 = cfg_md5.checksum(data);
     assert_eq!(cs_md5.weak, rolling_checksum(data));
-    assert_eq!(hex::encode(cs_md5.strong), "5eb63bbbe01eeed093cb22bb8f5acdc3");
+    assert_eq!(
+        hex::encode(cs_md5.strong),
+        "5eb63bbbe01eeed093cb22bb8f5acdc3"
+    );
 
     let cs_sha1 = cfg_sha1.checksum(data);
     assert_eq!(cs_sha1.weak, rolling_checksum(data));
@@ -49,7 +54,9 @@ fn builder_strong_digests() {
 
     #[cfg(feature = "blake3")]
     {
-        let cfg_blake3 = ChecksumConfigBuilder::new().strong(StrongHash::Blake3).build();
+        let cfg_blake3 = ChecksumConfigBuilder::new()
+            .strong(StrongHash::Blake3)
+            .build();
         let cs_blake3 = cfg_blake3.checksum(data);
         assert_eq!(cs_blake3.weak, rolling_checksum(data));
         assert_eq!(

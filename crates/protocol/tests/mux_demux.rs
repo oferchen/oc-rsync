@@ -1,3 +1,4 @@
+// crates/protocol/tests/mux_demux.rs
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -16,7 +17,6 @@ fn multiplex_multiple_channels() {
     tx1.send(Message::Data(b"one".to_vec())).unwrap();
     tx2.send(Message::Data(b"two".to_vec())).unwrap();
 
-    // Collect two frames from the multiplexer
     let mut frames = Vec::new();
     while frames.len() < 2 {
         if let Some(frame) = mux.poll() {
@@ -39,20 +39,16 @@ fn keepalive_and_timeout() {
     let mut mux = Mux::new(keepalive);
     let mut demux = Demux::new(timeout);
 
-    // Register channel 0
     let _tx = mux.register_channel(0);
     let _rx = demux.register_channel(0);
 
-    // No data is sent, after the keepalive interval the mux should emit a keepalive
     sleep(Duration::from_millis(20));
     let frame = mux.poll().expect("keepalive frame");
     demux.ingest(frame).unwrap();
 
-    // Keepalive resets timer; no timeout yet
     sleep(Duration::from_millis(10));
     assert!(demux.poll().is_ok());
 
-    // Without further frames we should eventually time out
     sleep(Duration::from_millis(40));
     assert!(demux.poll().is_err());
 }
@@ -81,18 +77,14 @@ fn round_robin_fairness() {
 fn unregister_channel_rejects_frames() {
     let mut demux = Demux::new(Duration::from_millis(100));
 
-    // Register channel and ingest a message to ensure normal operation.
     let rx = demux.register_channel(1);
     let frame = Message::Data(b"msg".to_vec()).into_frame(1);
     demux.ingest(frame).unwrap();
     assert_eq!(rx.try_recv().unwrap(), Message::Data(b"msg".to_vec()));
 
-    // Unregister the channel; receiver should now be closed.
     demux.unregister_channel(1);
     assert!(rx.try_recv().is_err());
 
-    // Further frames for this channel are rejected.
     let frame = Message::Data(b"other".to_vec()).into_frame(1);
     assert!(demux.ingest(frame).is_err());
 }
-

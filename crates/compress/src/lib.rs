@@ -1,19 +1,15 @@
+// crates/compress/src/lib.rs
 use std::io::{self, Read, Write};
 use std::path::Path;
 
-/// Supported compression codecs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Codec {
-    /// Deflate/zlib compression.
     Zlib,
-    /// Zstandard compression.
     Zstd,
-    /// LZ4 compression. Requires the `lz4` feature.
     Lz4,
 }
 
 impl Codec {
-    /// Convert a codec to its wire representation.
     pub fn to_byte(self) -> u8 {
         match self {
             Codec::Zlib => 0,
@@ -22,7 +18,6 @@ impl Codec {
         }
     }
 
-    /// Parse a codec from its wire representation.
     pub fn from_byte(b: u8) -> io::Result<Self> {
         match b {
             0 => Ok(Codec::Zlib),
@@ -36,9 +31,6 @@ impl Codec {
     }
 }
 
-/// Return codecs supported by this crate in preference order.
-///
-/// LZ4 is not advertised unless the `lz4` feature is enabled.
 pub fn available_codecs() -> &'static [Codec] {
     #[cfg(feature = "lz4")]
     {
@@ -50,37 +42,26 @@ pub fn available_codecs() -> &'static [Codec] {
     }
 }
 
-/// Compresses a buffer of bytes.
 pub trait Compressor {
-    /// Compress `data` and return the compressed bytes.
     fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>>;
 }
 
-/// Decompresses a buffer of bytes.
 pub trait Decompressor {
-    /// Decompress `data` and return the decompressed bytes.
     fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>>;
 }
 
-/// Select the first codec supported by both peers.
-///
-/// Typically the local list is provided by [`available_codecs`], ensuring that
-/// only codecs enabled in this build are considered.
 pub fn negotiate_codec(local: &[Codec], remote: &[Codec]) -> Option<Codec> {
     local.iter().copied().find(|c| remote.contains(c))
 }
 
-/// Serialize a list of codecs to their wire representation.
 pub fn encode_codecs(codecs: &[Codec]) -> Vec<u8> {
     codecs.iter().map(|c| c.to_byte()).collect()
 }
 
-/// Deserialize a list of codecs from their wire representation.
 pub fn decode_codecs(data: &[u8]) -> io::Result<Vec<Codec>> {
     data.iter().map(|b| Codec::from_byte(*b)).collect()
 }
 
-/// Determine if a file should be compressed given a list of suffixes to skip.
 pub fn should_compress(path: &Path, skip: &[String]) -> bool {
     if skip.is_empty() {
         return true;
@@ -91,13 +72,11 @@ pub fn should_compress(path: &Path, skip: &[String]) -> bool {
     }
 }
 
-/// Zlib/Deflate codec adapter.
 pub struct Zlib {
     level: i32,
 }
 
 impl Zlib {
-    /// Create a new zlib codec with the given compression level.
     pub fn new(level: i32) -> Self {
         Self { level }
     }
@@ -129,14 +108,12 @@ impl Decompressor for Zlib {
     }
 }
 
-/// Zstandard codec adapter.
 #[derive(Default)]
 pub struct Zstd {
     level: i32,
 }
 
 impl Zstd {
-    /// Create a new zstd codec with the given compression level.
     pub fn new(level: i32) -> Self {
         Self { level }
     }
@@ -160,7 +137,6 @@ impl Decompressor for Zstd {
 }
 
 #[cfg(feature = "lz4")]
-/// LZ4 codec adapter.
 pub struct Lz4;
 
 #[cfg(feature = "lz4")]

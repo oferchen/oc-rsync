@@ -1,3 +1,4 @@
+// crates/filters/tests/malformed.rs
 use filters::{parse, Matcher};
 use std::collections::HashSet;
 use std::fs;

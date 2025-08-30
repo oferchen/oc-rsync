@@ -1,3 +1,4 @@
+// tests/remote_remote.rs
 use assert_cmd::cargo::cargo_bin;
 use assert_cmd::Command;
 use std::fs;
@@ -10,11 +11,6 @@ use tempfile::tempdir;
 use transport::ssh::SshStdioTransport;
 use wait_timeout::ChildExt;
 
-/// Wait until the provided condition evaluates to true.
-///
-/// This is used in tests to wait for spawned shell commands to finish by
-/// polling for file-system side effects rather than sleeping for a fixed
-/// duration.
 fn wait_for<F>(mut condition: F)
 where
     F: FnMut() -> bool,
@@ -89,7 +85,6 @@ fn remote_remote_via_ssh_paths() {
     fs::create_dir_all(&dst).unwrap();
     fs::write(src.join("file.txt"), b"via_ssh").unwrap();
 
-    // Fake remote shell that ignores the host argument and executes the rest.
     let rsh = dir.path().join("fake_rsh.sh");
     fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
     fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
@@ -145,7 +140,6 @@ fn remote_remote_via_daemon_paths() {
         .spawn()
         .unwrap();
 
-    // Allow daemon to start
     std::thread::sleep(Duration::from_millis(100));
 
     let src_url = format!("rsync://127.0.0.1:{}/src/", port);
@@ -157,7 +151,6 @@ fn remote_remote_via_daemon_paths() {
         .unwrap();
     assert!(status.success());
 
-    // Ensure data is flushed before killing daemon
     std::thread::sleep(Duration::from_millis(200));
     assert_same_tree(&src, &dst);
 
@@ -195,7 +188,6 @@ fn remote_to_remote_pipes_data() {
 #[test]
 fn remote_pair_missing_host_fails() {
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
-    // Missing host in source spec should yield an error before attempting connections
     cmd.args([":/tmp/src", "sh:/tmp/dst"]);
     cmd.assert().failure();
 }
@@ -203,7 +195,6 @@ fn remote_pair_missing_host_fails() {
 #[test]
 fn remote_pair_missing_path_fails() {
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
-    // Missing path in source spec should also fail
     cmd.args(["sh:", "sh:/tmp/dst"]);
     cmd.assert().failure();
 }
@@ -244,13 +235,11 @@ fn remote_to_remote_reports_errors() {
 
     let src_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
-    // Destination process closes its stdin and signals when that has happened
     let dst_session = SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready"]).unwrap();
 
     let (mut src_reader, _) = src_session.into_inner();
     let (mut dst_reader, mut dst_writer) = dst_session.into_inner();
 
-    // Ensure the destination has closed stdin before attempting to copy
     let mut ready = [0u8; 6];
     dst_reader.read_exact(&mut ready).unwrap();
     assert_eq!(&ready, b"ready\n");
@@ -332,7 +321,6 @@ fn remote_to_remote_partial_and_resume() {
     let dst_file = dir.path().join("dst.txt");
     fs::write(&src_file, b"hello world").unwrap();
 
-    // Initial partial transfer of first 5 bytes
     let src_session = SshStdioTransport::spawn(
         "sh",
         [
@@ -357,7 +345,6 @@ fn remote_to_remote_partial_and_resume() {
     let partial = fs::read(&dst_file).unwrap();
     assert_eq!(partial, b"hello");
 
-    // Resume transfer with remaining bytes
     let src_session = SshStdioTransport::spawn(
         "sh",
         [
@@ -392,7 +379,6 @@ fn remote_partial_transfer_resumed_by_cli() {
     fs::create_dir_all(&dst_dir).unwrap();
     fs::write(src_dir.join("a.txt"), b"hello").unwrap();
 
-    // Simulate an interrupted remote transfer writing a partial file
     let partial = dst_dir.join("a.partial");
     let src_session = SshStdioTransport::spawn(
         "sh",
@@ -410,7 +396,6 @@ fn remote_partial_transfer_resumed_by_cli() {
     drop(dst_writer);
     drop(src_reader);
 
-    // Resume using the CLI which should detect the partial and finish it
     let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args(["--local", "--partial", &src_arg, dst_dir.to_str().unwrap()]);
@@ -428,14 +413,12 @@ fn remote_to_remote_failure_and_reconnect() {
     let dst_file = dir.path().join("dst.txt");
     fs::write(&src_file, b"network glitch test").unwrap();
 
-    // Initial transfer fails because destination immediately closes
     let src_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     let dst_session = SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready"]).unwrap();
     let (mut src_reader, _) = src_session.into_inner();
     let (mut dst_reader, mut dst_writer) = dst_session.into_inner();
 
-    // Ensure the destination has closed stdin before attempting to copy
     let mut ready = [0u8; 6];
     dst_reader.read_exact(&mut ready).unwrap();
     assert_eq!(&ready, b"ready\n");
@@ -446,7 +429,6 @@ fn remote_to_remote_failure_and_reconnect() {
     drop(src_reader);
     assert!(!dst_file.exists());
 
-    // Reconnect and complete transfer
     let src_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     let dst_session =
@@ -584,7 +566,6 @@ use chroot = false\n\
         .spawn()
         .unwrap();
 
-    // Allow daemon to start
     std::thread::sleep(Duration::from_millis(100));
 
     let src_url = format!("rsync://127.0.0.1:{}/src/", port);
@@ -616,7 +597,6 @@ use chroot = false\n\
     assert_eq!(status_rr.code(), status_rsync.code());
     assert!(status_rr.success());
 
-    // Ensure data is flushed before killing daemon
     std::thread::sleep(Duration::from_millis(50));
     assert_same_tree(&dst_rr, &dst_rsync);
 

@@ -1,3 +1,4 @@
+// crates/transport/tests/ssh_unknown_host.rs
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
@@ -7,7 +8,6 @@ use transport::ssh::SshStdioTransport;
 
 #[test]
 fn refuses_unknown_host_key() {
-    // Start a local SSH server in the background if available.
     if Command::new("/usr/sbin/sshd")
         .arg("-h")
         .stdout(Stdio::null())
@@ -27,17 +27,14 @@ fn refuses_unknown_host_key() {
         .spawn()
         .expect("spawn sshd");
 
-    // Give the server a moment to start listening on port 22.
     thread::sleep(Duration::from_millis(500));
 
-    // Use an empty known_hosts file to ensure the host key is unknown.
     let tmp = NamedTempFile::new().expect("tmp known_hosts");
 
     let transport =
         SshStdioTransport::spawn_server("localhost", ["/"], Some(tmp.path()), true, None)
             .expect("spawn ssh");
 
-    // Give the ssh process time to emit its failure message.
     thread::sleep(Duration::from_millis(500));
 
     let (stderr, truncated) = transport.stderr();

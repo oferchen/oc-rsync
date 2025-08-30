@@ -1,10 +1,4 @@
-//! Core frame and message types for the rsync protocol.
-//!
-//! Messages are exchanged in several phases including version negotiation,
-//! file-list transmission, attribute exchange, progress updates and error
-//! reporting. Each phase corresponds to a [`Message`] variant encoded inside
-//! multiplexed [`Frame`] structures.
-
+// crates/protocol/src/lib.rs
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::convert::TryFrom;
 use std::fmt;
@@ -17,18 +11,10 @@ pub use demux::Demux;
 pub use mux::Mux;
 pub use server::Server;
 
-/// Latest protocol version supported by this implementation.
 pub const LATEST_VERSION: u32 = 31;
-/// Oldest protocol version we support.
 pub const MIN_VERSION: u32 = 29;
-/// Capability flag indicating support for codec advertisement.
-///
-/// Peers set this bit during the handshake to signal that they understand
-/// [`Message::Codecs`] exchanges.  If the flag is absent, codec negotiation is
-/// skipped and both sides fall back to zlib compression.
 pub const CAP_CODECS: u32 = 1 << 0;
 
-/// Error returned when there is no version overlap during negotiation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VersionError(pub u32);
 
@@ -46,9 +32,6 @@ impl From<VersionError> for io::Error {
     }
 }
 
-/// Negotiate protocol version with peer.
-///
-/// Returns the agreed version or [`VersionError`] if there is no overlap.
 pub fn negotiate_version(peer: u32) -> Result<u32, VersionError> {
     if peer >= LATEST_VERSION {
         Ok(LATEST_VERSION)
@@ -59,11 +42,6 @@ pub fn negotiate_version(peer: u32) -> Result<u32, VersionError> {
     }
 }
 
-/// Tags used to multiplex streams.
-///
-/// `Tag` differentiates between control frames such as keepalive messages and
-/// regular protocol messages.  Individual message variants are further
-/// identified by [`Msg`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Tag {
@@ -71,7 +49,6 @@ pub enum Tag {
     KeepAlive = 1,
 }
 
-/// Error returned when attempting to convert from an unknown tag value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UnknownTag(pub u8);
 
@@ -101,7 +78,6 @@ impl TryFrom<u8> for Tag {
     }
 }
 
-/// Identifier for the type of [`Message`] contained in a frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Msg {
@@ -116,7 +92,6 @@ pub enum Msg {
     Codecs = 8,
 }
 
-/// Error returned when attempting to convert from an unknown message value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UnknownMsg(pub u8);
 
@@ -153,7 +128,6 @@ impl TryFrom<u8> for Msg {
     }
 }
 
-/// Exit codes returned by rsync processes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ExitCode {
@@ -185,7 +159,6 @@ pub enum ExitCode {
     CmdNotFound = 127,
 }
 
-/// Error returned when converting from an unknown exit code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UnknownExit(pub u8);
 
@@ -239,14 +212,10 @@ impl From<ExitCode> for u8 {
     }
 }
 
-/// Header for a [`Frame`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FrameHeader {
     pub channel: u16,
     pub tag: Tag,
-    /// Identifier for the contained [`Message`]. This allows payloads of any
-    /// length (including 4 bytes) without ambiguity between [`Message::Version`]
-    /// and [`Message::Data`].
     pub msg: Msg,
     pub len: u32,
 }
@@ -276,7 +245,6 @@ impl FrameHeader {
     }
 }
 
-/// A frame of data sent over the wire.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Frame {
     pub header: FrameHeader,
@@ -297,13 +265,6 @@ impl Frame {
     }
 }
 
-/// High level messages encoded inside frames.
-///
-/// The rsync protocol progresses through a number of phases represented by
-/// these variants: after negotiating a version, peers exchange file list
-/// entries and associated attributes before transferring data blocks. During
-/// transfer, progress and error messages may be sent until a final [`Done`]
-/// message is emitted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
     Version(u32),
@@ -489,7 +450,6 @@ mod tests {
         let msg2 = Message::from_frame(decoded).unwrap();
         assert_eq!(msg2, msg);
 
-        // A 4-byte payload should not be interpreted as a version message
         let msg4 = Message::Data(b"1234".to_vec());
         let frame4 = msg4.to_frame(3);
         let mut buf4 = Vec::new();
@@ -499,7 +459,6 @@ mod tests {
         let msg4_round = Message::from_frame(decoded4).unwrap();
         assert_eq!(msg4_round, msg4);
 
-        // Codec list roundtrip
         let msgc = Message::Codecs(vec![0, 1]);
         let framec = msgc.to_frame(1);
         let mut bufc = Vec::new();
@@ -553,14 +512,12 @@ mod tests {
 
     #[test]
     fn unknown_tag_errors() {
-        // channel:0, tag:99 (invalid), len:0
         let buf = [0u8, 0, 99, 0, 0, 0, 0];
         assert!(Frame::decode(&buf[..]).is_err());
     }
 
     #[test]
     fn unknown_msg_errors() {
-        // channel:0, tag:0 (message), msg:99 (invalid), len:0
         let buf = [0u8, 0, 0, 99, 0, 0, 0, 0];
         assert!(Frame::decode(&buf[..]).is_err());
     }

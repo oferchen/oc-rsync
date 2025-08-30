@@ -1,3 +1,4 @@
+// crates/engine/tests/compress.rs
 use std::fs;
 
 use compress::Codec;
@@ -17,7 +18,10 @@ fn zlib_roundtrip() {
         &dst,
         &Matcher::default(),
         &[Codec::Zlib],
-        &SyncOptions { compress: true, ..Default::default() },
+        &SyncOptions {
+            compress: true,
+            ..Default::default()
+        },
     )
     .unwrap();
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
@@ -35,7 +39,10 @@ fn zstd_roundtrip() {
         &dst,
         &Matcher::default(),
         &[Codec::Zstd],
-        &SyncOptions { compress: true, ..Default::default() },
+        &SyncOptions {
+            compress: true,
+            ..Default::default()
+        },
     )
     .unwrap();
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
@@ -54,7 +61,10 @@ fn lz4_roundtrip() {
         &dst,
         &Matcher::default(),
         &[Codec::Lz4],
-        &SyncOptions { compress: true, ..Default::default() },
+        &SyncOptions {
+            compress: true,
+            ..Default::default()
+        },
     )
     .unwrap();
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
@@ -62,9 +72,19 @@ fn lz4_roundtrip() {
 
 #[test]
 fn codec_selection_prefers_zstd() {
-    let opts = SyncOptions { compress: true, ..Default::default() };
-    assert_eq!(select_codec(&[Codec::Zlib, Codec::Zstd], &opts), Some(Codec::Zstd));
+    let opts = SyncOptions {
+        compress: true,
+        ..Default::default()
+    };
+    assert_eq!(
+        select_codec(&[Codec::Zlib, Codec::Zstd], &opts),
+        Some(Codec::Zstd)
+    );
     assert_eq!(select_codec(&[Codec::Zlib], &opts), Some(Codec::Zlib));
-    let opts = SyncOptions { compress: true, compress_level: Some(0), ..Default::default() };
+    let opts = SyncOptions {
+        compress: true,
+        compress_level: Some(0),
+        ..Default::default()
+    };
     assert_eq!(select_codec(&[Codec::Zstd], &opts), None);
 }

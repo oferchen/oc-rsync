@@ -1,3 +1,4 @@
+// crates/filters/tests/comments.rs
 use filters::{parse, Matcher};
 use std::collections::HashSet;
 
@@ -8,7 +9,6 @@ fn p(input: &str) -> Vec<filters::Rule> {
 
 #[test]
 fn comments_and_blank_lines_are_ignored() {
-    // Leading comment and blank line should be ignored by the parser
     let rules = p("# initial comment\n\n+ keep.log\n- *.log\n");
     let matcher = Matcher::new(rules);
 

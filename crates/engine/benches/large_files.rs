@@ -1,3 +1,4 @@
+// crates/engine/benches/large_files.rs
 use checksums::ChecksumConfigBuilder;
 use criterion::{criterion_group, criterion_main, Criterion};
 use engine::compute_delta;
@@ -7,7 +8,7 @@ fn bench_large_delta(c: &mut Criterion) {
     let cfg = ChecksumConfigBuilder::new().build();
     let block_size = 1024;
     let window = 64;
-    let data = vec![0u8; block_size * 1024]; // 1 MiB
+    let data = vec![0u8; block_size * 1024];
     c.bench_function("compute_delta_large_file", |b| {
         b.iter(|| {
             let mut basis = Cursor::new(data.clone());
@@ -61,7 +62,7 @@ fn bench_streaming_delta(c: &mut Criterion) {
     let cfg = ChecksumConfigBuilder::new().build();
     let block_size = 1024;
     let window = 64;
-    let len = 2 * 1024 * 1024 * 1024u64; // 2 GiB
+    let len = 2 * 1024 * 1024 * 1024u64;
     c.bench_function("stream_delta_2gb_zero", |b| {
         b.iter(|| {
             let mut basis = ZeroReader::new(len);

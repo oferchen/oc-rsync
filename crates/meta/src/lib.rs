@@ -1,3 +1,4 @@
+// crates/meta/src/lib.rs
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -30,67 +31,41 @@ mod xattr {
     }
 }
 
-/// Target for a mode adjustment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChmodTarget {
-    /// Apply to files and directories.
     All,
-    /// Apply only to regular files.
     File,
-    /// Apply only to directories.
     Dir,
 }
 
-/// Operation performed by a mode adjustment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChmodOp {
-    /// Add the specified bits.
     Add,
-    /// Remove the specified bits.
     Remove,
-    /// Set the specified bits, clearing others within the mask.
     Set,
 }
 
-/// A single parsed `--chmod` rule.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Chmod {
-    /// Target of the rule.
     pub target: ChmodTarget,
-    /// Operation to perform.
     pub op: ChmodOp,
-    /// Mask of bits affected by this rule.
     pub mask: u32,
-    /// Bits to set or clear depending on the operation.
     pub bits: u32,
-    /// Whether execute bits are conditional (`X`).
     pub conditional: bool,
 }
 
-/// Options controlling which metadata to capture and apply.
 #[derive(Clone, Default)]
 pub struct Options {
-    /// Include extended attributes.
     pub xattrs: bool,
-    /// Include POSIX ACL entries.
     pub acl: bool,
-    /// Adjust permissions based on parsed `--chmod` rules.
     pub chmod: Option<Vec<Chmod>>,
-    /// Preserve file owner (`--owner`).
     pub owner: bool,
-    /// Preserve file group (`--group`).
     pub group: bool,
-    /// Preserve permission bits (`--perms`).
     pub perms: bool,
-    /// Preserve modification times (`--times`).
     pub times: bool,
-    /// Preserve access times (`--atimes`).
     pub atimes: bool,
-    /// Preserve creation times (`--crtimes`).
     pub crtimes: bool,
-    /// Map remote UIDs to local ones when applying metadata.
     pub uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
-    /// Map remote GIDs to local ones when applying metadata.
     pub gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
 }
 
@@ -113,7 +88,6 @@ impl std::fmt::Debug for Options {
 }
 
 impl Options {
-    /// Return `true` if any metadata should be processed.
     pub fn needs_metadata(&self) -> bool {
         self.xattrs
             || self.acl
@@ -127,31 +101,21 @@ impl Options {
     }
 }
 
-/// Serialized file metadata.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
-    /// File owner user ID.
     pub uid: u32,
-    /// File owner group ID.
     pub gid: u32,
-    /// Permission bits (`0o7777`).
     pub mode: u32,
-    /// Modification time with nanosecond precision.
     pub mtime: FileTime,
-    /// Access time with nanosecond precision.
     pub atime: Option<FileTime>,
-    /// Creation time with nanosecond precision when available.
     pub crtime: Option<FileTime>,
     #[cfg(feature = "xattr")]
-    /// Extended attributes.
     pub xattrs: Vec<(OsString, Vec<u8>)>,
     #[cfg(feature = "acl")]
-    /// POSIX ACL entries.
     pub acl: Vec<posix_acl::ACLEntry>,
 }
 
 impl Metadata {
-    /// Read metadata from `path` using `opts`.
     pub fn from_path(path: &Path, opts: Options) -> io::Result<Self> {
         let st = stat::stat(path).map_err(nix_to_io)?;
         let uid = st.st_uid;
@@ -206,7 +170,6 @@ impl Metadata {
         })
     }
 
-    /// Apply metadata to `path` using `opts`.
     pub fn apply(&self, path: &Path, opts: Options) -> io::Result<()> {
         if opts.owner || opts.group {
             let uid = if let Some(ref map) = opts.uid_map {

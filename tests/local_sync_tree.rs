@@ -1,10 +1,11 @@
+// tests/local_sync_tree.rs
 use assert_cmd::Command;
 use std::collections::BTreeMap;
 use std::fs;
-#[cfg(unix)]
-use std::os::unix::fs::{MetadataExt, PermissionsExt};
 #[cfg(target_os = "linux")]
 use std::os::unix::fs::FileTypeExt;
+#[cfg(unix)]
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 
@@ -50,7 +51,6 @@ fn sync_directory_tree() {
 #[cfg(all(unix, feature = "xattr"))]
 #[test]
 fn sync_preserves_xattrs() {
-    // Ensure extended attributes survive a local sync when the feature is enabled.
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -77,8 +77,6 @@ fn sync_preserves_xattrs() {
 #[test]
 fn sync_preserves_acls() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};
-
-    // Ensure POSIX ACLs survive a local sync when the feature is enabled.
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -118,7 +116,12 @@ fn sync_preserves_owner_and_group() {
     fs::create_dir_all(&dst).unwrap();
     let file = src.join("file");
     fs::write(&file, b"hi").unwrap();
-    chown(&file, Some(Uid::from_raw(12345)), Some(Gid::from_raw(54321))).unwrap();
+    chown(
+        &file,
+        Some(Uid::from_raw(12345)),
+        Some(Gid::from_raw(54321)),
+    )
+    .unwrap();
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("rsync-rs")
@@ -189,12 +192,7 @@ fn sync_preserves_crtimes() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("rsync-rs")
         .unwrap()
-        .args([
-            "--local",
-            "--crtimes",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--local", "--crtimes", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")

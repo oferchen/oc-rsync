@@ -1,3 +1,4 @@
+// crates/engine/src/lib.rs
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File, OpenOptions};
@@ -15,7 +16,6 @@ use compress::{available_codecs, should_compress, Codec, Compressor, Decompresso
 use filters::Matcher;
 use thiserror::Error;
 
-/// Error type for engine operations.
 #[derive(Debug, Error)]
 pub enum EngineError {
     #[error(transparent)]
@@ -24,7 +24,6 @@ pub enum EngineError {
     Other(String),
 }
 
-/// Result type for engine operations.
 pub type Result<T> = std::result::Result<T, EngineError>;
 use walk::walk;
 
@@ -106,7 +105,6 @@ fn last_good_block(cfg: &ChecksumConfig, src: &Path, dst: &Path, block_size: usi
     offset
 }
 
-/// Sender state machine.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SenderState {
     Idle,
@@ -114,7 +112,6 @@ pub enum SenderState {
     Finished,
 }
 
-/// Receiver state machine.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReceiverState {
     Idle,
@@ -122,21 +119,14 @@ pub enum ReceiverState {
     Finished,
 }
 
-/// Operation in a file delta.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Op {
-    /// Raw bytes to be written.
     Data(Vec<u8>),
-    /// Copy bytes from an existing offset in the basis file.
     Copy { offset: usize, len: usize },
 }
 
-/// Default number of blocks from the basis file to keep indexed when
-/// computing a delta. This bounds memory usage to roughly
-/// `DEFAULT_BASIS_WINDOW * block_size` bytes.
-const DEFAULT_BASIS_WINDOW: usize = 8 * 1024; // 8k blocks
+const DEFAULT_BASIS_WINDOW: usize = 8 * 1024;
 
-/// Iterator over delta operations produced by [`compute_delta`].
 pub struct DeltaIter<'a, R: Read + Seek> {
     cfg: &'a ChecksumConfig,
     target: &'a mut R,
@@ -199,7 +189,6 @@ impl<'a, R: Read + Seek> Iterator for DeltaIter<'a, R> {
                 }
             }
 
-            // No match: emit first byte as literal and slide the window.
             if let Some(b) = self.window.pop_front() {
                 self.lit.push(b);
             }
@@ -210,11 +199,6 @@ impl<'a, R: Read + Seek> Iterator for DeltaIter<'a, R> {
     }
 }
 
-/// Compute a delta from `basis` to `target` using a simple block matching
-/// algorithm driven by the checksum crate. The computation is performed using
-/// streaming readers to avoid loading entire files into memory. The caller can
-/// limit memory usage by constraining the number of blocks from the basis file
-/// that are kept in memory at any given time via `basis_window`.
 pub fn compute_delta<'a, R1: Read + Seek, R2: Read + Seek>(
     cfg: &'a ChecksumConfig,
     basis: &mut R1,
@@ -222,12 +206,8 @@ pub fn compute_delta<'a, R1: Read + Seek, R2: Read + Seek>(
     block_size: usize,
     basis_window: usize,
 ) -> Result<DeltaIter<'a, R2>> {
-    // Start from the beginning of both streams.
     basis.seek(SeekFrom::Start(0))?;
     target.seek(SeekFrom::Start(0))?;
-    // Build a map of rolling checksum -> (strong hash, offset, len) for the
-    // basis file. Only the most recent `basis_window` blocks are kept to bound
-    // memory usage.
     let mut map: HashMap<u32, Vec<(Vec<u8>, usize, usize)>> = HashMap::new();
     let mut order: VecDeque<(u32, Vec<u8>, usize, usize)> = VecDeque::new();
     let mut off = 0usize;
@@ -374,7 +354,6 @@ fn apply_op_sparse<R: Read + Seek>(
     Ok(())
 }
 
-/// Apply a delta to `basis` writing the reconstructed data into `out`.
 fn apply_delta<R: Read + Seek, W: Write + Seek + Any, I>(
     basis: &mut R,
     ops: I,
@@ -436,9 +415,6 @@ where
                 apply_op_sparse(basis, op, file, &mut buf)?;
             }
         }
-        // Ensure the final file length accounts for any trailing holes by
-        // explicitly setting it to the current position. This avoids writing
-        // zeros while still extending the file sparsely.
         let pos = file.stream_position()?;
         file.set_len(pos)?;
     } else {
@@ -452,7 +428,6 @@ where
     Ok(())
 }
 
-/// Sender responsible for walking the source tree and generating deltas.
 pub struct Sender {
     state: SenderState,
     cfg: ChecksumConfig,
@@ -503,9 +478,6 @@ impl Sender {
         self.state = SenderState::Finished;
     }
 
-    /// Generate a delta for `path` against `dest` and ask the receiver to apply it.
-    /// `rel` is the path relative to the destination root used for backups.
-    /// Returns `true` if the destination file was updated.
     fn process_file(
         &mut self,
         path: &Path,
@@ -667,7 +639,6 @@ impl Sender {
     }
 }
 
-/// Receiver responsible for applying deltas to the destination tree.
 pub struct Receiver {
     state: ReceiverState,
     codec: Option<Codec>,
@@ -874,7 +845,6 @@ impl Receiver {
     }
 }
 
-/// When to delete extraneous files from the destination.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeleteMode {
     Before,
@@ -882,7 +852,6 @@ pub enum DeleteMode {
     After,
 }
 
-/// Options controlling synchronization behavior.
 #[derive(Debug, Clone)]
 pub struct SyncOptions {
     pub delete: Option<DeleteMode>,
@@ -990,7 +959,6 @@ impl Default for SyncOptions {
     }
 }
 
-/// Statistics produced during synchronization.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Stats {
     pub files_transferred: usize,
@@ -998,7 +966,6 @@ pub struct Stats {
     pub bytes_transferred: u64,
 }
 
-/// Choose the compression codec to use based on local preferences and remote support.
 pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     if !opts.compress || opts.compress_level == Some(0) {
         return None;
@@ -1065,7 +1032,6 @@ fn delete_extraneous(
     Ok(())
 }
 
-/// Synchronize the contents of directory `src` into `dst`.
 pub fn sync(
     src: &Path,
     dst: &Path,
@@ -1073,7 +1039,6 @@ pub fn sync(
     remote: &[Codec],
     opts: &SyncOptions,
 ) -> Result<Stats> {
-    // If we're only listing files, perform a walk and print the paths.
     if opts.list_only {
         let matcher = matcher.clone().with_root(src.to_path_buf());
         let mut walker = walk(src, 1024);
@@ -1105,10 +1070,7 @@ pub fn sync(
         return Ok(Stats::default());
     }
 
-    // Determine the codec to use by negotiating with the remote peer.
     let codec = select_codec(remote, opts);
-    // Clone the matcher and attach the source root so per-directory filter files
-    // can be located during the walk.
     let matcher = matcher.clone().with_root(src.to_path_buf());
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
     let mut receiver = Receiver::new(codec, opts.clone());
@@ -1302,7 +1264,6 @@ pub fn sync(
                     }
                 }
             } else {
-                // Path lies outside of the source directory, skip it.
                 continue;
             }
         }
@@ -1463,7 +1424,6 @@ mod tests {
         fs::create_dir_all(&src).unwrap();
         fs::write(src.join("inside.txt"), b"inside").unwrap();
 
-        // Create a file outside the source tree.
         let outside = tmp.path().join("outside.txt");
         fs::write(&outside, b"outside").unwrap();
 
@@ -1505,20 +1465,18 @@ mod tests {
     fn large_file_windowed_delta_memory() {
         let cfg = ChecksumConfigBuilder::new().build();
         let block_size = 1024;
-        let window = 64; // keep at most 64 blocks in memory
-        let data = vec![42u8; block_size * 1024]; // 1 MiB file
+        let window = 64;
+        let data = vec![42u8; block_size * 1024];
         let mut basis = Cursor::new(data.clone());
         let mut target = Cursor::new(data.clone());
 
         let before = mem_usage_kb();
         let delta = compute_delta(&cfg, &mut basis, &mut target, block_size, window).unwrap();
         let after = mem_usage_kb();
-        // delta should reconstruct target
         let mut basis = Cursor::new(data.clone());
         let mut out = Cursor::new(Vec::new());
         apply_delta(&mut basis, delta, &mut out, &SyncOptions::default(), 0).unwrap();
         assert_eq!(out.into_inner(), data);
-        // Memory usage should stay under ~10MB
         assert!(
             after - before < 10 * 1024,
             "memory grew too much: {}KB",
