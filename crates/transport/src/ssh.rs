@@ -169,6 +169,7 @@ impl SshStdioTransport {
     fn handshake<T: Transport>(
         transport: &mut T,
         env: &[(String, String)],
+        modern: bool,
     ) -> io::Result<Vec<Codec>> {
         for (k, v) in env {
             let mut buf = Vec::new();
@@ -347,6 +348,7 @@ impl SshStdioTransport {
         port: Option<u16>,
         connect_timeout: Option<Duration>,
         family: Option<AddressFamily>,
+        modern: bool,
     ) -> io::Result<(Self, Vec<Codec>)> {
         let mut t = Self::spawn_with_rsh(
             host,
@@ -361,7 +363,7 @@ impl SshStdioTransport {
             connect_timeout,
             family,
         )?;
-        let codecs = Self::handshake(&mut t, rsync_env)?;
+        let codecs = Self::handshake(&mut t, rsync_env, modern)?;
         Ok((t, codecs))
     }
 

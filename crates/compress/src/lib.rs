@@ -35,15 +35,16 @@ impl Codec {
     }
 }
 
-pub fn available_codecs() -> &'static [Codec] {
-    #[cfg(feature = "lz4")]
-    {
-        &[Codec::Zlib, Codec::Zstd, Codec::Lz4]
+pub fn available_codecs(modern: bool) -> Vec<Codec> {
+    let mut codecs = vec![Codec::Zlib];
+    if modern {
+        codecs.push(Codec::Zstd);
+        #[cfg(feature = "lz4")]
+        {
+            codecs.push(Codec::Lz4);
+        }
     }
-    #[cfg(not(feature = "lz4"))]
-    {
-        &[Codec::Zlib, Codec::Zstd]
-    }
+    codecs
 }
 
 pub trait Compressor {

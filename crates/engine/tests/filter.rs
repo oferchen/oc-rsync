@@ -23,7 +23,7 @@ fn excluded_paths_are_skipped() {
         &src,
         &dst,
         &matcher,
-        available_codecs(),
+        &available_codecs(false),
         &SyncOptions::default(),
     )
     .unwrap();

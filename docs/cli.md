@@ -86,8 +86,8 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--chmod` | off |  | [matrix](feature_matrix.md#--chmod) |
 |  | `--chown` | off |  | [matrix](feature_matrix.md#--chown) |
 |  | `--compare-dest` | off |  | [matrix](feature_matrix.md#--compare-dest) |
-| `-z` | `--compress` | off | negotiates zstd when supported by both peers | [matrix](feature_matrix.md#--compress) |
-|  | `--compress-choice` | auto | supports zstd and zlib only | [matrix](feature_matrix.md#--compress-choice) |
+| `-z` | `--compress` | off | with `--modern`, negotiates zstd or lz4 when supported by both peers | [matrix](feature_matrix.md#--compress) |
+|  | `--compress-choice` | auto | supports zstd, lz4, and zlib | [matrix](feature_matrix.md#--compress-choice) |
 |  | `--compress-level` | auto | applies to zlib or zstd | [matrix](feature_matrix.md#--compress-level) |
 |  | `--zc` | off | alias for `--compress-choice` | [matrix](feature_matrix.md#--zc) |
 |  | `--zl` | off | alias for `--compress-level` | [matrix](feature_matrix.md#--zl) |
@@ -154,7 +154,7 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--max-size` | off |  | [matrix](feature_matrix.md#--max-size) |
 |  | `--min-size` | off |  | [matrix](feature_matrix.md#--min-size) |
 |  | `--mkpath` | off |  | [matrix](feature_matrix.md#--mkpath) |
-|  | `--modern` | off | oc-rsync only; enables zstd compression and BLAKE3 checksums; requires `blake3` feature | [matrix](feature_matrix.md#--modern) |
+|  | `--modern` | off | oc-rsync only; negotiates zstd or lz4 compression based on CPU features and BLAKE3 checksums; requires `blake3` feature | [matrix](feature_matrix.md#--modern) |
 | `-@` | `--modify-window` | off |  | [matrix](feature_matrix.md#--modify-window) |
 |  | `--munge-links` | off |  | [matrix](feature_matrix.md#--munge-links) |
 |  | `--no-D` | off | alias for `--no-devices --no-specials` | [matrix](feature_matrix.md#--no-d) |

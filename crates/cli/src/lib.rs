@@ -173,7 +173,7 @@ struct ClientOpts {
         value_delimiter = ','
     )]
     skip_compress: Vec<String>,
-    /// Enable zstd compression and BLAKE3 checksums (requires `blake3` feature)
+    /// Enable modern compression (zstd or lz4) and BLAKE3 checksums (requires `blake3` feature)
     #[arg(long, help_heading = "Compression")]
     modern: bool,
     #[arg(long, help_heading = "Misc")]
@@ -693,6 +693,10 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
     }
 
+    if opts.modern {
+        rsync_env.push(("RSYNC_MODERN".into(), "1".into()));
+    }
+
     let remote_bin_vec = rsync_path_cmd.as_ref().map(|c| c.cmd.clone());
     let remote_env_vec = rsync_path_cmd.as_ref().map(|c| c.env.clone());
 
@@ -773,7 +777,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         return Err(EngineError::Other(format!("unknown codec {other}")));
                     }
                 };
-                if !available_codecs().contains(&codec) {
+                if !available_codecs(true).contains(&codec) {
                     return Err(EngineError::Other(format!(
                         "codec {name} not supported by this build"
                     )));
@@ -823,6 +827,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         delete_excluded: opts.delete_excluded,
         checksum: opts.checksum,
         compress,
+        modern: opts.modern,
         cdc: opts.modern,
         dirs: opts.dirs,
         list_only: opts.list_only,
@@ -892,7 +897,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 &src.path,
                 &dst.path,
                 &matcher,
-                available_codecs(),
+                &available_codecs(opts.modern),
                 &sync_opts,
             )?,
             _ => return Err(EngineError::Other("local sync requires local paths".into())),
@@ -926,7 +931,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &src.path,
                     &dst.path,
                     &matcher,
-                    available_codecs(),
+                    &available_codecs(opts.modern),
                     &sync_opts,
                 )?
             }
@@ -951,6 +956,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.port,
                     opts.contimeout,
                     addr_family,
+                    opts.modern,
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
                 let (err, _) = session.stderr();
@@ -981,7 +987,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &src.path,
                     &dst.path,
                     &matcher,
-                    available_codecs(),
+                    &available_codecs(opts.modern),
                     &sync_opts,
                 )?
             }
@@ -1006,6 +1012,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.port,
                     opts.contimeout,
                     addr_family,
+                    opts.modern,
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
                 let (err, _) = session.stderr();
@@ -1581,12 +1588,13 @@ fn handle_connection<T: Transport>(
             chroot_and_drop_privileges(&module.path, 65534, 65534)
                 .map_err(|e| EngineError::Other(e.to_string()))?;
         }
+        let modern = env::var("RSYNC_MODERN").ok().as_deref() == Some("1");
         sync(
             Path::new("."),
             Path::new("."),
             &Matcher::default(),
-            available_codecs(),
-            &SyncOptions::default(),
+            &available_codecs(modern),
+            &SyncOptions { modern, ..Default::default() },
         )?;
     }
     Ok(())
@@ -1636,9 +1644,11 @@ fn run_server() -> Result<()> {
         .and_then(|s| s.parse().ok())
         .map(Duration::from_secs)
         .unwrap_or(Duration::from_secs(30));
+    let modern = env::var("RSYNC_MODERN").ok().as_deref() == Some("1");
+    let codecs = available_codecs(modern);
     let mut srv = Server::new(stdin.lock(), stdout.lock(), timeout);
     let _ = srv
-        .handshake()
+        .handshake(&codecs)
         .map_err(|e| EngineError::Other(e.to_string()))?;
     Ok(())
 }

@@ -24,7 +24,7 @@ impl<R: Read, W: Write> Server<R, W> {
         }
     }
 
-    pub fn handshake(&mut self) -> io::Result<Vec<Codec>> {
+    pub fn handshake(&mut self, codecs: &[Codec]) -> io::Result<Vec<Codec>> {
         let mut b = [0u8; 1];
         let mut cur = Vec::new();
         loop {
@@ -61,7 +61,7 @@ impl<R: Read, W: Write> Server<R, W> {
                     let msg = Message::from_frame(frame.clone())?;
                     if let Message::Codecs(buf) = msg {
                         peer_codecs = decode_codecs(&buf)?;
-                        let payload = encode_codecs(available_codecs());
+                        let payload = encode_codecs(codecs);
                         let frame = Message::Codecs(payload).to_frame(0);
                         frame.encode(&mut self.writer)?;
                         self.writer.flush()?;

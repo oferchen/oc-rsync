@@ -41,6 +41,7 @@ fn zstd_roundtrip() {
         &[Codec::Zstd],
         &SyncOptions {
             compress: true,
+            modern: true,
             ..Default::default()
         },
     )
@@ -63,6 +64,7 @@ fn lz4_roundtrip() {
         &[Codec::Lz4],
         &SyncOptions {
             compress: true,
+            modern: true,
             ..Default::default()
         },
     )
@@ -74,6 +76,7 @@ fn lz4_roundtrip() {
 fn codec_selection_prefers_zstd() {
     let opts = SyncOptions {
         compress: true,
+        modern: true,
         ..Default::default()
     };
     assert_eq!(
@@ -83,6 +86,7 @@ fn codec_selection_prefers_zstd() {
     assert_eq!(select_codec(&[Codec::Zlib], &opts), Some(Codec::Zlib));
     let opts = SyncOptions {
         compress: true,
+        modern: true,
         compress_level: Some(0),
         ..Default::default()
     };

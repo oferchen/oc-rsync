@@ -6,11 +6,12 @@ use engine::{select_codec, SyncOptions};
 
 #[test]
 fn modern_negotiates_blake3_and_zstd() {
-    let codecs = available_codecs();
+    let codecs = available_codecs(true);
     let negotiated = select_codec(
         &codecs,
         &SyncOptions {
             compress: true,
+            modern: true,
             ..Default::default()
         },
     )
@@ -22,11 +23,12 @@ fn modern_negotiates_blake3_and_zstd() {
 
 #[test]
 fn modern_falls_back_without_compress() {
-    let codecs = available_codecs();
+    let codecs = available_codecs(true);
     let negotiated = select_codec(
         &codecs,
         &SyncOptions {
             compress: false,
+            modern: true,
             ..Default::default()
         },
     );
