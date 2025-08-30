@@ -68,7 +68,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--groupmap` | — | ❌ | — | — |  | ≤3.2 |
 | `--hard-links` | `-H` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--help` | `-h (*)` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--human-readable` | `-h` | ❌ | — | — |  | ≤3.2 |
+| `--human-readable` |  | ✅ | ✅ | [tests/golden/cli_parity/human-readable.sh](../tests/golden/cli_parity/human-readable.sh) |  | ≤3.2 |
 | `--iconv` | — | ❌ | — | — |  | ≤3.2 |
 | `--ignore-errors` | — | ❌ | — | — |  | ≤3.2 |
 | `--ignore-existing` | — | ❌ | — | — |  | ≤3.2 |

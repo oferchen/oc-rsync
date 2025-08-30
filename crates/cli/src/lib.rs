@@ -13,6 +13,7 @@ use std::time::Duration;
 
 use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
 use compress::{available_codecs, Codec};
+use engine::human_bytes;
 use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use meta::{Chmod, ChmodOp, ChmodTarget};
@@ -29,26 +30,8 @@ fn parse_duration(s: &str) -> std::result::Result<Duration, std::num::ParseIntEr
     Ok(Duration::from_secs(s.parse()?))
 }
 
-fn human_bytes(bytes: u64) -> String {
-    const UNITS: [&str; 9] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
-    let mut size = bytes as f64;
-    let mut unit = 0;
-    while size >= 1024.0 && unit < UNITS.len() - 1 {
-        size /= 1024.0;
-        unit += 1;
-    }
-    if unit == 0 {
-        format!("{}{}", bytes, UNITS[unit])
-    } else {
-        format!("{:.2}{}", size, UNITS[unit])
-    }
-}
-
 #[derive(Parser, Debug)]
-#[command(disable_help_flag = true)]
 struct ClientOpts {
-    #[arg(long = "help", action = ArgAction::Help)]
-    _help: Option<bool>,
     #[arg(long)]
     local: bool,
     #[arg(short = 'a', long, help_heading = "Selection")]
@@ -69,7 +52,7 @@ struct ClientOpts {
     update: bool,
     #[arg(short, long, action = ArgAction::Count, help_heading = "Output")]
     verbose: u8,
-    #[arg(short = 'h', long = "human-readable", help_heading = "Output")]
+    #[arg(long = "human-readable", help_heading = "Output")]
     human_readable: bool,
     #[arg(short, long, help_heading = "Output")]
     quiet: bool,
@@ -970,6 +953,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         skip_compress: opts.skip_compress.clone(),
         partial: opts.partial || opts.partial_progress,
         progress: opts.progress || opts.partial_progress,
+        human_readable: opts.human_readable,
         itemize_changes: opts.itemize_changes,
         partial_dir: opts.partial_dir.clone(),
         temp_dir: opts.temp_dir.clone(),

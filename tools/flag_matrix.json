@@ -296,7 +296,7 @@
   },
   {
     "flag": "--human-readable",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {

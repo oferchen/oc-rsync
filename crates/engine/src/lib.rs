@@ -30,6 +30,21 @@ use walk::walk;
 trait ReadSeek: Read + Seek {}
 impl<T: Read + Seek> ReadSeek for T {}
 
+pub fn human_bytes(bytes: u64) -> String {
+    const UNITS: [&str; 9] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
+    let mut size = bytes as f64;
+    let mut unit = 0;
+    while size >= 1024.0 && unit < UNITS.len() - 1 {
+        size /= 1024.0;
+        unit += 1;
+    }
+    if unit == 0 {
+        format!("{}{}", bytes, UNITS[unit])
+    } else {
+        format!("{:.2}{}", size, UNITS[unit])
+    }
+}
+
 fn files_identical(a: &Path, b: &Path) -> bool {
     if let (Ok(ma), Ok(mb)) = (fs::metadata(a), fs::metadata(b)) {
         if ma.len() != mb.len() {
@@ -771,7 +786,11 @@ impl Receiver {
         self.copy_metadata(src, dest)?;
         if self.opts.progress {
             let len = fs::metadata(dest)?.len();
-            eprintln!("{}: {} bytes", dest.display(), len);
+            if self.opts.human_readable {
+                eprintln!("{}: {}", dest.display(), human_bytes(len));
+            } else {
+                eprintln!("{}: {} bytes", dest.display(), len);
+            }
         }
         self.state = ReceiverState::Finished;
         Ok(())
@@ -892,6 +911,7 @@ pub struct SyncOptions {
     pub skip_compress: Vec<String>,
     pub partial: bool,
     pub progress: bool,
+    pub human_readable: bool,
     pub itemize_changes: bool,
     pub partial_dir: Option<PathBuf>,
     pub temp_dir: Option<PathBuf>,
@@ -946,6 +966,7 @@ impl Default for SyncOptions {
             skip_compress: Vec::new(),
             partial: false,
             progress: false,
+            human_readable: false,
             itemize_changes: false,
             partial_dir: None,
             temp_dir: None,
