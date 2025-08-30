@@ -888,6 +888,7 @@ dependencies = [
  "engine",
  "filetime",
  "filters",
+ "logging",
  "nix",
  "posix-acl",
  "predicates",
