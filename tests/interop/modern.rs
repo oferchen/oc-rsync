@@ -1,4 +1,5 @@
 // tests/interop/modern.rs
+
 include!("../modern.rs");
 
 use protocol::negotiate_version;

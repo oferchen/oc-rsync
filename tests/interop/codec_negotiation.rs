@@ -1,4 +1,5 @@
 // tests/interop/codec_negotiation.rs
+
 use compress::{negotiate_codec, Codec};
 
 #[test]

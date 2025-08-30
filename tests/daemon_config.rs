@@ -1,4 +1,5 @@
 // tests/daemon_config.rs
+
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
 use protocol::LATEST_VERSION;

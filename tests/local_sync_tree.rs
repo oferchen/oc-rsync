@@ -1,4 +1,5 @@
 // tests/local_sync_tree.rs
+
 use assert_cmd::Command;
 use std::collections::BTreeMap;
 use std::fs;
@@ -221,7 +222,7 @@ fn sync_preserves_crtimes() {
     let src_meta = fs::metadata(&file).unwrap();
     let src_crtime = match FileTime::from_creation_time(&src_meta) {
         Some(t) => t,
-        None => return, // creation times unsupported
+        None => return, 
     };
 
     let src_arg = format!("{}/", src.display());
@@ -237,7 +238,7 @@ fn sync_preserves_crtimes() {
     match FileTime::from_creation_time(&dst_meta) {
         Some(t) => {
             if cfg!(target_os = "linux") && t != src_crtime {
-                // Linux exposes creation times but cannot modify them.
+                
                 return;
             }
             assert_eq!(src_crtime, t)

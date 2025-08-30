@@ -1,3 +1,4 @@
+// tests/checksum_seed_cli.rs
 use assert_cmd::Command;
 use std::fs;
 use tempfile::tempdir;
