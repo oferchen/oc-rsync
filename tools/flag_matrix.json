@@ -71,7 +71,7 @@
   },
   {
     "flag": "--checksum-seed",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {

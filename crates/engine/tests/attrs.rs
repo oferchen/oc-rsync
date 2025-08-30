@@ -95,7 +95,6 @@ fn atimes_roundtrip() {
     assert_eq!(dst_atime, src_atime);
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
 #[test]
 fn crtimes_roundtrip() {
     use std::time::Duration;
@@ -114,6 +113,7 @@ fn crtimes_roundtrip() {
         Err(_) => return,
     };
 
+    // ensure different timestamps if the destination already exists
     std::thread::sleep(Duration::from_secs(1));
 
     sync(
@@ -130,8 +130,17 @@ fn crtimes_roundtrip() {
 
     let dst_meta = fs::metadata(dst.join("file")).unwrap();
     match dst_meta.created() {
-        Ok(t) => assert_eq!(t, src_crtime),
-        Err(_) => return,
+        Ok(t) => {
+            if cfg!(target_os = "linux") {
+                // Linux exposes creation times but cannot modify them.
+                // Treat inequality as lack of support.
+                if t != src_crtime {
+                    return;
+                }
+            }
+            assert_eq!(t, src_crtime);
+        }
+        Err(_) => {} // no support on this platform
     }
 }
 
@@ -416,6 +425,7 @@ fn metadata_matches_rsync() {
         &SyncOptions {
             owner: true,
             group: true,
+            perms: true,
             times: true,
             crtimes: true,
             ..Default::default()
@@ -439,6 +449,10 @@ fn metadata_matches_rsync() {
     let meta_rsync = fs::metadata(dst_rsync.join("file")).unwrap();
     assert_eq!(meta_rrs.uid(), meta_rsync.uid());
     assert_eq!(meta_rrs.gid(), meta_rsync.gid());
+    assert_eq!(
+        meta_rrs.permissions().mode() & 0o7777,
+        meta_rsync.permissions().mode() & 0o7777
+    );
     let mt_rrs = FileTime::from_last_modification_time(&meta_rrs);
     let mt_rsync = FileTime::from_last_modification_time(&meta_rsync);
     assert_eq!(mt_rrs, mt_rsync);

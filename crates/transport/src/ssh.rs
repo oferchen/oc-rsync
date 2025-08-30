@@ -59,6 +59,7 @@ impl SshStdioTransport {
         server_args: I,
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
+        port: Option<u16>,
         family: Option<AddressFamily>,
     ) -> io::Result<Self>
     where
@@ -83,6 +84,9 @@ impl SshStdioTransport {
         if let Some(path) = known_hosts_path {
             cmd.arg("-o")
                 .arg(format!("UserKnownHostsFile={}", path.display()));
+        }
+        if let Some(p) = port {
+            cmd.arg("-p").arg(p.to_string());
         }
         if let Some(AddressFamily::V4) = family {
             cmd.arg("-4");

@@ -15,6 +15,8 @@ fn rule_strategy() -> impl Strategy<Value = String> {
         Just("P keep.tmp".to_string()),
         Just("-! */".to_string()),
         Just("+! */".to_string()),
+        Just("hide *.tmp".to_string()),
+        Just("show keep.log".to_string()),
     ]
 }
 

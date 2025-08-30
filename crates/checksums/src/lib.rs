@@ -15,17 +15,20 @@ pub enum StrongHash {
 #[derive(Clone, Debug)]
 pub struct ChecksumConfig {
     strong: StrongHash,
+    seed: u32,
 }
 
 #[derive(Clone, Debug)]
 pub struct ChecksumConfigBuilder {
     strong: StrongHash,
+    seed: u32,
 }
 
 impl Default for ChecksumConfigBuilder {
     fn default() -> Self {
         Self {
             strong: StrongHash::Md5,
+            seed: 0,
         }
     }
 }
@@ -40,9 +43,15 @@ impl ChecksumConfigBuilder {
         self
     }
 
+    pub fn seed(mut self, seed: u32) -> Self {
+        self.seed = seed;
+        self
+    }
+
     pub fn build(self) -> ChecksumConfig {
         ChecksumConfig {
             strong: self.strong,
+            seed: self.seed,
         }
     }
 }
@@ -56,7 +65,7 @@ pub struct Checksums {
 impl ChecksumConfig {
     pub fn checksum(&self, data: &[u8]) -> Checksums {
         Checksums {
-            weak: rolling_checksum(data),
+            weak: rolling_checksum_seeded(data, self.seed),
             strong: strong_digest(data, self.strong),
         }
     }
@@ -84,6 +93,10 @@ pub fn strong_digest(data: &[u8], alg: StrongHash) -> Vec<u8> {
 }
 
 pub fn rolling_checksum(data: &[u8]) -> u32 {
+    rolling_checksum_seeded(data, 0)
+}
+
+pub fn rolling_checksum_seeded(data: &[u8], seed: u32) -> u32 {
     let mut s1: u32 = 0;
     let mut s2: u32 = 0;
     let n = data.len();
@@ -91,6 +104,8 @@ pub fn rolling_checksum(data: &[u8]) -> u32 {
         s1 = s1.wrapping_add(*b as u32);
         s2 = s2.wrapping_add((n - i) as u32 * (*b as u32));
     }
+    s1 = s1.wrapping_add(seed);
+    s2 = s2.wrapping_add((n as u32).wrapping_mul(seed));
     (s1 & 0xffff) | (s2 << 16)
 }
 
@@ -99,14 +114,20 @@ pub struct Rolling {
     len: usize,
     s1: u32,
     s2: u32,
+    seed: u32,
 }
 
 impl Rolling {
     pub fn new(block: &[u8]) -> Self {
+        Self::with_seed(block, 0)
+    }
+
+    pub fn with_seed(block: &[u8], seed: u32) -> Self {
         let mut r = Rolling {
             len: block.len(),
             s1: 0,
             s2: 0,
+            seed,
         };
         for (i, b) in block.iter().enumerate() {
             r.s1 = r.s1.wrapping_add(*b as u32);
@@ -124,7 +145,11 @@ impl Rolling {
     }
 
     pub fn digest(&self) -> u32 {
-        (self.s1 & 0xffff) | (self.s2 << 16)
+        let s1 = self.s1.wrapping_add(self.seed);
+        let s2 = self
+            .s2
+            .wrapping_add((self.len as u32).wrapping_mul(self.seed));
+        (s1 & 0xffff) | (s2 << 16)
     }
 }
 

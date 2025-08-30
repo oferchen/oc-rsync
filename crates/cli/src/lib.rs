@@ -6,6 +6,8 @@ use std::io::{self, Read, Write};
 use std::net::{IpAddr, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+
+use daemon::{authenticate, chroot_and_drop_privileges, parse_module, Module};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -80,6 +82,12 @@ struct ClientOpts {
         visible_alias = "cc"
     )]
     checksum_choice: Option<String>,
+    #[arg(
+        long = "checksum-seed",
+        value_name = "NUM",
+        help_heading = "Attributes"
+    )]
+    checksum_seed: Option<u32>,
     #[arg(long, help_heading = "Attributes")]
     perms: bool,
     #[arg(long = "chmod", value_name = "CHMOD", help_heading = "Attributes")]
@@ -452,6 +460,10 @@ struct DaemonOpts {
     address: Option<IpAddr>,
     #[arg(long, default_value_t = 873)]
     port: u16,
+    #[arg(short = '4', long = "ipv4", conflicts_with = "ipv6")]
+    ipv4: bool,
+    #[arg(short = '6', long = "ipv6", conflicts_with = "ipv4")]
+    ipv6: bool,
     #[arg(long = "timeout", value_name = "SECONDS", value_parser = parse_duration)]
     timeout: Option<Duration>,
     #[arg(long = "contimeout", value_name = "SECONDS", value_parser = parse_duration)]
@@ -913,6 +925,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         acls: opts.acls,
         sparse: opts.sparse,
         strong,
+        checksum_seed: opts.checksum_seed.unwrap_or(0),
         compress_level: opts.compress_level,
         compress_choice,
         whole_file: if opts.no_whole_file {
@@ -1457,7 +1470,6 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     let motd = opts.motd.clone();
     let timeout = opts.timeout;
     let bwlimit = opts.bwlimit;
-
     let (listener, port) = TcpTransport::listen(opts.address, opts.port)?;
     if opts.port == 0 {
         println!("{}", port);
@@ -1571,11 +1583,8 @@ fn handle_connection<T: Transport>(
         }
         #[cfg(unix)]
         {
-            use nix::unistd::{chdir, chroot, setgid, setuid, Gid, Uid};
-            chroot(path).map_err(|e| EngineError::Other(e.to_string()))?;
-            chdir("/").map_err(|e| EngineError::Other(e.to_string()))?;
-            setgid(Gid::from_raw(65534)).map_err(|e| EngineError::Other(e.to_string()))?;
-            setuid(Uid::from_raw(65534)).map_err(|e| EngineError::Other(e.to_string()))?;
+            chroot_and_drop_privileges(path, 65534, 65534)
+                .map_err(|e| EngineError::Other(e.to_string()))?;
         }
         sync(
             Path::new("."),

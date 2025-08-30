@@ -1,6 +1,6 @@
 // crates/transport/src/tcp.rs
 use std::io::{self, Read, Write};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 use crate::{AddressFamily, DaemonTransport, Transport};
@@ -32,7 +32,12 @@ impl TcpTransport {
     }
 
     pub fn listen(addr: Option<IpAddr>, port: u16) -> io::Result<(TcpListener, u16)> {
-        let addr = addr.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+        let addr = addr.unwrap_or(IpAddr::V4(Ipv4Add
+            (Some(ip), _) => ip,
+            (None, Some(AddressFamily::V4)) => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+            (None, Some(AddressFamily::V6)) => IpAddr::V6(Ipv6Addr::UNSPECIFIED),
+            (None, None) => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+        };
         let listener = TcpListener::bind((addr, port))?;
         let port = listener.local_addr()?.port();
         Ok((listener, port))

@@ -8,6 +8,7 @@ members = [
     "crates/compress",
     "crates/engine",
     "crates/transport",
+    "crates/daemon",
     "crates/cli",
     "bin/rsync-rs",
 ]

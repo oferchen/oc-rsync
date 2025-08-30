@@ -74,6 +74,38 @@ fn spawn_daemon_with_address(addr: &str) -> (Child, u16) {
     (child, port)
 }
 
+fn spawn_daemon_ipv4() -> (Child, u16) {
+    let mut child = StdCommand::cargo_bin("rsync-rs")
+        .unwrap()
+        .args(["--daemon", "--module", "data=/tmp", "--port", "0", "-4"])
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let port = read_port(&mut child);
+    (child, port)
+}
+
+fn spawn_daemon_ipv6() -> (Child, u16) {
+    let mut child = StdCommand::cargo_bin("rsync-rs")
+        .unwrap()
+        .args(["--daemon", "--module", "data=/tmp", "--port", "0", "-6"])
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let port = read_port(&mut child);
+    (child, port)
+}
+
+fn wait_for_daemon_v6(port: u16) {
+    for _ in 0..20 {
+        if TcpStream::connect(("::1", port)).is_ok() {
+            return;
+        }
+        sleep(Duration::from_millis(50));
+    }
+    panic!("daemon did not start");
+}
+
 fn wait_for_daemon(port: u16) {
     for _ in 0..20 {
         if TcpStream::connect(("127.0.0.1", port)).is_ok() {
@@ -112,6 +144,27 @@ fn daemon_binds_to_specified_address() {
 
 #[test]
 #[serial]
+fn daemon_binds_with_ipv4_flag() {
+    let (mut child, port) = spawn_daemon_ipv4();
+    wait_for_daemon(port);
+    TcpStream::connect(("127.0.0.1", port)).unwrap();
+    assert!(TcpStream::connect(("::1", port)).is_err());
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_binds_with_ipv6_flag() {
+    let (mut child, port) = spawn_daemon_ipv6();
+    wait_for_daemon_v6(port);
+    TcpStream::connect(("::1", port)).unwrap();
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
 fn probe_connects_to_daemon() {
     let (mut child, port) = spawn_daemon();
     wait_for_daemon(port);
@@ -140,6 +193,23 @@ fn daemon_accepts_connection_on_ephemeral_port() {
     let (mut child, port, _dir) = spawn_temp_daemon();
     wait_for_daemon(port);
     TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_allows_module_access() {
+    let (mut child, port, _dir) = spawn_temp_daemon();
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    t.send(b"data\n").unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200))).unwrap();
+    let n = t.receive(&mut buf).unwrap_or(0);
+    assert!(n == 0 || !String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR"));
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -233,7 +303,7 @@ fn daemon_rejects_unauthorized_module() {
 
 #[test]
 #[serial]
-fn daemon_accepts_authorized_client() {
+fn daemon_authenticates_valid_token() {
     let dir = tempfile::tempdir().unwrap();
     let secrets = dir.path().join("auth");
     fs::write(&secrets, "secret data\n").unwrap();
@@ -443,7 +513,7 @@ fn client_respects_no_motd() {
 
 #[test]
 #[serial]
-fn daemon_logs_connections() {
+fn daemon_writes_log_file() {
     let dir = tempfile::tempdir().unwrap();
     let log = dir.path().join("log");
     let port = TcpListener::bind("127.0.0.1:0")

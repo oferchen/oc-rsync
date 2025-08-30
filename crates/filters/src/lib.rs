@@ -549,6 +549,8 @@ pub fn parse(
             match token {
                 "include" => (Some(RuleKind::Include), "", rest),
                 "exclude" => (Some(RuleKind::Exclude), "", rest),
+                "show" => (Some(RuleKind::Include), "", rest),
+                "hide" => (Some(RuleKind::Exclude), "", rest),
                 "protect" => (Some(RuleKind::Protect), "", rest),
                 "merge" => {
                     let path = PathBuf::from(rest);
