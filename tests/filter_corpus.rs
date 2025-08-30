@@ -21,14 +21,19 @@ fn setup_basic(src: &Path) {
 }
 
 fn setup_perdir(src: &Path) {
-    fs::create_dir_all(src.join("sub")).unwrap();
+    fs::create_dir_all(src.join("sub/nested")).unwrap();
     fs::write(src.join(".rsync-filter"), "- *.tmp\n").unwrap();
-    fs::write(src.join("sub/.rsync-filter"), "+ keep.tmp\n- *\n").unwrap();
+    fs::write(
+        src.join("sub/.rsync-filter"),
+        "+ nested/\n+ keep.tmp\n- *\n",
+    )
+    .unwrap();
     fs::write(src.join("sub/keep.tmp"), "keep").unwrap();
     fs::write(src.join("sub/other.tmp"), "other").unwrap();
     fs::write(src.join("sub/other.txt"), "other").unwrap();
-    fs::create_dir_all(src.join("sub/nested")).unwrap();
+    fs::write(src.join("sub/nested/.rsync-filter"), "+ keep.tmp\n- *\n").unwrap();
     fs::write(src.join("sub/nested/keep.tmp"), "nested").unwrap();
+    fs::write(src.join("sub/nested/other.tmp"), "other").unwrap();
 }
 
 fn setup_edge(src: &Path) {

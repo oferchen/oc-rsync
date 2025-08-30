@@ -410,12 +410,35 @@ impl Matcher {
 
         let mut rules = Vec::new();
         let mut merges = Vec::new();
+
+        fn is_excluded(rules: &[(usize, Rule)], path: &Path) -> bool {
+            let mut state: Option<bool> = None;
+            for (_, r) in rules {
+                match r {
+                    Rule::Clear => state = None,
+                    Rule::Include(d) | Rule::Protect(d) => {
+                        let matched = d.matcher.is_match(path);
+                        if (d.invert && !matched) || (!d.invert && matched) {
+                            state = Some(true);
+                        }
+                    }
+                    Rule::Exclude(d) => {
+                        let matched = d.matcher.is_match(path);
+                        if (d.invert && !matched) || (!d.invert && matched) {
+                            state = Some(false);
+                        }
+                    }
+                    Rule::DirMerge(_) => {}
+                }
+            }
+            matches!(state, Some(false))
+        }
+
         let parsed = parse(&adjusted, visited, depth + 1)?;
 
         for r in parsed {
             match r {
                 Rule::DirMerge(pd) => {
-                    merges.push((index, pd.clone()));
                     let nested = if pd.root_only {
                         if let Some(root) = &self.root {
                             root.join(&pd.file)
@@ -425,14 +448,37 @@ impl Matcher {
                     } else {
                         dir.join(&pd.file)
                     };
+                    let dir_for_rule = nested.parent().unwrap_or(&nested).to_path_buf();
+                    if is_excluded(&rules, &dir_for_rule) {
+                        continue;
+                    }
+                    merges.push((index, pd.clone()));
                     if !visited.insert(nested.clone()) {
                         return Err(ParseError::RecursiveInclude(nested));
                     }
-                    let rel2 = if pd.anchored { None } else { rel };
+                    let rel2 = if pd.anchored {
+                        None
+                    } else {
+                        let mut base = rel.map(|p| p.to_path_buf()).unwrap_or_else(PathBuf::new);
+                        if let Some(parent) = Path::new(&pd.file).parent() {
+                            if !parent.as_os_str().is_empty() {
+                                base = if base.as_os_str().is_empty() {
+                                    parent.to_path_buf()
+                                } else {
+                                    base.join(parent)
+                                };
+                            }
+                        }
+                        if base.as_os_str().is_empty() {
+                            None
+                        } else {
+                            Some(base)
+                        }
+                    };
                     let (mut nr, mut nm) = self.load_merge_file(
                         dir,
                         &nested,
-                        rel2,
+                        rel2.as_deref(),
                         pd.cvs,
                         pd.word_split,
                         pd.sign,
@@ -515,7 +561,8 @@ pub fn parse(
         }
 
         if let Some(rest) = line.strip_prefix("-F") {
-            if rest.chars().all(|c| c == 'F') {
+            let count = rest.chars().take_while(|c| *c == 'F').count();
+            if count == rest.len() {
                 rules.push(Rule::DirMerge(PerDir {
                     file: ".rsync-filter".to_string(),
                     anchored: false,
@@ -525,7 +572,7 @@ pub fn parse(
                     word_split: false,
                     sign: None,
                 }));
-                if !rest.is_empty() {
+                if count > 0 {
                     let matcher = Glob::new("**/.rsync-filter")?.compile_matcher();
                     let data = RuleData {
                         matcher,
