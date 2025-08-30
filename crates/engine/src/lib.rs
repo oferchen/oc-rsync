@@ -16,6 +16,9 @@ use compress::{available_codecs, should_compress, Codec, Compressor, Decompresso
 use filters::Matcher;
 use thiserror::Error;
 
+mod cdc;
+use cdc::{chunk_file, Manifest};
+
 #[derive(Debug, Error)]
 pub enum EngineError {
     #[error(transparent)]
@@ -906,6 +909,7 @@ pub struct SyncOptions {
     pub delete_excluded: bool,
     pub checksum: bool,
     pub compress: bool,
+    pub cdc: bool,
     pub dirs: bool,
     pub list_only: bool,
     pub update: bool,
@@ -969,6 +973,7 @@ impl Default for SyncOptions {
             delete_excluded: false,
             checksum: false,
             compress: false,
+            cdc: false,
             perms: false,
             executability: false,
             times: false,
@@ -1142,6 +1147,11 @@ pub fn sync(
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
     let mut receiver = Receiver::new(codec, opts.clone());
     let mut stats = Stats::default();
+    let mut manifest = if opts.cdc {
+        Manifest::load()
+    } else {
+        Manifest::default()
+    };
     if matches!(opts.delete, Some(DeleteMode::Before)) {
         delete_extraneous(src, dst, &matcher, opts, &mut stats)?;
     }
@@ -1206,6 +1216,31 @@ pub fn sync(
                         false
                     };
                     if !dest_path.exists() && !partial_exists {
+                        if opts.cdc {
+                            if let Ok(chunks) = chunk_file(&path) {
+                                if !chunks.is_empty() {
+                                    if let Some(existing) = manifest.lookup(&chunks[0].hash) {
+                                        let all = chunks
+                                            .iter()
+                                            .all(|c| manifest.lookup(&c.hash).is_some());
+                                        if all {
+                                            if let Some(parent) = dest_path.parent() {
+                                                fs::create_dir_all(parent)?;
+                                            }
+                                            fs::copy(&existing, &dest_path)?;
+                                            stats.files_transferred += 1;
+                                            if opts.itemize_changes {
+                                                println!(">f+++++++++ {}", rel.display());
+                                            }
+                                            for c in &chunks {
+                                                manifest.insert(&c.hash, &dest_path);
+                                            }
+                                            continue;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         if let Some(ref link_dir) = opts.link_dest {
                             let link_path = link_dir.join(rel);
                             if files_identical(&path, &link_path) {
@@ -1238,6 +1273,13 @@ pub fn sync(
                         stats.bytes_transferred += fs::metadata(&path)?.len();
                         if opts.itemize_changes {
                             println!(">f+++++++++ {}", rel.display());
+                        }
+                        if opts.cdc {
+                            if let Ok(chunks) = chunk_file(&dest_path) {
+                                for c in &chunks {
+                                    manifest.insert(&c.hash, &dest_path);
+                                }
+                            }
                         }
                     }
                 } else if file_type.is_dir() {
@@ -1351,6 +1393,9 @@ pub fn sync(
         Some(DeleteMode::After) | Some(DeleteMode::During)
     ) {
         delete_extraneous(src, dst, &matcher, opts, &mut stats)?;
+    }
+    if opts.cdc {
+        manifest.save()?;
     }
     Ok(stats)
 }

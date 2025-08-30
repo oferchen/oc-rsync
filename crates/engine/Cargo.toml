@@ -11,6 +11,7 @@ filters = { path = "../filters" }
 compress = { path = "../compress" }
 nix = { version = "0.27", features = ["user", "fs"] }
 meta = { path = "../meta", default-features = false }
+blake3 = "1"
 
 [dev-dependencies]
 tempfile = "3"

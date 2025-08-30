@@ -835,6 +835,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         delete_excluded: opts.delete_excluded,
         checksum: opts.checksum,
         compress,
+        cdc: opts.modern,
         dirs: opts.dirs,
         list_only: opts.list_only,
         update: opts.update,
