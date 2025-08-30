@@ -7,12 +7,16 @@ publish = false
 [package.metadata]
 cargo-fuzz = true
 
+[workspace]
+members = []
+
 [dependencies]
 libfuzzer-sys = "0.4"
 protocol = { path = "../crates/protocol" }
 filters = { path = "../crates/filters" }
 walk = { path = "../crates/walk" }
 cli = { path = "../crates/cli" }
+tempfile = "3"
 
 [[bin]]
 name = "protocol_frame_decode_fuzz"
@@ -41,6 +45,12 @@ doc = false
 [[bin]]
 name = "filter_parser"
 path = "fuzz_targets/filter_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "filters_dir_merge_fuzz"
+path = "fuzz_targets/filters_dir_merge_fuzz.rs"
 test = false
 doc = false
 
