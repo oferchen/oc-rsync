@@ -27,7 +27,7 @@ fn read_port(child: &mut Child) -> u16 {
 }
 
 fn spawn_daemon() -> (Child, u16) {
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--daemon", "--module", "data=/tmp", "--port", "0"])
         .stdout(Stdio::piped())
@@ -39,7 +39,7 @@ fn spawn_daemon() -> (Child, u16) {
 
 fn spawn_temp_daemon() -> (Child, u16, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
@@ -56,7 +56,7 @@ fn spawn_temp_daemon() -> (Child, u16, tempfile::TempDir) {
 }
 
 fn spawn_daemon_with_address(addr: &str) -> (Child, u16) {
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
@@ -75,7 +75,7 @@ fn spawn_daemon_with_address(addr: &str) -> (Child, u16) {
 }
 
 fn spawn_daemon_ipv4() -> (Child, u16) {
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--daemon", "--module", "data=/tmp", "--port", "0", "-4"])
         .stdout(Stdio::piped())
@@ -86,7 +86,7 @@ fn spawn_daemon_ipv4() -> (Child, u16) {
 }
 
 fn spawn_daemon_ipv6() -> (Child, u16) {
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--daemon", "--module", "data=/tmp", "--port", "0", "-6"])
         .stdout(Stdio::piped())
@@ -168,7 +168,7 @@ fn daemon_binds_with_ipv6_flag() {
 fn probe_connects_to_daemon() {
     let (mut child, port) = spawn_daemon();
     wait_for_daemon(port);
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--probe", &format!("127.0.0.1:{port}")])
         .assert()
@@ -180,7 +180,7 @@ fn probe_connects_to_daemon() {
 #[test]
 #[serial]
 fn probe_rejects_old_version() {
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--probe", "--peer-version", "1"])
         .assert()
@@ -228,7 +228,7 @@ fn daemon_rejects_invalid_token() {
         .local_addr()
         .unwrap()
         .port();
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
@@ -271,7 +271,7 @@ fn daemon_rejects_unauthorized_module() {
         .local_addr()
         .unwrap()
         .port();
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
@@ -315,7 +315,7 @@ fn daemon_authenticates_valid_token() {
         .local_addr()
         .unwrap()
         .port();
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
@@ -360,7 +360,7 @@ fn daemon_respects_host_allow_and_deny_lists() {
             .local_addr()
             .unwrap()
             .port();
-        let child = StdCommand::cargo_bin("rsync-rs")
+        let child = StdCommand::cargo_bin("oc-rsync")
             .unwrap()
             .args([
                 "--daemon",
@@ -390,7 +390,7 @@ fn daemon_respects_host_allow_and_deny_lists() {
             .local_addr()
             .unwrap()
             .port();
-        let child = StdCommand::cargo_bin("rsync-rs")
+        let child = StdCommand::cargo_bin("oc-rsync")
             .unwrap()
             .args([
                 "--daemon",
@@ -429,7 +429,7 @@ fn daemon_displays_motd() {
         .local_addr()
         .unwrap()
         .port();
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
@@ -472,7 +472,7 @@ fn client_respects_no_motd() {
         .local_addr()
         .unwrap()
         .port();
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
@@ -487,7 +487,7 @@ fn client_respects_no_motd() {
         .unwrap();
     wait_for_daemon(port);
 
-    let output = Command::cargo_bin("rsync-rs")
+    let output = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             &format!("rsync://127.0.0.1:{port}/data/"),
@@ -497,7 +497,7 @@ fn client_respects_no_motd() {
         .unwrap();
     assert!(String::from_utf8_lossy(&output.stdout).contains("Hello world"));
 
-    let output = Command::cargo_bin("rsync-rs")
+    let output = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--no-motd",
@@ -522,7 +522,7 @@ fn daemon_writes_log_file() {
         .local_addr()
         .unwrap()
         .port();
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
@@ -564,7 +564,7 @@ fn daemon_honors_bwlimit() {
         .local_addr()
         .unwrap()
         .port();
-    let mut child = StdCommand::cargo_bin("rsync-rs")
+    let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",

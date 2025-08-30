@@ -16,7 +16,7 @@ fn partial_transfer_resumes_after_interrupt() {
     std::fs::write(src_dir.join("a.txt"), &data).unwrap();
 
     let src_arg = format!("{}/", src_dir.display());
-    let mut child = Command::cargo_bin("rsync-rs")
+    let mut child = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -34,7 +34,7 @@ fn partial_transfer_resumes_after_interrupt() {
 
     assert!(dst_dir.join("a.partial").exists());
 
-    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     cmd.args(["--local", "--partial", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
 
@@ -53,7 +53,7 @@ fn append_resumes_after_interrupt() {
     std::fs::write(src_dir.join("a.txt"), &data).unwrap();
 
     let src_arg = format!("{}/", src_dir.display());
-    let mut child = Command::cargo_bin("rsync-rs")
+    let mut child = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -71,7 +71,7 @@ fn append_resumes_after_interrupt() {
     let dest_file = dst_dir.join("a.txt");
     assert!(dest_file.exists());
 
-    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     cmd.args(["--local", "--append", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
 
@@ -90,7 +90,7 @@ fn append_verify_restarts_on_mismatch() {
     std::fs::write(src_dir.join("a.txt"), &data).unwrap();
 
     let src_arg = format!("{}/", src_dir.display());
-    let mut child = Command::cargo_bin("rsync-rs")
+    let mut child = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -112,7 +112,7 @@ fn append_verify_restarts_on_mismatch() {
         std::fs::write(&dest_file, &partial).unwrap();
     }
 
-    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     cmd.args([
         "--local",
         "--append-verify",
@@ -136,7 +136,7 @@ fn partial_restarts_on_mismatch() {
     std::fs::write(src_dir.join("a.txt"), &data).unwrap();
 
     let src_arg = format!("{}/", src_dir.display());
-    let mut child = Command::cargo_bin("rsync-rs")
+    let mut child = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -160,7 +160,7 @@ fn partial_restarts_on_mismatch() {
         std::fs::write(&partial_file, &partial).unwrap();
     }
 
-    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     cmd.args(["--local", "--partial", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
 

@@ -1,6 +1,6 @@
 # Command Line Interface
 
-The `rsync-rs` binary aims to mirror the familiar `rsync` experience. An
+The `oc-rsync` binary aims to mirror the familiar `rsync` experience. An
 overview of project goals and features is available in the
 [README](../README.md#in-scope-features), and a high-level summary of CLI goals
 lives in the [README's CLI section](../README.md#cli).
@@ -8,46 +8,46 @@ lives in the [README's CLI section](../README.md#cli).
 ## Usage
 
 ```sh
-rsync-rs [OPTIONS] <SRC> <DEST>
+oc-rsync [OPTIONS] <SRC> <DEST>
 ```
 
 ### Examples
 
 - Local directory sync:
   ```sh
-  rsync-rs ./src ./backup
+  oc-rsync ./src ./backup
   ```
 - Remote sync over SSH:
   ```sh
-  rsync-rs ./src user@example.com:/var/www
+  oc-rsync ./src user@example.com:/var/www
   ```
 - Dry run with statistics:
   ```sh
-  rsync-rs -n --stats ./src remote:/dst
+  oc-rsync -n --stats ./src remote:/dst
   ```
 - Sync using an explicit config file:
   ```sh
-  rsync-rs --config ./rsync-rs.toml ./src remote:/dst
+  oc-rsync --config ./oc-rsync.toml ./src remote:/dst
   ```
 - Mirror with exclusions and deletions:
   ```sh
-  rsync-rs -a --delete --exclude '.cache/' ./src/ ./mirror/
+  oc-rsync -a --delete --exclude '.cache/' ./src/ ./mirror/
   ```
 - Incremental backup using hard links:
   ```sh
-  rsync-rs -a --link-dest=../prev --compare-dest=../base ./src/ ./snapshot/
+  oc-rsync -a --link-dest=../prev --compare-dest=../base ./src/ ./snapshot/
   ```
 - Throttled modern compression:
   ```sh
-  rsync-rs -az --modern --bwlimit=1m ./src/ host:/archive/
+  oc-rsync -az --modern --bwlimit=1m ./src/ host:/archive/
   ```
 - Tune delta block size:
   ```sh
-  rsync-rs -B 65536 ./src remote:/dst
+  oc-rsync -B 65536 ./src remote:/dst
   ```
 - Show version:
   ```sh
-  rsync-rs --version
+  oc-rsync --version
   ```
 
 ### Trailing slash semantics
@@ -55,10 +55,10 @@ rsync-rs [OPTIONS] <SRC> <DEST>
 Just like `rsync`, adding a trailing slash to the source path changes what is
 copied:
 
-- `rsync-rs src/ dest/` copies the *contents* of `src` into `dest`.
-- `rsync-rs src dest/` creates a `dest/src` directory containing the original
+- `oc-rsync src/ dest/` copies the *contents* of `src` into `dest`.
+- `oc-rsync src dest/` creates a `dest/src` directory containing the original
   files.
-- `rsync-rs remote:/src/ local/` pulls the contents of `/src` from the remote
+- `oc-rsync remote:/src/ local/` pulls the contents of `/src` from the remote
   host into `local`.
 
 ## Options
@@ -154,7 +154,7 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--max-size` | off |  | [matrix](feature_matrix.md#--max-size) |
 |  | `--min-size` | off |  | [matrix](feature_matrix.md#--min-size) |
 |  | `--mkpath` | off |  | [matrix](feature_matrix.md#--mkpath) |
-|  | `--modern` | off | rsync-rs only; enables zstd compression and BLAKE3 checksums; requires `blake3` feature | [matrix](feature_matrix.md#--modern) |
+|  | `--modern` | off | oc-rsync only; enables zstd compression and BLAKE3 checksums; requires `blake3` feature | [matrix](feature_matrix.md#--modern) |
 | `-@` | `--modify-window` | off |  | [matrix](feature_matrix.md#--modify-window) |
 |  | `--munge-links` | off |  | [matrix](feature_matrix.md#--munge-links) |
 |  | `--no-D` | off | alias for `--no-devices --no-specials` | [matrix](feature_matrix.md#--no-d) |
@@ -243,17 +243,17 @@ quotes much like GNU `rsync`. Leading `VAR=value` tokens set environment
 variables for the spawned command. For example:
 
 ```
-rsync-rs -e 'RUST_LOG=debug ssh -p 2222 -o "StrictHostKeyChecking=no"' src dst
+oc-rsync -e 'RUST_LOG=debug ssh -p 2222 -o "StrictHostKeyChecking=no"' src dst
 ```
 
-During the connection handshake `rsync-rs` also forwards any environment
+During the connection handshake `oc-rsync` also forwards any environment
 variables from its own process whose names begin with `RSYNC_`, mirroring
 `rsync`'s environment propagation behavior.
 
 ## Configuration precedence
 
 1. Command-line flags
-2. Environment variables (prefixed with `RSYNC_RS_`)
+2. Environment variables (prefixed with `OC_RSYNC_`)
 3. Configuration file provided via `--config`
 4. Built-in defaults
 
@@ -262,7 +262,7 @@ specified earlier in the list override later sources.
 
 ## Filters
 
-`rsync-rs` supports include and exclude rules using the same syntax as
+`oc-rsync` supports include and exclude rules using the same syntax as
 `rsync`. Rules can be supplied on the command line with `--filter` or placed in
 `.rsync-filter` files located throughout the source tree. When walking
 directories the tool automatically loads any `.rsync-filter` files and merges

@@ -1,6 +1,6 @@
 # Project Gaps
 
-This document tracks outstanding gaps in `rsync-rs` compared to the reference `rsync` implementation. Update this file as features are implemented.
+This document tracks outstanding gaps in `oc-rsync` compared to the reference `rsync` implementation. Update this file as features are implemented.
 
 ## Recently addressed gaps
 - Partial transfer resumption now reuses `.partial` files and retransfers only missing blocks.

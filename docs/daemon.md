@@ -1,6 +1,6 @@
 # Daemon Mode
 
-`rsync-rs` can act as a standalone daemon that listens on TCP port 873 and serves one or more exported modules. The daemon is started with `--daemon` and at least one `--module` declaration of the form `name=path`.
+`oc-rsync` can act as a standalone daemon that listens on TCP port 873 and serves one or more exported modules. The daemon is started with `--daemon` and at least one `--module` declaration of the form `name=path`.
 
 The default listener binds to all IPv4 interfaces on port 873. Supply
 `--port` to choose a different port. The `-4` and `-6` flags restrict the
@@ -12,7 +12,7 @@ listener to IPv4 or IPv6 addresses respectively. These can be combined with
 Modules map a name to a directory on disk. Each module is supplied on the command line:
 
 ```bash
-rsync-rs --daemon --module data=/srv/export
+oc-rsync --daemon --module data=/srv/export
 ```
 
 The integration tests spawn a daemon in exactly this manner when negotiating protocol versions.
@@ -30,10 +30,10 @@ During the handshake the client sends the token followed by a newline. The test 
 
 ## Numeric ID handling
 
-By default `rsync-rs` maps user and group names when transferring ownership metadata. Supplying `--numeric-ids` disables this mapping and preserves raw UID and GID values during synchronization. This flag applies equally in daemon mode and when invoking a client:
+By default `oc-rsync` maps user and group names when transferring ownership metadata. Supplying `--numeric-ids` disables this mapping and preserves raw UID and GID values during synchronization. This flag applies equally in daemon mode and when invoking a client:
 
 ```bash
-rsync-rs --daemon --numeric-ids --module data=/srv/export
+oc-rsync --daemon --numeric-ids --module data=/srv/export
 ```
 
 ## Chroot and privilege drop
@@ -47,7 +47,7 @@ and `--hosts-deny` flags accept comma separated IP addresses. A client must matc
 the allow list (if supplied) and must not match the deny list:
 
 ```bash
-rsync-rs --daemon \
+oc-rsync --daemon \
     --module logs=/srv/logs \
     --hosts-allow=127.0.0.1 \
     --hosts-deny=*
@@ -63,7 +63,7 @@ Supply `--log-file` to record daemon activity. The optional
 client host and `%m` for the requested module:
 
 ```bash
-rsync-rs --daemon --module data=/srv/export \
+oc-rsync --daemon --module data=/srv/export \
     --log-file=/var/log/rsyncd.log \
     --log-file-format="%h %m"
 ```
@@ -75,6 +75,6 @@ the file is sent with the `@RSYNCD:` prefix during the handshake. Clients can
 suppress this output with the `--no-motd` flag:
 
 ```bash
-rsync-rs --no-motd rsync://host/module dest/
+oc-rsync --no-motd rsync://host/module dest/
 ```
 

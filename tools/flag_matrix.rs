@@ -69,11 +69,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rsync_help_str = String::from_utf8(rsync_help.stdout)?;
     let (rsync_flags, rsync_aliases, rsync_alias_desc) = parse_help(&rsync_help_str);
 
-    let rsync_rs_help = Command::new("cargo")
-        .args(["run", "--quiet", "--bin", "rsync-rs", "--", "--help"])
+    let oc_rsync_help = Command::new("cargo")
+        .args(["run", "--quiet", "--bin", "oc-rsync", "--", "--help"])
         .output()?;
-    let rsync_rs_help_str = String::from_utf8(rsync_rs_help.stdout)?;
-    let (rsync_rs_flags, rsync_rs_aliases, _rsync_rs_alias_desc) = parse_help(&rsync_rs_help_str);
+    let oc_rsync_help_str = String::from_utf8(oc_rsync_help.stdout)?;
+    let (oc_rsync_flags, oc_rsync_aliases, _oc_rsync_alias_desc) = parse_help(&oc_rsync_help_str);
 
     let error_notes: HashMap<&str, &str> = [].into_iter().collect();
 
@@ -81,12 +81,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut entries = Vec::new();
     for flag in rsync_flags.iter() {
-        let mut status = if rsync_rs_flags.contains(flag) {
+        let mut status = if oc_rsync_flags.contains(flag) {
             if error_notes.contains_key(flag.as_str()) {
                 "Error"
             } else if ignored_flags.contains(flag.as_str()) {
                 "Ignored"
-            } else if rsync_rs_aliases.contains_key(flag) {
+            } else if oc_rsync_aliases.contains_key(flag) {
                 "Alias"
             } else {
                 "Supported"

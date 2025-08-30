@@ -105,7 +105,7 @@ fn custom_rsh_matches_stock_rsync() {
 fn custom_rsh_negotiates_codecs() {
     let dir = tempdir().unwrap();
     let remote_bin = dir.path().join("rr-remote");
-    fs::copy(cargo_bin("rsync-rs"), &remote_bin).unwrap();
+    fs::copy(cargo_bin("oc-rsync"), &remote_bin).unwrap();
     fs::set_permissions(&remote_bin, fs::Permissions::from_mode(0o755)).unwrap();
     let remote_cmd = vec![remote_bin.to_str().unwrap().to_string()];
 
@@ -203,13 +203,13 @@ fn rsh_env_var_assignments_are_honored() {
     fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
 
     let remote_bin = dir.path().join("rr-remote");
-    fs::copy(cargo_bin("rsync-rs"), &remote_bin).unwrap();
+    fs::copy(cargo_bin("oc-rsync"), &remote_bin).unwrap();
     fs::set_permissions(&remote_bin, fs::Permissions::from_mode(0o755)).unwrap();
 
     let src_spec = format!("{}/", src_dir.display());
     let dst_spec = format!("ignored:{}", dst_dir.display());
     let rsh_spec = format!("FOO=bar {}", rsh.display());
-    let mut cmd = AssertCommand::cargo_bin("rsync-rs").unwrap();
+    let mut cmd = AssertCommand::cargo_bin("oc-rsync").unwrap();
     cmd.env("RSYNC_RSH", rsh_spec);
     cmd.args([
         "--rsync-path",
@@ -235,7 +235,7 @@ fn rsync_path_respects_rsh_env_var() {
     let dst_dir = dir.path().join("dst");
 
     let remote_bin = dir.path().join("rr-remote");
-    fs::copy(cargo_bin("rsync-rs"), &remote_bin).unwrap();
+    fs::copy(cargo_bin("oc-rsync"), &remote_bin).unwrap();
     fs::set_permissions(&remote_bin, fs::Permissions::from_mode(0o755)).unwrap();
 
     let rsh = dir.path().join("fake_rsh.sh");
@@ -244,7 +244,7 @@ fn rsync_path_respects_rsh_env_var() {
 
     let src_spec = format!("{}/", src_dir.display());
     let dst_spec = format!("ignored:{}", dst_dir.display());
-    let mut cmd = AssertCommand::cargo_bin("rsync-rs").unwrap();
+    let mut cmd = AssertCommand::cargo_bin("oc-rsync").unwrap();
     cmd.env("RSYNC_RSH", rsh.to_str().unwrap());
     cmd.args([
         "--rsync-path",
@@ -270,7 +270,7 @@ fn complex_rsh_and_rsync_path_env() {
     let dst_dir = dir.path().join("dst");
 
     let remote_bin = dir.path().join("rr-remote");
-    fs::copy(cargo_bin("rsync-rs"), &remote_bin).unwrap();
+    fs::copy(cargo_bin("oc-rsync"), &remote_bin).unwrap();
     fs::set_permissions(&remote_bin, fs::Permissions::from_mode(0o755)).unwrap();
 
     let env_out = dir.path().join("env.txt");
@@ -288,7 +288,7 @@ fn complex_rsh_and_rsync_path_env() {
 
     let src_spec = format!("{}/", src_dir.display());
     let dst_spec = format!("ignored:{}", dst_dir.display());
-    let mut cmd = AssertCommand::cargo_bin("rsync-rs").unwrap();
+    let mut cmd = AssertCommand::cargo_bin("oc-rsync").unwrap();
     cmd.args([
         "--rsh",
         "sh -c 'exec \"$@\"'",

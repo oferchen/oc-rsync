@@ -82,7 +82,7 @@ fn filter_corpus_parity() {
         let rsync_output = String::from_utf8_lossy(&rsync_out.stdout).to_string()
             + &String::from_utf8_lossy(&rsync_out.stderr);
 
-        let mut ours_cmd = Command::cargo_bin("rsync-rs").unwrap();
+        let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
         ours_cmd.args(["--local", "--recursive"]);
         ours_cmd.args(&args);
         ours_cmd.arg(&src_arg);
@@ -139,7 +139,7 @@ fn ignores_parent_rsync_filter_with_ff() {
     let rsync_output = String::from_utf8_lossy(&rsync_out.stdout).to_string()
         + &String::from_utf8_lossy(&rsync_out.stderr);
 
-    let mut ours_cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
     ours_cmd.args([
         "--local",
         "--recursive",

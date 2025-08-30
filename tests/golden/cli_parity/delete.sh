@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
-RSYNC_RS="$ROOT/target/debug/rsync-rs"
+OC_RSYNC="$ROOT/target/debug/oc-rsync"
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -10,43 +10,43 @@ trap 'rm -rf "$TMP"' EXIT
 run_case() {
   local flags=("$@")
   local dir="$TMP/$(echo "${flags[*]}" | tr -d ' -.')"
-  mkdir -p "$dir/src" "$dir/rsync_dst" "$dir/rsync_rs_dst"
+  mkdir -p "$dir/src" "$dir/rsync_dst" "$dir/oc_rsync_dst"
   echo keep > "$dir/src/a.txt"
   cp "$dir/src/a.txt" "$dir/rsync_dst/a.txt"
-  cp "$dir/src/a.txt" "$dir/rsync_rs_dst/a.txt"
+  cp "$dir/src/a.txt" "$dir/oc_rsync_dst/a.txt"
 
   if [[ " ${flags[*]} " == *" --delete-excluded "* ]]; then
     echo skip > "$dir/src/old.txt"
     cp "$dir/src/old.txt" "$dir/rsync_dst/old.txt"
-    cp "$dir/src/old.txt" "$dir/rsync_rs_dst/old.txt"
+    cp "$dir/src/old.txt" "$dir/oc_rsync_dst/old.txt"
   else
     echo obsolete > "$dir/rsync_dst/old.txt"
-    cp "$dir/rsync_dst/old.txt" "$dir/rsync_rs_dst/old.txt"
+    cp "$dir/rsync_dst/old.txt" "$dir/oc_rsync_dst/old.txt"
   fi
 
   rsync_output=$(rsync --recursive "${flags[@]}" "$dir/src/" "$dir/rsync_dst" 2>&1)
   rsync_status=$?
 
   set +e
-  rsync_rs_raw=$("$RSYNC_RS" --local --recursive "${flags[@]}" "$dir/src/" "$dir/rsync_rs_dst" 2>&1)
-  rsync_rs_status=$?
+  oc_rsync_raw=$("$OC_RSYNC" --local --recursive "${flags[@]}" "$dir/src/" "$dir/oc_rsync_dst" 2>&1)
+  oc_rsync_status=$?
   set -e
-  rsync_rs_output=$(echo "$rsync_rs_raw" | grep -v 'recursive mode enabled' || true)
+  oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v 'recursive mode enabled' || true)
 
-  if [ "$rsync_status" -ne "$rsync_rs_status" ]; then
-    echo "Exit codes differ: rsync=$rsync_status rsync-rs=$rsync_rs_status" >&2
+  if [ "$rsync_status" -ne "$oc_rsync_status" ]; then
+    echo "Exit codes differ: rsync=$rsync_status oc-rsync=$oc_rsync_status" >&2
     exit 1
   fi
 
-  if [ "$rsync_output" != "$rsync_rs_output" ]; then
+  if [ "$rsync_output" != "$oc_rsync_output" ]; then
     echo "Outputs differ" >&2
-    diff -u <(printf "%s" "$rsync_output") <(printf "%s" "$rsync_rs_output") >&2 || true
+    diff -u <(printf "%s" "$rsync_output") <(printf "%s" "$oc_rsync_output") >&2 || true
     exit 1
   fi
 
-  if ! diff -r "$dir/rsync_dst" "$dir/rsync_rs_dst" >/dev/null; then
+  if ! diff -r "$dir/rsync_dst" "$dir/oc_rsync_dst" >/dev/null; then
     echo "Directory trees differ" >&2
-    diff -r "$dir/rsync_dst" "$dir/rsync_rs_dst" >&2 || true
+    diff -r "$dir/rsync_dst" "$dir/oc_rsync_dst" >&2 || true
     exit 1
   fi
 }

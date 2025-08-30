@@ -28,7 +28,7 @@ fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
         .local_addr()
         .unwrap()
         .port();
-    let child = StdCommand::cargo_bin("rsync-rs")
+    let child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",

@@ -92,7 +92,7 @@ fn remote_remote_via_ssh_paths() {
     let src_spec = format!("fake:{}", src.display());
     let dst_spec = format!("fake:{}", dst.display());
 
-    let rr_bin = cargo_bin("rsync-rs");
+    let rr_bin = cargo_bin("oc-rsync");
     let rr_dir = rr_bin.parent().unwrap();
     let path_env = format!("{}:{}", rr_dir.display(), std::env::var("PATH").unwrap());
     let status = StdCommand::new(&rr_bin)
@@ -125,7 +125,7 @@ fn remote_remote_via_daemon_paths() {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     drop(listener);
-    let mut daemon = StdCommand::new(cargo_bin("rsync-rs"))
+    let mut daemon = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "--daemon",
             "--module",
@@ -145,7 +145,7 @@ fn remote_remote_via_daemon_paths() {
     let src_url = format!("rsync://127.0.0.1:{}/src/", port);
     let dst_url = format!("rsync://127.0.0.1:{}/dst/", port);
 
-    let status = StdCommand::new(cargo_bin("rsync-rs"))
+    let status = StdCommand::new(cargo_bin("oc-rsync"))
         .args(["--archive", &src_url, &dst_url])
         .status()
         .unwrap();
@@ -187,14 +187,14 @@ fn remote_to_remote_pipes_data() {
 
 #[test]
 fn remote_pair_missing_host_fails() {
-    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     cmd.args([":/tmp/src", "sh:/tmp/dst"]);
     cmd.assert().failure();
 }
 
 #[test]
 fn remote_pair_missing_path_fails() {
-    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     cmd.args(["sh:", "sh:/tmp/dst"]);
     cmd.assert().failure();
 }
@@ -396,7 +396,7 @@ fn remote_partial_transfer_resumed_by_cli() {
     drop(dst_writer);
     drop(src_reader);
 
-    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args(["--local", "--partial", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
@@ -475,7 +475,7 @@ fn remote_remote_via_rsh_matches_rsync() {
     let dst_rr_spec = format!("fake:{}", dst_rr.display());
     let dst_rsync_spec = format!("fake:{}", dst_rsync.display());
 
-    let rr_bin = cargo_bin("rsync-rs");
+    let rr_bin = cargo_bin("oc-rsync");
     let rr_dir = rr_bin.parent().unwrap();
     let path_env = format!("{}:{}", rr_dir.display(), std::env::var("PATH").unwrap());
     let mut child_rr = StdCommand::new(&rr_bin)
@@ -492,7 +492,7 @@ fn remote_remote_via_rsh_matches_rsync() {
     let status_rr = child_rr
         .wait_timeout(Duration::from_secs(15))
         .unwrap()
-        .expect("rsync-rs timed out");
+        .expect("oc-rsync timed out");
 
     let mut child_rsync = StdCommand::new("rsync")
         .args([
@@ -572,7 +572,7 @@ use chroot = false\n\
     let dst_rr_url = format!("rsync://127.0.0.1:{}/dst_rr/", port);
     let dst_rsync_url = format!("rsync://127.0.0.1:{}/dst_rsync/", port);
 
-    let rr_bin = cargo_bin("rsync-rs");
+    let rr_bin = cargo_bin("oc-rsync");
     let rr_dir = rr_bin.parent().unwrap();
     let path_env = format!("{}:{}", rr_dir.display(), std::env::var("PATH").unwrap());
     let mut child_rr = StdCommand::new(&rr_bin)
@@ -583,7 +583,7 @@ use chroot = false\n\
     let status_rr = child_rr
         .wait_timeout(Duration::from_secs(15))
         .unwrap()
-        .expect("rsync-rs timed out");
+        .expect("oc-rsync timed out");
 
     let mut child_rsync = StdCommand::new("rsync")
         .args(["--archive", &src_url, &dst_rsync_url])

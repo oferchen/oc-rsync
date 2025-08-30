@@ -18,7 +18,7 @@
 .hy
 .SH Daemon Mode
 .PP
-\f[V]rsync-rs\f[R] can act as a standalone daemon that listens on TCP
+\f[V]oc-rsync\f[R] can act as a standalone daemon that listens on TCP
 port 873 and serves one or more exported modules.
 The daemon is started with \f[V]--daemon\f[R] and at least one
 \f[V]--module\f[R] declaration of the form \f[V]name=path\f[R].
@@ -36,7 +36,7 @@ Each module is supplied on the command line:
 .IP
 .nf
 \f[C]
-rsync-rs --daemon --module data=/srv/export
+oc-rsync --daemon --module data=/srv/export
 \f[R]
 .fi
 .PP
@@ -63,7 +63,7 @@ The test suite demonstrates that an invalid token is rejected with an
 Tokens without an explicit module list allow access to any module.
 .SS Numeric ID handling
 .PP
-By default \f[V]rsync-rs\f[R] maps user and group names when
+By default \f[V]oc-rsync\f[R] maps user and group names when
 transferring ownership metadata.
 Supplying \f[V]--numeric-ids\f[R] disables this mapping and preserves
 raw UID and GID values during synchronization.
@@ -71,7 +71,7 @@ This flag applies equally in daemon mode and when invoking a client:
 .IP
 .nf
 \f[C]
-rsync-rs --daemon --numeric-ids --module data=/srv/export
+oc-rsync --daemon --numeric-ids --module data=/srv/export
 \f[R]
 .fi
 .SS Chroot and privilege drop
@@ -90,7 +90,7 @@ deny list:
 .IP
 .nf
 \f[C]
-rsync-rs --daemon \[rs]
+oc-rsync --daemon \[rs]
     --module logs=/srv/logs \[rs]
     --hosts-allow=127.0.0.1 \[rs]
     --hosts-deny=*
@@ -108,7 +108,7 @@ requested module:
 .IP
 .nf
 \f[C]
-rsync-rs --daemon --module data=/srv/export \[rs]
+oc-rsync --daemon --module data=/srv/export \[rs]
     --log-file=/var/log/rsyncd.log \[rs]
     --log-file-format=\[dq]%h %m\[dq]
 \f[R]
@@ -123,6 +123,6 @@ Clients can suppress this output with the \f[V]--no-motd\f[R] flag:
 .IP
 .nf
 \f[C]
-rsync-rs --no-motd rsync://host/module dest/
+oc-rsync --no-motd rsync://host/module dest/
 \f[R]
 .fi

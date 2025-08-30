@@ -37,7 +37,7 @@ fn sync_directory_tree() {
     fs::write(src.join("nested/b.txt"), b"beta").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--local", &src_arg, dst.to_str().unwrap()])
         .assert()
@@ -61,7 +61,7 @@ fn sync_preserves_xattrs() {
     xattr::set(&file, "user.test", b"val").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--local", "--xattrs", &src_arg, dst.to_str().unwrap()])
         .assert()
@@ -91,7 +91,7 @@ fn sync_preserves_acls() {
     acl.write_acl(&file).unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--local", "--acls", &src_arg, dst.to_str().unwrap()])
         .assert()
@@ -124,7 +124,7 @@ fn sync_preserves_owner_and_group() {
     .unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -156,7 +156,7 @@ fn sync_applies_chmod() {
     fs::set_permissions(&file, fs::Permissions::from_mode(0o600)).unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -187,7 +187,7 @@ fn sync_preserves_executability() {
     fs::set_permissions(&file, fs::Permissions::from_mode(0o700)).unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -225,7 +225,7 @@ fn sync_preserves_crtimes() {
     };
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--local", "--crtimes", &src_arg, dst.to_str().unwrap()])
         .assert()
@@ -266,7 +266,7 @@ fn sync_preserves_device_nodes() {
     .unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--local", "--devices", &src_arg, dst.to_str().unwrap()])
         .assert()
@@ -293,7 +293,7 @@ fn sync_preserves_hard_links() {
     fs::hard_link(&f1, &f2).unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("rsync-rs")
+    Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--local", "--hard-links", &src_arg, dst.to_str().unwrap()])
         .assert()

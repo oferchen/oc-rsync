@@ -1,6 +1,6 @@
 # Differences from rsync
 
-`rsync-rs` aims for parity with stock `rsync` 3.2.x. When run without the
+`oc-rsync` aims for parity with stock `rsync` 3.2.x. When run without the
 `--modern` flag, it intends zero behavioral differences from the traditional
 utility and mirrors the classic command line.
 
@@ -11,7 +11,7 @@ classic `rsync` behavior. For a complete listing see
 
 ## `--modern` enhancements
 
-| rsync flag | rsync-rs status | Tests | `--modern` notes |
+| rsync flag | oc-rsync status | Tests | `--modern` notes |
 |------------|-----------------|-------|------------------|
 | `-z`, `--compress` | ✅ uses zlib by default | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh) | negotiates zstd if both peers support it |
 | `--compress-choice` | ✅ choose zstd or zlib | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | n/a |
@@ -21,7 +21,7 @@ classic `rsync` behavior. For a complete listing see
 | `-R`, `--relative` | ✅ preserves ancestor directories | [tests/cli.rs](../tests/cli.rs) | n/a |
 | `-P` | ✅ keeps partial files and shows progress | [tests/cli.rs](../tests/cli.rs) | n/a |
 | `--numeric-ids` | ✅ uses numeric uid/gid values | [tests/cli.rs](../tests/cli.rs) | n/a |
-| `--modern` | rsync-rs only | [tests/interop/modern.rs](../tests/interop/modern.rs) | enables zstd compression and BLAKE3 checksums (requires `blake3` feature) |
+| `--modern` | oc-rsync only | [tests/interop/modern.rs](../tests/interop/modern.rs) | enables zstd compression and BLAKE3 checksums (requires `blake3` feature) |
 
 ## Additional notes
 

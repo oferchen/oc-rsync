@@ -2,7 +2,7 @@
 
 This document expands on the [README architecture section](../README.md#architecture)
 and the [in-scope features](../README.md#in-scope-features) with a deeper look at
-crate boundaries, data flow, and the key algorithms that power `rsync-rs`.
+crate boundaries, data flow, and the key algorithms that power `oc-rsync`.
 
 ## Crate boundaries
 
