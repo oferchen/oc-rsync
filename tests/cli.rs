@@ -1,9 +1,12 @@
 use assert_cmd::Command;
+use assert_cmd::prelude::*;
 use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 use predicates::prelude::PredicateBooleanExt;
 use std::io::{Seek, SeekFrom, Write};
+use std::thread;
+use std::time::Duration;
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
 #[cfg(unix)]
@@ -168,6 +171,48 @@ fn fails_when_temp_dir_is_file() {
     ]);
     cmd.assert().failure();
     assert!(!dst_dir.join("a.txt").exists());
+}
+
+#[test]
+fn temp_files_created_in_temp_dir() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    let tmp_dir = dir.path().join("tmp");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    std::fs::create_dir_all(&tmp_dir).unwrap();
+    let data = vec![b'x'; 200_000];
+    std::fs::write(src_dir.join("a.txt"), &data).unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    let mut child = std::process::Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--partial",
+            "--bwlimit",
+            "10240",
+            "--temp-dir",
+            tmp_dir.to_str().unwrap(),
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+
+    let tmp_file = tmp_dir.join("a.tmp");
+    let mut found = false;
+    for _ in 0..50 {
+        if tmp_file.exists() {
+            found = true;
+            break;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    assert!(found, "temp file not created in temp dir during transfer");
 }
 
 #[test]

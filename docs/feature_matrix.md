@@ -143,7 +143,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--stop-at` | — | ❌ | — | — |  | ≤3.2 |
 | `--suffix` | — | ❌ | — | — |  | ≤3.2 |
 | `--super` | — | ❌ | — | — |  | ≤3.2 |
-| `--temp-dir` | `-T` | ❌ | — | — |  | ≤3.2 |
+| `--temp-dir` | `-T` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires same filesystem for atomic rename | ≤3.2 |
 | `--timeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
 | `--times` | `-t` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--trust-sender` | — | ❌ | — | — |  | ≤3.2 |
