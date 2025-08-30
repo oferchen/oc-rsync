@@ -7,6 +7,7 @@ Thank you for your interest in contributing to oc_rsync!
 - Lint with `cargo clippy --all-targets --all-features -- -D warnings` before committing.
 - Keep contributions focused and document any new functionality.
 - Use the workspace `Cargo.lock` at the repository root; do not commit lockfiles in individual crates.
+- For wrapper Rust source files outside of `crates/` and `tests/`, begin the file with a comment containing its relative path, e.g. `// src/lib.rs`, and avoid any other comments. Run `scripts/check-comments.sh` to ensure compliance.
 
 ## Pull Request Process
 1. Fork the repository and create a topic branch.
