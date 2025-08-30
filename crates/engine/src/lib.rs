@@ -67,6 +67,44 @@ fn files_identical(a: &Path, b: &Path) -> bool {
     }
 }
 
+fn last_good_block(cfg: &ChecksumConfig, src: &Path, dst: &Path, block_size: usize) -> u64 {
+    let mut src = match File::open(src) {
+        Ok(f) => f,
+        Err(_) => return 0,
+    };
+    let mut dst = match File::open(dst) {
+        Ok(f) => f,
+        Err(_) => return 0,
+    };
+    let mut offset = 0u64;
+    let mut src_buf = vec![0u8; block_size];
+    let mut dst_buf = vec![0u8; block_size];
+    loop {
+        let rs = match src.read(&mut src_buf) {
+            Ok(n) => n,
+            Err(_) => break,
+        };
+        let rd = match dst.read(&mut dst_buf) {
+            Ok(n) => n,
+            Err(_) => break,
+        };
+        let n = rs.min(rd);
+        if n == 0 {
+            break;
+        }
+        let src_sum = cfg.checksum(&src_buf[..n]).strong;
+        let dst_sum = cfg.checksum(&dst_buf[..n]).strong;
+        if src_sum != dst_sum {
+            break;
+        }
+        offset += n as u64;
+        if n < block_size {
+            break;
+        }
+    }
+    offset
+}
+
 /// Sender state machine.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SenderState {
@@ -511,28 +549,19 @@ impl Sender {
             dest.to_path_buf()
         };
         let mut resume = if self.opts.partial && partial_path.exists() {
-            fs::metadata(&partial_path).map(|m| m.len()).unwrap_or(0)
+            last_good_block(&self.cfg, path, &partial_path, self.block_size)
         } else if self.opts.append || self.opts.append_verify {
-            fs::metadata(dest).map(|m| m.len()).unwrap_or(0)
+            if self.opts.append_verify {
+                last_good_block(&self.cfg, path, dest, self.block_size)
+            } else {
+                fs::metadata(dest).map(|m| m.len()).unwrap_or(0)
+            }
         } else {
             0
         };
         let src_len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
         if resume > src_len {
             resume = src_len;
-        }
-        if (self.opts.partial || self.opts.append_verify) && resume > 0 {
-            let mut src_f = File::open(path)?;
-            let mut dst_f = File::open(&basis_path)?;
-            let mut src_buf = vec![0u8; resume as usize];
-            let mut dst_buf = vec![0u8; resume as usize];
-            src_f.read_exact(&mut src_buf)?;
-            dst_f.read_exact(&mut dst_buf)?;
-            let src_sum = self.cfg.checksum(&src_buf).strong;
-            let dst_sum = self.cfg.checksum(&dst_buf).strong;
-            if src_sum != dst_sum {
-                resume = 0;
-            }
         }
         let mut basis_reader: Box<dyn ReadSeek> = if self.opts.whole_file {
             Box::new(Cursor::new(Vec::new()))
@@ -679,16 +708,14 @@ impl Receiver {
         } else {
             dest.to_path_buf()
         };
-        let tmp_buf: PathBuf;
-        let tmp_dest: &Path = if self.opts.inplace {
-            dest
+        let tmp_dest = if self.opts.inplace {
+            dest.to_path_buf()
         } else if self.opts.partial {
-            &partial
+            partial.clone()
         } else if let Some(dir) = &self.opts.temp_dir {
-            tmp_buf = dir.join(file_name).with_extension("tmp");
-            &tmp_buf
+            dir.join(file_name).with_extension("tmp")
         } else {
-            dest
+            dest.to_path_buf()
         };
         let mut basis: Box<dyn ReadSeek> = match File::open(&basis_path) {
             Ok(mut f) => {
@@ -701,55 +728,36 @@ impl Receiver {
         if let Some(parent) = tmp_dest.parent() {
             fs::create_dir_all(parent)?;
         }
-
-        let (mut out, mut resume) = if self.opts.inplace {
-            let f = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(tmp_dest)?;
-            let len = f.metadata()?.len();
-            (f, len)
-        } else if self.opts.partial {
-            let f = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(tmp_dest)?;
-            let len = f.metadata()?.len();
-            (f, len)
-        } else if self.opts.append || self.opts.append_verify {
-            let f = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(tmp_dest)?;
-            let len = f.metadata()?.len();
-            (f, len)
+        let cfg = ChecksumConfigBuilder::new()
+            .strong(self.opts.strong)
+            .build();
+        let mut resume = if self.opts.partial || self.opts.append || self.opts.append_verify {
+            if self.opts.append && !self.opts.append_verify {
+                fs::metadata(&tmp_dest).map(|m| m.len()).unwrap_or(0)
+            } else {
+                last_good_block(&cfg, src, &tmp_dest, self.opts.block_size)
+            }
         } else {
-            (File::create(tmp_dest)?, 0)
+            0
         };
         let src_len = fs::metadata(src).map(|m| m.len()).unwrap_or(0);
         if resume > src_len {
             resume = src_len;
         }
-        if (self.opts.partial || self.opts.append_verify) && resume > 0 {
-            let mut src_f = File::open(src)?;
-            let mut dst_f = out.try_clone()?;
-            let mut src_buf = vec![0u8; resume as usize];
-            let mut dst_buf = vec![0u8; resume as usize];
-            src_f.read_exact(&mut src_buf)?;
-            dst_f.read_exact(&mut dst_buf)?;
-            let cfg = ChecksumConfigBuilder::new()
-                .strong(self.opts.strong)
-                .build();
-            let src_sum = cfg.checksum(&src_buf).strong;
-            let dst_sum = cfg.checksum(&dst_buf).strong;
-            if src_sum != dst_sum {
-                out.set_len(0)?;
-                resume = 0;
-            }
-        }
+        let mut out = if self.opts.inplace
+            || self.opts.partial
+            || self.opts.append
+            || self.opts.append_verify
+        {
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(&tmp_dest)?
+        } else {
+            File::create(&tmp_dest)?
+        };
+        out.set_len(resume)?;
         out.seek(SeekFrom::Start(resume))?;
         let file_codec = if should_compress(src, &self.opts.skip_compress) {
             self.codec
@@ -782,7 +790,7 @@ impl Receiver {
         let len = out.seek(SeekFrom::Current(0))?;
         out.set_len(len)?;
         if !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some()) {
-            fs::rename(tmp_dest, dest)?;
+            fs::rename(&tmp_dest, dest)?;
         }
         self.copy_metadata(src, dest)?;
         if self.opts.progress {
@@ -1322,6 +1330,17 @@ mod tests {
                 Op::Copy { offset: 4, len: 1 },
             ]
         );
+    }
+
+    #[test]
+    fn last_good_block_detects_prefix() {
+        let cfg = ChecksumConfigBuilder::new().build();
+        let tmp = tempdir().unwrap();
+        let src = tmp.path().join("src.bin");
+        let dst = tmp.path().join("dst.bin");
+        fs::write(&src, b"abcd1234").unwrap();
+        fs::write(&dst, b"abcdxxxx").unwrap();
+        assert_eq!(last_good_block(&cfg, &src, &dst, 4), 4);
     }
 
     #[test]
