@@ -11,8 +11,8 @@ pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
         &Matcher::default(),
         &available_codecs(false),
         &SyncOptions::default(),
-    )
-    .map(|_| ())
+    )?;
+    Ok(())
 }
 
 #[cfg(test)]
