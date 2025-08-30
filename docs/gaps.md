@@ -6,12 +6,9 @@ This document tracks outstanding gaps in `oc-rsync` compared to the reference `r
 - Partial transfer resumption now reuses `.partial` files and retransfers only missing blocks.
 
 ## Protocol gaps
-- `--8-bit-output` — not implemented. [feature_matrix](feature_matrix.md#L8) ([TODO](#testing-gaps))
 - `--block-size` — behavior differs from upstream. [tests/block_size.rs](../tests/block_size.rs) [feature_matrix](feature_matrix.md#L17)
-- `--blocking-io` — not implemented. [feature_matrix](feature_matrix.md#L18) ([TODO](#testing-gaps))
 - `--bwlimit` — rate limiting semantics differ. [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) [feature_matrix](feature_matrix.md#L19)
  - `--contimeout` — connection timeout handling incomplete. [tests/timeout.rs](../tests/timeout.rs) [feature_matrix](feature_matrix.md#L32)
- - `--early-input` — not implemented. [feature_matrix](feature_matrix.md#L55) ([TODO](#testing-gaps))
  - `--remote-option` — not implemented. [feature_matrix](feature_matrix.md#L127) ([TODO](#testing-gaps))
  - `--secluded-args` — not implemented. [feature_matrix](feature_matrix.md#L132) ([TODO](#testing-gaps))
  - `--server` — handshake lacks full parity. [tests/server.rs](../tests/server.rs) [feature_matrix](feature_matrix.md#L134)

@@ -101,10 +101,10 @@
 | short | long | summary | implemented? | notes | enhanced? |
 | --- | --- | --- | :---: | --- | :---: |
 |  | --address=ADDRESS | bind address for outgoing socket to daemon | no |  | no |
-|  | --blocking-io | use blocking I/O for the remote shell | no |  | no |
+|  | --blocking-io | use blocking I/O for the remote shell | yes |  | no |
 |  | --bwlimit=RATE | limit socket I/O bandwidth | no |  | no |
 |  | --copy-as=USER[:GROUP] | specify user & optional group for the copy | no |  | no |
-|  | --early-input=FILE | use FILE for daemon's early exec input | no |  | no |
+|  | --early-input=FILE | use FILE for daemon's early exec input | yes |  | no |
 |  | --iconv=CONVERT_SPEC | request charset conversion of filenames | no |  | no |
 | -4 | --ipv4 | prefer IPv4 | no |  | no |
 | -6 | --ipv6 | prefer IPv6 | no |  | no |
@@ -121,7 +121,7 @@
 
 | short | long | summary | implemented? | notes | enhanced? |
 | --- | --- | --- | :---: | --- | :---: |
-| -8 | --8-bit-output | leave high-bit chars unescaped in output | no |  | no |
+| -8 | --8-bit-output | leave high-bit chars unescaped in output | yes |  | no |
 |  | --debug=FLAGS | fine-grained debug verbosity | no |  | no |
 | -h (*) | --help | show this help (* -h is help only on its own) Rsync can also be run as a daemon, in which case the following options are accepted: | no |  | no |
 | -h | --help | show this help (when used with --daemon) | no |  | no |
