@@ -2,7 +2,7 @@ use assert_cmd::Command;
 use std::collections::BTreeMap;
 use std::fs;
 #[cfg(unix)]
-use std::os::unix::fs::MetadataExt;
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
 #[cfg(target_os = "linux")]
 use std::os::unix::fs::FileTypeExt;
 use std::path::{Path, PathBuf};
@@ -104,6 +104,105 @@ fn sync_preserves_acls() {
     let acl_src = PosixACL::read_acl(&file).unwrap();
     let acl_dst = PosixACL::read_acl(&dst.join("file")).unwrap();
     assert_eq!(acl_src.entries(), acl_dst.entries());
+}
+
+#[cfg(unix)]
+#[test]
+fn sync_preserves_owner_and_group() {
+    use nix::unistd::{chown, Gid, Uid};
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    chown(&file, Some(Uid::from_raw(12345)), Some(Gid::from_raw(54321))).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--owner",
+            "--group",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let meta = fs::metadata(dst.join("file")).unwrap();
+    assert_eq!(meta.uid(), 12345);
+    assert_eq!(meta.gid(), 54321);
+}
+
+#[cfg(unix)]
+#[test]
+fn sync_applies_chmod() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o600)).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--perms",
+            "--chmod=g+r",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let mode = fs::metadata(dst.join("file")).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o640);
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn sync_preserves_crtimes() {
+    use filetime::FileTime;
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    let src_meta = fs::metadata(&file).unwrap();
+    let src_crtime = FileTime::from_creation_time(&src_meta).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--crtimes",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let dst_meta = fs::metadata(dst.join("file")).unwrap();
+    let dst_crtime = FileTime::from_creation_time(&dst_meta).unwrap();
+    assert_eq!(src_crtime, dst_crtime);
 }
 
 #[cfg(target_os = "linux")]

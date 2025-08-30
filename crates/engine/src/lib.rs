@@ -828,15 +828,7 @@ impl Receiver {
                 crtimes: self.opts.crtimes,
             };
 
-            if meta_opts.perms
-                || meta_opts.times
-                || meta_opts.atimes
-                || meta_opts.crtimes
-                || meta_opts.owner
-                || meta_opts.group
-                || meta_opts.xattrs
-                || meta_opts.acl
-            {
+            if meta_opts.needs_metadata() {
                 let meta =
                     meta::Metadata::from_path(src, meta_opts.clone()).map_err(EngineError::from)?;
                 meta.apply(dest, meta_opts).map_err(EngineError::from)?;
