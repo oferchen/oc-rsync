@@ -780,7 +780,7 @@ impl Receiver {
 
 impl Receiver {
     fn copy_metadata(&self, src: &Path, dest: &Path) -> Result<()> {
-        #[cfg(unix)]
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
         {
             let meta_opts = meta::Options {
                 xattrs: {
