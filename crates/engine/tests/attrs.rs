@@ -110,7 +110,7 @@ fn crtimes_roundtrip() {
     let src_meta = fs::metadata(&file).unwrap();
     let src_crtime = match src_meta.created() {
         Ok(t) => t,
-        Err(_) => return, // creation times not supported
+        Err(_) => return,
     };
 
     // ensure different timestamps if the destination already exists
