@@ -108,5 +108,12 @@ The project includes fuzz targets under `fuzz`.
 See [docs/fuzzing.md](docs/fuzzing.md) for instructions on installing the
 tooling and running the fuzzers.
 
+## Manifest
+
+Content-defined chunking persists a manifest of seen chunks to
+`~/.oc-rsync/manifest`. If a legacy manifest exists at
+`~/.rsync-rs/manifest`, `oc-rsync` will automatically migrate it to the new
+location.
+
 ## License
 This project is dual-licensed under the terms of the [MIT](LICENSE-MIT) and [Apache-2.0](LICENSE-APACHE) licenses.

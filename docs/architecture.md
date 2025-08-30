@@ -15,7 +15,9 @@ crate boundaries, data flow, and the key algorithms that power `oc-rsync`.
 - [`checksums`](../crates/checksums) – computes rolling and strong checksums for
   block matching.
 - [`engine`](../crates/engine) – orchestrates scanning, delta calculation, and
-  application of differences between sender and receiver.
+  application of differences between sender and receiver. It also maintains a
+  content-defined chunking manifest at `~/.oc-rsync/manifest`, migrating any
+  legacy `~/.rsync-rs/manifest` if present.
 - [`compress`](../crates/compress) – offers optional compression of file data
   during transfer.
 - [`filters`](../crates/filters) – parses include/exclude rules controlling

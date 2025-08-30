@@ -66,15 +66,28 @@ pub struct Manifest {
 impl Manifest {
     pub fn load() -> Self {
         let home = std::env::var("HOME").unwrap_or_else(|_| String::from("."));
-        let path = Path::new(&home).join(".oc-rsync/manifest");
+        let new_path = Path::new(&home).join(".oc-rsync/manifest");
+        let old_path = Path::new(&home).join(".rsync-rs/manifest");
         let mut entries = HashMap::new();
-        if let Ok(contents) = fs::read_to_string(&path) {
+        let path = new_path.clone();
+        if let Ok(contents) = fs::read_to_string(&new_path) {
             for line in contents.lines() {
                 let mut parts = line.splitn(2, ' ');
                 if let (Some(hash), Some(p)) = (parts.next(), parts.next()) {
                     entries.insert(hash.to_string(), PathBuf::from(p));
                 }
             }
+        } else if let Ok(contents) = fs::read_to_string(&old_path) {
+            for line in contents.lines() {
+                let mut parts = line.splitn(2, ' ');
+                if let (Some(hash), Some(p)) = (parts.next(), parts.next()) {
+                    entries.insert(hash.to_string(), PathBuf::from(p));
+                }
+            }
+            if let Some(parent) = new_path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            let _ = fs::rename(&old_path, &new_path);
         }
         Manifest { entries, path }
     }
