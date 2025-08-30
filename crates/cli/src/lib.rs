@@ -578,6 +578,10 @@ struct ProbeOpts {
 /// Execute the CLI using `std::env::args()`.
 pub fn run() -> Result<()> {
     let args: Vec<String> = env::args().collect();
+    if args.iter().any(|a| a == "--version" || a == "-V") {
+        println!("rsync-rs {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
     if args.iter().any(|a| a == "--daemon") {
         let opts = DaemonOpts::parse_from(&args);
         run_daemon(opts)

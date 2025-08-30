@@ -45,6 +45,10 @@ rsync-rs [OPTIONS] <SRC> <DEST>
   ```sh
   rsync-rs -B 65536 ./src remote:/dst
   ```
+- Show version:
+  ```sh
+  rsync-rs --version
+  ```
 
 ### Trailing slash semantics
 

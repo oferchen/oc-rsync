@@ -150,7 +150,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--update` | `-u` | ❌ | — | — |  | ≤3.2 |
 | `--usermap` | — | ❌ | — | — |  | ≤3.2 |
 | `--verbose` | `-v` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--version` | `-V` | ❌ | — | — |  | ≤3.2 |
+| `--version` | `-V` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--whole-file` | `-W` | ❌ | — | — |  | ≤3.2 |
 | `--write-batch` | — | ❌ | — | — |  | ≤3.2 |
 | `--write-devices` | — | ❌ | — | — |  | ≤3.2 |
