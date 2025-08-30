@@ -22,3 +22,4 @@ tempfile = "3"
 default = []
 xattr = ["engine/xattr"]
 acl = ["engine/acl"]
+blake3 = ["engine/blake3"]

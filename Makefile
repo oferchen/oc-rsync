@@ -1,7 +1,7 @@
 .PHONY: test-golden
 
 test-golden:
-	cargo build --quiet -p rsync-rs-bin --bin rsync-rs
+	cargo build --quiet -p rsync-rs-bin --bin rsync-rs --features blake3
 	@set -e; \
 	for script in tests/golden/cli_parity/*.sh; do \
 		echo "Running $$script"; \

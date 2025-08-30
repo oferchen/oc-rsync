@@ -22,7 +22,7 @@ have been exercised with `rsync-rs`. For a detailed status matrix see
   not yet supported.
 * Extended attributes and ACLs are available only when built with the `xattr`
   and `acl` feature gates and have not been widely exercised.
-* `--modern` mode requires peers to understand zstd compression and BLAKE3
+* `--modern` mode requires peers to understand zstd compression and BLAKE3 and is only available when built with the `blake3` feature
   checksums.
 * Filesystem differences (case sensitivity, permissions) across platforms may
   lead to subtle inconsistencies.

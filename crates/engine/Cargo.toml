@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 thiserror = "1"
-checksums = { path = "../checksums", features = ["blake3"] }
+checksums = { path = "../checksums", default-features = false }
 walk = { path = "../walk" }
 filters = { path = "../filters" }
 compress = { path = "../compress" }
@@ -29,3 +29,4 @@ default = []
 lz4 = ["compress/lz4"]
 xattr = ["meta/xattr"]
 acl = ["meta/acl"]
+blake3 = ["checksums/blake3"]

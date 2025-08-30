@@ -11,7 +11,8 @@ fn server_negotiates_version() {
     let mut codecs_buf = Vec::new();
     codecs_frame.encode(&mut codecs_buf).unwrap();
     let mut input = Cursor::new({
-        let mut v = LATEST_VERSION.to_be_bytes().to_vec();
+        let mut v = vec![0];
+        v.extend_from_slice(&LATEST_VERSION.to_be_bytes());
         v.extend_from_slice(&CAP_CODECS.to_be_bytes());
         v.extend_from_slice(&codecs_buf);
         v

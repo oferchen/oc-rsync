@@ -154,7 +154,7 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--max-size` | off |  | [matrix](feature_matrix.md#--max-size) |
 |  | `--min-size` | off |  | [matrix](feature_matrix.md#--min-size) |
 |  | `--mkpath` | off |  | [matrix](feature_matrix.md#--mkpath) |
-|  | `--modern` | off | rsync-rs only; enables zstd compression and BLAKE3 checksums | [matrix](feature_matrix.md#--modern) |
+|  | `--modern` | off | rsync-rs only; enables zstd compression and BLAKE3 checksums; requires `blake3` feature | [matrix](feature_matrix.md#--modern) |
 | `-@` | `--modify-window` | off |  | [matrix](feature_matrix.md#--modify-window) |
 |  | `--munge-links` | off |  | [matrix](feature_matrix.md#--munge-links) |
 |  | `--no-D` | off | alias for `--no-devices --no-specials` | [matrix](feature_matrix.md#--no-d) |

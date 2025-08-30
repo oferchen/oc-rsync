@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 RSYNC_RS="$ROOT/target/debug/rsync-rs"
 
 # Ensure binary is built
-cargo build --quiet -p rsync-rs-bin --bin rsync-rs
+cargo build --quiet -p rsync-rs-bin --bin rsync-rs --features blake3
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT

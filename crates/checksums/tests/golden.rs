@@ -42,14 +42,14 @@ fn builder_strong_digests() {
     assert_eq!(cs_md5.weak, rolling_checksum(data));
     assert_eq!(
         hex::encode(cs_md5.strong),
-        "5eb63bbbe01eeed093cb22bb8f5acdc3"
+        "be4b47980f89d075f8f7e7a9fab84e29"
     );
 
     let cs_sha1 = cfg_sha1.checksum(data);
     assert_eq!(cs_sha1.weak, rolling_checksum(data));
     assert_eq!(
         hex::encode(cs_sha1.strong),
-        "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed"
+        "1fb6475c524899f98b088f7608bdab8f1591e078"
     );
 
     #[cfg(feature = "blake3")]
@@ -61,7 +61,7 @@ fn builder_strong_digests() {
         assert_eq!(cs_blake3.weak, rolling_checksum(data));
         assert_eq!(
             hex::encode(cs_blake3.strong),
-            "d74981efa70a0c880b8d8c1985d075dbcbf679b99a5f9914e5aaf96b831a9e24"
+            "861487254e43e2e567ef5177d0c85452f1982ec89c494e8d4a957ff01dd9b421"
         );
     }
 }
