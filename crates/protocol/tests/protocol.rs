@@ -38,7 +38,8 @@ fn keepalive_roundtrip() {
 
 #[test]
 fn version_negotiation() {
-    assert_eq!(negotiate_version(40), Ok(31));
+    assert_eq!(negotiate_version(40), Ok(32));
+    assert_eq!(negotiate_version(32), Ok(32));
     assert_eq!(negotiate_version(31), Ok(31));
     assert_eq!(negotiate_version(30), Ok(30));
     assert!(negotiate_version(28).is_err());
