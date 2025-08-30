@@ -1,7 +1,7 @@
 // crates/engine/tests/compress.rs
 use std::fs;
 
-use compress::Codec;
+use compress::{Codec, ModernCompress};
 use engine::{select_codec, sync, SyncOptions};
 use filters::Matcher;
 use tempfile::tempdir;
@@ -41,7 +41,7 @@ fn zstd_roundtrip() {
         &[Codec::Zstd],
         &SyncOptions {
             compress: true,
-            modern: true,
+            modern_compress: Some(ModernCompress::Auto),
             ..Default::default()
         },
     )
@@ -64,7 +64,7 @@ fn lz4_roundtrip() {
         &[Codec::Lz4],
         &SyncOptions {
             compress: true,
-            modern: true,
+            modern_compress: Some(ModernCompress::Auto),
             ..Default::default()
         },
     )
@@ -76,7 +76,7 @@ fn lz4_roundtrip() {
 fn codec_selection_prefers_zstd() {
     let opts = SyncOptions {
         compress: true,
-        modern: true,
+        modern_compress: Some(ModernCompress::Auto),
         ..Default::default()
     };
     assert_eq!(
@@ -86,7 +86,7 @@ fn codec_selection_prefers_zstd() {
     assert_eq!(select_codec(&[Codec::Zlib], &opts), Some(Codec::Zlib));
     let opts = SyncOptions {
         compress: true,
-        modern: true,
+        modern_compress: Some(ModernCompress::Auto),
         compress_level: Some(0),
         ..Default::default()
     };

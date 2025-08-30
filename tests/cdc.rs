@@ -1,6 +1,6 @@
 // tests/cdc.rs
 use compress::available_codecs;
-use engine::{sync, SyncOptions};
+use engine::{sync, ModernCdc, SyncOptions};
 use filters::Matcher;
 use std::fs;
 use tempfile::tempdir;
@@ -20,16 +20,29 @@ fn cdc_skips_renamed_file() {
     fs::write(&file_a, b"hello world").unwrap();
 
     let opts = SyncOptions {
-        cdc: true,
-        modern: false,
+        modern_cdc: ModernCdc::Fastcdc,
         ..Default::default()
     };
-    sync(&src, &dst, &Matcher::default(), &available_codecs(false), &opts).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &opts,
+    )
+    .unwrap();
 
     let file_b = src.join("b.txt");
     fs::rename(&file_a, &file_b).unwrap();
 
-    let stats = sync(&src, &dst, &Matcher::default(), &available_codecs(false), &opts).unwrap();
+    let stats = sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &opts,
+    )
+    .unwrap();
     assert_eq!(stats.bytes_transferred, 0);
     assert_eq!(fs::read(dst.join("b.txt")).unwrap(), b"hello world");
 }

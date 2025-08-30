@@ -9,6 +9,12 @@ cpufeatures::new!(avx2, "avx2");
 cpufeatures::new!(avx512, "avx512f");
 
 #[derive(Clone, Copy, Debug)]
+pub enum ModernHash {
+    #[cfg(feature = "blake3")]
+    Blake3,
+}
+
+#[derive(Clone, Copy, Debug)]
 pub enum StrongHash {
     Md5,
     Sha1,

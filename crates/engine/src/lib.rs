@@ -8,11 +8,13 @@ use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
+pub use checksums::{ModernHash, StrongHash};
 #[cfg(feature = "lz4")]
 use compress::Lz4;
-use compress::{available_codecs, should_compress, Codec, Compressor, Decompressor, Zlib, Zstd};
+use compress::{
+    available_codecs, should_compress, Codec, Compressor, Decompressor, ModernCompress, Zlib, Zstd,
+};
 use filters::Matcher;
 use thiserror::Error;
 
@@ -903,14 +905,21 @@ pub enum DeleteMode {
     After,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModernCdc {
+    Fastcdc,
+    Off,
+}
+
 #[derive(Debug, Clone)]
 pub struct SyncOptions {
     pub delete: Option<DeleteMode>,
     pub delete_excluded: bool,
     pub checksum: bool,
     pub compress: bool,
-    pub modern: bool,
-    pub cdc: bool,
+    pub modern_compress: Option<ModernCompress>,
+    pub modern_hash: Option<ModernHash>,
+    pub modern_cdc: ModernCdc,
     pub dirs: bool,
     pub list_only: bool,
     pub update: bool,
@@ -974,8 +983,9 @@ impl Default for SyncOptions {
             delete_excluded: false,
             checksum: false,
             compress: false,
-            modern: false,
-            cdc: false,
+            modern_compress: None,
+            modern_hash: None,
+            modern_cdc: ModernCdc::Off,
             perms: false,
             executability: false,
             times: false,
@@ -1058,21 +1068,46 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     if let Some(choice) = &opts.compress_choice {
         return choice.iter().copied().find(|c| remote.contains(c));
     }
-    if !opts.modern {
-        return remote.contains(&Codec::Zlib).then_some(Codec::Zlib);
-    }
-    let local = available_codecs(true);
-    let prefer_lz4 = cpu_prefers_lz4();
-    if prefer_lz4 && local.contains(&Codec::Lz4) && remote.contains(&Codec::Lz4) {
-        Some(Codec::Lz4)
-    } else if local.contains(&Codec::Zstd) && remote.contains(&Codec::Zstd) {
-        Some(Codec::Zstd)
-    } else if local.contains(&Codec::Lz4) && remote.contains(&Codec::Lz4) {
-        Some(Codec::Lz4)
-    } else if remote.contains(&Codec::Zlib) {
-        Some(Codec::Zlib)
-    } else {
-        None
+    let modern = match opts.modern_compress {
+        Some(m) => m,
+        None => return remote.contains(&Codec::Zlib).then_some(Codec::Zlib),
+    };
+    let local = available_codecs(Some(modern));
+    match modern {
+        ModernCompress::Auto => {
+            let prefer_lz4 = cpu_prefers_lz4();
+            if prefer_lz4 && local.contains(&Codec::Lz4) && remote.contains(&Codec::Lz4) {
+                Some(Codec::Lz4)
+            } else if local.contains(&Codec::Zstd) && remote.contains(&Codec::Zstd) {
+                Some(Codec::Zstd)
+            } else if local.contains(&Codec::Lz4) && remote.contains(&Codec::Lz4) {
+                Some(Codec::Lz4)
+            } else if remote.contains(&Codec::Zlib) {
+                Some(Codec::Zlib)
+            } else {
+                None
+            }
+        }
+        ModernCompress::Zstd => {
+            if remote.contains(&Codec::Zstd) {
+                Some(Codec::Zstd)
+            } else if remote.contains(&Codec::Zlib) {
+                Some(Codec::Zlib)
+            } else {
+                None
+            }
+        }
+        ModernCompress::Lz4 => {
+            if remote.contains(&Codec::Lz4) {
+                Some(Codec::Lz4)
+            } else if remote.contains(&Codec::Zstd) {
+                Some(Codec::Zstd)
+            } else if remote.contains(&Codec::Zlib) {
+                Some(Codec::Zlib)
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -1166,7 +1201,7 @@ pub fn sync(
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
     let mut receiver = Receiver::new(codec, opts.clone());
     let mut stats = Stats::default();
-    let mut manifest = if opts.cdc {
+    let mut manifest = if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
         Manifest::load()
     } else {
         Manifest::default()
@@ -1235,7 +1270,7 @@ pub fn sync(
                         false
                     };
                     if !dest_path.exists() && !partial_exists {
-                        if opts.cdc {
+                        if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
                             if let Ok(chunks) = chunk_file(&path) {
                                 if !chunks.is_empty() {
                                     if let Some(existing) = manifest.lookup(&chunks[0].hash) {
@@ -1293,7 +1328,7 @@ pub fn sync(
                         if opts.itemize_changes {
                             println!(">f+++++++++ {}", rel.display());
                         }
-                        if opts.cdc {
+                        if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
                             if let Ok(chunks) = chunk_file(&dest_path) {
                                 for c in &chunks {
                                     manifest.insert(&c.hash, &dest_path);
@@ -1413,7 +1448,7 @@ pub fn sync(
     ) {
         delete_extraneous(src, dst, &matcher, opts, &mut stats)?;
     }
-    if opts.cdc {
+    if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
         manifest.save()?;
     }
     Ok(stats)
@@ -1549,7 +1584,7 @@ mod tests {
             &src,
             &dst,
             &Matcher::default(),
-            &available_codecs(false),
+            &available_codecs(None),
             &SyncOptions::default(),
         )
         .unwrap();
