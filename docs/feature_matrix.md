@@ -33,9 +33,9 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--copy-as` | — | ❌ | — | — |  | ≤3.2 |
 | `--copy-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
 | `--copy-devices` | — | ❌ | — | — |  | ≤3.2 |
-| `--copy-dirlinks` | `-k` | ❌ | — | — |  | ≤3.2 |
-| `--copy-links` | `-L` | ❌ | — | — |  | ≤3.2 |
-| `--copy-unsafe-links` | — | ❌ | — | — |  | ≤3.2 |
+| `--copy-dirlinks` | `-k` | ✅ | ✅ | [tests/golden/cli_parity/copy-dirlinks.sh](../tests/golden/cli_parity/copy-dirlinks.sh) |  | ≤3.2 |
+| `--copy-links` | `-L` | ✅ | ❌ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) |  | ≤3.2 |
+| `--copy-unsafe-links` | — | ✅ | ❌ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) |  | ≤3.2 |
 | `--crtimes` | `-N` | ✅ | ❌ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--cvs-exclude` | `-C` | ❌ | — | — |  | ≤3.2 |
 | `--daemon` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
@@ -128,7 +128,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--remove-source-files` | — | ❌ | — | — |  | ≤3.2 |
 | `--rsh` | `-e` | ⚠️ | ❌ | [tests/rsh.rs](../tests/rsh.rs) | negotiation incomplete; lacks full command parsing and environment handshake | ≤3.2 |
 | `--rsync-path` | — | ⚠️ | ❌ | [tests/rsync_path.rs](../tests/rsync_path.rs) | requires `--rsh`; remote path negotiation incomplete | ≤3.2 |
-| `--safe-links` | — | ❌ | — | — |  | ≤3.2 |
+| `--safe-links` | — | ✅ | ❌ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) |  | ≤3.2 |
 | `--secluded-args` | `-s` | ❌ | — | — |  | ≤3.2 |
 | `--secrets-file` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--server` | — | ✅ | ❌ | [tests/server.rs](../tests/server.rs) | negotiates protocol version and codecs | ≤3.2 |
