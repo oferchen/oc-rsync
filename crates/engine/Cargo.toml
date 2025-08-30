@@ -24,6 +24,14 @@ posix-acl = "1.2"
 name = "large_files"
 harness = false
 
+[[bench]]
+name = "rolling"
+harness = false
+
+[[bench]]
+name = "compress"
+harness = false
+
 [features]
 default = []
 lz4 = ["compress/lz4"]
