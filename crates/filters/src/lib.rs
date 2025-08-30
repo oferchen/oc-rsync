@@ -119,8 +119,12 @@ impl Matcher {
             let mut dirs = vec![root.clone()];
 
             if let Some(parent) = path.parent() {
+                let iter = match parent.strip_prefix(root) {
+                    Ok(rel) => rel.components(),
+                    Err(_) => parent.components(),
+                };
                 let mut dir = root.clone();
-                for comp in parent.components() {
+                for comp in iter {
                     dir.push(comp.as_os_str());
                     dirs.push(dir.clone());
                 }
