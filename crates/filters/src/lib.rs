@@ -29,6 +29,12 @@ impl RuleFlags {
 }
 
 #[derive(Clone)]
+/// Compiled matcher and attributes for a single filter rule.
+///
+/// This struct is public to allow library consumers to construct custom
+/// [`Rule`] variants or inspect parsed rules, while keeping its fields
+/// private for future flexibility. Most callers will obtain instances via
+/// [`parse`] or other helpers rather than building `RuleData` manually.
 pub struct RuleData {
     matcher: GlobMatcher,
     invert: bool,
