@@ -30,3 +30,4 @@ fn modern_falls_back_without_compress() {
     );
     assert!(negotiated.is_none());
 }
+

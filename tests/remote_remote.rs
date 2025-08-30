@@ -81,6 +81,91 @@ fn assert_same_tree(a: &Path, b: &Path) {
 }
 
 #[test]
+fn remote_remote_via_ssh_paths() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("file.txt"), b"via_ssh").unwrap();
+
+    // Fake remote shell that ignores the host argument and executes the rest.
+    let rsh = dir.path().join("fake_rsh.sh");
+    fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
+    fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let src_spec = format!("fake:{}", src.display());
+    let dst_spec = format!("fake:{}", dst.display());
+
+    let rr_bin = cargo_bin("rsync-rs");
+    let rr_dir = rr_bin.parent().unwrap();
+    let path_env = format!("{}:{}", rr_dir.display(), std::env::var("PATH").unwrap());
+    let status = StdCommand::new(&rr_bin)
+        .env("PATH", path_env)
+        .args([
+            "--archive",
+            "--rsh",
+            rsh.to_str().unwrap(),
+            &src_spec,
+            &dst_spec,
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    assert_same_tree(&src, &dst);
+}
+
+#[test]
+#[ignore]
+fn remote_remote_via_daemon_paths() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("file.txt"), b"via_daemon").unwrap();
+    std::os::unix::fs::symlink("file.txt", src.join("link.txt")).unwrap();
+
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let mut daemon = StdCommand::new(cargo_bin("rsync-rs"))
+        .args([
+            "--daemon",
+            "--module",
+            &format!("src={}", src.display()),
+            "--module",
+            &format!("dst={}", dst.display()),
+            "--port",
+            &port.to_string(),
+        ])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+
+    // Allow daemon to start
+    std::thread::sleep(Duration::from_millis(100));
+
+    let src_url = format!("rsync://127.0.0.1:{}/src/", port);
+    let dst_url = format!("rsync://127.0.0.1:{}/dst/", port);
+
+    let status = StdCommand::new(cargo_bin("rsync-rs"))
+        .args(["--archive", &src_url, &dst_url])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    // Ensure data is flushed before killing daemon
+    std::thread::sleep(Duration::from_millis(200));
+    assert_same_tree(&src, &dst);
+
+    let _ = daemon.kill();
+    let _ = daemon.wait();
+}
+
+#[test]
 fn remote_to_remote_pipes_data() {
     let dir = tempdir().unwrap();
     let src_file = dir.path().join("src.txt");
