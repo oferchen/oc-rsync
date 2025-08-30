@@ -63,6 +63,7 @@ pub struct Options {
     pub owner: bool,
     pub group: bool,
     pub perms: bool,
+    pub executability: bool,
     pub times: bool,
     pub atimes: bool,
     pub crtimes: bool,
@@ -79,6 +80,7 @@ impl std::fmt::Debug for Options {
             .field("owner", &self.owner)
             .field("group", &self.group)
             .field("perms", &self.perms)
+            .field("executability", &self.executability)
             .field("times", &self.times)
             .field("atimes", &self.atimes)
             .field("crtimes", &self.crtimes)
@@ -96,6 +98,7 @@ impl Options {
             || self.owner
             || self.group
             || self.perms
+            || self.executability
             || self.times
             || self.atimes
             || self.crtimes
@@ -204,7 +207,7 @@ impl Metadata {
             }
         }
 
-        if opts.perms || opts.chmod.is_some() {
+        if opts.perms || opts.chmod.is_some() || opts.executability {
             let meta = fs::metadata(path)?;
             let is_dir = meta.is_dir();
             let mut mode_val = if opts.perms {
@@ -212,6 +215,9 @@ impl Metadata {
             } else {
                 meta.permissions().mode() & 0o7777
             };
+            if opts.executability && !opts.perms {
+                mode_val = (mode_val & !0o111) | (self.mode & 0o111);
+            }
             let orig_mode = mode_val;
             if let Some(ref rules) = opts.chmod {
                 for rule in rules {

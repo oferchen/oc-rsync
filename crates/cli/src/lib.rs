@@ -100,6 +100,8 @@ struct ClientOpts {
     checksum_seed: Option<u32>,
     #[arg(long, help_heading = "Attributes")]
     perms: bool,
+    #[arg(short = 'E', long, help_heading = "Attributes")]
+    executability: bool,
     #[arg(long = "chmod", value_name = "CHMOD", help_heading = "Attributes")]
     chmod: Vec<String>,
     #[arg(long = "chown", value_name = "USER:GROUP", help_heading = "Attributes")]
@@ -827,6 +829,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         list_only: opts.list_only,
         update: opts.update,
         perms: opts.perms || opts.archive,
+        executability: opts.executability,
         times: opts.times || opts.archive,
         atimes: opts.atimes,
         crtimes: opts.crtimes,
@@ -1697,7 +1700,7 @@ mod tests {
     #[test]
     fn parses_client_flags() {
         let opts = ClientOpts::parse_from([
-            "prog", "-r", "-n", "-v", "--delete", "-c", "-z", "--stats", "--config", "file", "src",
+            "prog", "-r", "-n", "-v", "--delete", "-c", "-z", "--stats", "--executability", "--config", "file", "src",
             "dst",
         ]);
         assert!(opts.recursive);
@@ -1707,6 +1710,7 @@ mod tests {
         assert!(opts.checksum);
         assert!(opts.compress);
         assert!(opts.stats);
+        assert!(opts.executability);
         assert_eq!(opts.config, Some(PathBuf::from("file")));
     }
 

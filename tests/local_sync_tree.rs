@@ -176,6 +176,33 @@ fn sync_applies_chmod() {
 
 #[cfg(unix)]
 #[test]
+fn sync_preserves_executability() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o700)).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args(["--local", "--executability", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let src_mode = fs::metadata(file).unwrap().permissions().mode();
+    let dst_mode = fs::metadata(dst.join("file")).unwrap().permissions().mode();
+    assert_eq!(dst_mode & 0o111, src_mode & 0o111);
+    assert_ne!(dst_mode & !0o111, src_mode & !0o111);
+}
+
+#[cfg(unix)]
+#[test]
 fn sync_preserves_crtimes() {
     use filetime::FileTime;
 
