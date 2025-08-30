@@ -1,7 +1,8 @@
 use compress::available_codecs;
-use engine::{sync, SyncOptions};
+use engine::{compute_delta, sync, Op, SyncOptions};
+use checksums::ChecksumConfigBuilder;
 use filters::Matcher;
-use std::fs;
+use std::fs::{self, File};
 use tempfile::tempdir;
 
 #[test]
@@ -33,4 +34,46 @@ fn resume_from_partial_file() {
 
     let out = fs::read(dst.join("file.bin")).unwrap();
     assert_eq!(out, src_data);
+}
+
+#[test]
+fn resume_large_file_minimal_network_io() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+
+    let block_size = 1024;
+    let total_blocks = 256; // 256 KiB file
+    let total_len = block_size * total_blocks;
+    let partial_len = total_len / 2;
+    let mut data = Vec::with_capacity(total_len);
+    data.extend(std::iter::repeat(1u8).take(partial_len));
+    data.extend(std::iter::repeat(2u8).take(total_len - partial_len));
+    fs::write(src.join("big.bin"), &data).unwrap();
+
+    fs::write(dst.join("big.bin.partial"), &data[..partial_len]).unwrap();
+
+    // Estimate the amount of data that should be resent
+    let cfg = ChecksumConfigBuilder::new().build();
+    let mut basis = File::open(dst.join("big.bin.partial")).unwrap();
+    let mut target = File::open(src.join("big.bin")).unwrap();
+    let delta: Vec<Op> = compute_delta(&cfg, &mut basis, &mut target, block_size, usize::MAX)
+        .unwrap()
+        .collect::<engine::Result<_>>()
+        .unwrap();
+    let mut sent = 0usize;
+    for op in &delta {
+        if let Op::Data(d) = op {
+            sent += d.len();
+        }
+    }
+    assert_eq!(sent, data.len() - partial_len);
+
+    let mut opts = SyncOptions::default();
+    opts.partial = true;
+    opts.block_size = block_size;
+    sync(&src, &dst, &Matcher::default(), available_codecs(), &opts).unwrap();
+    assert_eq!(fs::read(dst.join("big.bin")).unwrap(), data);
 }

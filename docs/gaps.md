@@ -2,10 +2,12 @@
 
 This document tracks outstanding gaps in `rsync-rs` compared to the reference `rsync` implementation. Update this file as features are implemented.
 
+## Recently addressed gaps
+- Partial transfer resumption now reuses `.partial` files and retransfers only missing blocks.
+
 ## Missing rsync behaviors
 
 ### Protocol gaps
-- Partial transfer resumption does not fully match `rsync` semantics; interrupted copies cannot reuse partially transferred data.
 - Compression support includes zlib and zstd, with optional LZ4 available when the `lz4` feature is enabled.
 
 ### Metadata gaps

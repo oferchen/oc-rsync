@@ -1082,7 +1082,17 @@ pub fn sync(
                             hard_links.insert(key, dest_path.clone());
                         }
                     }
-                    if !dest_path.exists() {
+                    let partial_exists = if opts.partial {
+                        let partial_path = if let Some(ref dir) = opts.partial_dir {
+                            dir.join(rel).with_extension("partial")
+                        } else {
+                            dest_path.with_extension("partial")
+                        };
+                        partial_path.exists()
+                    } else {
+                        false
+                    };
+                    if !dest_path.exists() && !partial_exists {
                         if let Some(ref link_dir) = opts.link_dest {
                             let link_path = link_dir.join(rel);
                             if files_identical(&path, &link_path) {

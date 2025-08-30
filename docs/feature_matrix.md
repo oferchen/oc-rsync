@@ -111,7 +111,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--out-format` | — | ❌ | — | — |  | ≤3.2 |
 | `--outbuf` | — | ❌ | — | — |  | ≤3.2 |
 | `--owner` | `-o` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--partial` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
+| `--partial` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/resume.rs](../crates/engine/tests/resume.rs) |  | ≤3.2 |
 | `--partial-dir` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--password-file` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--perms` | `-p` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
