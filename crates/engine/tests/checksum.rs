@@ -1,3 +1,4 @@
+// crates/engine/tests/checksum.rs
 use std::fs;
 
 use compress::available_codecs;

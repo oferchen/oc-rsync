@@ -1,3 +1,4 @@
+// tests/daemon.rs
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
 use protocol::LATEST_VERSION;
@@ -282,7 +283,6 @@ fn daemon_accepts_authorized_client() {
 #[test]
 #[serial]
 fn daemon_respects_host_allow_and_deny_lists() {
-    // Allow list
     let (mut child, port) = {
         let port = TcpListener::bind("127.0.0.1:0")
             .unwrap()
@@ -313,7 +313,6 @@ fn daemon_respects_host_allow_and_deny_lists() {
     let _ = child.kill();
     let _ = child.wait();
 
-    // Deny list
     let (mut child, port) = {
         let port = TcpListener::bind("127.0.0.1:0")
             .unwrap()

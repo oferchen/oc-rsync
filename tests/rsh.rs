@@ -1,3 +1,4 @@
+// tests/rsh.rs
 #[cfg(unix)]
 use assert_cmd::cargo::cargo_bin;
 #[cfg(unix)]
@@ -52,12 +53,10 @@ fn custom_rsh_matches_stock_rsync() {
     let dst_rr = dir.path().join("dst_rr.txt");
     let dst_rsync = dir.path().join("dst_rsync.txt");
 
-    // Create a fake remote shell that ignores the host argument and executes the rest.
     let rsh = dir.path().join("fake_rsh.sh");
     fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
     fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
 
-    // Use the custom shell with our transport to copy data
     let src_session = SshStdioTransport::spawn(
         rsh.to_str().unwrap(),
         ["ignored", "cat", src.to_str().unwrap()],
@@ -80,7 +79,6 @@ fn custom_rsh_matches_stock_rsync() {
     drop(src_reader);
     std::thread::sleep(std::time::Duration::from_millis(50));
 
-    // Use stock rsync with the same remote shell
     let dst_rsync_spec = format!("ignored:{}", dst_rsync.display());
     let output = Command::new("rsync")
         .args([
@@ -236,12 +234,10 @@ fn rsync_path_respects_rsh_env_var() {
     fs::write(&src_file, b"from env var").unwrap();
     let dst_dir = dir.path().join("dst");
 
-    // Copy the client binary to act as the remote rsync executable.
     let remote_bin = dir.path().join("rr-remote");
     fs::copy(cargo_bin("rsync-rs"), &remote_bin).unwrap();
     fs::set_permissions(&remote_bin, fs::Permissions::from_mode(0o755)).unwrap();
 
-    // Fake remote shell that ignores host argument.
     let rsh = dir.path().join("fake_rsh.sh");
     fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
     fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();

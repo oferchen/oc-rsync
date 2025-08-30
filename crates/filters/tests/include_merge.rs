@@ -1,3 +1,4 @@
+// crates/filters/tests/include_merge.rs
 use filters::{parse, Matcher};
 use std::collections::HashSet;
 use std::fs;
@@ -8,7 +9,6 @@ fn nested_include_merge_applies() {
     let tmp = tempdir().unwrap();
     let root = tmp.path();
 
-    // Create nested filter files
     let rules3 = root.join("rules3");
     fs::write(&rules3, "- tmp/\n").unwrap();
 
@@ -22,7 +22,6 @@ fn nested_include_merge_applies() {
     let rules1 = root.join("rules1");
     fs::write(&rules1, format!(":include-merge {}\n", rules2.display())).unwrap();
 
-    // Source tree
     fs::create_dir_all(root.join("src/dir")).unwrap();
     fs::create_dir_all(root.join("src/tmp")).unwrap();
     fs::write(root.join("src/root.txt"), "root").unwrap();

@@ -1,3 +1,4 @@
+// crates/filters/tests/merge.rs
 use filters::{parse, Matcher};
 use proptest::prelude::*;
 use std::collections::HashSet;
@@ -15,7 +16,6 @@ fn rsync_filter_merge() {
     assert!(matcher.is_included("notes.txt").unwrap());
     assert!(!matcher.is_included("junk.tmp").unwrap());
 
-    // Merge rules from a subdirectory `.rsync-filter` file
     let sub_rules = p("- secret\n");
     matcher.merge(sub_rules);
 

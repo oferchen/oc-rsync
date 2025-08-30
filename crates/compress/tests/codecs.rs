@@ -1,6 +1,7 @@
-use compress::{negotiate_codec, Codec, Compressor, Decompressor, Zlib, Zstd};
+// crates/compress/tests/codecs.rs
 #[cfg(feature = "lz4")]
 use compress::Lz4;
+use compress::{negotiate_codec, Codec, Compressor, Decompressor, Zlib, Zstd};
 
 const DATA: &[u8] = b"The quick brown fox jumps over the lazy dog";
 

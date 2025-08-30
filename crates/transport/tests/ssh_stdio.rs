@@ -1,8 +1,8 @@
+// crates/transport/tests/ssh_stdio.rs
 use transport::{ssh::SshStdioTransport, Transport};
 
 #[test]
 fn send_receive_via_ssh_stdio() {
-    // Spawn a simple echo process instead of real SSH for testing.
     let mut transport = SshStdioTransport::spawn("sh", ["-c", "cat"]).expect("spawn");
 
     transport.send(b"ping").expect("send");

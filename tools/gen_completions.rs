@@ -1,3 +1,4 @@
+// tools/gen_completions.rs
 use std::env;
 use std::fs;
 

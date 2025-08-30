@@ -1,3 +1,4 @@
+// crates/cli/tests/golden.rs
 use cli::parse_chmod_spec;
 
 #[test]

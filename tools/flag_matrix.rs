@@ -1,3 +1,4 @@
+// tools/flag_matrix.rs
 use std::collections::{BTreeSet, HashMap};
 use std::fs;
 use std::process::Command;
@@ -74,10 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rsync_rs_help_str = String::from_utf8(rsync_rs_help.stdout)?;
     let (rsync_rs_flags, rsync_rs_aliases, _rsync_rs_alias_desc) = parse_help(&rsync_rs_help_str);
 
-    let error_notes: HashMap<&str, &str> = [
-    ]
-    .into_iter()
-    .collect();
+    let error_notes: HashMap<&str, &str> = [].into_iter().collect();
 
     let ignored_flags: BTreeSet<&str> = BTreeSet::new();
 

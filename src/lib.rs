@@ -1,9 +1,9 @@
-use std::path::Path;
+// src/lib.rs
 use compress::available_codecs;
 use engine::{Result, SyncOptions};
 use filters::Matcher;
+use std::path::Path;
 
-/// Re-export engine synchronization for convenience.
 pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
     engine::sync(
         src,

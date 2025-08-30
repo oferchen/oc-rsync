@@ -1,3 +1,4 @@
+// fuzz/fuzz_targets/daemon_auth_token_parser.rs
 #![no_main]
 use cli::parse_auth_token;
 use libfuzzer_sys::fuzz_target;

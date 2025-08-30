@@ -1,3 +1,4 @@
+// crates/filters/src/lib.rs
 use globset::{Glob, GlobMatcher};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -7,16 +8,11 @@ use std::path::{Path, PathBuf};
 
 const MAX_PARSE_DEPTH: usize = 64;
 
-/// Additional attributes that can modify how a rule is applied.
 #[derive(Clone, Default)]
 pub struct RuleFlags {
-    /// Rule only affects the sending side.
     sender: bool,
-    /// Rule only affects the receiving side.
     receiver: bool,
-    /// Rule is ignored when the parent directory is deleted.
     perishable: bool,
-    /// Rule applies to xattr names, not file paths.
     xattr: bool,
 }
 
@@ -30,31 +26,18 @@ impl RuleFlags {
 }
 
 #[derive(Clone)]
-/// Compiled matcher and attributes for a single filter rule.
-///
-/// This struct is public to allow library consumers to construct custom
-/// [`Rule`] variants or inspect parsed rules, while keeping its fields
-/// private for future flexibility. Most callers will obtain instances via
-/// [`parse`] or other helpers rather than building `RuleData` manually.
 pub struct RuleData {
     matcher: GlobMatcher,
     invert: bool,
     flags: RuleFlags,
 }
 
-/// A single rule compiled into a glob matcher or special directive.
 #[derive(Clone)]
 pub enum Rule {
-    /// Include rule; `invert` flips match logic when `!` modifier is used.
     Include(RuleData),
-    /// Exclude rule; `invert` flips match logic when `!` modifier is used.
     Exclude(RuleData),
-    /// Protect rule used for receiver-side deletes; `invert` supported for
-    /// parity with rsync's `!` modifier.
     Protect(RuleData),
-    /// Clear all previously defined rules.
     Clear,
-    /// Per-directory merge directive (e.g., `: .rsync-filter`).
     DirMerge(PerDir),
 }
 
@@ -63,8 +46,6 @@ pub struct PerDir {
     file: String,
     anchored: bool,
     root_only: bool,
-    /// When false, rules from this merge file are not inherited by
-    /// sub-directories (`n` modifier).
     inherit: bool,
 }
 
@@ -74,21 +55,12 @@ struct Cached {
     merges: Vec<(usize, PerDir)>,
 }
 
-/// Matcher evaluates rules sequentially against paths.
 #[derive(Clone, Default)]
 pub struct Matcher {
-    /// Root of the walk. Used to locate per-directory filter files.
     root: Option<PathBuf>,
-    /// Global rules supplied via CLI or configuration along with their
-    /// original positions.
     rules: Vec<(usize, Rule)>,
-    /// Filenames that should be merged for every directory visited along
-    /// with the position of the `dir-merge` directive.
     per_dir: Vec<(usize, PerDir)>,
-    /// Additional per-directory merge directives discovered while walking,
-    /// keyed by directory and preserving positional information.
     extra_per_dir: RefCell<HashMap<PathBuf, Vec<(usize, PerDir)>>>,
-    /// Cache of parsed rules for filter files along with any nested merges.
     cached: RefCell<HashMap<PathBuf, Cached>>,
 }
 
@@ -111,18 +83,11 @@ impl Matcher {
         }
     }
 
-    /// Set the root directory used to resolve per-directory filter files.
     pub fn with_root(mut self, root: impl Into<PathBuf>) -> Self {
         self.root = Some(root.into());
         self
     }
 
-    /// Determine if the provided path is included by the rules, loading any
-    /// directory-specific `.rsync-filter` files along the way. Rules are
-    /// evaluated in the exact order that rsync would apply them: command-line
-    /// rules appear in their original sequence, and per-directory rules are
-    /// injected at the position where the corresponding `dir-merge` directive
-    /// was specified.
     pub fn is_included<P: AsRef<Path>>(&self, path: P) -> Result<bool, ParseError> {
         let path = path.as_ref();
         let mut seq = 0usize;
@@ -206,7 +171,6 @@ impl Matcher {
         Ok(true)
     }
 
-    /// Merge additional global rules, as when reading a top-level filter file.
     pub fn merge(&mut self, more: Vec<Rule>) {
         let mut max_idx = self
             .rules
@@ -224,8 +188,6 @@ impl Matcher {
         }
     }
 
-    /// Load rules applicable to `dir`, preserving the position of the
-    /// originating `dir-merge` directive.
     fn dir_rules_at(&self, dir: &Path) -> Result<Vec<(usize, Rule)>, ParseError> {
         if let Some(root) = &self.root {
             if !dir.starts_with(root) {
@@ -433,7 +395,6 @@ enum RuleKind {
     Protect,
 }
 
-/// Parse filter rules from input with recursion tracking.
 pub fn parse(
     input: &str,
     visited: &mut HashSet<PathBuf>,
@@ -618,7 +579,6 @@ pub fn parse(
             }
         };
 
-        // Handle special CVS-exclude insertion when using the C modifier with no pattern.
         if mods.contains('C') && rest.is_empty() {
             rules.extend(default_cvs_rules()?);
             continue;
