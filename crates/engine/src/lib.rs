@@ -478,6 +478,15 @@ impl Sender {
     }
 
     fn metadata_unchanged(&self, path: &Path, dest: &Path) -> bool {
+        if self.opts.size_only {
+            if let (Ok(src_meta), Ok(dst_meta)) = (fs::metadata(path), fs::metadata(dest)) {
+                return src_meta.len() == dst_meta.len();
+            }
+            return false;
+        }
+        if self.opts.ignore_times {
+            return false;
+        }
         if let (Ok(src_meta), Ok(dst_meta)) = (fs::metadata(path), fs::metadata(dest)) {
             if src_meta.len() == dst_meta.len() {
                 if let (Ok(sm), Ok(dm)) = (src_meta.modified(), dst_meta.modified()) {
@@ -900,6 +909,9 @@ pub struct SyncOptions {
     pub dirs: bool,
     pub list_only: bool,
     pub update: bool,
+    pub ignore_existing: bool,
+    pub size_only: bool,
+    pub ignore_times: bool,
     pub perms: bool,
     pub executability: bool,
     pub times: bool,
@@ -982,6 +994,9 @@ impl Default for SyncOptions {
             dirs: false,
             list_only: false,
             update: false,
+            ignore_existing: false,
+            size_only: false,
+            ignore_times: false,
             strong: StrongHash::Md5,
             checksum_seed: 0,
             compress_level: None,
@@ -1152,6 +1167,9 @@ pub fn sync(
                     continue;
                 }
                 if file_type.is_file() {
+                    if opts.ignore_existing && dest_path.exists() {
+                        continue;
+                    }
                     if opts.update && dest_path.exists() {
                         if let (Ok(src_meta), Ok(dst_meta)) =
                             (fs::metadata(&path), fs::metadata(&dest_path))
