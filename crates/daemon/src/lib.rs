@@ -7,6 +7,13 @@ use std::os::unix::fs::PermissionsExt;
 
 use transport::Transport;
 
+fn parse_list(val: &str) -> Vec<String> {
+    val.split(|c| c == ' ' || c == ',')
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .collect()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Module {
     pub name: String,
@@ -83,18 +90,10 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             (false, "motd file") => cfg.motd_file = Some(PathBuf::from(val)),
             (false, "log file") => cfg.log_file = Some(PathBuf::from(val)),
             (false, "hosts allow") => {
-                cfg.hosts_allow = val
-                    .split(|c| c == ' ' || c == ',')
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.to_string())
-                    .collect();
+                cfg.hosts_allow = parse_list(&val);
             }
             (false, "hosts deny") => {
-                cfg.hosts_deny = val
-                    .split(|c| c == ' ' || c == ',')
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.to_string())
-                    .collect();
+                cfg.hosts_deny = parse_list(&val);
             }
             (false, "secrets file") => cfg.secrets_file = Some(PathBuf::from(val)),
             (true, "path") => {
@@ -104,29 +103,17 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             }
             (true, "hosts allow") => {
                 if let Some(m) = current.as_mut() {
-                    m.hosts_allow = val
-                        .split(|c| c == ' ' || c == ',')
-                        .filter(|s| !s.is_empty())
-                        .map(|s| s.to_string())
-                        .collect();
+                    m.hosts_allow = parse_list(&val);
                 }
             }
             (true, "hosts deny") => {
                 if let Some(m) = current.as_mut() {
-                    m.hosts_deny = val
-                        .split(|c| c == ' ' || c == ',')
-                        .filter(|s| !s.is_empty())
-                        .map(|s| s.to_string())
-                        .collect();
+                    m.hosts_deny = parse_list(&val);
                 }
             }
             (true, "auth users") => {
                 if let Some(m) = current.as_mut() {
-                    m.auth_users = val
-                        .split(|c| c == ' ' || c == ',')
-                        .filter(|s| !s.is_empty())
-                        .map(|s| s.to_string())
-                        .collect();
+                    m.auth_users = parse_list(&val);
                 }
             }
             (true, "secrets file") => {
