@@ -4,6 +4,13 @@
 `--modern` flag, it intends zero behavioral differences from the traditional
 utility and mirrors the classic command line.
 
+## Protocol support
+
+`oc-rsync` speaks rsync protocol versions 29 through 32 and
+negotiates the highest version that both peers understand. Feature bits
+are advertised to newer implementations while older peers simply ignore
+unknown capabilities, allowing seamless fallback.
+
 The `--modern` convenience flag enables additional enhancements beyond
 classic `rsync` behavior. For a complete listing see
 [cli/flags.md](cli/flags.md). For detailed parity status see

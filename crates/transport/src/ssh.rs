@@ -10,6 +10,7 @@ use std::time::Duration;
 use compress::{available_codecs, Codec};
 use protocol::{
     negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION,
+    SUPPORTED_CAPS,
 };
 
 use crate::{AddressFamily, LocalPipeTransport, SshTransport, Transport};
@@ -192,15 +193,15 @@ impl SshStdioTransport {
         let peer = u32::from_be_bytes(ver_buf);
         negotiate_version(peer).map_err(|e| io::Error::other(e.to_string()))?;
 
-        let caps = CAP_CODECS;
-        transport.send(&caps.to_be_bytes())?;
+        transport.send(&SUPPORTED_CAPS.to_be_bytes())?;
 
         let mut cap_buf = [0u8; 4];
         transport.receive(&mut cap_buf)?;
         let server_caps = u32::from_be_bytes(cap_buf);
+        let caps = server_caps & SUPPORTED_CAPS;
 
         let mut peer_codecs = vec![Codec::Zlib];
-        if server_caps & CAP_CODECS != 0 {
+        if caps & CAP_CODECS != 0 {
             let payload = compress::encode_codecs(available_codecs());
             let frame = Message::Codecs(payload).to_frame(0);
             let mut buf = Vec::new();
