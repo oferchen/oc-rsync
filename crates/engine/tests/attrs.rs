@@ -145,7 +145,7 @@ fn crtimes_roundtrip() {
 }
 
 #[test]
-fn owner_group_roundtrip() {
+fn owner_roundtrip() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -153,7 +153,7 @@ fn owner_group_roundtrip() {
     fs::create_dir_all(&dst).unwrap();
     let file = src.join("file");
     fs::write(&file, b"hi").unwrap();
-    chown(&file, Some(Uid::from_raw(1000)), Some(Gid::from_raw(1000))).unwrap();
+    chown(&file, Some(Uid::from_raw(1000)), Some(Gid::from_raw(0))).unwrap();
     sync(
         &src,
         &dst,
@@ -161,13 +161,38 @@ fn owner_group_roundtrip() {
         available_codecs(),
         &SyncOptions {
             owner: true,
-            group: true,
             ..Default::default()
         },
     )
     .unwrap();
     let meta = fs::metadata(dst.join("file")).unwrap();
     assert_eq!(meta.uid(), 1000);
+    assert_eq!(meta.gid(), 0);
+}
+
+#[test]
+fn group_roundtrip() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    chown(&file, Some(Uid::from_raw(0)), Some(Gid::from_raw(1000))).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        available_codecs(),
+        &SyncOptions {
+            group: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let meta = fs::metadata(dst.join("file")).unwrap();
+    assert_eq!(meta.uid(), 0);
     assert_eq!(meta.gid(), 1000);
 }
 
