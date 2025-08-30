@@ -11,7 +11,7 @@ use std::time::Duration;
 use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
 use compress::{available_codecs, Codec};
 use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
-use filters::{parse, Matcher, Rule};
+use filters::{default_cvs_rules, parse, Matcher, Rule};
 use meta::{Chmod, ChmodOp, ChmodTarget};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
@@ -316,6 +316,9 @@ struct ClientOpts {
     /// shorthand for per-directory filter files
     #[arg(short = 'F', action = ArgAction::Count, help_heading = "Selection")]
     filter_shorthand: u8,
+    /// auto-ignore files in the same way CVS does
+    #[arg(short = 'C', long = "cvs-exclude", help_heading = "Selection")]
+    cvs_exclude: bool,
     /// include files matching PATTERN
     #[arg(long, value_name = "PATTERN")]
     include: Vec<String>,
@@ -1498,6 +1501,11 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             usize::MAX,
             parse_filters("- *").map_err(|e| EngineError::Other(format!("{:?}", e)))?,
         );
+    }
+    if opts.cvs_exclude {
+        let mut cvs = default_cvs_rules().map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+        cvs.extend(parse_filters(":C").map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+        add_rules(usize::MAX, cvs);
     }
 
     entries.sort_by(|a, b| {

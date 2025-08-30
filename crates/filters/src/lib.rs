@@ -1,6 +1,7 @@
 use globset::{Glob, GlobMatcher};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -318,7 +319,28 @@ impl Matcher {
             Err(_) => return Ok((Vec::new(), Vec::new())),
         };
 
-        let adjusted = if let Some(rel) = rel {
+        let adjusted = if path.file_name().map_or(false, |f| f == ".cvsignore") {
+            let rel_str = rel.map(|p| p.to_string_lossy().to_string());
+            let mut buf = String::new();
+            for token in content.split_whitespace() {
+                if token.starts_with('#') {
+                    continue;
+                }
+                let pat = if let Some(rel_str) = &rel_str {
+                    if token.starts_with('/') {
+                        format!("/{}/{}", rel_str, token.trim_start_matches('/'))
+                    } else {
+                        format!("{}/{}", rel_str, token)
+                    }
+                } else {
+                    token.to_string()
+                };
+                buf.push_str("- ");
+                buf.push_str(&pat);
+                buf.push('\n');
+            }
+            buf
+        } else if let Some(rel) = rel {
             let rel_str = rel.to_string_lossy();
             let mut buf = String::new();
             for raw_line in content.lines() {
@@ -511,7 +533,17 @@ pub fn parse(
         } else if let Some(r) = line.strip_prefix(':') {
             let (m, file) = split_mods(r, "-+Cenw/!srpx");
             if file.is_empty() {
-                return Err(ParseError::InvalidRule(raw_line.to_string()));
+                if m.contains('C') {
+                    rules.push(Rule::DirMerge(PerDir {
+                        file: ".cvsignore".into(),
+                        anchored: false,
+                        root_only: false,
+                        inherit: true,
+                    }));
+                    continue;
+                } else {
+                    return Err(ParseError::InvalidRule(raw_line.to_string()));
+                }
             }
             let anchored = file.starts_with('/') || m.contains('/');
             let fname = if anchored {
@@ -639,7 +671,7 @@ pub fn parse(
     Ok(rules)
 }
 
-const CVS_DEFAULTS: &[&str] = &[
+pub const CVS_DEFAULTS: &[&str] = &[
     "RCS",
     "SCCS",
     "CVS",
@@ -678,9 +710,8 @@ const CVS_DEFAULTS: &[&str] = &[
     ".bzr/",
 ];
 
-fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
-    let mut out = Vec::new();
-    for pat in CVS_DEFAULTS {
+pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
+    fn add_pat(out: &mut Vec<Rule>, pat: &str) -> Result<(), ParseError> {
         let dir_only = pat.ends_with('/');
         let mut base = pat.trim_end_matches('/').to_string();
         if !base.contains('/') {
@@ -703,6 +734,32 @@ fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
             };
             out.push(Rule::Exclude(data));
         }
+        Ok(())
     }
+
+    let mut out = Vec::new();
+    for pat in CVS_DEFAULTS {
+        add_pat(&mut out, pat)?;
+    }
+
+    if let Ok(home) = env::var("HOME") {
+        let path = Path::new(&home).join(".cvsignore");
+        if let Ok(content) = fs::read_to_string(path) {
+            for pat in content.split_whitespace() {
+                if !pat.is_empty() {
+                    add_pat(&mut out, pat)?;
+                }
+            }
+        }
+    }
+
+    if let Ok(envpats) = env::var("CVSIGNORE") {
+        for pat in envpats.split_whitespace() {
+            if !pat.is_empty() {
+                add_pat(&mut out, pat)?;
+            }
+        }
+    }
+
     Ok(out)
 }
