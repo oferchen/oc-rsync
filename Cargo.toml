@@ -11,6 +11,7 @@ members = [
     "crates/daemon",
     "crates/cli",
     "bin/oc-rsync",
+    "crates/logging",
 ]
 resolver = "2"
 
