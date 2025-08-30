@@ -1411,7 +1411,10 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     }
     if opts.cvs_exclude {
         let mut cvs = default_cvs_rules().map_err(|e| EngineError::Other(format!("{:?}", e)))?;
-        cvs.extend(parse_filters(":C").map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+        cvs.extend(
+            parse_filters(":C\n- .cvsignore\n- /.cvsignore")
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+        );
         add_rules(usize::MAX, cvs);
     }
 
