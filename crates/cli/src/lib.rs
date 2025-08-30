@@ -370,7 +370,8 @@ fn parse_module(s: &str) -> std::result::Result<Module, String> {
     })
 }
 
-fn parse_chmod_spec(spec: &str) -> std::result::Result<Chmod, String> {
+#[doc(hidden)]
+pub fn parse_chmod_spec(spec: &str) -> std::result::Result<Chmod, String> {
     let (target, rest) = if let Some(r) = spec.strip_prefix('D') {
         (ChmodTarget::Dir, r)
     } else if let Some(r) = spec.strip_prefix('F') {
@@ -394,11 +395,17 @@ fn parse_chmod_spec(spec: &str) -> std::result::Result<Chmod, String> {
         });
     }
 
-    let op_pos = rest
-        .find(|c| c == '+' || c == '-' || c == '=')
-        .ok_or_else(|| "missing operator".to_string())?;
+    let (op_pos, op_char) = match rest.find(|c| c == '+' || c == '-' || c == '=') {
+        Some(p) => (p, rest.as_bytes()[p] as char),
+        None => {
+            if let Some(ch) = rest.chars().find(|c| !matches!(*c, 'u' | 'g' | 'o' | 'a')) {
+                return Err(format!("invalid operator '{ch}'"));
+            } else {
+                return Err("missing operator".into());
+            }
+        }
+    };
     let who_part = &rest[..op_pos];
-    let op_char = rest.as_bytes()[op_pos] as char;
     let perm_part = &rest[op_pos + 1..];
     if perm_part.is_empty() {
         return Err("missing permissions".into());
@@ -453,7 +460,7 @@ fn parse_chmod_spec(spec: &str) -> std::result::Result<Chmod, String> {
         '+' => ChmodOp::Add,
         '-' => ChmodOp::Remove,
         '=' => ChmodOp::Set,
-        _ => unreachable!(),
+        other => return Err(format!("invalid operator '{other}'")),
     };
 
     Ok(Chmod {

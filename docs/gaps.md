@@ -21,7 +21,7 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
 - Many command-line options remain absent or lack parity; see `docs/feature_matrix.md` for the full matrix.
 
 ## Unreachable code
-- No `unreachable!` or similar markers were found in the current codebase, but manual audit may reveal latent issues.
+- The `parse_chmod_spec` helper in `crates/cli/src/lib.rs` previously used `unreachable!()` for unsupported mode operators; it now returns a descriptive error.
 
 ## TODOs
 - No `TODO` markers are present in the repository at this time.
@@ -30,6 +30,6 @@ This document tracks outstanding gaps in `rsync-rs` compared to the reference `r
  - Many CLI options listed in `docs/feature_matrix.md` have no associated tests.
 
 ## Continuous integration deficiencies
-- Coverage is collected on Linux and Windows using `cargo-llvm-cov` with `--fail-under-lines 80` and `--fail-under-functions 80` thresholds.
+- Coverage is collected on Linux and Windows using `cargo-llvm-cov` with `--fail-under-lines 92` and `--fail-under-functions 92` thresholds.
   Raise these thresholds as the test suite stabilizes.
 - Nightly jobs fuzz all targets for longer runs, yet pull requests still rely on brief smoke tests.
