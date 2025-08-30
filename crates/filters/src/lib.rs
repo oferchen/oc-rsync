@@ -29,7 +29,7 @@ impl RuleFlags {
 }
 
 #[derive(Clone)]
-struct RuleData {
+pub struct RuleData {
     matcher: GlobMatcher,
     invert: bool,
     flags: RuleFlags,
