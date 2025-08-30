@@ -7,7 +7,11 @@ use tempfile::tempdir;
 
 fn parse_literal(stats: &str) -> usize {
     for line in stats.lines() {
-        if let Some(rest) = line.trim().strip_prefix("Literal data: ") {
+        let line = line.trim();
+        if let Some(rest) = line
+            .strip_prefix("Literal data: ")
+            .or_else(|| line.strip_prefix("Unmatched data: "))
+        {
             let num_str = rest.split_whitespace().next().unwrap().replace(",", "");
             return num_str.parse().unwrap();
         }
