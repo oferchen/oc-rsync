@@ -79,26 +79,20 @@ pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
     match alg {
         StrongHash::Md5 => {
             let mut hasher = Md5::new();
-            if seed != 0 {
-                hasher.update(&seed.to_le_bytes());
-            }
+            hasher.update(&seed.to_le_bytes());
             hasher.update(data);
             hasher.finalize().to_vec()
         }
         StrongHash::Sha1 => {
             let mut hasher = Sha1::new();
-            if seed != 0 {
-                hasher.update(&seed.to_le_bytes());
-            }
+            hasher.update(&seed.to_le_bytes());
             hasher.update(data);
             hasher.finalize().to_vec()
         }
         #[cfg(feature = "blake3")]
         StrongHash::Blake3 => {
             let mut hasher = Blake3::new();
-            if seed != 0 {
-                hasher.update(&seed.to_le_bytes());
-            }
+            hasher.update(&seed.to_le_bytes());
             hasher.update(data);
             hasher.finalize().as_bytes().to_vec()
         }
