@@ -1,4 +1,5 @@
 // tests/rsh.rs
+
 #[cfg(unix)]
 use assert_cmd::cargo::cargo_bin;
 #[cfg(unix)]

@@ -1,4 +1,5 @@
 // tests/modern.rs
+
 #![cfg(feature = "blake3")]
 use checksums::{strong_digest, StrongHash};
 use compress::{available_codecs, Codec, ModernCompress};

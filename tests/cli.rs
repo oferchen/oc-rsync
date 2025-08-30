@@ -1,4 +1,5 @@
 // tests/cli.rs
+
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
 use filetime::{set_file_mtime, FileTime};

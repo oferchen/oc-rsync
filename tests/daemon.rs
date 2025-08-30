@@ -1,11 +1,5 @@
-/* tests/daemon.rs
+// tests/daemon.rs
 
-These daemon tests need basic TCP networking. The `require_network` helper
-checks whether the current environment allows binding and connecting to the
-loopback interface and skips the test if it does not. To run the tests, make
-sure networking is permitted (e.g., not running in a sandbox without socket
-access).
-*/
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
 use protocol::LATEST_VERSION;
