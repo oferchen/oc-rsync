@@ -372,8 +372,9 @@ fn get_file_crtime(path: &Path) -> io::Result<Option<FileTime>> {
         return Err(io::Error::last_os_error());
     }
     let st = unsafe { st.assume_init() };
-    let ts = st.st_birthtimespec;
-    Ok(Some(FileTime::from_unix_time(ts.tv_sec, ts.tv_nsec as u32)))
+    let secs = st.st_birthtime;
+    let nsecs = st.st_birthtime_nsec;
+    Ok(Some(FileTime::from_unix_time(secs, nsecs as u32)))
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "ios")))]
