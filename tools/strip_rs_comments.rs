@@ -1,4 +1,4 @@
-// tools/strip-comments.rs
+// tools/strip_rs_comments.rs
 use std::env;
 use std::fs;
 use std::path::Path;
