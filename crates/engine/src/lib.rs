@@ -862,6 +862,7 @@ pub struct SyncOptions {
     pub group: bool,
     pub links: bool,
     pub copy_links: bool,
+    pub copy_dirlinks: bool,
     pub copy_unsafe_links: bool,
     pub safe_links: bool,
     pub hard_links: bool,
@@ -911,6 +912,7 @@ impl Default for SyncOptions {
             group: false,
             links: false,
             copy_links: false,
+            copy_dirlinks: false,
             copy_unsafe_links: false,
             safe_links: false,
             hard_links: false,
@@ -1128,7 +1130,11 @@ pub fn sync(
                         continue;
                     }
                     let meta = fs::metadata(&target_path).ok();
-                    if opts.copy_links || (opts.copy_unsafe_links && is_unsafe) {
+                    if opts.copy_links
+                        || (opts.copy_dirlinks
+                            && meta.as_ref().map(|m| m.is_dir()).unwrap_or(false))
+                        || (opts.copy_unsafe_links && is_unsafe)
+                    {
                         if let Some(meta) = meta {
                             if meta.is_dir() {
                                 if let Some(parent) = dest_path.parent() {

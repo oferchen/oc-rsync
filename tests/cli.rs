@@ -600,6 +600,36 @@ fn links_preserve_symlinks() {
 
 #[cfg(unix)]
 #[test]
+fn copy_dirlinks_transforms_directory_symlinks() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(src.join("dir")).unwrap();
+    std::fs::write(src.join("dir/file"), b"hi").unwrap();
+    std::fs::write(src.join("file"), b"data").unwrap();
+    symlink("dir", src.join("dirlink")).unwrap();
+    symlink("file", src.join("filelink")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("rsync-rs")
+        .unwrap()
+        .args([
+            "--local",
+            "--links",
+            "--copy-dirlinks",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("dirlink").is_dir());
+    let meta = std::fs::symlink_metadata(dst.join("filelink")).unwrap();
+    assert!(meta.file_type().is_symlink());
+}
+
+#[cfg(unix)]
+#[test]
 fn perms_preserve_permissions() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");

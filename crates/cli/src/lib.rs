@@ -128,6 +128,9 @@ struct ClientOpts {
     /// transform symlink into referent file/dir
     #[arg(short = 'L', long, help_heading = "Attributes")]
     copy_links: bool,
+    /// transform symlink to directory into referent
+    #[arg(short = 'k', long, help_heading = "Attributes")]
+    copy_dirlinks: bool,
     /// only "unsafe" symlinks are transformed
     #[arg(long, help_heading = "Attributes")]
     copy_unsafe_links: bool,
@@ -223,10 +226,20 @@ struct ClientOpts {
     #[arg(long, value_name = "PORT", help_heading = "Misc")]
     port: Option<u16>,
     /// prefer IPv4 for remote connections
-    #[arg(short = '4', long = "ipv4", help_heading = "Misc", conflicts_with = "ipv6")]
+    #[arg(
+        short = '4',
+        long = "ipv4",
+        help_heading = "Misc",
+        conflicts_with = "ipv6"
+    )]
     ipv4: bool,
     /// prefer IPv6 for remote connections
-    #[arg(short = '6', long = "ipv6", help_heading = "Misc", conflicts_with = "ipv4")]
+    #[arg(
+        short = '6',
+        long = "ipv6",
+        help_heading = "Misc",
+        conflicts_with = "ipv4"
+    )]
     ipv6: bool,
     /// set block size used for rolling checksums
     #[arg(
@@ -952,6 +965,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         group: opts.group || opts.archive,
         links: opts.links || opts.archive,
         copy_links: opts.copy_links,
+        copy_dirlinks: opts.copy_dirlinks,
         copy_unsafe_links: opts.copy_unsafe_links,
         safe_links: opts.safe_links,
         hard_links: opts.hard_links,
