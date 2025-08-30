@@ -258,12 +258,12 @@ fn daemon_allows_module_access() {
     let (mut child, port, _dir) = spawn_temp_daemon();
     wait_for_daemon(port);
     let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200)))
+        .unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
     t.send(b"data\n").unwrap();
-    t.set_read_timeout(Some(Duration::from_millis(200)))
-        .unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
     assert!(n == 0 || !String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR"));
     let _ = child.kill();
@@ -303,14 +303,14 @@ fn daemon_rejects_invalid_token() {
         .unwrap();
     wait_for_daemon(port);
     let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200)))
+        .unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
 
     t.authenticate(Some("bad")).unwrap();
-    t.set_read_timeout(Some(Duration::from_millis(500)))
-        .unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
     assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).starts_with("@ERR"));
     let _ = child.kill();
@@ -350,6 +350,8 @@ fn daemon_rejects_unauthorized_module() {
         .unwrap();
     wait_for_daemon(port);
     let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200)))
+        .unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -357,8 +359,6 @@ fn daemon_rejects_unauthorized_module() {
 
     t.authenticate(Some("secret")).unwrap();
     t.send(b"data\n").unwrap();
-    t.set_read_timeout(Some(Duration::from_millis(500)))
-        .unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
     assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).starts_with("@ERR"));
     let _ = child.kill();
@@ -398,6 +398,8 @@ fn daemon_authenticates_valid_token() {
         .unwrap();
     wait_for_daemon(port);
     let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200)))
+        .unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -405,8 +407,6 @@ fn daemon_authenticates_valid_token() {
 
     t.authenticate(Some("secret")).unwrap();
     t.send(b"data\n").unwrap();
-    t.set_read_timeout(Some(Duration::from_millis(200)))
-        .unwrap();
     let res = t.receive(&mut buf);
     match res {
         Ok(0) => {}
