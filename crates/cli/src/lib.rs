@@ -80,6 +80,12 @@ struct ClientOpts {
         visible_alias = "cc"
     )]
     checksum_choice: Option<String>,
+    #[arg(
+        long = "checksum-seed",
+        value_name = "NUM",
+        help_heading = "Attributes"
+    )]
+    checksum_seed: Option<u32>,
     #[arg(long, help_heading = "Attributes")]
     perms: bool,
     #[arg(long = "chmod", value_name = "CHMOD", help_heading = "Attributes")]
@@ -917,6 +923,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         acls: opts.acls,
         sparse: opts.sparse,
         strong,
+        checksum_seed: opts.checksum_seed.unwrap_or(0),
         compress_level: opts.compress_level,
         compress_choice,
         whole_file: if opts.no_whole_file {

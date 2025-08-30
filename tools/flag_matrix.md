@@ -14,7 +14,7 @@
 | --bwlimit | Error |  |
 | --checksum | Supported |  |
 | --checksum-choice | Supported |  |
-| --checksum-seed | Error |  |
+| --checksum-seed | Supported |  |
 | --chmod | Error |  |
 | --chown | Error |  |
 | --compare-dest | Supported |  |
