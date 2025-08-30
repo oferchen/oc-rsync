@@ -51,7 +51,7 @@ fn server_handshake_succeeds() {
     stdout.read_exact(&mut cap_buf).unwrap();
     assert_eq!(u32::from_be_bytes(cap_buf) & CAP_CODECS, CAP_CODECS);
 
-    let codecs = available_codecs(false);
+    let codecs = available_codecs(None);
     let payload = encode_codecs(&codecs);
     let frame = Message::Codecs(payload).to_frame(0);
     let mut buf = Vec::new();

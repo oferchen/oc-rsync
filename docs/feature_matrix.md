@@ -93,6 +93,9 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--min-size` | — | ❌ | — | — |  | ≤3.2 |
 | `--mkpath` | — | ❌ | — | — |  | ≤3.2 |
 | `--modern` | — | ✅ | ✅ | [tests/interop/modern.rs](../tests/interop/modern.rs) | oc-rsync only; enables zstd compression and BLAKE3 checksums (requires `blake3` feature) | — |
+| `--modern-compress` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; choose `auto`, `zstd`, or `lz4` compression | — |
+| `--modern-hash` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; select BLAKE3 hash (requires `blake3` feature) | — |
+| `--modern-cdc` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; enable `fastcdc` chunking | — |
 | `--modify-window` | `-@` | ❌ | — | — |  | ≤3.2 |
 | `--munge-links` | — | ❌ | — | — |  | ≤3.2 |
 | `--no-D` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--no-devices --no-specials` | ≤3.2 |

@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use compress::{available_codecs, Codec};
+use compress::{available_codecs, Codec, ModernCompress};
 use protocol::{
     negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, SUPPORTED_CAPS,
 };
@@ -168,7 +168,7 @@ impl SshStdioTransport {
     fn handshake<T: Transport>(
         transport: &mut T,
         env: &[(String, String)],
-        modern: bool,
+        modern: Option<ModernCompress>,
         version: u32,
     ) -> io::Result<Vec<Codec>> {
         for (k, v) in env {
@@ -348,7 +348,7 @@ impl SshStdioTransport {
         port: Option<u16>,
         connect_timeout: Option<Duration>,
         family: Option<AddressFamily>,
-        modern: bool,
+        modern: Option<ModernCompress>,
         version: u32,
     ) -> io::Result<(Self, Vec<Codec>)> {
         let mut t = Self::spawn_with_rsh(

@@ -24,6 +24,9 @@ classic `rsync` behavior. For a complete listing see
 | `--compress-choice` | ✅ choose zstd or zlib | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | n/a |
 | `--compress-level` | ✅ maps numeric levels | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | applies to zlib or zstd |
 | `-c`, `--checksum` | ✅ strong hashes: MD5 (default), SHA-1, BLAKE3 | [tests/cli.rs](../tests/cli.rs) | `--modern` selects BLAKE3 |
+| `--modern-compress` | oc-rsync only | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | choose `auto`, `zstd`, or `lz4` |
+| `--modern-hash` | oc-rsync only | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | select BLAKE3 hash |
+| `--modern-cdc` | oc-rsync only | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | enable `fastcdc` chunking |
 | `-a`, `--archive` | ✅ sets perms, times, owner, group, links, devices, specials | [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) | n/a |
 | `-R`, `--relative` | ✅ preserves ancestor directories | [tests/cli.rs](../tests/cli.rs) | n/a |
 | `-P` | ✅ keeps partial files and shows progress | [tests/cli.rs](../tests/cli.rs) | n/a |

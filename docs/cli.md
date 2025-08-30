@@ -155,6 +155,9 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--min-size` | off |  | [matrix](feature_matrix.md#--min-size) |
 |  | `--mkpath` | off |  | [matrix](feature_matrix.md#--mkpath) |
 |  | `--modern` | off | oc-rsync only; negotiates zstd or lz4 compression based on CPU features and BLAKE3 checksums; requires `blake3` feature | [matrix](feature_matrix.md#--modern) |
+|  | `--modern-compress` | auto | oc-rsync only; select `auto`, `zstd`, or `lz4` compression | [matrix](feature_matrix.md#--modern-compress) |
+|  | `--modern-hash` | off | oc-rsync only; choose `blake3` strong hash | [matrix](feature_matrix.md#--modern-hash) |
+|  | `--modern-cdc` | off | oc-rsync only; enable `fastcdc` chunking | [matrix](feature_matrix.md#--modern-cdc) |
 | `-@` | `--modify-window` | off |  | [matrix](feature_matrix.md#--modify-window) |
 |  | `--munge-links` | off |  | [matrix](feature_matrix.md#--munge-links) |
 |  | `--no-D` | off | alias for `--no-devices --no-specials` | [matrix](feature_matrix.md#--no-d) |

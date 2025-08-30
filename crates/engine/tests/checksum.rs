@@ -28,7 +28,7 @@ fn checksum_forces_transfer() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(false),
+        &available_codecs(None),
         &SyncOptions::default(),
     )
     .unwrap();
@@ -39,7 +39,7 @@ fn checksum_forces_transfer() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(false),
+        &available_codecs(None),
         &SyncOptions {
             checksum: true,
             ..Default::default()
@@ -72,7 +72,7 @@ fn checksum_skips_transfer_when_unchanged() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(false),
+        &available_codecs(None),
         &SyncOptions {
             checksum: true,
             ..Default::default()

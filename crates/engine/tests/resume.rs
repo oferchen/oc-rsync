@@ -30,7 +30,14 @@ fn resume_from_partial_file() {
 
     let mut opts = SyncOptions::default();
     opts.partial = true;
-    sync(&src, &dst, &Matcher::default(), &available_codecs(false), &opts).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &opts,
+    )
+    .unwrap();
 
     let out = fs::read(dst.join("file.bin")).unwrap();
     assert_eq!(out, src_data);
@@ -73,6 +80,13 @@ fn resume_large_file_minimal_network_io() {
     let mut opts = SyncOptions::default();
     opts.partial = true;
     opts.block_size = block_size;
-    sync(&src, &dst, &Matcher::default(), &available_codecs(false), &opts).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &opts,
+    )
+    .unwrap();
     assert_eq!(fs::read(dst.join("big.bin")).unwrap(), data);
 }
