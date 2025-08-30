@@ -55,8 +55,8 @@ name = "gen-completions"
 path = "tools/gen_completions.rs"
 
 [[bin]]
-name = "strip-comments"
-path = "tools/strip-comments.rs"
+name = "strip-rs-comments"
+path = "tools/strip_rs_comments.rs"
 
 [features]
 default = []
