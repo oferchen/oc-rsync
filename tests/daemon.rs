@@ -96,6 +96,10 @@ fn spawn_daemon_ipv6() -> (Child, u16) {
     (child, port)
 }
 
+fn supports_ipv6() -> bool {
+    TcpListener::bind(("::1", 0)).is_ok()
+}
+
 fn wait_for_daemon_v6(port: u16) {
     for _ in 0..20 {
         if TcpStream::connect(("::1", port)).is_ok() {
@@ -156,6 +160,10 @@ fn daemon_binds_with_ipv4_flag() {
 #[test]
 #[serial]
 fn daemon_binds_with_ipv6_flag() {
+    if !supports_ipv6() {
+        eprintln!("IPv6 unsupported; skipping test");
+        return;
+    }
     let (mut child, port) = spawn_daemon_ipv6();
     wait_for_daemon_v6(port);
     TcpStream::connect(("::1", port)).unwrap();
