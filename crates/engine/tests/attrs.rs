@@ -8,7 +8,7 @@ use std::process::Command;
 
 use compress::available_codecs;
 use engine::{sync, SyncOptions};
-use filetime::{set_file_atime, set_file_mtime, FileTime};
+use filetime::{set_file_atime, set_file_mtime, set_symlink_file_times, FileTime};
 use filters::Matcher;
 use meta::{parse_chmod, parse_chown};
 use nix::sys::stat::{makedev, mknod, Mode, SFlag};
@@ -118,6 +118,65 @@ fn times_roundtrip() {
     let meta = fs::metadata(dst.join("file")).unwrap();
     let dst_mtime = FileTime::from_last_modification_time(&meta);
     assert_eq!(dst_mtime, mtime);
+}
+
+#[test]
+fn omit_dir_times_skips_dirs() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let sub = src.join("dir");
+    fs::create_dir(&sub).unwrap();
+    let mtime = FileTime::from_unix_time(1_000_000, 0);
+    set_file_mtime(&sub, mtime).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        available_codecs(),
+        &SyncOptions {
+            times: true,
+            omit_dir_times: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let meta = fs::metadata(dst.join("dir")).unwrap();
+    let dst_mtime = FileTime::from_last_modification_time(&meta);
+    assert_ne!(dst_mtime, mtime);
+}
+
+#[test]
+fn omit_link_times_skips_symlinks() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let target = src.join("file");
+    fs::write(&target, b"hi").unwrap();
+    let link = src.join("link");
+    std::os::unix::fs::symlink("file", &link).unwrap();
+    let mtime = FileTime::from_unix_time(1_000_000, 0);
+    set_symlink_file_times(&link, mtime, mtime).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        available_codecs(),
+        &SyncOptions {
+            times: true,
+            links: true,
+            omit_link_times: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let meta = fs::symlink_metadata(dst.join("link")).unwrap();
+    let dst_mtime = FileTime::from_last_modification_time(&meta);
+    assert_ne!(dst_mtime, mtime);
 }
 
 #[test]

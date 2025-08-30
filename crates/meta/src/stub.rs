@@ -41,6 +41,8 @@ pub struct Options {
     pub times: bool,
     pub atimes: bool,
     pub crtimes: bool,
+    pub omit_dir_times: bool,
+    pub omit_link_times: bool,
     pub uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
     pub gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
 }
@@ -57,6 +59,8 @@ impl std::fmt::Debug for Options {
             .field("times", &self.times)
             .field("atimes", &self.atimes)
             .field("crtimes", &self.crtimes)
+            .field("omit_dir_times", &self.omit_dir_times)
+            .field("omit_link_times", &self.omit_link_times)
             .field("uid_map", &self.uid_map.is_some())
             .field("gid_map", &self.gid_map.is_some())
             .finish()

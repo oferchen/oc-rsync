@@ -112,6 +112,10 @@ struct ClientOpts {
     atimes: bool,
     #[arg(short = 'N', long, help_heading = "Attributes")]
     crtimes: bool,
+    #[arg(short = 'O', long, help_heading = "Attributes")]
+    omit_dir_times: bool,
+    #[arg(short = 'J', long, help_heading = "Attributes")]
+    omit_link_times: bool,
     #[arg(long, help_heading = "Attributes")]
     owner: bool,
     #[arg(long, help_heading = "Attributes")]
@@ -833,6 +837,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         times: opts.times || opts.archive,
         atimes: opts.atimes,
         crtimes: opts.crtimes,
+        omit_dir_times: opts.omit_dir_times,
+        omit_link_times: opts.omit_link_times,
         owner: opts.owner || opts.archive || chown_ids.map_or(false, |(u, _)| u.is_some()),
         group: opts.group || opts.archive || chown_ids.map_or(false, |(_, g)| g.is_some()),
         links: opts.links || opts.archive,
@@ -1700,7 +1706,18 @@ mod tests {
     #[test]
     fn parses_client_flags() {
         let opts = ClientOpts::parse_from([
-            "prog", "-r", "-n", "-v", "--delete", "-c", "-z", "--stats", "--executability", "--config", "file", "src",
+            "prog",
+            "-r",
+            "-n",
+            "-v",
+            "--delete",
+            "-c",
+            "-z",
+            "--stats",
+            "--executability",
+            "--config",
+            "file",
+            "src",
             "dst",
         ]);
         assert!(opts.recursive);
