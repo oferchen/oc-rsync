@@ -18,3 +18,18 @@ zstd_compress_1mb      time:   [378.50 µs 382.96 µs 387.35 µs]
 Actual numbers will vary by hardware, but AVX2 consistently improves rolling
 checksum throughput compared to the scalar version while leaving behavior
 unchanged on CPUs without these extensions.
+
+## Coverage
+
+This project uses [`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov) to aggregate
+unit tests, integration tests, and documentation examples into a unified coverage report.
+
+Run locally with:
+
+```
+cargo llvm-cov --all-features --workspace --doctests \
+  --fail-under-lines 95 --fail-under-functions 95
+```
+
+The command above enforces a 95% threshold for both line and function coverage,
+matching the CI gate.

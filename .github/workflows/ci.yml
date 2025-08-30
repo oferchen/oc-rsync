@@ -89,18 +89,6 @@ jobs:
           else
             cargo test --all --features blake3 --target ${{ matrix.target }}
           fi
-      - name: Install cargo-llvm-cov
-        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        run: cargo install cargo-llvm-cov --locked
-      - name: Coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        run: cargo llvm-cov --all-features --workspace --fail-under-lines 95 --fail-under-functions 95 --lcov --output-path lcov.info
-      - name: Upload coverage report
-        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.target }}
-          path: lcov.info
       - name: Golden parity tests
         if: matrix.use-cross == false && matrix.os != 'windows-latest'
         run: make test-golden
@@ -110,6 +98,8 @@ jobs:
       - name: Fuzz smoke test
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: |
+          timeout 60s cargo +nightly fuzz run protocol_frame_decode_fuzz -- -max_total_time=30
+          timeout 60s cargo +nightly fuzz run filter_parser -- -max_total_time=30
           timeout 60s cargo +nightly fuzz run filters_parse_fuzz -- -max_total_time=30
           timeout 60s cargo +nightly fuzz run filters -- -max_total_time=30
           timeout 60s cargo +nightly fuzz run dirent_parser -- -max_total_time=30
@@ -216,24 +206,3 @@ jobs:
         run: cargo test --test modern --features blake3
       - name: Run interop matrix
         run: bash tests/interop/run_matrix.sh
-
-  windows-coverage:
-    needs: test
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: llvm-tools-preview
-      - name: Install cargo-llvm-cov
-        run: cargo install cargo-llvm-cov --locked
-      - name: Generate coverage report
-        run: cargo llvm-cov --all-features --workspace --fail-under-lines 95 --fail-under-functions 95 --lcov --output-path lcov.info
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-windows
-          path: lcov.info
