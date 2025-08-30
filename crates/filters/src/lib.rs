@@ -63,8 +63,8 @@ pub struct PerDir {
 
 #[derive(Clone)]
 struct Cached {
-    rules: Vec<Rule>,
-    merges: Vec<PerDir>,
+    rules: Vec<(usize, Rule)>,
+    merges: Vec<(usize, PerDir)>,
 }
 
 /// Matcher evaluates rules sequentially against paths.
@@ -72,12 +72,15 @@ struct Cached {
 pub struct Matcher {
     /// Root of the walk. Used to locate per-directory filter files.
     root: Option<PathBuf>,
-    /// Global rules supplied via CLI or configuration.
-    rules: Vec<Rule>,
-    /// Filenames that should be merged for every directory visited.
-    per_dir: Vec<PerDir>,
-    /// Additional per-directory merge directives discovered while walking.
-    extra_per_dir: RefCell<HashMap<PathBuf, Vec<PerDir>>>,
+    /// Global rules supplied via CLI or configuration along with their
+    /// original positions.
+    rules: Vec<(usize, Rule)>,
+    /// Filenames that should be merged for every directory visited along
+    /// with the position of the `dir-merge` directive.
+    per_dir: Vec<(usize, PerDir)>,
+    /// Additional per-directory merge directives discovered while walking,
+    /// keyed by directory and preserving positional information.
+    extra_per_dir: RefCell<HashMap<PathBuf, Vec<(usize, PerDir)>>>,
     /// Cache of parsed rules for filter files along with any nested merges.
     cached: RefCell<HashMap<PathBuf, Cached>>,
 }
@@ -86,10 +89,10 @@ impl Matcher {
     pub fn new(rules: Vec<Rule>) -> Self {
         let mut per_dir = Vec::new();
         let mut global = Vec::new();
-        for r in rules {
+        for (idx, r) in rules.into_iter().enumerate() {
             match r {
-                Rule::DirMerge(p) => per_dir.push(p),
-                _ => global.push(r),
+                Rule::DirMerge(p) => per_dir.push((idx, p)),
+                other => global.push((idx, other)),
             }
         }
         Self {
@@ -108,16 +111,23 @@ impl Matcher {
     }
 
     /// Determine if the provided path is included by the rules, loading any
-    /// directory-specific `.rsync-filter` files along the way. Rules discovered
-    /// later in the walk take precedence over earlier ones, mirroring rsync's
-    /// evaluation order.
+    /// directory-specific `.rsync-filter` files along the way. Rules are
+    /// evaluated in the exact order that rsync would apply them: command-line
+    /// rules appear in their original sequence, and per-directory rules are
+    /// injected at the position where the corresponding `dir-merge` directive
+    /// was specified.
     pub fn is_included<P: AsRef<Path>>(&self, path: P) -> Result<bool, ParseError> {
         let path = path.as_ref();
-        let mut active: Vec<Rule> = Vec::new();
+        let mut seq = 0usize;
+        let mut active: Vec<(usize, usize, usize, Rule)> = Vec::new();
+
+        for (idx, rule) in &self.rules {
+            active.push((*idx, 0, seq, rule.clone()));
+            seq += 1;
+        }
 
         if let Some(root) = &self.root {
             let mut dirs = vec![root.clone()];
-
             if let Some(parent) = path.parent() {
                 let mut dir = root.clone();
                 for comp in parent.components() {
@@ -126,27 +136,31 @@ impl Matcher {
                 }
             }
 
-            for d in dirs {
-                let mut rules = Vec::new();
-                for rule in self.dir_rules(&d)? {
-                    if let Rule::Clear = rule {
-                        active.clear();
-                        rules.clear();
-                    } else {
-                        rules.push(rule);
-                    }
-                }
-                if !rules.is_empty() {
-                    let mut new_rules = rules;
-                    new_rules.extend(active);
-                    active = new_rules;
+            for (depth, d) in dirs.iter().enumerate() {
+                let depth = depth + 1;
+                for (idx, rule) in self.dir_rules_at(d)? {
+                    active.push((idx, depth, seq, rule));
+                    seq += 1;
                 }
             }
         }
 
-        active.extend(self.rules.clone());
+        active.sort_by(|a, b| {
+            a.0.cmp(&b.0)
+                .then_with(|| b.1.cmp(&a.1))
+                .then_with(|| a.2.cmp(&b.2))
+        });
 
-        for rule in &active {
+        let mut ordered = Vec::new();
+        for (_, _, _, rule) in active {
+            if let Rule::Clear = rule {
+                ordered.clear();
+            } else {
+                ordered.push(rule);
+            }
+        }
+
+        for rule in &ordered {
             match rule {
                 Rule::Protect(data) => {
                     if !data.flags.applies_to_sender() {
@@ -183,19 +197,32 @@ impl Matcher {
 
     /// Merge additional global rules, as when reading a top-level filter file.
     pub fn merge(&mut self, more: Vec<Rule>) {
-        self.rules.extend(more);
+        let mut max_idx = self
+            .rules
+            .iter()
+            .map(|(i, _)| *i)
+            .chain(self.per_dir.iter().map(|(i, _)| *i))
+            .max()
+            .unwrap_or(0);
+        for r in more {
+            max_idx += 1;
+            match r {
+                Rule::DirMerge(p) => self.per_dir.push((max_idx, p)),
+                other => self.rules.push((max_idx, other)),
+            }
+        }
     }
 
-    /// Load cached rules for `dir`, reading any per-directory filter files if needed.
-    fn dir_rules(&self, dir: &Path) -> Result<Vec<Rule>, ParseError> {
+    /// Load rules applicable to `dir`, preserving the position of the
+    /// originating `dir-merge` directive.
+    fn dir_rules_at(&self, dir: &Path) -> Result<Vec<(usize, Rule)>, ParseError> {
         if let Some(root) = &self.root {
             if !dir.starts_with(root) {
                 return Ok(Vec::new());
             }
         }
 
-        // Gather per-dir directives from ancestors (nearest first) and then globals.
-        let mut per_dirs = Vec::new();
+        let mut per_dirs: Vec<(usize, PerDir)> = Vec::new();
         let mut anc = dir.parent();
         while let Some(a) = anc {
             if let Some(extra) = self.extra_per_dir.borrow().get(a) {
@@ -204,11 +231,12 @@ impl Matcher {
             anc = a.parent();
         }
         per_dirs.extend(self.per_dir.clone());
+        per_dirs.sort_by_key(|(idx, _)| *idx);
 
         let mut combined = Vec::new();
         let mut new_merges = Vec::new();
 
-        for pd in per_dirs {
+        for (idx, pd) in per_dirs {
             let path = if pd.root_only {
                 if let Some(root) = &self.root {
                     root.join(&pd.file)
@@ -236,7 +264,7 @@ impl Matcher {
                 let mut visited = HashSet::new();
                 visited.insert(path.clone());
                 let (rules, merges) =
-                    self.load_merge_file(dir, &path, rel.as_deref(), &mut visited, 0)?;
+                    self.load_merge_file(dir, &path, rel.as_deref(), &mut visited, 0, idx)?;
                 let cached = Cached {
                     rules: rules.clone(),
                     merges: merges.clone(),
@@ -252,9 +280,9 @@ impl Matcher {
         if !new_merges.is_empty() {
             let mut map = self.extra_per_dir.borrow_mut();
             let entry = map.entry(dir.to_path_buf()).or_default();
-            for pd in new_merges {
-                if pd.inherit && !entry.contains(&pd) {
-                    entry.push(pd);
+            for (idx, pd) in new_merges {
+                if pd.inherit && !entry.iter().any(|(_, p)| p == &pd) {
+                    entry.push((idx, pd));
                 }
             }
         }
@@ -269,7 +297,8 @@ impl Matcher {
         rel: Option<&Path>,
         visited: &mut HashSet<PathBuf>,
         depth: usize,
-    ) -> Result<(Vec<Rule>, Vec<PerDir>), ParseError> {
+        index: usize,
+    ) -> Result<(Vec<(usize, Rule)>, Vec<(usize, PerDir)>), ParseError> {
         if depth >= MAX_PARSE_DEPTH {
             return Err(ParseError::RecursionLimit);
         }
@@ -325,7 +354,7 @@ impl Matcher {
         for r in parsed {
             match r {
                 Rule::DirMerge(pd) => {
-                    merges.push(pd.clone());
+                    merges.push((index, pd.clone()));
                     let nested = if pd.root_only {
                         if let Some(root) = &self.root {
                             root.join(&pd.file)
@@ -340,11 +369,11 @@ impl Matcher {
                     }
                     let rel2 = if pd.anchored { None } else { rel };
                     let (mut nr, mut nm) =
-                        self.load_merge_file(dir, &nested, rel2, visited, depth + 1)?;
+                        self.load_merge_file(dir, &nested, rel2, visited, depth + 1, index)?;
                     rules.append(&mut nr);
                     merges.append(&mut nm);
                 }
-                other => rules.push(other),
+                other => rules.push((index, other)),
             }
         }
 
