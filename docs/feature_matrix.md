@@ -36,7 +36,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--copy-dirlinks` | `-k` | ✅ | ✅ | [tests/golden/cli_parity/copy-dirlinks.sh](../tests/golden/cli_parity/copy-dirlinks.sh) |  | ≤3.2 |
 | `--copy-links` | `-L` | ✅ | ❌ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) |  | ≤3.2 |
 | `--copy-unsafe-links` | — | ✅ | ❌ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) |  | ≤3.2 |
-| `--crtimes` | `-N` | ✅ | ❌ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
+| `--crtimes` | `-N` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--cvs-exclude` | `-C` | ❌ | — | — |  | ≤3.2 |
 | `--daemon` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--debug` | — | ❌ | — | — |  | ≤3.2 |
@@ -64,7 +64,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--from0` | `-0` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--fsync` | — | ❌ | — | — |  | ≤3.2 |
 | `--fuzzy` | `-y` | ❌ | — | — |  | ≤3.2 |
-| `--group` | `-g` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
+| `--group` | `-g` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--groupmap` | — | ❌ | — | — |  | ≤3.2 |
 | `--hard-links` | `-H` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--help` | `-h (*)` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
@@ -145,7 +145,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--super` | — | ❌ | — | — |  | ≤3.2 |
 | `--temp-dir` | `-T` | ❌ | — | — |  | ≤3.2 |
 | `--timeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
-| `--times` | `-t` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
+| `--times` | `-t` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--trust-sender` | — | ❌ | — | — |  | ≤3.2 |
 | `--update` | `-u` | ❌ | — | — |  | ≤3.2 |
 | `--usermap` | — | ❌ | — | — |  | ≤3.2 |
