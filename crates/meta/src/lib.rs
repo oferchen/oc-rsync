@@ -89,6 +89,21 @@ pub struct Options {
     pub crtimes: bool,
 }
 
+impl Options {
+    /// Return `true` if any metadata should be processed.
+    pub fn needs_metadata(&self) -> bool {
+        self.xattrs
+            || self.acl
+            || self.chmod.is_some()
+            || self.owner
+            || self.group
+            || self.perms
+            || self.times
+            || self.atimes
+            || self.crtimes
+    }
+}
+
 /// Serialized file metadata.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
