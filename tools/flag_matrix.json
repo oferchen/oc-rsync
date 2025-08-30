@@ -146,7 +146,7 @@
   },
   {
     "flag": "--cvs-exclude",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -746,7 +746,7 @@
   },
   {
     "flag": "-C",
-    "status": "Error",
+    "status": "Supported",
     "notes": "alias for --cvs-exclude"
   },
   {

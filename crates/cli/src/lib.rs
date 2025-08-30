@@ -266,7 +266,12 @@ struct ClientOpts {
     filter_file: Vec<PathBuf>,
     #[arg(short = 'F', action = ArgAction::Count, help_heading = "Selection")]
     filter_shorthand: u8,
-    #[arg(short = 'C', long = "cvs-exclude", help_heading = "Selection")]
+    #[arg(
+        short = 'C',
+        long = "cvs-exclude",
+        help_heading = "Selection",
+        help = "auto-ignore files in the same way CVS does",
+    )]
     cvs_exclude: bool,
     #[arg(long, value_name = "PATTERN")]
     include: Vec<String>,

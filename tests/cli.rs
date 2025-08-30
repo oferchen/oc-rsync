@@ -5,6 +5,7 @@ use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 use predicates::prelude::PredicateBooleanExt;
+use std::fs;
 use std::io::{Seek, SeekFrom, Write};
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
@@ -837,4 +838,46 @@ fn delete_delay_removes_extraneous_files() {
         .success();
 
     assert!(!dst.join("old.txt").exists());
+}
+
+#[test]
+fn cvs_exclude_skips_ignored_files() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+
+    fs::create_dir_all(src.join(".git")).unwrap();
+    fs::write(src.join(".git/file"), "git").unwrap();
+    fs::write(src.join("keep.txt"), "keep").unwrap();
+    fs::write(src.join("core"), "core").unwrap();
+    fs::write(src.join("foo.o"), "obj").unwrap();
+    fs::write(src.join("env_ignored"), "env").unwrap();
+    fs::write(src.join("home_ignored"), "home").unwrap();
+    fs::write(src.join("local_ignored"), "local").unwrap();
+    fs::write(src.join(".cvsignore"), "local_ignored\n").unwrap();
+
+    let home = tempdir().unwrap();
+    fs::write(home.path().join(".cvsignore"), "home_ignored\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    let mut cmd = Command::cargo_bin("rsync-rs").unwrap();
+    cmd.env("CVSIGNORE", "env_ignored");
+    cmd.env("HOME", home.path());
+    cmd.args([
+        "--local",
+        "--recursive",
+        "--cvs-exclude",
+        &src_arg,
+        dst.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    assert!(dst.join("keep.txt").exists());
+    assert!(!dst.join("core").exists());
+    assert!(!dst.join("foo.o").exists());
+    assert!(!dst.join("env_ignored").exists());
+    assert!(!dst.join("home_ignored").exists());
+    assert!(!dst.join("local_ignored").exists());
 }
