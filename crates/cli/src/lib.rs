@@ -1432,7 +1432,7 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     let mut hosts_allow = opts.hosts_allow.clone();
     let mut hosts_deny = opts.hosts_deny.clone();
     let mut log_file = opts.log_file.clone();
-    let mut log_format = opts.log_file_format.clone();
+    let log_format = opts.log_file_format.clone();
     let mut motd = opts.motd.clone();
     let timeout = opts.timeout;
     let bwlimit = opts.bwlimit;
