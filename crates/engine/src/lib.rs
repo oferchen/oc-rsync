@@ -1007,7 +1007,7 @@ fn delete_extraneous(
             let file_type = entry.file_type;
             if let Ok(rel) = path.strip_prefix(dst) {
                 let included = matcher
-                    .is_included(rel)
+                    .is_included_for_delete(rel)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
                 let src_exists = src.join(rel).exists();
                 if (included && !src_exists) || (!included && opts.delete_excluded) {
