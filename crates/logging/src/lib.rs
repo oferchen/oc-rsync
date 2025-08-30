@@ -6,14 +6,12 @@ use tracing_subscriber::{
     EnvFilter,
 };
 
-/// Output format for log records.
 #[derive(Clone, Copy)]
 pub enum LogFormat {
     Text,
     Json,
 }
 
-/// Build a `tracing` subscriber with the requested configuration.
 pub fn subscriber(
     format: LogFormat,
     verbose: u8,
@@ -40,7 +38,6 @@ pub fn subscriber(
     tracing_subscriber::registry().with(filter).with(fmt_layer)
 }
 
-/// Initialize global logging.
 pub fn init(format: LogFormat, verbose: u8, info: bool, debug: bool) {
     subscriber(format, verbose, info, debug).init();
 }
