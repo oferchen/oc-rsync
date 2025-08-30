@@ -14,9 +14,13 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
-use compress::{available_codecs, Codec};
+use compress::{available_codecs, Codec, ModernCompress};
 use engine::human_bytes;
-use engine::{sync, DeleteMode, EngineError, Result, Stats, StrongHash, SyncOptions};
+use engine::{
+    sync, DeleteMode, EngineError, ModernCdc, Result, Stats, StrongHash, SyncOptions,
+};
+#[cfg(feature = "blake3")]
+use engine::ModernHash;
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use meta::{parse_chmod, parse_chown};
 use protocol::{negotiate_version, LATEST_VERSION, LEGACY_VERSION};
@@ -30,6 +34,25 @@ fn parse_filters(s: &str) -> std::result::Result<Vec<Rule>, filters::ParseError>
 
 fn parse_duration(s: &str) -> std::result::Result<Duration, std::num::ParseIntError> {
     Ok(Duration::from_secs(s.parse()?))
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum ModernCompressArg {
+    Auto,
+    Zstd,
+    Lz4,
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum ModernHashArg {
+    #[cfg(feature = "blake3")]
+    Blake3,
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum ModernCdcArg {
+    Fastcdc,
+    Off,
 }
 
 #[derive(Parser, Debug)]
@@ -66,6 +89,8 @@ struct ClientOpts {
     quiet: bool,
     #[arg(long, help_heading = "Output")]
     no_motd: bool,
+    #[arg(short = '8', long = "8-bit-output", help_heading = "Output")]
+    eight_bit_output: bool,
     #[arg(
         short = 'i',
         long = "itemize-changes",
@@ -176,6 +201,12 @@ struct ClientOpts {
     /// Enable modern compression (zstd or lz4) and BLAKE3 checksums (requires `blake3` feature)
     #[arg(long, help_heading = "Compression")]
     modern: bool,
+    #[arg(long = "modern-compress", value_enum, help_heading = "Compression")]
+    modern_compress: Option<ModernCompressArg>,
+    #[arg(long = "modern-hash", value_enum, help_heading = "Compression")]
+    modern_hash: Option<ModernHashArg>,
+    #[arg(long = "modern-cdc", value_enum, help_heading = "Compression")]
+    modern_cdc: Option<ModernCdcArg>,
     #[arg(long, help_heading = "Misc")]
     partial: bool,
     #[arg(long = "partial-dir", value_name = "DIR", help_heading = "Misc")]
@@ -189,6 +220,8 @@ struct ClientOpts {
     temp_dir: Option<PathBuf>,
     #[arg(long, help_heading = "Misc")]
     progress: bool,
+    #[arg(long, help_heading = "Misc")]
+    blocking_io: bool,
     #[arg(short = 'P', help_heading = "Misc")]
     partial_progress: bool,
     #[arg(long, help_heading = "Misc")]
@@ -265,6 +298,8 @@ struct ClientOpts {
     no_host_key_checking: bool,
     #[arg(long = "password-file", value_name = "FILE")]
     password_file: Option<PathBuf>,
+    #[arg(long = "early-input", value_name = "FILE")]
+    early_input: Option<PathBuf>,
     #[arg(short = 'e', long, value_name = "COMMAND")]
     rsh: Option<String>,
     #[arg(long, hide = true)]
@@ -567,6 +602,7 @@ fn spawn_daemon_session(
     contimeout: Option<Duration>,
     family: Option<AddressFamily>,
     version: u32,
+    early_input: Option<&Path>,
 ) -> Result<TcpTransport> {
     let (host, port) = if let Some((h, p)) = host.rsplit_once(':') {
         let p = p.parse().unwrap_or(873);
@@ -577,6 +613,11 @@ fn spawn_daemon_session(
     let mut t = TcpTransport::connect(host, port, contimeout, family)
         .map_err(|e| EngineError::Other(e.to_string()))?;
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
+    if let Some(p) = early_input {
+        if let Ok(data) = fs::read(p) {
+            t.send(&data).map_err(EngineError::from)?;
+        }
+    }
     t.send(&version.to_be_bytes()).map_err(EngineError::from)?;
     let mut buf = [0u8; 4];
     t.receive(&mut buf).map_err(EngineError::from)?;
@@ -691,17 +732,51 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         rsync_env.push(("RSYNC_TIMEOUT".into(), to.as_secs().to_string()));
     }
 
+    let modern_compress = if opts.modern || opts.modern_compress.is_some() {
+        Some(
+            match opts.modern_compress.unwrap_or(ModernCompressArg::Auto) {
+                ModernCompressArg::Auto => ModernCompress::Auto,
+                ModernCompressArg::Zstd => ModernCompress::Zstd,
+                ModernCompressArg::Lz4 => ModernCompress::Lz4,
+            },
+        )
+    } else {
+        None
+    };
+    #[cfg(feature = "blake3")]
+    let modern_hash = if opts.modern || matches!(opts.modern_hash, Some(ModernHashArg::Blake3)) {
+        Some(ModernHash::Blake3)
+    } else {
+        None
+    };
+    #[cfg(not(feature = "blake3"))]
+    let modern_hash = None;
+    let modern_cdc_arg = opts.modern_cdc.unwrap_or_else(|| {
+        if opts.modern {
+            ModernCdcArg::Fastcdc
+        } else {
+            ModernCdcArg::Off
+        }
+    });
+    let modern_cdc = match modern_cdc_arg {
+        ModernCdcArg::Fastcdc => ModernCdc::Fastcdc,
+        ModernCdcArg::Off => ModernCdc::Off,
+    };
+    let modern_enabled = modern_compress.is_some()
+        || modern_hash.is_some()
+        || matches!(modern_cdc, ModernCdc::Fastcdc);
+
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
         #[cfg_attr(not(feature = "blake3"), allow(unused_mut))]
         let mut list = vec!["md5", "sha1"];
         #[cfg(feature = "blake3")]
-        if opts.modern || matches!(opts.checksum_choice.as_deref(), Some("blake3")) {
+        if modern_hash.is_some() || matches!(opts.checksum_choice.as_deref(), Some("blake3")) {
             list.insert(0, "blake3");
         }
         rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
     }
 
-    if opts.modern {
+    if modern_enabled {
         rsync_env.push(("RSYNC_MODERN".into(), "1".into()));
     }
 
@@ -718,12 +793,17 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 return Err(EngineError::Other(format!("unknown checksum {other}")));
             }
         }
+    } else if let Some(h) = modern_hash {
+        match h {
+            #[cfg(feature = "blake3")]
+            ModernHash::Blake3 => StrongHash::Blake3,
+        }
     } else if let Ok(list) = env::var("RSYNC_CHECKSUM_LIST") {
         let mut chosen = StrongHash::Md5;
         for name in list.split(',') {
             match name {
                 #[cfg(feature = "blake3")]
-                "blake3" if opts.modern => {
+                "blake3" if modern_enabled => {
                     chosen = StrongHash::Blake3;
                     break;
                 }
@@ -785,7 +865,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         return Err(EngineError::Other(format!("unknown codec {other}")));
                     }
                 };
-                if !available_codecs(true).contains(&codec) {
+                if !available_codecs(Some(ModernCompress::Auto)).contains(&codec) {
                     return Err(EngineError::Other(format!(
                         "codec {name} not supported by this build"
                     )));
@@ -803,10 +883,10 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let compress = if opts.compress_choice.as_deref() == Some("none") {
         false
     } else {
-        opts.modern
-            || opts.compress
+        opts.compress
             || opts.compress_level.map_or(false, |l| l > 0)
             || compress_choice.is_some()
+            || modern_compress.is_some()
     };
     let mut delete_mode = if opts.delete_before {
         Some(DeleteMode::Before)
@@ -835,8 +915,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         delete_excluded: opts.delete_excluded,
         checksum: opts.checksum,
         compress,
-        modern: opts.modern,
-        cdc: opts.modern,
+        modern_compress,
+        modern_hash,
+        modern_cdc,
         dirs: opts.dirs,
         list_only: opts.list_only,
         update: opts.update,
@@ -898,6 +979,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             Some(chmod_rules)
         },
         chown: chown_ids,
+        eight_bit_output: opts.eight_bit_output,
+        blocking_io: opts.blocking_io,
+        early_input: opts.early_input.clone(),
     };
     let stats = if opts.local {
         match (src, dst) {
@@ -905,7 +989,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 &src.path,
                 &dst.path,
                 &matcher,
-                &available_codecs(opts.modern),
+                &available_codecs(modern_compress),
                 &sync_opts,
             )?,
             _ => return Err(EngineError::Other("local sync requires local paths".into())),
@@ -939,12 +1023,13 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     } else {
                         LEGACY_VERSION
                     }),
+                    opts.early_input.as_deref(),
                 )?;
                 sync(
                     &src.path,
                     &dst.path,
                     &matcher,
-                    &available_codecs(opts.modern),
+                    &available_codecs(modern_compress),
                     &sync_opts,
                 )?
             }
@@ -1005,12 +1090,14 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     } else {
                         LEGACY_VERSION
                     }),
+                    opts.early_input.as_deref(),
+
                 )?;
                 sync(
                     &src.path,
                     &dst.path,
                     &matcher,
-                    &available_codecs(opts.modern),
+                    &available_codecs(modern_compress),
                     &sync_opts,
                 )?
             }
@@ -1151,6 +1238,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             } else {
                                 LEGACY_VERSION
                             }),
+                            opts.early_input.as_deref(),
                         )?;
                         let mut src_session = spawn_daemon_session(
                             &src_host,
@@ -1166,6 +1254,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             } else {
                                 LEGACY_VERSION
                             }),
+                            opts.early_input.as_deref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1206,6 +1295,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             } else {
                                 LEGACY_VERSION
                             }),
+                            opts.early_input.as_deref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1245,6 +1335,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             } else {
                                 LEGACY_VERSION
                             }),
+                            opts.early_input.as_deref(),
                         )?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
@@ -1637,13 +1728,27 @@ fn handle_connection<T: Transport>(
                 .map_err(|e| EngineError::Other(e.to_string()))?;
         }
         let modern = env::var("RSYNC_MODERN").ok().as_deref() == Some("1");
+        let mc = if modern {
+            Some(ModernCompress::Auto)
+        } else {
+            None
+        };
+        #[cfg(feature = "blake3")]
+        let mh = if modern {
+            Some(ModernHash::Blake3)
+        } else {
+            None
+        };
+        #[cfg(not(feature = "blake3"))]
+        let mh = None;
         sync(
             Path::new("."),
             Path::new("."),
             &Matcher::default(),
-            &available_codecs(modern),
+            &available_codecs(mc),
             &SyncOptions {
-                modern,
+                modern_compress: mc,
+                modern_hash: mh,
                 ..Default::default()
             },
         )?;
@@ -1696,7 +1801,12 @@ fn run_server() -> Result<()> {
         .map(Duration::from_secs)
         .unwrap_or(Duration::from_secs(30));
     let modern = env::var("RSYNC_MODERN").ok().as_deref() == Some("1");
-    let codecs = available_codecs(modern);
+    let mc = if modern {
+        Some(ModernCompress::Auto)
+    } else {
+        None
+    };
+    let codecs = available_codecs(mc);
     let mut srv = Server::new(stdin.lock(), stdout.lock(), timeout);
     let _ = srv
         .handshake(&codecs)
@@ -1847,6 +1957,24 @@ mod tests {
     }
 
     #[test]
+    fn parses_8_bit_output() {
+        let opts = ClientOpts::parse_from(["prog", "-8", "src", "dst"]);
+        assert!(opts.eight_bit_output);
+    }
+
+    #[test]
+    fn parses_blocking_io() {
+        let opts = ClientOpts::parse_from(["prog", "--blocking-io", "src", "dst"]);
+        assert!(opts.blocking_io);
+    }
+
+    #[test]
+    fn parses_early_input() {
+        let opts = ClientOpts::parse_from(["prog", "--early-input", "file", "src", "dst"]);
+        assert_eq!(opts.early_input.as_deref(), Some(Path::new("file")));
+    }
+
+    #[test]
     fn protocol_override_sent_to_server() {
         use std::io::{Read, Write};
         use std::net::TcpListener;
@@ -1891,6 +2019,63 @@ mod tests {
             None,
             None,
             30,
+            None,
+        )
+        .unwrap();
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn sends_early_input_to_daemon() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("input.txt");
+        fs::write(&path, b"hello\n").unwrap();
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let handle = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 6];
+            stream.read_exact(&mut buf).unwrap();
+            assert_eq!(&buf, b"hello\n");
+            let mut ver = [0u8; 4];
+            stream.read_exact(&mut ver).unwrap();
+            assert_eq!(u32::from_be_bytes(ver), 30);
+            stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+            let mut b = [0u8; 1];
+            while stream.read(&mut b).unwrap() > 0 {
+                if b[0] == b'\n' {
+                    break;
+                }
+            }
+            stream.write_all(b"@RSYNCD: OK\n").unwrap();
+            let mut m = Vec::new();
+            loop {
+                stream.read_exact(&mut b).unwrap();
+                if b[0] == b'\n' {
+                    break;
+                }
+                m.push(b[0]);
+            }
+            assert_eq!(m, b"mod".to_vec());
+        });
+
+        let _t = spawn_daemon_session(
+            "127.0.0.1",
+            "mod",
+            Some(port),
+            None,
+            true,
+            None,
+            None,
+            None,
+            30,
+            Some(&path),
         )
         .unwrap();
         handle.join().unwrap();

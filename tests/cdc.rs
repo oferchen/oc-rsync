@@ -1,6 +1,6 @@
 // tests/cdc.rs
 use compress::available_codecs;
-use engine::{sync, SyncOptions};
+use engine::{sync, ModernCdc, SyncOptions};
 use filters::Matcher;
 use std::fs;
 use tempfile::tempdir;
@@ -20,8 +20,7 @@ fn cdc_skips_renamed_file() {
     fs::write(&file_a, b"hello world").unwrap();
 
     let opts = SyncOptions {
-        cdc: true,
-        modern: false,
+        modern_cdc: ModernCdc::Fastcdc,
         ..Default::default()
     };
     sync(

@@ -7,6 +7,13 @@ cpufeatures::new!(avx2, "avx2");
 cpufeatures::new!(avx512, "avx512f");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModernCompress {
+    Auto,
+    Zstd,
+    Lz4,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Codec {
     Zlib,
     Zstd,
@@ -35,13 +42,26 @@ impl Codec {
     }
 }
 
-pub fn available_codecs(modern: bool) -> Vec<Codec> {
+pub fn available_codecs(modern: Option<ModernCompress>) -> Vec<Codec> {
     let mut codecs = vec![Codec::Zlib];
-    if modern {
-        codecs.push(Codec::Zstd);
-        #[cfg(feature = "lz4")]
-        {
-            codecs.push(Codec::Lz4);
+    if let Some(mode) = modern {
+        match mode {
+            ModernCompress::Auto => {
+                codecs.push(Codec::Zstd);
+                #[cfg(feature = "lz4")]
+                {
+                    codecs.push(Codec::Lz4);
+                }
+            }
+            ModernCompress::Zstd => {
+                codecs.push(Codec::Zstd);
+            }
+            ModernCompress::Lz4 => {
+                #[cfg(feature = "lz4")]
+                {
+                    codecs.push(Codec::Lz4);
+                }
+            }
         }
     }
     codecs

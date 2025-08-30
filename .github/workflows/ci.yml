@@ -157,15 +157,15 @@ jobs:
       - name: Build release binary
         run: |
           if [ "${{ matrix.use-cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }} --bin rsync-rs --features blake3
+            cross build --release --target ${{ matrix.target }} --bin oc-rsync --features blake3
           else
-            cargo build --release --target ${{ matrix.target }} --bin rsync-rs --features blake3
+            cargo build --release --target ${{ matrix.target }} --bin oc-rsync --features blake3
           fi
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rsync-rs-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/rsync-rs
+          name: oc-rsync-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/oc-rsync
 
   fuzz:
     runs-on: ubuntu-latest

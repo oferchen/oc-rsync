@@ -5,7 +5,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 
 | Option | Short | Supported | Parity scope | Tests link | Notes | Version introduced |
 | --- | --- | --- | --- | --- | --- | --- |
-| `--8-bit-output` | `-8` | ❌ | — | — |  | ≤3.2 |
+| `--8-bit-output` | `-8` | ✅ | ❌ | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  | ≤3.2 |
 | `--acls` | `-A` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `acl` feature | ≤3.2 |
 | `--address` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--append` | — | ✅ | ❌ | [tests/resume.rs](../tests/resume.rs) |  | ≤3.2 |
@@ -15,7 +15,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--backup` | `-b` | ✅ | ✅ | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | uses `~` suffix without `--backup-dir` | ≤3.2 |
 | `--backup-dir` | — | ✅ | ✅ | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | implies `--backup` | ≤3.2 |
 | `--block-size` | `-B` | ✅ | ❌ | [tests/block_size.rs](../tests/block_size.rs) | controls delta block size | ≤3.2 |
-| `--blocking-io` | — | ❌ | — | — |  | ≤3.2 |
+| `--blocking-io` | — | ✅ | ❌ | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  | ≤3.2 |
 | `--bwlimit` | — | ✅ | ❌ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) |  | ≤3.2 |
 | `--cc` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | alias for `--checksum-choice` | ≤3.2 |
 | `--checksum` | `-c` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, BLAKE3 | ≤3.2 |
@@ -52,7 +52,7 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--devices` | — | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--dirs` | `-d` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--dry-run` | `-n` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--early-input` | — | ❌ | — | — |  | ≤3.2 |
+| `--early-input` | — | ✅ | ❌ | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  | ≤3.2 |
 | `--exclude` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--exclude-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--executability` | `-E` | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
@@ -93,6 +93,9 @@ See [differences.md](differences.md) for a summary of notable behavioral differe
 | `--min-size` | — | ❌ | — | — |  | ≤3.2 |
 | `--mkpath` | — | ❌ | — | — |  | ≤3.2 |
 | `--modern` | — | ✅ | ✅ | [tests/interop/modern.rs](../tests/interop/modern.rs) | oc-rsync only; enables zstd compression and BLAKE3 checksums (requires `blake3` feature) | — |
+| `--modern-compress` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; choose `auto`, `zstd`, or `lz4` compression | — |
+| `--modern-hash` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; select BLAKE3 hash (requires `blake3` feature) | — |
+| `--modern-cdc` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; enable `fastcdc` chunking | — |
 | `--modify-window` | `-@` | ❌ | — | — |  | ≤3.2 |
 | `--munge-links` | — | ❌ | — | — |  | ≤3.2 |
 | `--no-D` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--no-devices --no-specials` | ≤3.2 |
