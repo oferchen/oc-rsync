@@ -4,6 +4,7 @@ use std::io;
 use std::path::Path;
 
 use filetime::{self, FileTime};
+use nix::errno::Errno;
 use nix::sys::stat::{self, FchmodatFlags, Mode};
 use nix::unistd::{self, Gid, Uid};
 use std::os::unix::fs::PermissionsExt;
@@ -182,7 +183,7 @@ impl Metadata {
             } else {
                 self.gid
             };
-            unistd::chown(
+            if let Err(err) = unistd::chown(
                 path,
                 if opts.owner {
                     Some(Uid::from_raw(uid))
@@ -194,8 +195,13 @@ impl Metadata {
                 } else {
                     None
                 },
-            )
-            .map_err(nix_to_io)?;
+            ) {
+                // Best effort: ignore permission or unsupported errors
+                match err {
+                    Errno::EPERM | Errno::EACCES | Errno::ENOSYS | Errno::EINVAL => {}
+                    _ => return Err(nix_to_io(err)),
+                }
+            }
         }
 
         if opts.perms || opts.chmod.is_some() {
@@ -229,7 +235,14 @@ impl Metadata {
             }
             let mode_t: libc::mode_t = mode_val as libc::mode_t;
             let mode = Mode::from_bits_truncate(mode_t);
-            stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink).map_err(nix_to_io)?;
+            if let Err(err) =
+                stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink)
+            {
+                match err {
+                    Errno::EPERM | Errno::EACCES | Errno::ENOSYS | Errno::EINVAL => {}
+                    _ => return Err(nix_to_io(err)),
+                }
+            }
         }
 
         if opts.atimes {
