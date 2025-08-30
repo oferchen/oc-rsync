@@ -889,6 +889,9 @@ pub struct SyncOptions {
     pub delete_excluded: bool,
     pub checksum: bool,
     pub compress: bool,
+    pub dirs: bool,
+    pub list_only: bool,
+    pub update: bool,
     pub perms: bool,
     pub times: bool,
     pub atimes: bool,
@@ -958,6 +961,9 @@ impl Default for SyncOptions {
             #[cfg(feature = "acl")]
             acls: false,
             sparse: false,
+            dirs: false,
+            list_only: false,
+            update: false,
             strong: StrongHash::Md5,
             compress_level: None,
             compress_choice: None,
@@ -1067,6 +1073,38 @@ pub fn sync(
     remote: &[Codec],
     opts: &SyncOptions,
 ) -> Result<Stats> {
+    // If we're only listing files, perform a walk and print the paths.
+    if opts.list_only {
+        let matcher = matcher.clone().with_root(src.to_path_buf());
+        let mut walker = walk(src, 1024);
+        let mut state = String::new();
+        while let Some(batch) = walker.next() {
+            let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
+            for entry in batch {
+                let path = entry.apply(&mut state);
+                if let Ok(rel) = path.strip_prefix(src) {
+                    if !matcher
+                        .is_included(rel)
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?
+                    {
+                        continue;
+                    }
+                    if opts.dirs && !entry.file_type.is_dir() {
+                        continue;
+                    }
+                    if rel.as_os_str().is_empty() {
+                        println!(".");
+                    } else if entry.file_type.is_dir() {
+                        println!("{}/", rel.display());
+                    } else {
+                        println!("{}", rel.display());
+                    }
+                }
+            }
+        }
+        return Ok(Stats::default());
+    }
+
     // Determine the codec to use by negotiating with the remote peer.
     let codec = select_codec(remote, opts);
     // Clone the matcher and attach the source root so per-directory filter files
@@ -1096,7 +1134,23 @@ pub fn sync(
                     continue;
                 }
                 let dest_path = dst.join(rel);
+                if opts.dirs && !file_type.is_dir() {
+                    continue;
+                }
                 if file_type.is_file() {
+                    if opts.update && dest_path.exists() {
+                        if let (Ok(src_meta), Ok(dst_meta)) =
+                            (fs::metadata(&path), fs::metadata(&dest_path))
+                        {
+                            if let (Ok(src_mtime), Ok(dst_mtime)) =
+                                (src_meta.modified(), dst_meta.modified())
+                            {
+                                if dst_mtime > src_mtime {
+                                    continue;
+                                }
+                            }
+                        }
+                    }
                     #[cfg(unix)]
                     if opts.hard_links {
                         use std::os::unix::fs::MetadataExt;

@@ -44,16 +44,25 @@ struct ClientOpts {
     /// copy directories recursively
     #[arg(short, long, help_heading = "Selection")]
     recursive: bool,
+    /// transfer directories without recursing
+    #[arg(short = 'd', long, help_heading = "Selection")]
+    dirs: bool,
     /// use relative path names
     #[arg(short = 'R', long, help_heading = "Selection")]
     relative: bool,
     /// perform a trial run with no changes made
     #[arg(short = 'n', long, help_heading = "Selection")]
     dry_run: bool,
+    /// list the files instead of copying
+    #[arg(long = "list-only", help_heading = "Output")]
+    list_only: bool,
     /// turn sequences of nulls into sparse blocks and preserve existing holes
     /// (requires filesystem support)
     #[arg(short = 'S', long, help_heading = "Selection")]
     sparse: bool,
+    /// skip files that are newer on the receiver
+    #[arg(short = 'u', long, help_heading = "Misc")]
+    update: bool,
     /// increase logging verbosity
     #[arg(short, long, action = ArgAction::Count, help_heading = "Output")]
     verbose: u8,
@@ -825,7 +834,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     if opts.recursive && !opts.quiet {
         println!("recursive mode enabled");
     }
-    if opts.dry_run {
+    if opts.dry_run && !opts.list_only {
         if !opts.quiet {
             println!("dry run: skipping synchronization");
         }
@@ -993,6 +1002,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         delete_excluded: opts.delete_excluded,
         checksum: opts.checksum,
         compress,
+        dirs: opts.dirs,
+        list_only: opts.list_only,
+        update: opts.update,
         perms: opts.perms || opts.archive,
         times: opts.times || opts.archive,
         atimes: opts.atimes,
