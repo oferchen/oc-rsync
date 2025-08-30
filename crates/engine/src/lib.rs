@@ -711,10 +711,10 @@ impl Receiver {
         };
         let tmp_dest = if self.opts.inplace {
             dest.to_path_buf()
-        } else if self.opts.partial {
-            partial.clone()
         } else if let Some(dir) = &self.opts.temp_dir {
             dir.join(file_name).with_extension("tmp")
+        } else if self.opts.partial {
+            partial.clone()
         } else {
             dest.to_path_buf()
         };
