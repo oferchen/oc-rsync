@@ -70,6 +70,9 @@ jobs:
         run: |
           bash scripts/generate-manpages.sh
           git diff --exit-code man
+      - name: Check comments
+        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
+        run: bash scripts/check-comments.sh
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy

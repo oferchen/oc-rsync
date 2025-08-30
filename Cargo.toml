@@ -29,6 +29,7 @@ compress = { path = "crates/compress" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 clap_complete = "4"
+rustc_lexer = "0.1"
 
 [dev-dependencies]
 tempfile = "3"
@@ -50,6 +51,10 @@ path = "tools/flag_matrix.rs"
 [[bin]]
 name = "gen-completions"
 path = "tools/gen_completions.rs"
+
+[[bin]]
+name = "strip-comments"
+path = "tools/strip-comments.rs"
 
 [features]
 default = []
