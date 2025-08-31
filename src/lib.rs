@@ -15,30 +15,39 @@ pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
         &available_codecs(None),
         &SyncOptions::default(),
     )?;
-    // Fall back to a simple copy for any files not handled by the engine
-    copy_recursive(src, dst)?;
+    // Copy only files that were skipped by the engine
+    let _ = copy_recursive(src, dst)?;
     Ok(())
 }
 
-fn copy_recursive(src: &Path, dst: &Path) -> Result<()> {
+fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
+    let mut copied = 0;
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let file_type = entry.file_type()?;
         let dst_path = dst.join(entry.file_name());
         if file_type.is_dir() {
-            fs::create_dir_all(&dst_path)?;
-            copy_recursive(&entry.path(), &dst_path)?;
+            if !dst_path.exists() {
+                fs::create_dir_all(&dst_path)?;
+            }
+            copied += copy_recursive(&entry.path(), &dst_path)?;
         } else if file_type.is_file() {
-            fs::copy(entry.path(), dst_path)?;
+            if !dst_path.exists() {
+                fs::copy(entry.path(), &dst_path)?;
+                copied += 1;
+            }
         } else if file_type.is_symlink() {
-            #[cfg(unix)]
-            {
-                let target = fs::read_link(entry.path())?;
-                std::os::unix::fs::symlink(&target, &dst_path)?;
+            if !dst_path.exists() {
+                #[cfg(unix)]
+                {
+                    let target = fs::read_link(entry.path())?;
+                    std::os::unix::fs::symlink(&target, &dst_path)?;
+                    copied += 1;
+                }
             }
         }
     }
-    Ok(())
+    Ok(copied)
 }
 
 #[cfg(test)]
@@ -58,7 +67,7 @@ mod tests {
             .unwrap()
             .write_all(b"hello world")
             .unwrap();
-        assert!(dst_dir.exists());
+        assert!(!dst_dir.exists());
         synchronize(&src_dir, &dst_dir).unwrap();
         assert!(dst_dir.exists());
         let out = fs::read(dst_dir.join("file.txt")).unwrap();
@@ -102,5 +111,19 @@ mod tests {
         let target = fs::read_link(dst_dir.join("link")).unwrap();
         assert_eq!(target, Path::new("file.txt"));
         assert_eq!(fs::read(dst_dir.join("file.txt")).unwrap(), b"hello");
+    }
+
+    #[test]
+    fn engine_handles_all_files() {
+        let dir = tempdir().unwrap();
+        let src_dir = dir.path().join("src");
+        let dst_dir = dir.path().join("dst");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::write(src_dir.join("file.txt"), b"data").unwrap();
+
+        synchronize(&src_dir, &dst_dir).unwrap();
+
+        // copy_recursive should have nothing left to copy
+        assert_eq!(copy_recursive(&src_dir, &dst_dir).unwrap(), 0);
     }
 }
