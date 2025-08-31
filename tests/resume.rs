@@ -1,4 +1,5 @@
 // tests/resume.rs
+
 use assert_cmd::prelude::*;
 use std::process::Command;
 use std::thread;

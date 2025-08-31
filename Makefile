@@ -23,3 +23,6 @@ test-golden:
 	bash tests/filter_rule_precedence.sh; \
 	echo "Running tests/partial_transfer_resume.sh"; \
 	bash tests/partial_transfer_resume.sh
+
+verify-comments:
+	bash scripts/check-comments.sh

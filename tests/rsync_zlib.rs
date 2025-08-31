@@ -1,4 +1,5 @@
 // tests/rsync_zlib.rs
+
 use compress::Codec;
 use protocol::{negotiate_version, CAP_CODECS, LATEST_VERSION};
 use transport::{ssh::SshStdioTransport, Transport};

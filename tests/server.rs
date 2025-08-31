@@ -1,4 +1,5 @@
 // tests/server.rs
+
 use assert_cmd::cargo::cargo_bin;
 use compress::{available_codecs, decode_codecs, encode_codecs};
 use protocol::{Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION, MIN_VERSION};

@@ -1,4 +1,5 @@
 // tests/cvs_exclude.rs
+
 use assert_cmd::Command;
 use std::fs;
 use std::process::Command as StdCommand;
@@ -6,9 +7,9 @@ use tempfile::tempdir;
 
 #[test]
 fn cvs_exclude_parity() {
-    // Older rsync releases (e.g. 2.x shipped on macOS) have different
-    // `--cvs-exclude` semantics. The parity check only makes sense when a
-    // modern rsync (>=3) is available, so skip the test otherwise.
+    
+    
+    
     let rsync_version = StdCommand::new("rsync")
         .arg("--version")
         .output()
