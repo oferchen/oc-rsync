@@ -102,7 +102,7 @@ fn times_roundtrip() {
     fs::create_dir_all(&dst).unwrap();
     let file = src.join("file");
     fs::write(&file, b"hi").unwrap();
-    let mtime = FileTime::from_unix_time(1_000_000, 0);
+    let mtime = FileTime::from_unix_time(1_000_000, 123_456_789);
     set_file_mtime(&file, mtime).unwrap();
     sync(
         &src,
@@ -129,7 +129,7 @@ fn omit_dir_times_skips_dirs() {
     fs::create_dir_all(&dst).unwrap();
     let sub = src.join("dir");
     fs::create_dir(&sub).unwrap();
-    let mtime = FileTime::from_unix_time(1_000_000, 0);
+    let mtime = FileTime::from_unix_time(1_000_000, 123_456_789);
     set_file_mtime(&sub, mtime).unwrap();
     sync(
         &src,
@@ -159,7 +159,7 @@ fn omit_link_times_skips_symlinks() {
     fs::write(&target, b"hi").unwrap();
     let link = src.join("link");
     std::os::unix::fs::symlink("file", &link).unwrap();
-    let mtime = FileTime::from_unix_time(1_000_000, 0);
+    let mtime = FileTime::from_unix_time(1_000_000, 123_456_789);
     set_symlink_file_times(&link, mtime, mtime).unwrap();
     sync(
         &src,
@@ -188,7 +188,7 @@ fn atimes_roundtrip() {
     fs::create_dir_all(&dst).unwrap();
     let file = src.join("file");
     fs::write(&file, b"hi").unwrap();
-    let atime = FileTime::from_unix_time(1_000_000, 0);
+    let atime = FileTime::from_unix_time(1_000_000, 987_654_321);
     set_file_atime(&file, atime).unwrap();
     sync(
         &src,
