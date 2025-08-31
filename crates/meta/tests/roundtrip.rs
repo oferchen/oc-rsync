@@ -117,7 +117,7 @@ fn roundtrip_xattrs() -> std::io::Result<()> {
         ..Default::default()
     };
     let meta = Metadata::from_path(&src, opts.clone())?;
-    meta.apply(&dst, opts)?;
+    meta.apply(&dst, opts.clone())?;
     let applied = Metadata::from_path(&dst, opts)?;
     let filter = |xs: &[(std::ffi::OsString, Vec<u8>)]| {
         xs.iter()
@@ -169,7 +169,7 @@ fn roundtrip_acl() -> std::io::Result<()> {
         ..Default::default()
     };
     let meta = Metadata::from_path(&src, opts.clone())?;
-    meta.apply(&dst, opts)?;
+    meta.apply(&dst, opts.clone())?;
     let applied = Metadata::from_path(&dst, opts)?;
 
     assert_eq!(meta.acl, applied.acl);

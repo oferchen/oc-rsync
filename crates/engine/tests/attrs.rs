@@ -205,7 +205,8 @@ fn atimes_roundtrip() {
     let dst_meta = fs::metadata(dst.join("file")).unwrap();
     let src_atime = FileTime::from_last_access_time(&src_meta);
     let dst_atime = FileTime::from_last_access_time(&dst_meta);
-    assert_eq!(dst_atime, src_atime);
+    assert_eq!(src_atime, atime);
+    assert_eq!(dst_atime, atime);
 }
 
 #[test]
@@ -485,6 +486,37 @@ fn copy_devices_creates_regular_files() {
     assert!(meta.is_file());
     assert_eq!(meta.len(), 0);
     assert!(!meta.file_type().is_char_device());
+}
+
+#[test]
+fn copy_devices_handles_zero() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let dev = src.join("zero");
+    mknod(
+        &dev,
+        SFlag::S_IFCHR,
+        Mode::from_bits_truncate(0o600),
+        makedev(1, 5),
+    )
+    .unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &SyncOptions {
+            copy_devices: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let meta = fs::metadata(dst.join("zero")).unwrap();
+    assert!(meta.is_file());
+    assert_eq!(meta.len(), 0);
 }
 
 #[test]
