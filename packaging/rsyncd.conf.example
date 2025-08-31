@@ -1,0 +1,10 @@
+# Sample oc-rsync daemon configuration
+# Installed at /etc/oc-rsyncd/rsyncd.conf
+
+pid file = /run/oc-rsyncd.pid
+log file = /var/log/oc-rsyncd.log
+
+[data]
+    path = /srv/oc-rsync/data
+    comment = Exported data
+    read only = false

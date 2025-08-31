@@ -98,6 +98,14 @@ cargo build -p oc-rsync-bin --bin oc-rsync
 cargo run -p oc-rsync-bin -- "<SRC>" "<DEST>"
 ```
 
+## Packaging
+
+Release tarballs include sample files under `packaging/` to help run the
+daemon:
+
+- `packaging/rsyncd.conf.example` – example configuration file
+- `packaging/systemd/oc-rsyncd.service` – systemd service unit
+
 ## Milestone Roadmap
 1. **M1—Bootstrap** – repository builds; `walk` and `checksums` crates generate file signatures.
 2. **M2—Delta Engine** – `engine` drives local delta transfers with metadata preservation.

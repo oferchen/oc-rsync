@@ -1,0 +1,12 @@
+[Unit]
+Description=oc-rsync daemon
+Documentation=man:oc-rsync(1) man:oc-rsyncd.conf(5)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/oc-rsync --daemon --no-detach --config /etc/oc-rsyncd/rsyncd.conf
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
