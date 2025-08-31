@@ -6,7 +6,7 @@ use std::path::Path;
 use crate::normalize_mode;
 use filetime::{self, FileTime};
 use nix::errno::Errno;
-use nix::sys::stat::{self, FchmodatFlags, Mode};
+use nix::sys::stat::{self, FchmodatFlags, Mode, SFlag};
 use nix::unistd::{self, FchownatFlags, Gid, Uid};
 use std::os::unix::fs::PermissionsExt;
 use std::sync::Arc;
@@ -117,9 +117,11 @@ impl Metadata {
         let mode = normalize_mode(st.st_mode as u32);
         let mtime = FileTime::from_unix_time(st.st_mtime, st.st_mtime_nsec as u32);
 
-        let std_meta = fs::symlink_metadata(path)?;
         let atime = if opts.atimes {
-            Some(FileTime::from_last_access_time(&std_meta))
+            Some(FileTime::from_unix_time(
+                st.st_atime,
+                st.st_atime_nsec as u32,
+            ))
         } else {
             None
         };
@@ -315,6 +317,19 @@ impl Metadata {
 
         Ok(())
     }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub fn mknod(path: &Path, kind: SFlag, perm: Mode, dev: u64) -> io::Result<()> {
+    use nix::libc::dev_t;
+    let dev: dev_t = dev as dev_t;
+    stat::mknod(path, kind, perm, dev).map_err(nix_to_io)
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub fn mkfifo(path: &Path, perm: Mode) -> io::Result<()> {
+    use nix::unistd::mkfifo;
+    mkfifo(path, perm).map_err(nix_to_io)
 }
 
 fn nix_to_io(err: nix::errno::Errno) -> io::Error {

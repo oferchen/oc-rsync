@@ -1,6 +1,14 @@
 // tests/local_sync_tree.rs
 
 use assert_cmd::Command;
+#[cfg(unix)]
+use filetime::{set_file_atime, FileTime};
+#[cfg(unix)]
+use meta::{makedev, mkfifo, mknod};
+#[cfg(unix)]
+use nix::sys::stat::Mode;
+#[cfg(target_os = "linux")]
+use nix::sys::stat::SFlag;
 use std::collections::BTreeMap;
 use std::fs;
 #[cfg(target_os = "linux")]
@@ -246,10 +254,37 @@ fn sync_preserves_crtimes() {
     }
 }
 
+#[cfg(unix)]
+#[test]
+fn sync_preserves_atimes() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    let atime = FileTime::from_unix_time(1_000_000, 123_456_789);
+    set_file_atime(&file, atime).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--atimes", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let meta = fs::metadata(dst.join("file")).unwrap();
+    let dst_atime = FileTime::from_last_access_time(&meta);
+    assert_eq!(dst_atime, atime);
+}
+
 #[cfg(target_os = "linux")]
 #[test]
 fn sync_preserves_device_nodes() {
-    use nix::sys::stat::{major, makedev, minor, mknod, Mode, SFlag};
+    use nix::sys::stat::{major, minor, Mode, SFlag};
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -280,6 +315,30 @@ fn sync_preserves_device_nodes() {
     assert_eq!(rdev, makedev(1, 3));
     assert_eq!(major(rdev), 1);
     assert_eq!(minor(rdev), 3);
+}
+
+#[cfg(unix)]
+#[test]
+fn sync_preserves_fifos() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let fifo = src.join("fifo");
+    mkfifo(&fifo, Mode::from_bits_truncate(0o600)).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--specials", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let meta = fs::symlink_metadata(dst.join("fifo")).unwrap();
+    assert!(meta.file_type().is_fifo());
 }
 
 #[cfg(unix)]

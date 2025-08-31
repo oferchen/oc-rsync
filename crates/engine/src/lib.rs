@@ -1627,13 +1627,18 @@ pub fn sync(
     }
     sender.start();
     #[cfg(unix)]
-    let mut hard_links: HashMap<(u64, u64), std::path::PathBuf> = HashMap::new();
+    let mut hard_links: Vec<Option<std::path::PathBuf>> = Vec::new();
     let mut walker = walk(&src_root, 1024);
     let mut state = String::new();
     while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         #[cfg(unix)]
-        let (devs, inodes) = (walker.devs().to_vec(), walker.inodes().to_vec());
+        {
+            let needed = walker.inodes().len();
+            if hard_links.len() < needed {
+                hard_links.resize(needed, None);
+            }
+        }
         for entry in batch {
             let path = entry.apply(&mut state);
             let file_type = entry.file_type;
@@ -1672,13 +1677,12 @@ pub fn sync(
                     }
                     #[cfg(unix)]
                     if opts.hard_links {
-                        let key = (devs[entry.dev], inodes[entry.inode]);
-                        if let Some(existing) = hard_links.get(&key) {
+                        if let Some(existing) = &hard_links[entry.inode] {
                             fs::hard_link(existing, &dest_path)
                                 .map_err(|e| io_context(&dest_path, e))?;
                             continue;
                         } else {
-                            hard_links.insert(key, dest_path.clone());
+                            hard_links[entry.inode] = Some(dest_path.clone());
                         }
                     }
                     let partial_exists = if opts.partial {
@@ -1914,7 +1918,7 @@ pub fn sync(
                             && opts.devices
                             && !opts.copy_devices
                         {
-                            use nix::sys::stat::{mknod, Mode, SFlag};
+                            use nix::sys::stat::{Mode, SFlag};
                             let meta =
                                 fs::symlink_metadata(&path).map_err(|e| io_context(&path, e))?;
                             let kind = if file_type.is_char_device() {
@@ -1922,22 +1926,15 @@ pub fn sync(
                             } else {
                                 SFlag::S_IFBLK
                             };
-                            use nix::libc::{dev_t, mode_t};
-
-                            let perm_bits: mode_t = mode_t::try_from(meta.mode() & 0o777)
-                                .map_err(|e| EngineError::Other(e.to_string()))?;
-                            let perm = Mode::from_bits_truncate(perm_bits);
-                            let rdev: dev_t = dev_t::try_from(meta.rdev())
-                                .map_err(|e| EngineError::Other(e.to_string()))?;
-
-                            mknod(&dest_path, kind, perm, rdev)
-                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            let perm =
+                                Mode::from_bits_truncate((meta.mode() & 0o777) as libc::mode_t);
+                            meta::mknod(&dest_path, kind, perm, meta.rdev())
+                                .map_err(|e| io_context(&dest_path, e))?;
                             receiver.copy_metadata(&path, &dest_path)?;
                         } else if file_type.is_fifo() && opts.specials {
                             use nix::sys::stat::Mode;
-                            use nix::unistd::mkfifo;
-                            mkfifo(&dest_path, Mode::from_bits_truncate(0o644))
-                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            meta::mkfifo(&dest_path, Mode::from_bits_truncate(0o644))
+                                .map_err(|e| io_context(&dest_path, e))?;
                             receiver.copy_metadata(&path, &dest_path)?;
                         }
                     }
