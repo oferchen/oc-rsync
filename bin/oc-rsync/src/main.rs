@@ -1,6 +1,7 @@
 // bin/oc-rsync/src/main.rs
-use engine::EngineError;
-use logging::LogFormat;
+use engine::{EngineError, Result};
+use logging::{DebugFlag, InfoFlag, LogFormat};
+
 use oc_rsync_cli::cli_command;
 use protocol::ExitCode;
 
@@ -11,8 +12,14 @@ fn main() {
     }
     let matches = cli_command().get_matches();
     let verbose = matches.get_count("verbose") as u8;
-    let info = false;
-    let debug = false;
+    let info: Vec<InfoFlag> = matches
+        .get_many::<InfoFlag>("info")
+        .map(|v| v.copied().collect())
+        .unwrap_or_default();
+    let debug: Vec<DebugFlag> = matches
+        .get_many::<DebugFlag>("debug")
+        .map(|v| v.copied().collect())
+        .unwrap_or_default();
     let log_format = matches
         .get_one::<String>("log_format")
         .map(|f| {
@@ -31,4 +38,5 @@ fn main() {
         };
         std::process::exit(u8::from(code) as i32);
     }
+    oc_rsync_cli::run(&matches)
 }
