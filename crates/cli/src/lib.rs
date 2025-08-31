@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
+use clap::parser::ValueSource;
 use compress::{available_codecs, Codec, ModernCompress};
 use engine::human_bytes;
 #[cfg(feature = "blake3")]
@@ -532,8 +533,15 @@ pub fn run() -> Result<()> {
     } else {
         let cmd = ClientOpts::command();
         let matches = cmd.get_matches_from(&args);
-        let opts = ClientOpts::from_arg_matches(&matches)
+        let mut opts = ClientOpts::from_arg_matches(&matches)
             .map_err(|e| EngineError::Other(e.to_string()))?;
+        if matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
+            if let Ok(val) = env::var("RSYNC_PROTECT_ARGS") {
+                if val != "0" {
+                    opts.secluded_args = true;
+                }
+            }
+        }
         run_client(opts, &matches)
     }
 }
@@ -756,6 +764,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             }
         }
         let _ = fs::read_to_string(pf).map_err(|e| EngineError::Other(e.to_string()))?;
+    }
+
+    let mut remote_opts = opts.remote_option.clone();
+    if opts.secluded_args {
+        remote_opts.push("--secluded-args".into());
     }
 
     if let Some(cfg) = &opts.config {
@@ -1106,7 +1119,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
-                    &opts.remote_option,
+                    &remote_opts,
                     opts.protocol
                         .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                     opts.early_input.as_deref(),
@@ -1135,7 +1148,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &rsync_env,
                     remote_bin_vec.as_deref(),
                     remote_env_vec.as_deref().unwrap_or(&[]),
-                    &opts.remote_option,
+                    &remote_opts,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                     opts.port,
@@ -1169,7 +1182,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
-                    &opts.remote_option,
+                    &remote_opts,
                     opts.protocol
                         .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                     opts.early_input.as_deref(),
@@ -1198,7 +1211,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &rsync_env,
                     remote_bin_vec.as_deref(),
                     remote_env_vec.as_deref().unwrap_or(&[]),
-                    &opts.remote_option,
+                    &remote_opts,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                     opts.port,
@@ -1245,7 +1258,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &rsh_cmd.env,
                             remote_bin_vec.as_deref(),
                             remote_env_vec.as_deref().unwrap_or(&[]),
-                            &opts.remote_option,
+                            &remote_opts,
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1260,7 +1273,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &rsh_cmd.env,
                             remote_bin_vec.as_deref(),
                             remote_env_vec.as_deref().unwrap_or(&[]),
-                            &opts.remote_option,
+                            &remote_opts,
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1314,7 +1327,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            &opts.remote_option,
+                            &remote_opts,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
@@ -1328,7 +1341,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            &opts.remote_option,
+                            &remote_opts,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
@@ -1351,7 +1364,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &rsh_cmd.env,
                             remote_bin_vec.as_deref(),
                             remote_env_vec.as_deref().unwrap_or(&[]),
-                            &opts.remote_option,
+                            &remote_opts,
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1368,7 +1381,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            &opts.remote_option,
+                            &remote_opts,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
@@ -1406,7 +1419,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            &opts.remote_option,
+                            &remote_opts,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
@@ -1418,7 +1431,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &rsh_cmd.env,
                             remote_bin_vec.as_deref(),
                             remote_env_vec.as_deref().unwrap_or(&[]),
-                            &opts.remote_option,
+                            &remote_opts,
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
