@@ -1087,30 +1087,20 @@ impl Receiver {
             } else {
                 atomic_rename(&tmp_dest, dest)?;
                 if let Some(tmp_parent) = tmp_dest.parent() {
-                    if dest.parent().map_or(true, |p| p != tmp_parent) {
-                        if tmp_parent
+                    if (dest.parent() != Some(tmp_parent))
+                        && tmp_parent
                             .read_dir()
                             .map(|mut i| i.next().is_none())
                             .unwrap_or(false)
-                        {
-                            let _ = fs::remove_dir(tmp_parent);
-                        }
+                    {
+                        let _ = fs::remove_dir(tmp_parent);
                     }
-            atomic_rename(&tmp_dest, dest)?;
-            if let Some(tmp_parent) = tmp_dest.parent() {
-                if dest.parent() != Some(tmp_parent)
-                    && tmp_parent
-                        .read_dir()
-                        .map(|mut i| i.next().is_none())
-                        .unwrap_or(false)
-                {
-                    let _ = fs::remove_dir(tmp_parent);
-                }
-                #[cfg(unix)]
-                if let Some((uid, gid)) = self.opts.copy_as {
-                    let gid = gid.map(Gid::from_raw);
-                    chown(dest, Some(Uid::from_raw(uid)), gid)
-                        .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
+                    #[cfg(unix)]
+                    if let Some((uid, gid)) = self.opts.copy_as {
+                        let gid = gid.map(Gid::from_raw);
+                        chown(dest, Some(Uid::from_raw(uid)), gid)
+                            .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
+                    }
                 }
             }
         } else {
@@ -1260,14 +1250,13 @@ impl Receiver {
         for (src, tmp, dest) in std::mem::take(&mut self.delayed) {
             atomic_rename(&tmp, &dest)?;
             if let Some(tmp_parent) = tmp.parent() {
-                if dest.parent().map_or(true, |p| p != tmp_parent) {
-                    if tmp_parent
+                if (dest.parent() != Some(tmp_parent))
+                    && tmp_parent
                         .read_dir()
                         .map(|mut i| i.next().is_none())
                         .unwrap_or(false)
-                    {
-                        let _ = fs::remove_dir(tmp_parent);
-                    }
+                {
+                    let _ = fs::remove_dir(tmp_parent);
                 }
             }
             #[cfg(unix)]
