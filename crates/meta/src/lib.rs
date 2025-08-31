@@ -19,6 +19,12 @@ pub use stub::*;
 mod parse;
 pub use parse::{parse_chmod, parse_chmod_spec, parse_chown, parse_id_map};
 
+/// Normalize a `mode_t`-style bitfield, stripping any non-permission bits.
+#[inline]
+pub const fn normalize_mode(mode: u32) -> u32 {
+    mode & 0o7777
+}
+
 impl Options {
     pub fn needs_metadata(&self) -> bool {
         self.xattrs
