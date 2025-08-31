@@ -2,6 +2,9 @@
 use std::io::{self, Read, Write};
 use std::path::Path;
 
+#[cfg(feature = "lz4")]
+use lz4::block;
+
 cpufeatures::new!(sse42, "sse4.2");
 cpufeatures::new!(avx2, "avx2");
 cpufeatures::new!(avx512, "avx512f");
@@ -178,9 +181,7 @@ impl Zstd {
 
 #[inline]
 fn zstd_compress_scalar(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
-    let mut encoder = zstd::stream::Encoder::new(Vec::new(), level)?;
-    encoder.write_all(data)?;
-    encoder.finish()
+    zstd::bulk::compress(data, level).map_err(io::Error::other)
 }
 
 #[inline]
@@ -296,39 +297,63 @@ fn lz4_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
 }
 
 #[cfg(feature = "lz4")]
+#[inline]
+fn lz4_lib_compress(data: &[u8]) -> io::Result<Vec<u8>> {
+    let compressed = block::compress(data, None, false).map_err(io::Error::other)?;
+    let mut out = Vec::with_capacity(4 + compressed.len());
+    out.extend_from_slice(&(data.len() as u32).to_le_bytes());
+    out.extend_from_slice(&compressed);
+    Ok(out)
+}
+
+#[cfg(feature = "lz4")]
+#[inline]
+fn lz4_lib_decompress(data: &[u8]) -> io::Result<Vec<u8>> {
+    if data.len() < 4 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "input too short",
+        ));
+    }
+    let (size_bytes, rest) = data.split_at(4);
+    let size = u32::from_le_bytes(size_bytes.try_into().unwrap()) as i32;
+    block::decompress(rest, Some(size)).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
+#[cfg(feature = "lz4")]
 #[target_feature(enable = "sse4.2")]
 unsafe fn lz4_compress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_compress_scalar(data)
+    lz4_lib_compress(data)
 }
 
 #[cfg(feature = "lz4")]
 #[target_feature(enable = "avx2")]
 unsafe fn lz4_compress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_compress_scalar(data)
+    lz4_lib_compress(data)
 }
 
 #[cfg(feature = "lz4")]
 #[target_feature(enable = "avx512f")]
 unsafe fn lz4_compress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_compress_scalar(data)
+    lz4_lib_compress(data)
 }
 
 #[cfg(feature = "lz4")]
 #[target_feature(enable = "sse4.2")]
 unsafe fn lz4_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_decompress_scalar(data)
+    lz4_lib_decompress(data)
 }
 
 #[cfg(feature = "lz4")]
 #[target_feature(enable = "avx2")]
 unsafe fn lz4_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_decompress_scalar(data)
+    lz4_lib_decompress(data)
 }
 
 #[cfg(feature = "lz4")]
 #[target_feature(enable = "avx512f")]
 unsafe fn lz4_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_decompress_scalar(data)
+    lz4_lib_decompress(data)
 }
 
 #[cfg(test)]
