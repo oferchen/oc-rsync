@@ -11,6 +11,11 @@ See [gaps.md](gaps.md) and [feature_matrix.md](feature_matrix.md) for any remain
 - zstd and lz4 compression via `--modern` or `--modern-compress`.
 - Optional FastCDC chunking with `--modern-cdc`.
 
+## File list encoding
+
+Paths in the file list are delta-encoded and use uid/gid lookup tables, matching
+the behavior of upstream rsync.
+
 ## Manifest location
 
 The content-defined chunking manifest now resides at `~/.oc-rsync/manifest`.
