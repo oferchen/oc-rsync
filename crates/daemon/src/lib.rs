@@ -318,6 +318,7 @@ mod tests {
         let err = authenticate(&mut t, Some(&auth_path)).unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         assert_eq!(err.to_string(), "token too long");
+    }
 
     use super::parse_config;
 
