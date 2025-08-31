@@ -1087,31 +1087,21 @@ impl Receiver {
             } else {
                 atomic_rename(&tmp_dest, dest)?;
                 if let Some(tmp_parent) = tmp_dest.parent() {
-                    if dest.parent().map_or(true, |p| p != tmp_parent) {
-                        if tmp_parent
+                    if dest.parent() != Some(tmp_parent)
+                        && tmp_parent
                             .read_dir()
                             .map(|mut i| i.next().is_none())
                             .unwrap_or(false)
-                        {
-                            let _ = fs::remove_dir(tmp_parent);
-                        }
+                    {
+                        let _ = fs::remove_dir(tmp_parent);
                     }
-            atomic_rename(&tmp_dest, dest)?;
-            if let Some(tmp_parent) = tmp_dest.parent() {
-                if dest.parent() != Some(tmp_parent)
-                    && tmp_parent
-                        .read_dir()
-                        .map(|mut i| i.next().is_none())
-                        .unwrap_or(false)
-                {
-                    let _ = fs::remove_dir(tmp_parent);
                 }
-                #[cfg(unix)]
-                if let Some((uid, gid)) = self.opts.copy_as {
-                    let gid = gid.map(Gid::from_raw);
-                    chown(dest, Some(Uid::from_raw(uid)), gid)
-                        .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
-                }
+            }
+            #[cfg(unix)]
+            if let Some((uid, gid)) = self.opts.copy_as {
+                let gid = gid.map(Gid::from_raw);
+                chown(dest, Some(Uid::from_raw(uid)), gid)
+                    .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
             }
         } else {
             #[cfg(unix)]
@@ -1260,14 +1250,13 @@ impl Receiver {
         for (src, tmp, dest) in std::mem::take(&mut self.delayed) {
             atomic_rename(&tmp, &dest)?;
             if let Some(tmp_parent) = tmp.parent() {
-                if dest.parent().map_or(true, |p| p != tmp_parent) {
-                    if tmp_parent
+                if dest.parent() != Some(tmp_parent)
+                    && tmp_parent
                         .read_dir()
                         .map(|mut i| i.next().is_none())
                         .unwrap_or(false)
-                    {
-                        let _ = fs::remove_dir(tmp_parent);
-                    }
+                {
+                    let _ = fs::remove_dir(tmp_parent);
                 }
             }
             #[cfg(unix)]
@@ -2082,6 +2071,13 @@ pub fn sync(
                             && !opts.copy_devices
                         {
                             use nix::sys::stat::{Mode, SFlag};
+                            let created = fs::symlink_metadata(&dest_path).is_err();
+                            if !created {
+                                remove_file_opts(&dest_path, opts)?;
+                            }
+                            if let Some(parent) = dest_path.parent() {
+                                fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
+                            }
                             let meta =
                                 fs::symlink_metadata(&path).map_err(|e| io_context(&path, e))?;
                             let kind = if file_type.is_char_device() {
@@ -2094,6 +2090,12 @@ pub fn sync(
                             meta::mknod(&dest_path, kind, perm, meta.rdev())
                                 .map_err(|e| io_context(&dest_path, e))?;
                             receiver.copy_metadata(&path, &dest_path)?;
+                            if created {
+                                stats.files_transferred += 1;
+                                if opts.itemize_changes {
+                                    println!("cD+++++++++ {}", rel.display());
+                                }
+                            }
                         } else if file_type.is_fifo() && opts.specials {
                             use nix::sys::stat::Mode;
                             meta::mkfifo(&dest_path, Mode::from_bits_truncate(0o644))
