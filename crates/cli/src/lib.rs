@@ -1154,6 +1154,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         link_dest: opts.link_dest.clone(),
         copy_dest: opts.copy_dest.clone(),
         compare_dest: opts.compare_dest.clone(),
+        remove_source_files: false,
         backup: opts.backup || opts.backup_dir.is_some(),
         backup_dir: opts.backup_dir.clone(),
         chmod: if chmod_rules.is_empty() {
