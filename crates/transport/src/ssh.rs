@@ -1,13 +1,13 @@
 // crates/transport/src/ssh.rs
+use nix::poll::{poll, PollFd, PollFlags, PollTimeout};
 use std::ffi::OsStr;
 use std::io::{self, BufReader, Read, Write};
+use std::os::unix::io::{AsRawFd, BorrowedFd, RawFd};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
-use std::os::unix::io::{AsRawFd, BorrowedFd, RawFd};
-use nix::poll::{poll, PollFd, PollFlags, PollTimeout};
 
 use compress::{available_codecs, Codec, ModernCompress};
 use protocol::{
@@ -432,11 +432,15 @@ fn inner_pipe<'a>(inner: Option<&'a mut InnerPipe>) -> io::Result<&'a mut InnerP
 
 fn wait_fd(fd: RawFd, flags: PollFlags, timeout: Option<Duration>) -> io::Result<()> {
     if let Some(dur) = timeout {
-        let timeout = PollTimeout::try_from(dur).map_err(|_| io::Error::other("timeout overflow"))?;
+        let timeout =
+            PollTimeout::try_from(dur).map_err(|_| io::Error::other("timeout overflow"))?;
         let mut fds = [PollFd::new(unsafe { BorrowedFd::borrow_raw(fd) }, flags)];
         let res = poll(&mut fds, timeout).map_err(|e| io::Error::from(e))?;
         if res == 0 {
-            return Err(io::Error::new(io::ErrorKind::TimedOut, "operation timed out"));
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "operation timed out",
+            ));
         }
     }
     Ok(())

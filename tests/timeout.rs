@@ -16,9 +16,13 @@ fn tcp_read_timeout() {
         let (_sock, _) = listener.accept().unwrap();
         thread::sleep(Duration::from_secs(5));
     });
-    let mut t =
-        TcpTransport::connect(&addr.ip().to_string(), addr.port(), Some(Duration::from_millis(100)), None)
-            .unwrap();
+    let mut t = TcpTransport::connect(
+        &addr.ip().to_string(),
+        addr.port(),
+        Some(Duration::from_millis(100)),
+        None,
+    )
+    .unwrap();
     let mut buf = [0u8; 1];
     let err = t.receive(&mut buf).err().expect("error");
     assert!(err.kind() == io::ErrorKind::WouldBlock || err.kind() == io::ErrorKind::TimedOut);

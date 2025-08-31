@@ -50,6 +50,14 @@ pub fn human_bytes(bytes: u64) -> String {
     }
 }
 
+fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
+    if len > opts.max_alloc as u64 {
+        Err(EngineError::Other("max-alloc limit exceeded".into()))
+    } else {
+        Ok(())
+    }
+}
+
 fn files_identical(a: &Path, b: &Path) -> bool {
     if let (Ok(ma), Ok(mb)) = (fs::metadata(a), fs::metadata(b)) {
         if ma.len() != mb.len() {
@@ -536,6 +544,8 @@ impl Sender {
             return Ok(false);
         }
 
+        let src_len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+        ensure_max_alloc(src_len, &self.opts)?;
         let src = File::open(path)?;
         let mut src_reader = BufReader::new(src);
         let file_codec = if should_compress(path, &self.opts.skip_compress) {
@@ -567,7 +577,6 @@ impl Sender {
         } else {
             0
         };
-        let src_len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
         if resume > src_len {
             resume = src_len;
         }
@@ -575,12 +584,18 @@ impl Sender {
             Box::new(Cursor::new(Vec::new()))
         } else {
             match File::open(&basis_path) {
-                Ok(f) => Box::new(BufReader::new(f)),
+                Ok(f) => {
+                    let len = f.metadata().map(|m| m.len()).unwrap_or(0);
+                    ensure_max_alloc(len, &self.opts)?;
+                    Box::new(BufReader::new(f))
+                }
                 Err(_) => Box::new(Cursor::new(Vec::new())),
             }
         };
         let mut buf: Vec<u8> = Vec::new();
         let delta: Box<dyn Iterator<Item = Result<Op>> + '_> = if self.opts.whole_file {
+            let len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+            ensure_max_alloc(len, &self.opts)?;
             src_reader.read_to_end(&mut buf)?;
             Box::new(std::iter::once(Ok(Op::Data(buf))))
         } else {
@@ -743,7 +758,9 @@ impl Receiver {
         }
         let mut basis: Box<dyn ReadSeek> = match File::open(&basis_path) {
             Ok(mut f) => {
-                let mut buf = Vec::new();
+                let len = f.metadata().map(|m| m.len()).unwrap_or(0);
+                ensure_max_alloc(len, &self.opts)?;
+                let mut buf = Vec::with_capacity(len as usize);
                 f.read_to_end(&mut buf)?;
                 Box::new(Cursor::new(buf))
             }
@@ -757,31 +774,53 @@ impl Receiver {
             if let Ok(meta) = fs::symlink_metadata(&tmp_dest) {
                 let ft = meta.file_type();
                 if ft.is_block_device() || ft.is_char_device() {
-                    return Err(EngineError::Other(
-                        "refusing to write to device; use --write-devices".into(),
-                    ));
+                    if self.opts.copy_devices {
+                        fs::remove_file(&tmp_dest)?;
+                    } else {
+                        return Err(EngineError::Other(
+                            "refusing to write to device; use --write-devices".into(),
+                        ));
+                    }
                 }
             }
         }
         let mut out = if self.opts.inplace
+        let cfg = ChecksumConfigBuilder::new()
+            .strong(self.opts.strong)
+            .seed(self.opts.checksum_seed)
+            .build();
+        let mut resume = if self.opts.partial || self.opts.append || self.opts.append_verify {
+            if self.opts.append && !self.opts.append_verify {
+                fs::metadata(&tmp_dest).map(|m| m.len()).unwrap_or(0)
+            } else {
+                last_good_block(&cfg, src, &tmp_dest, self.opts.block_size)
+            }
+        } else {
+            0
+        };
+        let src_len = fs::metadata(src).map(|m| m.len()).unwrap_or(0);
+        if resume > src_len {
+            resume = src_len;
+        }
+        let mut out = if self.opts.write_devices {
+            OpenOptions::new().write(true).open(&tmp_dest)?
+        } else if self.opts.inplace
             || self.opts.partial
             || self.opts.append
             || self.opts.append_verify
         {
-            if self.opts.write_devices {
-                OpenOptions::new().write(true).open(&tmp_dest)?
-            } else {
-                OpenOptions::new()
-                    .read(true)
-                    .write(true)
-                    .create(true)
-                    .open(&tmp_dest)?
-            }
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(&tmp_dest)?
         } else {
             File::create(&tmp_dest)?
         };
-        out.set_len(resume)?;
-        out.seek(SeekFrom::Start(resume))?;
+        if !self.opts.write_devices {
+            out.set_len(resume)?;
+            out.seek(SeekFrom::Start(resume))?;
+        }
         let file_codec = if should_compress(src, &self.opts.skip_compress) {
             self.codec
         } else {
@@ -810,8 +849,10 @@ impl Receiver {
             Ok(op)
         });
         apply_delta(&mut basis, ops, &mut out, &self.opts, 0)?;
-        let len = out.seek(SeekFrom::Current(0))?;
-        out.set_len(len)?;
+        if !self.opts.write_devices {
+            let len = out.seek(SeekFrom::Current(0))?;
+            out.set_len(len)?;
+        }
         if !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some()) {
             fs::rename(&tmp_dest, dest)?;
         }
@@ -933,6 +974,8 @@ pub enum ModernCdc {
 pub struct SyncOptions {
     pub delete: Option<DeleteMode>,
     pub delete_excluded: bool,
+    pub max_delete: Option<usize>,
+    pub max_alloc: usize,
     pub checksum: bool,
     pub compress: bool,
     pub modern_compress: Option<ModernCompress>,
@@ -1000,6 +1043,7 @@ pub struct SyncOptions {
     pub secluded_args: bool,
     pub sockopts: Vec<String>,
     pub write_batch: Option<PathBuf>,
+    pub copy_devices: bool,
     pub write_devices: bool,
 }
 
@@ -1008,6 +1052,8 @@ impl Default for SyncOptions {
         Self {
             delete: None,
             delete_excluded: false,
+            max_delete: None,
+            max_alloc: 1 << 30,
             checksum: false,
             compress: false,
             modern_compress: None,
@@ -1074,6 +1120,7 @@ impl Default for SyncOptions {
             secluded_args: false,
             sockopts: Vec::new(),
             write_batch: None,
+            copy_devices: false,
             write_devices: false,
         }
     }
@@ -1167,6 +1214,11 @@ fn delete_extraneous(
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
                 let src_exists = src.join(rel).exists();
                 if (included && !src_exists) || (!included && opts.delete_excluded) {
+                    if let Some(max) = opts.max_delete {
+                        if stats.files_deleted >= max {
+                            return Err(EngineError::Other("max-delete limit exceeded".into()));
+                        }
+                    }
                     if opts.backup {
                         let backup_path = if let Some(ref dir) = opts.backup_dir {
                             dir.join(rel)
@@ -1266,7 +1318,10 @@ pub fn sync(
                 if opts.dirs && !file_type.is_dir() {
                     continue;
                 }
-                if file_type.is_file() {
+                if file_type.is_file()
+                    || (opts.copy_devices
+                        && (file_type.is_char_device() || file_type.is_block_device()))
+                {
                     if opts.ignore_existing && dest_path.exists() {
                         continue;
                     }
@@ -1458,6 +1513,7 @@ pub fn sync(
                     {
                         if (file_type.is_char_device() || file_type.is_block_device())
                             && opts.devices
+                            && !opts.copy_devices
                         {
                             use nix::sys::stat::{mknod, Mode, SFlag};
                             let meta = fs::symlink_metadata(&path)?;
@@ -1712,10 +1768,7 @@ mod tests {
         let mut out = Cursor::new(Vec::new());
         apply_delta(&mut basis, delta, &mut out, &SyncOptions::default(), 0).unwrap();
         assert_eq!(out.into_inner(), data);
-        assert!(
-            after - before < 10 * 1024,
-            "memory grew too much: {}KB",
-            after - before
-        );
+        let growth = after.saturating_sub(before);
+        assert!(growth < 10 * 1024, "memory grew too much: {}KB", growth);
     }
 }
