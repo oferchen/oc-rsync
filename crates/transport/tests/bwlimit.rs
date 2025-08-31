@@ -44,12 +44,12 @@ fn idle_time_refills_bucket() {
     let mut t = rate_limited(inner, 1024);
 
     let block = vec![0u8; 1024];
-    t.send(&block).unwrap(); // burns 1s of bandwidth
+    t.send(&block).unwrap();
     std::thread::sleep(Duration::from_millis(1100));
 
     let start = Instant::now();
     t.send(&block).unwrap();
-    // After idling long enough, the second send should be near immediate.
+
     assert!(start.elapsed() < Duration::from_millis(150));
 }
 
@@ -62,13 +62,13 @@ fn partial_refill_shortens_sleep() {
 
     let block = vec![0u8; 1024];
     t.send(&block).unwrap();
-    // Allow half the bandwidth to replenish.
+
     std::thread::sleep(Duration::from_millis(500));
 
     let start = Instant::now();
     t.send(&block).unwrap();
     let elapsed = start.elapsed();
-    // Should take roughly half a second to drain the remaining debt.
+
     assert!(elapsed >= Duration::from_millis(400));
     assert!(elapsed < Duration::from_millis(800));
 }

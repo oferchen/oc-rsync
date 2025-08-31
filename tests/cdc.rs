@@ -80,7 +80,6 @@ fn cdc_reuses_manifest_with_custom_sizes() {
     )
     .unwrap();
 
-    // manifest written
     assert!(home.path().join(".oc-rsync/manifest").exists());
 
     let file_b = src.join("b.bin");

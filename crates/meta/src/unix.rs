@@ -111,16 +111,12 @@ pub struct Metadata {
 
 impl Metadata {
     pub fn from_path(path: &Path, opts: Options) -> io::Result<Self> {
-        // Use lstat so we capture metadata for symlinks themselves rather
-        // than the file they point to.
         let st = stat::lstat(path).map_err(nix_to_io)?;
         let uid = st.st_uid;
         let gid = st.st_gid;
         let mode = normalize_mode(st.st_mode as u32);
         let mtime = FileTime::from_unix_time(st.st_mtime, st.st_mtime_nsec as u32);
 
-        // Mirror the lstat call above by avoiding symlink traversal when
-        // collecting standard metadata.
         let std_meta = fs::symlink_metadata(path)?;
         let atime = if opts.atimes {
             Some(FileTime::from_last_access_time(&std_meta))
@@ -169,8 +165,6 @@ impl Metadata {
     }
 
     pub fn apply(&self, path: &Path, opts: Options) -> io::Result<()> {
-        // Obtain metadata without following symlinks so we know the type of
-        // `path` itself.
         let meta = fs::symlink_metadata(path)?;
         let ft = meta.file_type();
         let is_symlink = ft.is_symlink();

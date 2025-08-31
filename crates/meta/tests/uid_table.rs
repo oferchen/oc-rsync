@@ -5,7 +5,7 @@ fn uid_table_deduplicates_and_indexes() {
     let mut table = UidTable::new();
     assert_eq!(table.push(1000), 0);
     assert_eq!(table.push(2000), 1);
-    // Pushing existing uid returns existing index without duplication
+
     assert_eq!(table.push(1000), 0);
     assert_eq!(table.as_slice(), &[1000, 2000]);
     assert_eq!(table.uid(0), Some(1000));

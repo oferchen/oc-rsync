@@ -8,14 +8,8 @@ use blake3::Hash;
 use fastcdc::v2020::StreamCDC;
 
 const RSYNC_BLOCK_SIZE: usize = 700;
-const RSYNC_MAX_BLOCK_SIZE: usize = 1 << 17; // protocol >= 30
+const RSYNC_MAX_BLOCK_SIZE: usize = 1 << 17;
 
-/// Calculate the delta block size using the same heuristics as upstream rsync.
-///
-/// The algorithm chooses a rounded square-root of the file length and caps the
-/// result to `RSYNC_MAX_BLOCK_SIZE`.  Files smaller than `RSYNC_BLOCK_SIZE`
-/// squared use the fixed `RSYNC_BLOCK_SIZE` default.  The returned value is
-/// always a multiple of 8, matching rsync's behaviour.
 pub fn block_size(len: u64) -> usize {
     if len <= (RSYNC_BLOCK_SIZE * RSYNC_BLOCK_SIZE) as u64 {
         return RSYNC_BLOCK_SIZE;

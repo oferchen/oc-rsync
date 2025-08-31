@@ -17,20 +17,6 @@ use std::os::windows::fs::{symlink_dir, symlink_file};
 use std::{fs, io, path::Path};
 use tracing::subscriber::with_default;
 
-/// Configuration for [`synchronize_with_config`].
-///
-/// `log_format` controls whether logs are human-readable text or JSON.
-/// Adjust the verbosity with `verbose`, `info`, or `debug`.
-///
-/// # Examples
-/// ```no_run
-/// use logging::LogFormat;
-/// use oc_rsync::{synchronize_with_config, SyncConfig};
-/// use std::path::Path;
-///
-/// let cfg = SyncConfig { log_format: LogFormat::Json, verbose: 1, ..Default::default() };
-/// synchronize_with_config(Path::new("src"), Path::new("dst"), &cfg).unwrap();
-/// ```
 #[derive(Clone)]
 pub struct SyncConfig {
     pub log_format: LogFormat,
@@ -50,7 +36,6 @@ impl Default for SyncConfig {
     }
 }
 
-/// Synchronize two directories using a provided [`SyncConfig`].
 pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Result<()> {
     let sub = subscriber(cfg.log_format, cfg.verbose, cfg.info, cfg.debug);
     with_default(sub, || -> Result<()> {
@@ -64,33 +49,16 @@ pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Resu
             &available_codecs(None),
             &SyncOptions::default(),
         )?;
-        // Fall back to a simple copy for any files not handled by the engine
+
         let _ = copy_recursive(src, dst)?;
         Ok(())
     })
 }
 
-/// Synchronize two directories using the default [`SyncConfig`].
-///
-/// This is a convenience wrapper around [`synchronize_with_config`]. It
-/// initializes logging and verbosity with [`SyncConfig::default`], performs the
-/// engine-driven synchronization, and then falls back to [`copy_recursive`] for
-/// any entries the engine did not handle.
-///
-/// # Errors
-///
-/// Propagates any [`EngineError`] produced by the engine or filesystem
-/// operations, such as failing to create directories, copy files, or apply
-/// metadata.
 pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
     synchronize_with_config(src, dst, &SyncConfig::default())
 }
 
-/// Wrap an [`io::Error`] with the path that caused it.
-///
-/// This helper creates an [`EngineError::Io`] whose message includes the
-/// offending path. It is used throughout file operations (e.g.
-/// [`apply_metadata`], [`copy_recursive`]) to attach context to errors.
 fn io_context(path: &Path, err: io::Error) -> EngineError {
     EngineError::Io(io::Error::new(
         err.kind(),
@@ -101,26 +69,15 @@ fn io_context(path: &Path, err: io::Error) -> EngineError {
 fn apply_metadata(dst: &Path, meta: &fs::Metadata) -> Result<()> {
     let atime = FileTime::from_last_access_time(meta);
     let mtime = FileTime::from_last_modification_time(meta);
-    // Some platforms modify file times when permissions change; set permissions
-    // first and then restore atime/mtime.
+
     fs::set_permissions(dst, meta.permissions()).map_err(|e| io_context(dst, e))?;
     set_file_times(dst, atime, mtime).map_err(|e| io_context(dst, e))?;
     Ok(())
 }
 
-/// Recursively copy remaining entries from `src` into `dst`.
-///
-/// Returns the number of new entries created in `dst`. Directories are not
-/// counted; only files, symlinks, and special files increment the total.
-///
-/// # Errors
-///
-/// Fails if any filesystem operation fails, such as reading a directory,
-/// copying a file, creating a symlink or special file, or setting metadata. All
-/// such errors include path context via [`io_context`].
 fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
     let mut copied = 0;
-    // Attach the source path to directory read errors.
+
     for entry in fs::read_dir(src).map_err(|e| io_context(src, e))? {
         let entry = entry.map_err(|e| io_context(src, e))?;
         let src_path = entry.path();
@@ -150,11 +107,11 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
                 if !dst_path.exists() {
                     let target = fs::read_link(&src_path).map_err(|e| io_context(&src_path, e))?;
                     std::os::unix::fs::symlink(&target, &dst_path)
-                        .map_err(|e| io_context(&dst_path, e))?; // symlink(2)
+                        .map_err(|e| io_context(&dst_path, e))?;
                     let atime = FileTime::from_last_access_time(&meta);
                     let mtime = FileTime::from_last_modification_time(&meta);
                     set_symlink_file_times(&dst_path, atime, mtime)
-                        .map_err(|e| io_context(&dst_path, e))?; // utimensat(2)
+                        .map_err(|e| io_context(&dst_path, e))?;
                     copied += 1;
                 }
                 continue;
@@ -166,17 +123,17 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
             if file_type.is_fifo() {
                 mkfifo(&dst_path, mode)
                     .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
-                    .map_err(|e| io_context(&dst_path, e))?; // nix::unistd::mkfifo
+                    .map_err(|e| io_context(&dst_path, e))?;
             } else if file_type.is_char_device() {
                 let dev: dev_t = meta.rdev().try_into().unwrap();
                 mknod(&dst_path, SFlag::S_IFCHR, mode, dev)
                     .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
-                    .map_err(|e| io_context(&dst_path, e))?; // nix::sys::stat::mknod (S_IFCHR)
+                    .map_err(|e| io_context(&dst_path, e))?;
             } else if file_type.is_block_device() {
                 let dev: dev_t = meta.rdev().try_into().unwrap();
                 mknod(&dst_path, SFlag::S_IFBLK, mode, dev)
                     .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
-                    .map_err(|e| io_context(&dst_path, e))?; // nix::sys::stat::mknod (S_IFBLK)
+                    .map_err(|e| io_context(&dst_path, e))?;
             } else {
                 continue;
             }
@@ -194,7 +151,7 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
                         Ok(m) if m.is_dir() => symlink_dir(&target, &dst_path),
                         _ => symlink_file(&target, &dst_path),
                     }
-                    .map_err(|e| io_context(&dst_path, e))?; // CreateSymbolicLinkW
+                    .map_err(|e| io_context(&dst_path, e))?;
                     copied += 1;
                 }
                 continue;
@@ -283,8 +240,7 @@ mod tests {
         let meta = fs::metadata(dst_dir.join("file.txt")).unwrap();
         assert_eq!(meta.permissions().mode() & 0o777, 0o744);
         let dst_mtime = FileTime::from_last_modification_time(&meta);
-        // Accessing metadata can update atime on systems mounted with `relatime`, so we
-        // only assert on modification time and permissions.
+
         assert_eq!(dst_mtime, mtime);
     }
 
@@ -302,7 +258,6 @@ mod tests {
         synchronize(&src_dir, &dst_dir).unwrap();
         assert!(dst_dir.exists());
 
-        // copy_recursive should have nothing left to copy
         assert_no_remaining_copy(&src_dir, &dst_dir);
 
         let fifo = src_dir.join("fifo");

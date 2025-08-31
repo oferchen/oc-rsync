@@ -12,7 +12,7 @@ fn run_delete_filter(mode: DeleteMode) {
     let dst = tmp.path().join("dst");
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst).unwrap();
-    // The walker skips files smaller than 1KB, so use larger placeholders.
+
     fs::write(dst.join("keep.txt"), vec![0u8; 2048]).unwrap();
     fs::write(dst.join("remove.txt"), vec![0u8; 2048]).unwrap();
 
@@ -20,7 +20,6 @@ fn run_delete_filter(mode: DeleteMode) {
     let rules = parse("- keep.txt", &mut visited, 0).unwrap();
     let matcher = Matcher::new(rules);
 
-    // delete_excluded defaults to false; keep.txt should remain.
     sync(
         &src,
         &dst,
@@ -36,7 +35,6 @@ fn run_delete_filter(mode: DeleteMode) {
     assert!(dst.join("keep.txt").exists());
     assert!(!dst.join("remove.txt").exists());
 
-    // Recreate files and delete with delete_excluded enabled.
     fs::write(dst.join("keep.txt"), vec![0u8; 2048]).unwrap();
     fs::write(dst.join("remove.txt"), vec![0u8; 2048]).unwrap();
     sync(

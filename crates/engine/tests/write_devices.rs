@@ -27,7 +27,6 @@ fn requires_flag_to_write_devices() {
     )
     .unwrap();
 
-    // should fail by default
     let err = sync(
         &src,
         &dst,
@@ -38,7 +37,6 @@ fn requires_flag_to_write_devices() {
     .unwrap_err();
     assert!(format!("{}", err).contains(dev.to_string_lossy().as_ref()));
 
-    // succeeds with flag
     sync(
         &src,
         &dst,

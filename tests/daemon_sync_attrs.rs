@@ -68,7 +68,6 @@ fn daemon_preserves_xattrs() {
     fs::write(&file, b"hi").unwrap();
     xattr::set(&file, "user.test", b"val").unwrap();
 
-    // Pre-existing destination file with an extra xattr that should be removed
     let srv_file = srv.join("file");
     fs::write(&srv_file, b"old").unwrap();
     xattr::set(&srv_file, "user.old", b"junk").unwrap();
@@ -104,7 +103,7 @@ fn daemon_preserves_acls() {
     fs::write(&file, b"hi").unwrap();
 
     let mut acl = PosixACL::read_acl(&file).unwrap();
-    // Add a pair of custom ACL entries to ensure they survive the transfer.
+
     acl.set(Qualifier::User(12345), ACL_READ);
     acl.set(Qualifier::User(23456), ACL_WRITE);
     acl.write_acl(&file).unwrap();

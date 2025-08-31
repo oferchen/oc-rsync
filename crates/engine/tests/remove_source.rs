@@ -29,6 +29,6 @@ fn removes_source_files_after_transfer() {
 
     assert!(dst.join("file.txt").exists());
     assert!(!src.join("file.txt").exists());
-    // directory itself is not removed
+
     assert!(src.exists());
 }

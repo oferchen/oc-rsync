@@ -19,7 +19,7 @@ fn checksum_seed_flag_transfers_files() {
         checksum_seed: 1,
         ..Default::default()
     };
-    // ensure destination exists as a directory
+
     fs::create_dir_all(&dst).unwrap();
     sync(
         &src,

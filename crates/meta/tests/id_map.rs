@@ -12,7 +12,7 @@ fn uid_gid_mapping() -> std::io::Result<()> {
     let dst = dir.path().join("dst");
     fs::write(&src, b"hello")?;
     fs::write(&dst, b"world")?;
-    // Assign source to uid/gid 1 and destination to 0 so changes are visible
+
     chown(&src, Some(Uid::from_raw(1)), Some(Gid::from_raw(1)))?;
     chown(&dst, Some(Uid::from_raw(0)), Some(Gid::from_raw(0)))?;
 

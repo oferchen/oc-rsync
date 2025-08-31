@@ -77,7 +77,7 @@ fn whole_file_direct_copy() {
     std::fs::write(&src_file, b"new contents").unwrap();
     std::fs::write(&dst_file, b"old contents").unwrap();
     set_file_mtime(&dst_file, FileTime::from_unix_time(0, 0)).unwrap();
-    // create a file that doesn't exist in the destination
+
     std::fs::write(src_dir.join("b.txt"), b"brand new").unwrap();
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
@@ -92,7 +92,7 @@ fn whole_file_direct_copy() {
 
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, b"new contents");
-    // new files should also be copied
+
     let out_new = std::fs::read(dst_dir.join("b.txt")).unwrap();
     assert_eq!(out_new, b"brand new");
 }
@@ -307,7 +307,7 @@ fn progress_flag_human_readable() {
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
     std::fs::create_dir_all(&src_dir).unwrap();
-    // 2 KiB file to exercise unit conversion
+
     std::fs::write(src_dir.join("a.txt"), vec![0u8; 2 * 1024]).unwrap();
     let expected = format!("{}: 2.00KiB\n", dst_dir.join("a.txt").display());
 
@@ -522,7 +522,6 @@ fn numeric_ids_are_preserved() {
         }
     };
 
-    // Pre-create destination with incorrect ownership
     let dst_file = dst_dir.join("id.txt");
     std::fs::copy(&file, &dst_file).unwrap();
     #[cfg(unix)]
@@ -1327,7 +1326,6 @@ fn links_preserve_directory_symlinks() {
     std::fs::write(src.join("dir/file"), b"hi").unwrap();
     symlink("dir", src.join("dirlink")).unwrap();
 
-    // Pre-create a directory symlink at the destination
     std::fs::create_dir_all(&dst).unwrap();
     symlink("dir", dst.join("dirlink")).unwrap();
 
