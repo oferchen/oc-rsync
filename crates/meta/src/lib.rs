@@ -19,6 +19,23 @@ pub use stub::*;
 mod parse;
 pub use parse::{parse_chmod, parse_chmod_spec, parse_chown, parse_id_map};
 
+impl Options {
+    pub fn needs_metadata(&self) -> bool {
+        self.xattrs
+            || self.acl
+            || self.chmod.is_some()
+            || self.owner
+            || self.group
+            || self.perms
+            || self.executability
+            || self.times
+            || self.atimes
+            || self.crtimes
+            || self.uid_map.is_some()
+            || self.gid_map.is_some()
+    }
+}
+
 #[cfg(unix)]
 use filetime::set_symlink_file_times;
 use filetime::{set_file_times, FileTime};
