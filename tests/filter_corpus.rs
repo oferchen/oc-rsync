@@ -71,6 +71,14 @@ fn filter_corpus_parity() {
         } else {
             setup_basic(&src);
         }
+        if args.iter().any(|a| a == "--existing") {
+            let dir = rsync_dst.join("keep");
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join("file.txt"), b"old").unwrap();
+            let dir = ours_dst.join("keep");
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join("file.txt"), b"old").unwrap();
+        }
         let src_arg = format!("{}/", src.display());
 
         let mut rsync_cmd = StdCommand::new("rsync");
@@ -106,6 +114,13 @@ fn filter_corpus_parity() {
             "directory trees differ for {:?}",
             path
         );
+        if args.iter().any(|a| a == "--prune-empty-dirs") {
+            assert!(!ours_dst.join("skip").exists());
+        }
+        if args.iter().any(|a| a == "--existing") {
+            let content = fs::read_to_string(ours_dst.join("keep/file.txt")).unwrap();
+            assert_eq!(content, "keep");
+        }
     }
 }
 

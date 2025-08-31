@@ -75,8 +75,9 @@ _oc-rsync() {
 '--sparse[]' \
 '-u[]' \
 '--update[]' \
-'--ignore-existing[]' \
-'--size-only[]' \
+    '--ignore-existing[]' \
+    '--existing[]' \
+    '--size-only[]' \
 '-I[]' \
 '--ignore-times[]' \
 '*-v[]' \
@@ -126,8 +127,10 @@ _oc-rsync() {
 '-z[]' \
 '--compress[]' \
 '--modern[Enable modern compression (zstd or lz4) and BLAKE3 checksums (requires \`blake3\` feature)]' \
-'--partial[]' \
-'--progress[]' \
+    '--partial[]' \
+    '-m[]' \
+    '--prune-empty-dirs[]' \
+    '--progress[]' \
 '--blocking-io[]' \
 '-P[]' \
 '--append[]' \

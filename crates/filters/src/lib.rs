@@ -85,6 +85,7 @@ pub struct Matcher {
     rules: Vec<(usize, Rule)>,
     per_dir: Vec<(usize, PerDir)>,
     extra_per_dir: RefCell<HashMap<PathBuf, Vec<(usize, PerDir)>>>,
+    #[allow(clippy::type_complexity)]
     cached: RefCell<HashMap<(PathBuf, Option<char>, bool), Cached>>,
     existing: bool,
     prune_empty_dirs: bool,
@@ -157,7 +158,6 @@ impl Matcher {
     }
 
     fn check(&self, path: &Path, for_delete: bool, xattr: bool) -> Result<bool, ParseError> {
-        let path = path;
         if self.existing {
             if let Some(root) = &self.root {
                 if !root.join(path).exists() {
@@ -427,6 +427,7 @@ impl Matcher {
         Ok(combined)
     }
 
+    #[allow(clippy::type_complexity, clippy::too_many_arguments)]
     fn load_merge_file(
         &self,
         dir: &Path,
@@ -448,7 +449,7 @@ impl Matcher {
             Err(_) => return Ok((Vec::new(), Vec::new())),
         };
 
-        let adjusted = if cvs || path.file_name().map_or(false, |f| f == ".cvsignore") {
+        let adjusted = if cvs || path.file_name().is_some_and(|f| f == ".cvsignore") {
             let rel_str = rel.map(|p| p.to_string_lossy().to_string());
             let mut buf = String::new();
             for token in content.split_whitespace() {
@@ -481,11 +482,11 @@ impl Matcher {
                 content = buf;
             }
             if let Some(ch) = sign {
-                fn split_mods<'a>(s: &'a str) -> (&'a str, &'a str) {
+                fn split_mods(s: &str) -> (&str, &str) {
                     let s = s.trim_start();
                     let mut idx = 0;
                     let bytes = s.as_bytes();
-                    if bytes.get(0) == Some(&b',') {
+                    if bytes.first() == Some(&b',') {
                         idx += 1;
                     }
                     while let Some(&c) = bytes.get(idx) {
@@ -639,7 +640,7 @@ impl Matcher {
                     let rel2 = if pd.root_only {
                         None
                     } else {
-                        let mut base = rel.map(|p| p.to_path_buf()).unwrap_or_else(PathBuf::new);
+                        let mut base = rel.map(|p| p.to_path_buf()).unwrap_or_default();
                         if let Some(parent) = Path::new(&pd.file).parent() {
                             if !parent.as_os_str().is_empty() {
                                 base = if base.as_os_str().is_empty() {
@@ -719,7 +720,7 @@ pub fn parse(
         let s = s.trim_start();
         let mut idx = 0;
         let bytes = s.as_bytes();
-        if bytes.get(0) == Some(&b',') {
+        if bytes.first() == Some(&b',') {
             idx += 1;
         }
         while let Some(&c) = bytes.get(idx) {

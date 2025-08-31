@@ -47,7 +47,7 @@
 | --exclude | Supported |  |
 | --exclude-from | Supported |  |
 | --executability | Supported |  |
-| --existing | Error |  |
+| --existing | Supported |  |
 | --fake-super | Error |  |
 | --files-from | Supported |  |
 | --filter | Supported |  |
@@ -108,7 +108,7 @@
 | --preallocate | Error |  |
 | --progress | Supported |  |
 | --protocol | Supported |  |
-| --prune-empty-dirs | Error |  |
+| --prune-empty-dirs | Supported |  |
 | --quiet | Supported |  |
 | --read-batch | Error |  |
 | --recursive | Supported |  |
@@ -180,7 +180,7 @@
 | -i | Alias | alias for --itemize-changes |
 | -k | Alias | alias for --copy-dirlinks |
 | -l | Error | alias for --links |
-| -m | Error | alias for --prune-empty-dirs |
+| -m | Alias | alias for --prune-empty-dirs |
 | -n | Alias | alias for --dry-run |
 | -o | Error | alias for --owner |
 | -p | Error | alias for --perms |

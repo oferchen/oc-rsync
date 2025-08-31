@@ -130,6 +130,8 @@ struct ClientOpts {
     existing: bool,
     #[arg(long, help_heading = "Misc")]
     ignore_existing: bool,
+    #[arg(short = 'm', long = "prune-empty-dirs", help_heading = "Misc")]
+    prune_empty_dirs: bool,
     #[arg(long = "size-only", help_heading = "Misc")]
     size_only: bool,
     #[arg(short = 'I', long = "ignore-times", help_heading = "Misc")]
@@ -1740,7 +1742,14 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         }
     });
     let rules: Vec<Rule> = entries.into_iter().map(|(_, _, r)| r).collect();
-    Ok(Matcher::new(rules))
+    let mut matcher = Matcher::new(rules);
+    if opts.existing {
+        matcher = matcher.with_existing();
+    }
+    if opts.prune_empty_dirs {
+        matcher = matcher.with_prune_empty_dirs();
+    }
+    Ok(matcher)
 }
 
 #[allow(dead_code)]
@@ -2158,6 +2167,7 @@ mod tests {
             "prog",
             "--ignore-existing",
             "--existing",
+            "--prune-empty-dirs",
             "--size-only",
             "--ignore-times",
             "src",
@@ -2165,6 +2175,7 @@ mod tests {
         ]);
         assert!(opts.ignore_existing);
         assert!(opts.existing);
+        assert!(opts.prune_empty_dirs);
         assert!(opts.size_only);
         assert!(opts.ignore_times);
     }

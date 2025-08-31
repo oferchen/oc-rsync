@@ -236,7 +236,7 @@
   },
   {
     "flag": "--existing",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -541,7 +541,7 @@
   },
   {
     "flag": "--prune-empty-dirs",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -901,7 +901,7 @@
   },
   {
     "flag": "-m",
-    "status": "Error",
+    "status": "Alias",
     "notes": "alias for --prune-empty-dirs"
   },
   {
