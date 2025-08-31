@@ -606,6 +606,77 @@ fn sparse_creation_from_zeros() {
 }
 
 #[test]
+fn sparse_middle_hole() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let sp = src.join("sparse");
+    {
+        let mut f = File::create(&sp).unwrap();
+        f.write_all(b"start").unwrap();
+        f.seek(SeekFrom::Start((1 << 20) + 5)).unwrap();
+        f.write_all(b"end").unwrap();
+    }
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &SyncOptions {
+            sparse: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let src_meta = fs::metadata(&sp).unwrap();
+    if src_meta.blocks() * 512 >= src_meta.len() {
+        eprintln!("skipping test: filesystem lacks sparse-file support");
+        return;
+    }
+    let dst_meta = fs::metadata(dst.join("sparse")).unwrap();
+    assert_eq!(src_meta.len(), dst_meta.len());
+    assert_eq!(src_meta.blocks(), dst_meta.blocks());
+    assert!(dst_meta.blocks() * 512 < dst_meta.len());
+}
+
+#[test]
+fn sparse_trailing_hole() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let sp = src.join("sparse");
+    {
+        let mut f = File::create(&sp).unwrap();
+        f.write_all(b"start").unwrap();
+        f.set_len(1 << 20).unwrap();
+    }
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &SyncOptions {
+            sparse: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let src_meta = fs::metadata(&sp).unwrap();
+    if src_meta.blocks() * 512 >= src_meta.len() {
+        eprintln!("skipping test: filesystem lacks sparse-file support");
+        return;
+    }
+    let dst_meta = fs::metadata(dst.join("sparse")).unwrap();
+    assert_eq!(src_meta.len(), dst_meta.len());
+    assert_eq!(src_meta.blocks(), dst_meta.blocks());
+    assert!(dst_meta.blocks() * 512 < dst_meta.len());
+}
+
+#[test]
 fn metadata_matches_rsync() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
