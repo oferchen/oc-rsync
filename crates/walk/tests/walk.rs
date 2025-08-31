@@ -13,13 +13,13 @@ fn walk_includes_files_dirs_and_symlinks() {
     let tmp = tempdir().unwrap();
     let root = tmp.path();
     fs::create_dir(root.join("dir")).unwrap();
-    fs::write(root.join("dir/file.txt"), b"hello").unwrap();
-    fs::write(root.join("top.txt"), b"world").unwrap();
+    fs::write(root.join("dir/large.txt"), vec![0u8; 2048]).unwrap();
+    fs::write(root.join("small.txt"), b"hi").unwrap();
     let link_path = root.join("link.txt");
     #[cfg(unix)]
-    symlink(root.join("top.txt"), &link_path).unwrap();
+    symlink(root.join("small.txt"), &link_path).unwrap();
     #[cfg(windows)]
-    symlink_file(root.join("top.txt"), &link_path).unwrap();
+    symlink_file(root.join("small.txt"), &link_path).unwrap();
 
     let mut entries = Vec::new();
     let mut state = String::new();
@@ -36,13 +36,11 @@ fn walk_includes_files_dirs_and_symlinks() {
         .any(|(p, t)| p == &root.join("dir") && t.is_dir()));
     assert!(entries
         .iter()
-        .any(|(p, t)| p == &root.join("dir/file.txt") && t.is_file()));
-    assert!(entries
-        .iter()
-        .any(|(p, t)| p == &root.join("top.txt") && t.is_file()));
+        .any(|(p, t)| p == &root.join("dir/large.txt") && t.is_file()));
     assert!(entries
         .iter()
         .any(|(p, t)| p == &link_path && t.is_symlink()));
+    assert!(!entries.iter().any(|(p, _)| p == &root.join("small.txt")));
 }
 
 #[test]
@@ -51,9 +49,10 @@ fn walk_preserves_order_and_bounds_batches() {
     let root = tmp.path();
     fs::create_dir(root.join("dir")).unwrap();
     fs::create_dir(root.join("dir/sub")).unwrap();
-    fs::write(root.join("dir/file1"), b"a").unwrap();
-    fs::write(root.join("dir/sub/file2"), b"b").unwrap();
-    fs::write(root.join("top.txt"), b"c").unwrap();
+    fs::write(root.join("dir/big1"), vec![0u8; 2048]).unwrap();
+    fs::write(root.join("dir/sub/big2"), vec![0u8; 2048]).unwrap();
+    fs::write(root.join("dir/small1"), b"a").unwrap();
+    fs::write(root.join("top_small.txt"), b"c").unwrap();
 
     let mut paths = Vec::new();
     let mut state = String::new();
@@ -70,10 +69,9 @@ fn walk_preserves_order_and_bounds_batches() {
     let expected = vec![
         root.to_path_buf(),
         root.join("dir"),
-        root.join("dir/file1"),
+        root.join("dir/big1"),
         root.join("dir/sub"),
-        root.join("dir/sub/file2"),
-        root.join("top.txt"),
+        root.join("dir/sub/big2"),
     ];
     assert_eq!(paths, expected);
 }

@@ -7,6 +7,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+const MIN_FILE_SIZE: u64 = 1024;
 #[derive(Debug, Clone)]
 pub struct Entry {
     pub prefix_len: usize,
@@ -102,6 +103,11 @@ impl Iterator for Walk {
                         Ok(m) => m,
                         Err(e) => return Some(Err(e)),
                     };
+                    let len = meta.len();
+                    if entry.file_type().is_file() && len < MIN_FILE_SIZE {
+                        continue;
+                    }
+
 
                     if let Some(max) = self.max_file_size {
                         if meta.is_file() && meta.len() > max {
