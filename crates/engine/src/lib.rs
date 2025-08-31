@@ -32,6 +32,15 @@ pub enum EngineError {
 pub type Result<T> = std::result::Result<T, EngineError>;
 use walk::walk;
 
+#[derive(Clone)]
+pub struct IdMapper(pub Arc<dyn Fn(u32) -> u32 + Send + Sync>);
+
+impl std::fmt::Debug for IdMapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("IdMapper")
+    }
+}
+
 trait ReadSeek: Read + Seek {}
 impl<T: Read + Seek> ReadSeek for T {}
 
@@ -882,7 +891,9 @@ impl Receiver {
             let chown_gid = self.opts.chown.map(|(_, g)| g).flatten();
 
             let uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> =
-                if let Some(uid) = chown_uid {
+                if let Some(ref map) = self.opts.uid_map {
+                    Some(map.0.clone())
+                } else if let Some(uid) = chown_uid {
                     Some(Arc::new(move |_| uid))
                 } else if self.opts.numeric_ids {
                     None
@@ -899,7 +910,9 @@ impl Receiver {
                 };
 
             let gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> =
-                if let Some(gid) = chown_gid {
+                if let Some(ref map) = self.opts.gid_map {
+                    Some(map.0.clone())
+                } else if let Some(gid) = chown_gid {
                     Some(Arc::new(move |_| gid))
                 } else if self.opts.numeric_ids {
                     None
@@ -1049,6 +1062,8 @@ pub struct SyncOptions {
     pub write_batch: Option<PathBuf>,
     pub copy_devices: bool,
     pub write_devices: bool,
+    pub uid_map: Option<IdMapper>,
+    pub gid_map: Option<IdMapper>,
 }
 
 impl Default for SyncOptions {
@@ -1126,6 +1141,8 @@ impl Default for SyncOptions {
             write_batch: None,
             copy_devices: false,
             write_devices: false,
+            uid_map: None,
+            gid_map: None,
         }
     }
 }
