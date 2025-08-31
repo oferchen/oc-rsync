@@ -62,7 +62,7 @@ negotiates version 73.
 | `--exclude` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--exclude-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--executability` | `-E` | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
-| `--existing` | — | ❌ | — | — |  | ≤3.2 |
+| `--existing` | — | ✅ | ✅ | [tests/filter_corpus.rs](../tests/filter_corpus.rs) |  | ≤3.2 |
 | `--fake-super` | — | ❌ | — | — |  | ≤3.2 |
 | `--files-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--filter` | `-f` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
@@ -131,7 +131,7 @@ negotiates version 73.
 | `--preallocate` | — | ❌ | — | — |  | ≤3.2 |
 | `--progress` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--protocol` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
-| `--prune-empty-dirs` | `-m` | ❌ | — | — |  | ≤3.2 |
+| `--prune-empty-dirs` | `-m` | ✅ | ✅ | [tests/filter_corpus.rs](../tests/filter_corpus.rs) |  | ≤3.2 |
 | `--quiet` | `-q` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--read-batch` | — | ❌ | — | — |  | ≤3.2 |
 | `--recursive` | `-r` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |

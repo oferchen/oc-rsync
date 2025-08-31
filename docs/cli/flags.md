@@ -162,7 +162,7 @@
 |  | --copy-unsafe-links | only "unsafe" symlinks are transformed | no |  | no |
 |  | --delay-updates | put all updated files into place at end | no |  | no |
 | -d | --dirs | transfer directories without recursing | no |  | no |
-|  | --existing | skip creating new files on receiver | no |  | no |
+|  | --existing | skip creating new files on receiver | yes |  | no |
 | -y | --fuzzy | find similar file for basis if no dest file | no |  | no |
 |  | --hard-links | preserve hard links | yes |  | no |
 |  | --ignore-existing | skip updating files that exist on receiver | no |  | no |
@@ -184,7 +184,7 @@
 |  | --partial | keep partially transferred files | yes |  | no |
 |  | --partial-dir=DIR | put a partially transferred file into DIR | yes |  | no |
 |  | --preallocate | allocate dest files before writing them | no |  | no |
-| -m | --prune-empty-dirs | prune empty directory chains from file-list | no |  | no |
+| -m | --prune-empty-dirs | prune empty directory chains from file-list | yes |  | no |
 | -r | --recursive | recurse into directories | yes |  | no |
 | -R | --relative | use relative path names | yes |  | no |
 |  | --remove-source-files | sender removes synchronized files (non-dir) | no |  | no |

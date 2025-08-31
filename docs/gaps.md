@@ -35,8 +35,6 @@ This document tracks outstanding gaps in `oc-rsync` compared to the reference `r
 - `--from0` — null-separated list handling incomplete. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L64)
 - `--include` — filter syntax coverage incomplete. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L77)
 - `--include-from` — partial support for external lists. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L78)
- - `--existing` — not implemented. [feature_matrix](feature_matrix.md#L59) ([TODO](#testing-gaps))
- - `--prune-empty-dirs` — not implemented. [feature_matrix](feature_matrix.md#L122) ([TODO](#testing-gaps))
 
 ## Daemon gaps
 - `--address` — binding to specific address lacks parity. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L10)

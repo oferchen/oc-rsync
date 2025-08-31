@@ -48,6 +48,7 @@ complete -c oc-rsync -l list-only
 complete -c oc-rsync -s S -l sparse
 complete -c oc-rsync -s u -l update
 complete -c oc-rsync -l ignore-existing
+complete -c oc-rsync -l existing
 complete -c oc-rsync -l size-only
 complete -c oc-rsync -s I -l ignore-times
 complete -c oc-rsync -s v -l verbose
@@ -84,6 +85,7 @@ complete -c oc-rsync -l specials
 complete -c oc-rsync -s z -l compress
 complete -c oc-rsync -l modern -d 'Enable modern compression (zstd or lz4) and BLAKE3 checksums (requires `blake3` feature)'
 complete -c oc-rsync -l partial
+complete -c oc-rsync -s m -l prune-empty-dirs
 complete -c oc-rsync -l progress
 complete -c oc-rsync -l blocking-io
 complete -c oc-rsync -s P
