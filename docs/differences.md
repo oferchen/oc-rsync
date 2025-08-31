@@ -14,5 +14,5 @@ See [gaps.md](gaps.md) and [feature_matrix.md](feature_matrix.md) for any remain
 ## Manifest location
 
 The content-defined chunking manifest now resides at `~/.oc-rsync/manifest`.
-Previous versions stored it at `~/.rsync-rs/manifest`; `oc-rsync` automatically
-migrates existing manifests.
+Previous versions stored it at `~/.rsync-rs/manifest`. To continue using an
+existing manifest, move it to the new location.

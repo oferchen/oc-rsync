@@ -16,8 +16,9 @@ crate boundaries, data flow, and the key algorithms that power `oc-rsync`.
   block matching.
 - [`engine`](../crates/engine) – orchestrates scanning, delta calculation, and
   application of differences between sender and receiver. It also maintains a
-  content-defined chunking manifest at `~/.oc-rsync/manifest`, automatically
-  migrating manifests from the legacy location if present.
+  content-defined chunking manifest at `~/.oc-rsync/manifest`. Users upgrading
+  from older versions should move any existing manifest from
+  `~/.rsync-rs/manifest` to this path.
 - [`compress`](../crates/compress) – offers optional compression of file data
   during transfer.
 - [`filters`](../crates/filters) – parses include/exclude rules controlling
