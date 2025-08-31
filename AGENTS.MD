@@ -186,3 +186,20 @@ This document describes the agents, their responsibilities, and how they collabo
 
 ## Summary
 This agent architecture provides a **clean separation of responsibilities**, explicit parity with upstream rsync (validated via interop tests), and a safe path to modern enhancements without breaking compatibility. Each agent can be individually tested, audited, and fuzzed, ensuring both **robustness** and **maintainability**.
+
+---
+
+## Development Guidelines
+
+### Coding Conventions
+- Format code with `cargo fmt --all`.
+- Lint with `cargo clippy --all-targets --all-features -- -D warnings`.
+
+### Mandatory Checks
+- Run `cargo test` and ensure all tests pass.
+- Execute `make verify-comments` to validate file header comments.
+- Use `make lint` to confirm formatting.
+
+### References
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+- CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml)

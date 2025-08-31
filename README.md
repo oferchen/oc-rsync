@@ -103,7 +103,18 @@ cargo run -p oc-rsync-bin -- <args>
 Run the full test suite with:
 
 ```
-cargo test
+make test
+```
+
+## Development
+
+The Makefile offers shortcuts for common tasks:
+
+```
+make fmt    # Format the code
+make clippy # Run Clippy lints
+make doc    # Build documentation
+make test   # Run the test suite
 ```
 
 ## Fuzzing
