@@ -28,14 +28,15 @@ fn requires_flag_to_write_devices() {
     .unwrap();
 
     // should fail by default
-    let res = sync(
+    let err = sync(
         &src,
         &dst,
         &Matcher::default(),
         &available_codecs(None),
         &SyncOptions::default(),
-    );
-    assert!(res.is_err());
+    )
+    .unwrap_err();
+    assert!(format!("{}", err).contains(dev.to_string_lossy().as_ref()));
 
     // succeeds with flag
     sync(

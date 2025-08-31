@@ -1,14 +1,17 @@
 // crates/engine/src/lib.rs
+#[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
+use nix::fcntl::{fallocate, FallocateFlags};
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
 #[cfg(unix)]
-use std::os::unix::{fs::{FileTypeExt, MetadataExt}, io::AsRawFd};
+use std::os::unix::{
+    fs::{FileTypeExt, MetadataExt},
+    io::AsRawFd,
+};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-#[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
-use nix::fcntl::{fallocate, FallocateFlags};
 
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 pub use checksums::{ModernHash, StrongHash};
@@ -47,6 +50,13 @@ impl std::fmt::Debug for IdMapper {
 trait ReadSeek: Read + Seek {}
 impl<T: Read + Seek> ReadSeek for T {}
 
+fn io_context(path: &Path, err: std::io::Error) -> EngineError {
+    EngineError::Io(std::io::Error::new(
+        err.kind(),
+        format!("{}: {}", path.display(), err),
+    ))
+}
+
 fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
     if len > opts.max_alloc as u64 {
         Err(EngineError::Other("max-alloc limit exceeded".into()))
@@ -55,19 +65,19 @@ fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
     }
 }
 
-fn atomic_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
+fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
     match fs::rename(src, dst) {
         Ok(_) => Ok(()),
         Err(e) => {
             #[cfg(unix)]
             {
                 if e.raw_os_error() == Some(nix::errno::Errno::EXDEV as i32) {
-                    let _ = fs::copy(src, dst)?;
-                    fs::remove_file(src)?;
+                    let _ = fs::copy(src, dst).map_err(|e| io_context(src, e))?;
+                    fs::remove_file(src).map_err(|e| io_context(src, e))?;
                     return Ok(());
                 }
             }
-            Err(e)
+            Err(io_context(src, e))
         }
     }
 }
@@ -517,7 +527,7 @@ impl Sender {
     }
 
     fn strong_file_checksum(&self, path: &Path) -> Result<Vec<u8>> {
-        let data = fs::read(path)?;
+        let data = fs::read(path).map_err(|e| io_context(path, e))?;
         Ok(self.cfg.checksum(&data).strong)
     }
 
@@ -572,7 +582,7 @@ impl Sender {
             return Ok(false);
         }
 
-        let meta = fs::metadata(path)?;
+        let meta = fs::metadata(path).map_err(|e| io_context(path, e))?;
         let src_len = meta.len();
         ensure_max_alloc(src_len, &self.opts)?;
         let file_type = meta.file_type();
@@ -581,7 +591,7 @@ impl Sender {
         } else {
             None
         };
-        let src = File::open(path)?;
+        let src = File::open(path).map_err(|e| io_context(path, e))?;
         let mut src_reader = BufReader::new(src);
         let file_codec = if should_compress(path, &self.opts.skip_compress) {
             self.codec
@@ -658,7 +668,7 @@ impl Sender {
                 dest.with_file_name(name)
             };
             if let Some(parent) = backup_path.parent() {
-                fs::create_dir_all(parent)?;
+                fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
             }
             atomic_rename(dest, &backup_path)?;
         }
@@ -834,7 +844,7 @@ impl Receiver {
             }
         };
         if let Some(parent) = tmp_dest.parent() {
-            fs::create_dir_all(parent)?;
+            fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
         }
         #[cfg(unix)]
         if !self.opts.write_devices {
@@ -843,7 +853,7 @@ impl Receiver {
                 let ft = meta.file_type();
                 if ft.is_block_device() || ft.is_char_device() {
                     if self.opts.copy_devices {
-                        fs::remove_file(check_path)?;
+                        fs::remove_file(check_path).map_err(|e| io_context(check_path, e))?;
                     } else {
                         return Err(EngineError::Other(
                             "refusing to write to device; use --write-devices".into(),
@@ -854,7 +864,10 @@ impl Receiver {
         }
 
         let mut out = if self.opts.write_devices {
-            OpenOptions::new().write(true).open(&tmp_dest)?
+            OpenOptions::new()
+                .write(true)
+                .open(&tmp_dest)
+                .map_err(|e| io_context(&tmp_dest, e))?
         } else if self.opts.inplace
             || self.opts.partial
             || self.opts.append
@@ -864,9 +877,10 @@ impl Receiver {
                 .read(true)
                 .write(true)
                 .create(true)
-                .open(&tmp_dest)?
+                .open(&tmp_dest)
+                .map_err(|e| io_context(&tmp_dest, e))?
         } else {
-            File::create(&tmp_dest)?
+            File::create(&tmp_dest).map_err(|e| io_context(&tmp_dest, e))?
         };
         if !self.opts.write_devices {
             out.set_len(resume)?;
@@ -920,7 +934,7 @@ impl Receiver {
             }
         }
         if self.opts.progress {
-            let len = fs::metadata(dest)?.len();
+            let len = fs::metadata(dest).map_err(|e| io_context(dest, e))?.len();
             if self.opts.human_readable {
                 eprintln!("{}: {}", dest.display(), human_bytes(len));
             } else {
@@ -1320,7 +1334,7 @@ fn delete_extraneous(
                             path.with_file_name(name)
                         };
                         let dir_res = if let Some(parent) = backup_path.parent() {
-                            fs::create_dir_all(parent)
+                            fs::create_dir_all(parent).map_err(|e| io_context(parent, e))
                         } else {
                             Ok(())
                         };
@@ -1328,9 +1342,13 @@ fn delete_extraneous(
                             .and_then(|_| atomic_rename(&path, &backup_path))
                             .err()
                     } else if file_type.is_dir() {
-                        fs::remove_dir_all(&path).err()
+                        fs::remove_dir_all(&path)
+                            .map_err(|e| io_context(&path, e))
+                            .err()
                     } else {
-                        fs::remove_file(&path).err()
+                        fs::remove_file(&path)
+                            .map_err(|e| io_context(&path, e))
+                            .err()
                     };
                     match res {
                         None => {
@@ -1374,7 +1392,7 @@ pub fn sync(
                         return Err(EngineError::Other("max-delete limit exceeded".into()));
                     }
                 }
-                let meta = fs::symlink_metadata(dst)?;
+                let meta = fs::symlink_metadata(dst).map_err(|e| io_context(dst, e))?;
                 if opts.backup {
                     let backup_path = if let Some(ref dir) = opts.backup_dir {
                         if let Some(name) = dst.file_name() {
@@ -1390,13 +1408,13 @@ pub fn sync(
                         dst.with_file_name(name)
                     };
                     if let Some(parent) = backup_path.parent() {
-                        fs::create_dir_all(parent)?;
+                        fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
                     }
                     atomic_rename(dst, &backup_path)?;
                 } else if meta.file_type().is_dir() {
-                    fs::remove_dir_all(dst)?;
+                    fs::remove_dir_all(dst).map_err(|e| io_context(dst, e))?;
                 } else {
-                    fs::remove_file(dst)?;
+                    fs::remove_file(dst).map_err(|e| io_context(dst, e))?;
                 }
                 stats.files_deleted += 1;
             }
@@ -1515,10 +1533,11 @@ pub fn sync(
                     #[cfg(unix)]
                     if opts.hard_links {
                         use std::os::unix::fs::MetadataExt;
-                        let meta = fs::metadata(&path)?;
+                        let meta = fs::metadata(&path).map_err(|e| io_context(&path, e))?;
                         let key = (meta.dev(), meta.ino());
                         if let Some(existing) = hard_links.get(&key) {
-                            fs::hard_link(existing, &dest_path)?;
+                            fs::hard_link(existing, &dest_path)
+                                .map_err(|e| io_context(&dest_path, e))?;
                             continue;
                         } else {
                             hard_links.insert(key, dest_path.clone());
@@ -1555,9 +1574,11 @@ pub fn sync(
                                             .all(|c| manifest.lookup(&c.hash).is_some());
                                         if all {
                                             if let Some(parent) = dest_path.parent() {
-                                                fs::create_dir_all(parent)?;
+                                                fs::create_dir_all(parent)
+                                                    .map_err(|e| io_context(parent, e))?;
                                             }
-                                            fs::copy(&existing, &dest_path)?;
+                                            fs::copy(&existing, &dest_path)
+                                                .map_err(|e| io_context(&dest_path, e))?;
                                             stats.files_transferred += 1;
                                             if let Some(f) = batch_file.as_mut() {
                                                 let _ = writeln!(f, "{}", rel.display());
@@ -1569,7 +1590,8 @@ pub fn sync(
                                                 manifest.insert(&c.hash, &dest_path);
                                             }
                                             if opts.remove_source_files {
-                                                fs::remove_file(&path)?;
+                                                fs::remove_file(&path)
+                                                    .map_err(|e| io_context(&path, e))?;
                                             }
                                             continue;
                                         }
@@ -1581,11 +1603,13 @@ pub fn sync(
                             let link_path = link_dir.join(rel);
                             if files_identical(&path, &link_path) {
                                 if let Some(parent) = dest_path.parent() {
-                                    fs::create_dir_all(parent)?;
+                                    fs::create_dir_all(parent)
+                                        .map_err(|e| io_context(parent, e))?;
                                 }
-                                fs::hard_link(&link_path, &dest_path)?;
+                                fs::hard_link(&link_path, &dest_path)
+                                    .map_err(|e| io_context(&dest_path, e))?;
                                 if opts.remove_source_files {
-                                    fs::remove_file(&path)?;
+                                    fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
                                 }
                                 continue;
                             }
@@ -1594,11 +1618,13 @@ pub fn sync(
                             let copy_path = copy_dir.join(rel);
                             if files_identical(&path, &copy_path) {
                                 if let Some(parent) = dest_path.parent() {
-                                    fs::create_dir_all(parent)?;
+                                    fs::create_dir_all(parent)
+                                        .map_err(|e| io_context(parent, e))?;
                                 }
-                                fs::copy(&copy_path, &dest_path)?;
+                                fs::copy(&copy_path, &dest_path)
+                                    .map_err(|e| io_context(&dest_path, e))?;
                                 if opts.remove_source_files {
-                                    fs::remove_file(&path)?;
+                                    fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
                                 }
                                 continue;
                             }
@@ -1607,7 +1633,7 @@ pub fn sync(
                             let comp_path = compare_dir.join(rel);
                             if files_identical(&path, &comp_path) {
                                 if opts.remove_source_files {
-                                    fs::remove_file(&path)?;
+                                    fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
                                 }
                                 continue;
                             }
@@ -1615,7 +1641,8 @@ pub fn sync(
                     }
                     if sender.process_file(&path, &dest_path, rel, &mut receiver)? {
                         stats.files_transferred += 1;
-                        stats.bytes_transferred += fs::metadata(&path)?.len();
+                        stats.bytes_transferred +=
+                            fs::metadata(&path).map_err(|e| io_context(&path, e))?.len();
                         if let Some(f) = batch_file.as_mut() {
                             let _ = writeln!(f, "{}", rel.display());
                         }
@@ -1636,21 +1663,21 @@ pub fn sync(
                         }
                     }
                     if opts.remove_source_files {
-                        fs::remove_file(&path)?;
+                        fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
                     }
                 } else if file_type.is_dir() {
                     matcher
                         .preload_dir(&path)
                         .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
                     let created = !dest_path.exists();
-                    fs::create_dir_all(&dest_path)?;
+                    fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
                     if created && opts.itemize_changes {
                         println!("cd+++++++++ {}/", rel.display());
                     }
                     dir_meta.push((path.clone(), dest_path.clone()));
                 } else if file_type.is_symlink() {
                     let created = fs::symlink_metadata(&dest_path).is_err();
-                    let target = fs::read_link(&path)?;
+                    let target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
                     let target_path = if target.is_absolute() {
                         target.clone()
                     } else {
@@ -1672,7 +1699,8 @@ pub fn sync(
                         if let Some(meta) = meta {
                             if meta.is_dir() {
                                 if let Some(parent) = dest_path.parent() {
-                                    fs::create_dir_all(parent)?;
+                                    fs::create_dir_all(parent)
+                                        .map_err(|e| io_context(parent, e))?;
                                 }
                                 let sub = sync(&target_path, &dest_path, &matcher, remote, opts)?;
                                 stats.files_transferred += sub.files_transferred;
@@ -1693,28 +1721,33 @@ pub fn sync(
                                 }
                             }
                             if opts.remove_source_files {
-                                fs::remove_file(&path)?;
+                                fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
                             }
                         }
                     } else if opts.links {
                         if let Some(parent) = dest_path.parent() {
-                            fs::create_dir_all(parent)?;
+                            fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
                         }
                         if let Ok(meta) = fs::symlink_metadata(&dest_path) {
                             if meta.is_dir() {
-                                fs::remove_dir_all(&dest_path)?;
+                                fs::remove_dir_all(&dest_path)
+                                    .map_err(|e| io_context(&dest_path, e))?;
                             } else {
-                                fs::remove_file(&dest_path)?;
+                                fs::remove_file(&dest_path)
+                                    .map_err(|e| io_context(&dest_path, e))?;
                             }
                         }
                         #[cfg(unix)]
-                        std::os::unix::fs::symlink(&target, &dest_path)?;
+                        std::os::unix::fs::symlink(&target, &dest_path)
+                            .map_err(|e| io_context(&dest_path, e))?;
                         #[cfg(windows)]
                         {
                             if meta.map_or(false, |m| m.is_dir()) {
-                                std::os::windows::fs::symlink_dir(&target, &dest_path)?;
+                                std::os::windows::fs::symlink_dir(&target, &dest_path)
+                                    .map_err(|e| io_context(&dest_path, e))?;
                             } else {
-                                std::os::windows::fs::symlink_file(&target, &dest_path)?;
+                                std::os::windows::fs::symlink_file(&target, &dest_path)
+                                    .map_err(|e| io_context(&dest_path, e))?;
                             }
                         }
                         receiver.copy_metadata(&path, &dest_path)?;
@@ -1725,7 +1758,7 @@ pub fn sync(
                             }
                         }
                         if opts.remove_source_files {
-                            fs::remove_file(&path)?;
+                            fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
                         }
                     }
                 } else {
@@ -1736,7 +1769,8 @@ pub fn sync(
                             && !opts.copy_devices
                         {
                             use nix::sys::stat::{mknod, Mode, SFlag};
-                            let meta = fs::symlink_metadata(&path)?;
+                            let meta =
+                                fs::symlink_metadata(&path).map_err(|e| io_context(&path, e))?;
                             let kind = if file_type.is_char_device() {
                                 SFlag::S_IFCHR
                             } else {
@@ -1762,7 +1796,7 @@ pub fn sync(
                         }
                     }
                     if opts.remove_source_files {
-                        fs::remove_file(&path)?;
+                        fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
                     }
                 }
             } else {
