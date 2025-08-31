@@ -569,11 +569,8 @@ impl Sender {
         } else {
             None
         };
-        let file_name = dest
-            .file_name()
-            .ok_or_else(|| EngineError::Other("destination has no file name".into()))?;
         let partial_path = if let Some(dir) = &self.opts.partial_dir {
-            dir.join(file_name).with_extension("partial")
+            dir.join(rel).with_extension("partial")
         } else {
             dest.with_extension("partial")
         };
@@ -708,7 +705,7 @@ impl Sender {
             }
             Ok(op)
         });
-        recv.apply(path, dest, ops)?;
+        recv.apply(path, dest, rel, ops)?;
         drop(atime_guard);
         recv.copy_metadata(path, dest)?;
         Ok(true)
@@ -736,16 +733,13 @@ impl Receiver {
         }
     }
 
-    fn apply<I>(&mut self, src: &Path, dest: &Path, delta: I) -> Result<()>
+    fn apply<I>(&mut self, src: &Path, dest: &Path, rel: &Path, delta: I) -> Result<()>
     where
         I: IntoIterator<Item = Result<Op>>,
     {
         self.state = ReceiverState::Applying;
-        let file_name = dest
-            .file_name()
-            .ok_or_else(|| EngineError::Other("destination has no file name".into()))?;
         let partial = if let Some(dir) = &self.opts.partial_dir {
-            dir.join(file_name).with_extension("partial")
+            dir.join(rel).with_extension("partial")
         } else {
             dest.with_extension("partial")
         };
@@ -759,7 +753,7 @@ impl Receiver {
         let mut tmp_dest = if self.opts.inplace {
             dest.to_path_buf()
         } else if let Some(dir) = &self.opts.temp_dir {
-            dir.join(file_name).with_extension("tmp")
+            dir.join(rel).with_extension("tmp")
         } else if self.opts.partial {
             partial.clone()
         } else {
