@@ -1,11 +1,11 @@
 // crates/engine/src/cdc.rs
 use std::collections::HashMap;
 use std::fs;
-use std::io;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use blake3::Hash;
-use fastcdc::v2020::FastCDC;
+use fastcdc::v2020::StreamCDC;
 
 #[derive(Debug, Clone)]
 pub struct Chunk {
@@ -13,23 +13,55 @@ pub struct Chunk {
 }
 
 pub fn chunk_file(path: &Path, min: usize, avg: usize, max: usize) -> io::Result<Vec<Chunk>> {
-    let data = fs::read(path)?;
-    Ok(chunk_bytes(&data, min, avg, max))
+    let file = fs::File::open(path)?;
+    chunk_reader(file, min, avg, max)
 }
 
-pub fn chunk_bytes(data: &[u8], min: usize, avg: usize, max: usize) -> Vec<Chunk> {
-    if data.is_empty() {
-        return Vec::new();
+pub fn chunk_bytes<'a, I>(data: I, min: usize, avg: usize, max: usize) -> Vec<Chunk>
+where
+    I: IntoIterator<Item = &'a [u8]>,
+{
+    struct SliceReader<'a, I: Iterator<Item = &'a [u8]>> {
+        iter: I,
+        buf: &'a [u8],
     }
-    FastCDC::new(data, min as u32, avg as u32, max as u32)
-        .into_iter()
-        .map(|e| {
-            let chunk = &data[e.offset..e.offset + e.length];
-            Chunk {
-                hash: blake3::hash(chunk),
+
+    impl<'a, I: Iterator<Item = &'a [u8]>> Read for SliceReader<'a, I> {
+        fn read(&mut self, out: &mut [u8]) -> io::Result<usize> {
+            let mut written = 0;
+            while written < out.len() {
+                if self.buf.is_empty() {
+                    match self.iter.next() {
+                        Some(next) => self.buf = next,
+                        None => break,
+                    }
+                }
+                let to_copy = (out.len() - written).min(self.buf.len());
+                out[written..written + to_copy].copy_from_slice(&self.buf[..to_copy]);
+                self.buf = &self.buf[to_copy..];
+                written += to_copy;
             }
-        })
-        .collect()
+            Ok(written)
+        }
+    }
+
+    let reader = SliceReader {
+        iter: data.into_iter(),
+        buf: &[],
+    };
+    chunk_reader(reader, min, avg, max).expect("SliceReader cannot fail")
+}
+
+fn chunk_reader<R: Read>(reader: R, min: usize, avg: usize, max: usize) -> io::Result<Vec<Chunk>> {
+    let mut chunker = StreamCDC::new(reader, min as u32, avg as u32, max as u32);
+    let mut chunks = Vec::new();
+    while let Some(result) = chunker.next() {
+        let data = result.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        chunks.push(Chunk {
+            hash: blake3::hash(&data.data),
+        });
+    }
+    Ok(chunks)
 }
 
 #[derive(Default)]
