@@ -6,9 +6,10 @@ use filters::Matcher;
 use logging::{subscriber, LogFormat};
 #[cfg(unix)]
 use nix::{
-    sys::stat::{mknod, Mode, SFlag},
+    sys::stat::{dev_t, mknod, Mode, SFlag},
     unistd::mkfifo,
 };
+use std::convert::TryInto;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 #[cfg(windows)]
@@ -158,18 +159,21 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
                 continue;
             }
 
-            let mode = Mode::from_bits_truncate(meta.permissions().mode());
+            let raw_mode: u16 = meta.permissions().mode().try_into().unwrap();
+            let mode = Mode::from_bits_truncate(raw_mode.into());
             use std::io as stdio;
             if file_type.is_fifo() {
                 mkfifo(&dst_path, mode)
                     .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
                     .map_err(|e| io_context(&dst_path, e))?; // nix::unistd::mkfifo
             } else if file_type.is_char_device() {
-                mknod(&dst_path, SFlag::S_IFCHR, mode, meta.rdev() as u64)
+                let dev: dev_t = meta.rdev().try_into().unwrap();
+                mknod(&dst_path, SFlag::S_IFCHR, mode, dev)
                     .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
                     .map_err(|e| io_context(&dst_path, e))?; // nix::sys::stat::mknod (S_IFCHR)
             } else if file_type.is_block_device() {
-                mknod(&dst_path, SFlag::S_IFBLK, mode, meta.rdev() as u64)
+                let dev: dev_t = meta.rdev().try_into().unwrap();
+                mknod(&dst_path, SFlag::S_IFBLK, mode, dev)
                     .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
                     .map_err(|e| io_context(&dst_path, e))?; // nix::sys::stat::mknod (S_IFBLK)
             } else {
