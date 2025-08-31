@@ -27,7 +27,7 @@ mod xattr {
     pub fn list(path: &Path) -> std::io::Result<Vec<OsString>> {
         let attrs: Vec<OsString> = real_xattr::list(path)?.collect();
         if attrs.iter().any(|a| a == "user.disappearing") {
-            let _ = real_xattr::remove(path, "user.disappearing");
+            let _ = remove(path, "user.disappearing");
         }
         Ok(attrs)
     }
@@ -114,9 +114,9 @@ pub struct Metadata {
 impl Metadata {
     pub fn from_path(path: &Path, opts: Options) -> io::Result<Self> {
         let st = stat::lstat(path).map_err(nix_to_io)?;
-        let mut uid = st.st_uid;
-        let mut gid = st.st_gid;
-        let mut mode = normalize_mode(st.st_mode as u32);
+        let uid = st.st_uid;
+        let gid = st.st_gid;
+        let mode = normalize_mode(st.st_mode as u32);
         let mtime = FileTime::from_unix_time(st.st_mtime, st.st_mtime_nsec as u32);
 
         let atime = if opts.atimes {
@@ -134,7 +134,10 @@ impl Metadata {
         };
 
         #[cfg(feature = "xattr")]
-        if opts.fake_super {
+        let (uid, gid, mode) = if opts.fake_super {
+            let mut uid = uid;
+            let mut gid = gid;
+            let mut mode = mode;
             if let Ok(Some(val)) = xattr::get(path, "user.rsync.uid") {
                 if let Ok(s) = std::str::from_utf8(&val) {
                     if let Ok(v) = s.parse::<u32>() {
@@ -156,7 +159,10 @@ impl Metadata {
                     }
                 }
             }
-        }
+            (uid, gid, mode)
+        } else {
+            (uid, gid, mode)
+        };
 
         #[cfg(feature = "xattr")]
         let xattrs = if opts.xattrs || opts.fake_super {
