@@ -1088,12 +1088,19 @@ impl Receiver {
                 atomic_rename(&tmp_dest, dest)?;
                 if let Some(tmp_parent) = tmp_dest.parent() {
                     if dest.parent() != Some(tmp_parent)
+
                         && tmp_parent
                             .read_dir()
                             .map(|mut i| i.next().is_none())
                             .unwrap_or(false)
                     {
                         let _ = fs::remove_dir(tmp_parent);
+                    }
+                    #[cfg(unix)]
+                    if let Some((uid, gid)) = self.opts.copy_as {
+                        let gid = gid.map(Gid::from_raw);
+                        chown(dest, Some(Uid::from_raw(uid)), gid)
+                            .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
                     }
                 }
             }
