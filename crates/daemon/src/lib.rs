@@ -8,6 +8,7 @@ use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -29,6 +30,7 @@ pub struct Module {
     pub hosts_deny: Vec<String>,
     pub auth_users: Vec<String>,
     pub secrets_file: Option<PathBuf>,
+    pub timeout: Option<Duration>,
 }
 
 pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
@@ -54,6 +56,7 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
         hosts_deny: Vec::new(),
         auth_users: Vec::new(),
         secrets_file: None,
+        timeout: None,
     })
 }
 
@@ -67,6 +70,7 @@ pub struct DaemonConfig {
     pub motd_file: Option<PathBuf>,
     pub log_file: Option<PathBuf>,
     pub secrets_file: Option<PathBuf>,
+    pub timeout: Option<Duration>,
     pub modules: Vec<Module>,
 }
 
@@ -145,6 +149,16 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
                 cfg.hosts_deny = parse_list(&val);
             }
             (false, "secrets file") => cfg.secrets_file = Some(PathBuf::from(val)),
+            (false, "timeout") => {
+                let secs = val
+                    .parse::<u64>()
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                cfg.timeout = if secs == 0 {
+                    None
+                } else {
+                    Some(Duration::from_secs(secs))
+                };
+            }
             (true, "path") => {
                 if let Some(m) = current.as_mut() {
                     m.path = PathBuf::from(val);
@@ -168,6 +182,18 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             (true, "secrets file") => {
                 if let Some(m) = current.as_mut() {
                     m.secrets_file = Some(PathBuf::from(val));
+                }
+            }
+            (true, "timeout") => {
+                if let Some(m) = current.as_mut() {
+                    let secs = val
+                        .parse::<u64>()
+                        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                    m.timeout = if secs == 0 {
+                        None
+                    } else {
+                        Some(Duration::from_secs(secs))
+                    };
                 }
             }
             _ => {}
@@ -337,6 +363,7 @@ mod tests {
     use super::*;
     use std::fs;
     use std::io::{self, Read};
+    use std::time::Duration;
     use tempfile::tempdir;
     use transport::LocalPipeTransport;
 
@@ -427,6 +454,18 @@ mod tests {
         let cfg = parse_config("address6=::1").unwrap();
         assert_eq!(cfg.address6, Some("::1".parse().unwrap()));
         assert!(cfg.address.is_none());
+    }
+
+    #[test]
+    fn parse_config_sets_timeout() {
+        let cfg = parse_config("timeout=5").unwrap();
+        assert_eq!(cfg.timeout, Some(Duration::from_secs(5)));
+    }
+
+    #[test]
+    fn parse_config_module_timeout() {
+        let cfg = parse_config("[data]\npath=/tmp\ntimeout=7").unwrap();
+        assert_eq!(cfg.modules[0].timeout, Some(Duration::from_secs(7)));
     }
 
     #[cfg(unix)]
