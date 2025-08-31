@@ -1099,6 +1099,7 @@ pub struct SyncOptions {
     pub early_input: Option<PathBuf>,
     pub secluded_args: bool,
     pub sockopts: Vec<String>,
+    pub remote_options: Vec<String>,
     pub write_batch: Option<PathBuf>,
     pub copy_devices: bool,
     pub write_devices: bool,
@@ -1180,6 +1181,7 @@ impl Default for SyncOptions {
             early_input: None,
             secluded_args: false,
             sockopts: Vec::new(),
+            remote_options: Vec::new(),
             write_batch: None,
             copy_devices: false,
             write_devices: false,
@@ -1337,7 +1339,7 @@ pub fn sync(
         .as_ref()
         .and_then(|p| OpenOptions::new().create(true).append(true).open(p).ok());
     let src_root = fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf());
-        let mut stats = Stats::default();
+    let mut stats = Stats::default();
     if !src_root.exists() {
         if opts.delete_missing_args {
             if dst.exists() {
