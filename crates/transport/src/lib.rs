@@ -1,5 +1,6 @@
 // crates/transport/src/lib.rs
 use std::io::{self, Read, Write};
+use std::time::Duration;
 
 mod rate;
 pub mod ssh;
@@ -19,6 +20,14 @@ pub trait Transport {
     fn send(&mut self, data: &[u8]) -> io::Result<()>;
 
     fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize>;
+
+    fn set_read_timeout(&mut self, _dur: Option<Duration>) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn set_write_timeout(&mut self, _dur: Option<Duration>) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 pub struct LocalPipeTransport<R, W> {
