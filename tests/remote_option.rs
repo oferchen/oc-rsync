@@ -1,4 +1,5 @@
 #[cfg(unix)]
+#[cfg(unix)]
 use assert_cmd::cargo::cargo_bin;
 #[cfg(unix)]
 use assert_cmd::prelude::*;
@@ -109,6 +110,10 @@ fn daemon_remote_option_forwarded() {
     let port = read_port(&mut child);
 
     let log = dir.path().join("daemon.log");
+    let sync_opts = engine::SyncOptions {
+        remote_options: vec![format!("--log-file={}", log.display())],
+        ..engine::SyncOptions::default()
+    };
     let _t = cli::spawn_daemon_session(
         "127.0.0.1",
         "data",
@@ -119,7 +124,7 @@ fn daemon_remote_option_forwarded() {
         None,
         None,
         &[],
-        &[format!("--log-file={}", log.display())],
+        &sync_opts,
         protocol::LATEST_VERSION,
         None,
     )

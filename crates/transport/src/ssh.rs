@@ -174,9 +174,16 @@ impl SshStdioTransport {
     pub fn handshake<T: Transport>(
         transport: &mut T,
         env: &[(String, String)],
+        remote_opts: &[String],
         modern: Option<ModernCompress>,
         version: u32,
     ) -> io::Result<(Vec<Codec>, u32)> {
+        for opt in remote_opts {
+            let mut buf = Vec::new();
+            buf.extend_from_slice(opt.as_bytes());
+            buf.push(0);
+            transport.send(&buf)?;
+        }
         for (k, v) in env {
             let mut buf = Vec::new();
             buf.extend_from_slice(k.as_bytes());
@@ -392,7 +399,7 @@ impl SshStdioTransport {
             connect_timeout,
             family,
         )?;
-        let (codecs, caps) = Self::handshake(&mut t, rsync_env, modern, version)?;
+        let (codecs, caps) = Self::handshake(&mut t, rsync_env, remote_opts, modern, version)?;
         Ok((t, codecs, caps))
     }
 
@@ -414,7 +421,6 @@ impl SshStdioTransport {
             .ok_or_else(|| io::Error::other("missing inner transport"))?;
         Ok(inner.into_inner())
     }
-
 }
 
 type InnerPipe = LocalPipeTransport<BufReader<ChildStdout>, ChildStdin>;
