@@ -191,7 +191,8 @@ impl Matcher {
             let fname = path.file_name().map(|f| f.to_string_lossy().to_string());
             for (depth_idx, d) in dirs.iter().enumerate() {
                 let depth = depth_idx + 1;
-                if depth_idx == dirs.len() - 1 {
+                for (idx, rule) in self.dir_rules_at(d, for_delete, xattr)? {
+                    let mut idx_adj = idx;
                     if let Some(ref f) = fname {
                         let mut is_merge = self.per_dir.iter().any(|(_, pd)| pd.file == *f);
                         if !is_merge {
@@ -200,12 +201,10 @@ impl Matcher {
                             }
                         }
                         if is_merge {
-                            continue;
+                            idx_adj += 2;
                         }
                     }
-                }
-                for (idx, rule) in self.dir_rules_at(d, for_delete, xattr)? {
-                    active.push((idx, depth, seq, rule));
+                    active.push((idx_adj, depth, seq, rule));
                     seq += 1;
                 }
             }
@@ -227,7 +226,7 @@ impl Matcher {
         }
 
         let mut decision: Option<bool> = None;
-        for rule in ordered.iter().rev() {
+        for rule in ordered.iter() {
             match rule {
                 Rule::Protect(data) => {
                     if !data.flags.applies(for_delete, xattr) {
