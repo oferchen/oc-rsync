@@ -37,7 +37,7 @@ negotiates version 73.
 | `--contimeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
 | `--copy-as` | — | ❌ | — | — |  | ≤3.2 |
 | `--copy-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
-| `--copy-devices` | — | ❌ | — | — |  | ≤3.2 |
+| `--copy-devices` | — | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--copy-dirlinks` | `-k` | ✅ | ✅ | [tests/golden/cli_parity/copy-dirlinks.sh](../tests/golden/cli_parity/copy-dirlinks.sh) |  | ≤3.2 |
 | `--copy-links` | `-L` | ✅ | ❌ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) |  | ≤3.2 |
 | `--copy-unsafe-links` | — | ✅ | ❌ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) |  | ≤3.2 |

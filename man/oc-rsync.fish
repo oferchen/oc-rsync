@@ -1,8 +1,16 @@
+complete -c oc-rsync -l log-format -r -f -a "text\t''
+json\t''"
+complete -c oc-rsync -l max-delete -r
+complete -c oc-rsync -l max-alloc -r
+complete -c oc-rsync -l max-size -r
+complete -c oc-rsync -l min-size -r
 complete -c oc-rsync -l backup-dir -r -F
 complete -c oc-rsync -l checksum-choice -l cc -r
 complete -c oc-rsync -l checksum-seed -d 'set block/file checksum seed (advanced)' -r
 complete -c oc-rsync -l chmod -r
 complete -c oc-rsync -l chown -r
+complete -c oc-rsync -l usermap -r
+complete -c oc-rsync -l groupmap -r
 complete -c oc-rsync -l compress-choice -l zc -r
 complete -c oc-rsync -l compress-level -l zl -r
 complete -c oc-rsync -l skip-compress -r
@@ -12,8 +20,8 @@ lz4\t''"
 complete -c oc-rsync -l modern-hash -r -f -a ""
 complete -c oc-rsync -l modern-cdc -r -f -a "fastcdc\t''
 off\t''"
-complete -c oc-rsync -l modern-cdc-min -r -f
-complete -c oc-rsync -l modern-cdc-max -r -f
+complete -c oc-rsync -l modern-cdc-min -r
+complete -c oc-rsync -l modern-cdc-max -r
 complete -c oc-rsync -l partial-dir -r -F
 complete -c oc-rsync -s T -l temp-dir -r -F
 complete -c oc-rsync -l bwlimit -r
@@ -30,6 +38,9 @@ complete -c oc-rsync -l known-hosts -r -F
 complete -c oc-rsync -l password-file -r -F
 complete -c oc-rsync -l early-input -r -F
 complete -c oc-rsync -s e -l rsh -r
+complete -c oc-rsync -s M -l remote-option -d 'send OPTION to the remote side only' -r
+complete -c oc-rsync -l sockopts -r
+complete -c oc-rsync -l write-batch -r -F
 complete -c oc-rsync -l rsync-path -r
 complete -c oc-rsync -s f -l filter -r
 complete -c oc-rsync -l filter-file -r -F
@@ -47,8 +58,9 @@ complete -c oc-rsync -s n -l dry-run
 complete -c oc-rsync -l list-only
 complete -c oc-rsync -s S -l sparse
 complete -c oc-rsync -s u -l update
-complete -c oc-rsync -l ignore-existing
 complete -c oc-rsync -l existing
+complete -c oc-rsync -l ignore-existing
+complete -c oc-rsync -s m -l prune-empty-dirs
 complete -c oc-rsync -l size-only
 complete -c oc-rsync -s I -l ignore-times
 complete -c oc-rsync -s v -l verbose
@@ -63,6 +75,10 @@ complete -c oc-rsync -l delete-during
 complete -c oc-rsync -l delete-after
 complete -c oc-rsync -l delete-delay
 complete -c oc-rsync -l delete-excluded
+complete -c oc-rsync -l delete-missing-args
+complete -c oc-rsync -l remove-source-files
+complete -c oc-rsync -l ignore-errors
+complete -c oc-rsync -l preallocate -d 'allocate dest files before writing them'
 complete -c oc-rsync -s b -l backup
 complete -c oc-rsync -s c -l checksum
 complete -c oc-rsync -l perms
@@ -85,7 +101,6 @@ complete -c oc-rsync -l specials
 complete -c oc-rsync -s z -l compress
 complete -c oc-rsync -l modern -d 'Enable modern compression (zstd or lz4) and BLAKE3 checksums (requires `blake3` feature)'
 complete -c oc-rsync -l partial
-complete -c oc-rsync -s m -l prune-empty-dirs
 complete -c oc-rsync -l progress
 complete -c oc-rsync -l blocking-io
 complete -c oc-rsync -s P
@@ -99,6 +114,9 @@ complete -c oc-rsync -l no-whole-file
 complete -c oc-rsync -l numeric-ids
 complete -c oc-rsync -l stats
 complete -c oc-rsync -l no-host-key-checking
+complete -c oc-rsync -s s -l secluded-args -d 'use the protocol to safely send the args'
+complete -c oc-rsync -l copy-devices
+complete -c oc-rsync -l write-devices -d 'write to devices as files (implies --inplace)'
 complete -c oc-rsync -l server
 complete -c oc-rsync -l sender
 complete -c oc-rsync -s F

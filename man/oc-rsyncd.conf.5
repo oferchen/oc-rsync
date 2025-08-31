@@ -74,6 +74,15 @@ This flag applies equally in daemon mode and when invoking a client:
 oc-rsync --daemon --numeric-ids --module \[aq]data=/srv/export\[aq]
 \f[R]
 .fi
+.SS Ownership and permissions
+.PP
+Setting file ownership or groups requires elevated privileges.
+The daemon must run as \f[V]root\f[R] or possess the \f[V]CAP_CHOWN\f[R]
+capability in order to honor the \f[V]--owner\f[R], \f[V]--group\f[R],
+or \f[V]--chown\f[R] flags from clients.
+Without these capabilities the daemon will silently retain its current
+UID and GID when creating files, and ownership requests from clients
+will be ignored.
 .SS Chroot and privilege drop
 .PP
 Before serving files the daemon confines itself to the module root.
@@ -123,6 +132,6 @@ Clients can suppress this output with the \f[V]--no-motd\f[R] flag:
 .IP
 .nf
 \f[C]
-oc-rsync --no-motd \[dq]rsync://host/module\[dq] \[dq]dest/\[dq]
+oc-rsync --no-motd \[aq]rsync://host/module\[aq] \[aq]dest/\[aq]
 \f[R]
 .fi

@@ -18,9 +18,10 @@
 .hy
 .SH Modern Mode
 .PP
-Protocol 73 extends the classic rsync protocol with optional features
-that are negotiated when both peers invoke \f[V]oc-rsync\f[R] with the
-\f[V]--modern\f[R] flag or one of its sub-flags.
+oc-rsync implements the upstream rsync protocol version 31 and adds a
+private protocol 73 extension for optional features.
+Protocol 73 is negotiated when both peers invoke \f[V]oc-rsync\f[R] with
+the \f[V]--modern\f[R] flag or one of its sub-flags.
 .SS Stronger checksums
 .PP
 \f[V]--modern\f[R] or \f[V]--modern-hash\f[R] upgrades the strong file
@@ -31,6 +32,11 @@ fast.
 .PP
 Modern mode prefers zstd compression and also supports lz4 through the
 \f[V]--modern-compress\f[R] option.
+\f[V]--modern-compress=auto\f[R] inspects the CPU at runtime: zstd is
+chosen only when AVX2 or AVX-512 are available on x86, or when NEON or
+SVE are present on aarch64.
+Without those SIMD features the code falls back to lz4 if enabled,
+otherwise compression is disabled.
 When both peers support the algorithm the most efficient codec is
 selected automatically.
 .SS Content-defined chunking
