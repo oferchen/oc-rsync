@@ -1,4 +1,4 @@
-use crate::{Chmod, ChmodOp, ChmodTarget};
+use crate::{normalize_mode, Chmod, ChmodOp, ChmodTarget};
 use std::result::Result as StdResult;
 use std::sync::Arc;
 
@@ -17,6 +17,7 @@ pub fn parse_chmod_spec(spec: &str) -> StdResult<Chmod, String> {
 
     if rest.chars().all(|c| c.is_ascii_digit()) {
         let bits = u32::from_str_radix(rest, 8).map_err(|_| "invalid octal mode")?;
+        let bits = normalize_mode(bits);
         return Ok(Chmod {
             target,
             op: ChmodOp::Set,
@@ -186,18 +187,12 @@ pub fn parse_id_map(spec: &str) -> StdResult<Arc<dyn Fn(u32) -> u32 + Send + Syn
         let (from_s, to_s) = part
             .split_once(':')
             .ok_or_else(|| format!("invalid mapping '{part}'"))?;
-        let to: u32 = to_s
-            .parse()
-            .map_err(|_| format!("invalid id '{to_s}'"))?;
+        let to: u32 = to_s.parse().map_err(|_| format!("invalid id '{to_s}'"))?;
         let from = if from_s == "*" {
             From::Any
         } else if let Some((lo_s, hi_s)) = from_s.split_once('-') {
-            let lo: u32 = lo_s
-                .parse()
-                .map_err(|_| format!("invalid id '{lo_s}'"))?;
-            let hi: u32 = hi_s
-                .parse()
-                .map_err(|_| format!("invalid id '{hi_s}'"))?;
+            let lo: u32 = lo_s.parse().map_err(|_| format!("invalid id '{lo_s}'"))?;
+            let hi: u32 = hi_s.parse().map_err(|_| format!("invalid id '{hi_s}'"))?;
             if lo > hi {
                 return Err(format!("invalid range '{from_s}'"));
             }
