@@ -9,15 +9,12 @@ This document tracks outstanding gaps in `oc-rsync` compared to the reference `r
 - `--block-size` — behavior differs from upstream. [tests/block_size.rs](../tests/block_size.rs) [feature_matrix](feature_matrix.md#L17)
 - `--bwlimit` — rate limiting semantics differ. [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) [feature_matrix](feature_matrix.md#L19)
  - `--contimeout` — connection timeout handling incomplete. [tests/timeout.rs](../tests/timeout.rs) [feature_matrix](feature_matrix.md#L32)
- - `--secluded-args` — not implemented. [feature_matrix](feature_matrix.md#L132) ([TODO](#testing-gaps))
  - `--server` — handshake lacks full parity. [tests/server.rs](../tests/server.rs) [feature_matrix](feature_matrix.md#L134)
-- `--sockopts` — not implemented. [feature_matrix](feature_matrix.md#L137) ([TODO](#testing-gaps))
 - `--timeout` — timeout semantics differ. [tests/timeout.rs](../tests/timeout.rs) [feature_matrix](feature_matrix.md#L147)
 
 ## Metadata gaps
 - `--acls` — ACL support requires optional feature and lacks parity. [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) [feature_matrix](feature_matrix.md#L9)
 - `--atimes` — access time preservation incomplete. [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) [feature_matrix](feature_matrix.md#L14)
- - `--copy-devices` — not implemented. [feature_matrix](feature_matrix.md#L35) ([TODO](#testing-gaps))
  - `--devices` — device file handling lacks parity. [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) [feature_matrix](feature_matrix.md#L52)
  - `--groupmap` — numeric gid mapping only; group names unsupported and requires root or CAP_CHOWN. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L74)
  - `--hard-links` — hard link tracking incomplete. [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) [feature_matrix](feature_matrix.md#L69)

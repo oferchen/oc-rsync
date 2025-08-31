@@ -15,12 +15,19 @@ _oc-rsync() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
+'--log-format=[]:LOG_FORMAT:(text json)' \
+'--max-delete=[]:NUM:_default' \
+'--max-alloc=[]:SIZE:_default' \
+'--max-size=[]:SIZE:_default' \
+'--min-size=[]:SIZE:_default' \
 '--backup-dir=[]:DIR:_files' \
 '--checksum-choice=[]:STR:_default' \
 '--cc=[]:STR:_default' \
 '--checksum-seed=[set block/file checksum seed (advanced)]:NUM:_default' \
 '*--chmod=[]:CHMOD:_default' \
 '--chown=[]:USER:GROUP:_default' \
+'*--usermap=[]:FROM:TO:_default' \
+'*--groupmap=[]:FROM:TO:_default' \
 '--compress-choice=[]:STR:_default' \
 '--zc=[]:STR:_default' \
 '--compress-level=[]:NUM:_default' \
@@ -29,8 +36,8 @@ _oc-rsync() {
 '--modern-compress=[]:MODERN_COMPRESS:(auto zstd lz4)' \
 '--modern-hash=[]:MODERN_HASH:()' \
 '--modern-cdc=[]:MODERN_CDC:(fastcdc off)' \
-'--modern-cdc-min=[]:SIZE:_default' \
-'--modern-cdc-max=[]:SIZE:_default' \
+'--modern-cdc-min=[]:BYTES:_default' \
+'--modern-cdc-max=[]:BYTES:_default' \
 '--partial-dir=[]:DIR:_files' \
 '-T+[]:DIR:_files' \
 '--temp-dir=[]:DIR:_files' \
@@ -50,6 +57,10 @@ _oc-rsync() {
 '--early-input=[]:FILE:_files' \
 '-e+[]:COMMAND:_default' \
 '--rsh=[]:COMMAND:_default' \
+'*-M+[send OPTION to the remote side only]:OPT:_default' \
+'*--remote-option=[send OPTION to the remote side only]:OPT:_default' \
+'*--sockopts=[]:OPTIONS:_default' \
+'--write-batch=[]:FILE:_files' \
 '--rsync-path=[]:PATH:_default' \
 '*-f+[]:RULE:_default' \
 '*--filter=[]:RULE:_default' \
@@ -75,9 +86,11 @@ _oc-rsync() {
 '--sparse[]' \
 '-u[]' \
 '--update[]' \
-    '--ignore-existing[]' \
-    '--existing[]' \
-    '--size-only[]' \
+'--existing[]' \
+'--ignore-existing[]' \
+'-m[]' \
+'--prune-empty-dirs[]' \
+'--size-only[]' \
 '-I[]' \
 '--ignore-times[]' \
 '*-v[]' \
@@ -96,6 +109,10 @@ _oc-rsync() {
 '--delete-after[]' \
 '--delete-delay[]' \
 '--delete-excluded[]' \
+'--delete-missing-args[]' \
+'--remove-source-files[]' \
+'--ignore-errors[]' \
+'--preallocate[allocate dest files before writing them]' \
 '-b[]' \
 '--backup[]' \
 '-c[]' \
@@ -127,10 +144,8 @@ _oc-rsync() {
 '-z[]' \
 '--compress[]' \
 '--modern[Enable modern compression (zstd or lz4) and BLAKE3 checksums (requires \`blake3\` feature)]' \
-    '--partial[]' \
-    '-m[]' \
-    '--prune-empty-dirs[]' \
-    '--progress[]' \
+'--partial[]' \
+'--progress[]' \
 '--blocking-io[]' \
 '-P[]' \
 '--append[]' \
@@ -146,6 +161,10 @@ _oc-rsync() {
 '--numeric-ids[]' \
 '--stats[]' \
 '--no-host-key-checking[]' \
+'-s[use the protocol to safely send the args]' \
+'--secluded-args[use the protocol to safely send the args]' \
+'--copy-devices[]' \
+'--write-devices[write to devices as files (implies --inplace)]' \
 '--server[]' \
 '--sender[]' \
 '*-F[]' \

@@ -91,6 +91,46 @@ Incremental backup using hard links:
 oc-rsync -a --link-dest=\[dq]../prev\[dq] --compare-dest=\[dq]../base\[dq] \[dq]./src/\[dq] \[dq]./snapshot/\[dq]
 \f[R]
 .fi
+.IP \[bu] 2
+Throttled modern compression:
+.RS 2
+.IP
+.nf
+\f[C]
+oc-rsync -az --modern --bwlimit=1m ./src/ host:/archive/
+\f[R]
+.fi
+.RE
+.IP \[bu] 2
+Tune delta block size:
+.RS 2
+.IP
+.nf
+\f[C]
+oc-rsync -B 65536 ./src remote:/dst
+\f[R]
+.fi
+.RE
+.IP \[bu] 2
+Emit JSON-formatted logs:
+.RS 2
+.IP
+.nf
+\f[C]
+oc-rsync --log-format json -v ./src ./dst
+\f[R]
+.fi
+.RE
+.IP \[bu] 2
+Change ownership during transfer (requires root):
+.RS 2
+.IP
+.nf
+\f[C]
+sudo oc-rsync --chown=0:0 ./src/ remote:/dst/
+\f[R]
+.fi
+.RE
 .RE
 .IP \[bu] 2
 Throttled modern compression:
@@ -113,6 +153,16 @@ oc-rsync -B 65536 \[dq]./src\[dq] \[dq]remote:/dst\[dq]
 .fi
 .RE
 .IP \[bu] 2
+Change ownership during transfer (requires root):
+.RS 2
+.IP
+.nf
+\f[C]
+sudo oc-rsync --chown=0:0 \[dq]./src/\[dq] \[dq]remote:/dst/\[dq]
+\f[R]
+.fi
+.RE
+.IP \[bu] 2
 Show version:
 .RS 2
 .IP
@@ -127,14 +177,14 @@ oc-rsync --version
 Just like \f[V]rsync\f[R], adding a trailing slash to the source path
 changes what is copied:
 .IP \[bu] 2
-\f[V]oc-rsync \[dq]src/\[dq] \[dq]dest/\[dq]\f[R] copies the \f[I]contents\f[R] of
-\f[V]src\f[R] into \f[V]dest\f[R].
+\f[V]oc-rsync \[dq]src/\[dq] \[dq]dest/\[dq]\f[R] copies the
+\f[I]contents\f[R] of \f[V]src\f[R] into \f[V]dest\f[R].
 .IP \[bu] 2
-\f[V]oc-rsync \[dq]src\[dq] \[dq]dest/\[dq]\f[R] creates a \f[V]dest/src\f[R] directory
-containing the original files.
+\f[V]oc-rsync \[dq]src\[dq] \[dq]dest/\[dq]\f[R] creates a
+\f[V]dest/src\f[R] directory containing the original files.
 .IP \[bu] 2
-\f[V]oc-rsync \[dq]remote:/src/\[dq] \[dq]local/\[dq]\f[R] pulls the contents of
-\f[V]/src\f[R] from the remote host into \f[V]local\f[R].
+\f[V]oc-rsync \[dq]remote:/src/\[dq] \[dq]local/\[dq]\f[R] pulls the
+contents of \f[V]/src\f[R] from the remote host into \f[V]local\f[R].
 .SS Options
 .PP
 The table below mirrors the full \f[V]rsync(1)\f[R] flag set.
@@ -1341,6 +1391,7 @@ T}@T{
 T}@T{
 off
 T}@T{
+forward option to remote side only; repeat for multiple
 T}@T{
 matrix
 T}
@@ -1437,6 +1488,8 @@ T}@T{
 T}@T{
 off
 T}@T{
+comma-separated socket options, e.g.\ \f[V]SO_KEEPALIVE\f[R] or
+\f[V]ip:ttl=64\f[R]
 T}@T{
 matrix
 T}
