@@ -341,6 +341,8 @@ struct ClientOpts {
     append_verify: bool,
     #[arg(long, help_heading = "Misc")]
     inplace: bool,
+    #[arg(long = "delay-updates", help_heading = "Misc")]
+    delay_updates: bool,
     #[arg(long = "bwlimit", value_name = "RATE", help_heading = "Misc")]
     bwlimit: Option<u64>,
     #[arg(long = "timeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
@@ -1197,6 +1199,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         append_verify: opts.append_verify,
         numeric_ids: opts.numeric_ids,
         inplace: opts.inplace || opts.write_devices,
+        delay_updates: opts.delay_updates,
         bwlimit: opts.bwlimit,
         block_size,
         link_dest: opts.link_dest.clone(),

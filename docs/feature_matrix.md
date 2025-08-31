@@ -52,7 +52,7 @@ negotiates version 73.
 | `--daemon` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--debug` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--del` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | alias for `--delete-during` | ≤3.2 |
-| `--delay-updates` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--delay-updates` | — | ✅ | ✅ | [tests/delay_updates.rs](../tests/delay_updates.rs) |  | ≤3.2 |
 | `--delete` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | ≤3.2 |
 | `--delete-after` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | ≤3.2 |
 | `--delete-before` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | ≤3.2 |

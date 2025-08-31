@@ -31,7 +31,7 @@
 | --crtimes | Supported |  |
 | --cvs-exclude | Supported |  |
 | --debug | Ignored |  |
-| --delay-updates | Ignored |  |
+| --delay-updates | Supported |  |
 | --delete | Supported |  |
 | --delete-after | Supported |  |
 | --delete-before | Supported |  |
