@@ -8,7 +8,7 @@ use transport::ssh::SshStdioTransport;
 #[test]
 fn backpressure_blocks_until_read() {
     let transport = SshStdioTransport::spawn("sh", ["-c", "cat"]).expect("spawn");
-    let (mut reader, mut writer) = transport.into_inner();
+    let (mut reader, mut writer) = transport.into_inner().expect("into_inner");
 
     let data = vec![0x55u8; 200_000];
     let handle = thread::spawn({

@@ -170,8 +170,8 @@ fn remote_to_remote_pipes_data() {
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     let dst_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat > {}", dst_file.display())]).unwrap();
-    let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
@@ -212,8 +212,8 @@ fn remote_to_remote_large_transfer() {
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     let dst_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat > {}", dst_file.display())]).unwrap();
-    let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
@@ -238,8 +238,8 @@ fn remote_to_remote_reports_errors() {
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     let dst_session = SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready"]).unwrap();
 
-    let (mut src_reader, _) = src_session.into_inner();
-    let (mut dst_reader, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (mut dst_reader, mut dst_writer) = dst_session.into_inner().expect("into_inner");
 
     let mut ready = [0u8; 6];
     dst_reader.read_exact(&mut ready).unwrap();
@@ -260,8 +260,8 @@ fn remote_to_remote_empty_file() {
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     let dst_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat > {}", dst_file.display())]).unwrap();
-    let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
@@ -283,8 +283,8 @@ fn remote_to_remote_different_block_sizes() {
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     let dst_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat > {}", dst_file.display())]).unwrap();
-    let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
 
     let mut read_buf = vec![0u8; 1024];
     let mut write_buf = Vec::with_capacity(4096);
@@ -332,8 +332,8 @@ fn remote_to_remote_partial_and_resume() {
     .unwrap();
     let dst_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat > {}", dst_file.display())]).unwrap();
-    let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
@@ -356,8 +356,8 @@ fn remote_to_remote_partial_and_resume() {
     .unwrap();
     let dst_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat >> {}", dst_file.display())]).unwrap();
-    let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
@@ -391,8 +391,8 @@ fn remote_partial_transfer_resumed_by_cli() {
     .unwrap();
     let dst_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat > {}", partial.display())]).unwrap();
-    let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
@@ -417,8 +417,8 @@ fn remote_to_remote_failure_and_reconnect() {
     let src_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     let dst_session = SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready"]).unwrap();
-    let (mut src_reader, _) = src_session.into_inner();
-    let (mut dst_reader, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (mut dst_reader, mut dst_writer) = dst_session.into_inner().expect("into_inner");
 
     let mut ready = [0u8; 6];
     dst_reader.read_exact(&mut ready).unwrap();
@@ -434,8 +434,8 @@ fn remote_to_remote_failure_and_reconnect() {
         SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
     let dst_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat > {}", dst_file.display())]).unwrap();
-    let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);

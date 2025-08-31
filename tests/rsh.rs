@@ -34,8 +34,8 @@ fn rsh_remote_pair_syncs() {
 
     let src_session = spawn_reader(&format!("cat {}", src.display()));
     let dst_session = spawn_writer(&format!("cat > {}", dst.display()));
-    let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
@@ -74,8 +74,8 @@ fn custom_rsh_matches_stock_rsync() {
         ],
     )
     .unwrap();
-    let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
     std::io::copy(&mut src_reader, &mut dst_writer).unwrap();
     drop(dst_writer);
     drop(src_reader);
