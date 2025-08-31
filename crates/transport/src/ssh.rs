@@ -165,7 +165,7 @@ impl SshStdioTransport {
         })
     }
 
-    fn handshake<T: Transport>(
+    pub fn handshake<T: Transport>(
         transport: &mut T,
         env: &[(String, String)],
         modern: Option<ModernCompress>,
@@ -207,7 +207,14 @@ impl SshStdioTransport {
         transport.send(&local_caps.to_be_bytes())?;
 
         let mut cap_buf = [0u8; 4];
-        transport.receive(&mut cap_buf)?;
+        let mut read = 0;
+        while read < cap_buf.len() {
+            let n = transport.receive(&mut cap_buf[read..])?;
+            if n == 0 {
+                return Err(io::Error::other("failed to read capabilities"));
+            }
+            read += n;
+        }
         let server_caps = u32::from_be_bytes(cap_buf);
         let caps = server_caps & local_caps;
 
