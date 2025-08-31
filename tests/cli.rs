@@ -769,6 +769,33 @@ fn links_preserve_symlinks() {
 
 #[cfg(unix)]
 #[test]
+fn links_preserve_directory_symlinks() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(src.join("dir")).unwrap();
+    std::fs::write(src.join("dir/file"), b"hi").unwrap();
+    symlink("dir", src.join("dirlink")).unwrap();
+
+    // Pre-create a directory symlink at the destination
+    std::fs::create_dir_all(&dst).unwrap();
+    symlink("dir", dst.join("dirlink")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let meta = std::fs::symlink_metadata(dst.join("dirlink")).unwrap();
+    assert!(meta.file_type().is_symlink());
+    let target = std::fs::read_link(dst.join("dirlink")).unwrap();
+    assert_eq!(target, std::path::PathBuf::from("dir"));
+}
+
+#[cfg(unix)]
+#[test]
 fn copy_dirlinks_transforms_directory_symlinks() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
