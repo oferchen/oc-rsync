@@ -96,3 +96,35 @@ fn safe_links_skip() {
         .is_symlink());
     assert!(!dst.join("unsafe").exists());
 }
+
+#[cfg(unix)]
+#[test]
+fn safe_links_resolve_source_symlink() {
+    let tmp = tempdir().unwrap();
+    let real = tmp.path().join("real");
+    let link = tmp.path().join("link");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&real).unwrap();
+    fs::write(real.join("file"), b"hi").unwrap();
+    symlink("file", real.join("safe"));
+    symlink("real", &link);
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--links",
+            "--safe-links",
+            &format!("{}/", link.display()),
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst
+        .join("safe")
+        .symlink_metadata()
+        .unwrap()
+        .file_type()
+        .is_symlink());
+}
