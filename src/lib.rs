@@ -203,8 +203,6 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-    use std::path::Path;
     use tempfile::{tempdir, TempDir};
 
     fn setup_dirs() -> (TempDir, std::path::PathBuf, std::path::PathBuf) {
