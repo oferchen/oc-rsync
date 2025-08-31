@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 OC_RSYNC="$ROOT/target/debug/oc-rsync"
 
 # Ensure binary is built
-cargo build --quiet -p oc-rsync-bin --bin oc-rsync --features blake3
+cargo build --quiet --bin oc-rsync --features blake3
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -20,12 +20,16 @@ echo skip > "$TMP/src/skip/file.txt"
 echo root > "$TMP/src/root.tmp"
 echo core > "$TMP/src/core"
 echo obj > "$TMP/src/foo.o"
+echo debug > "$TMP/src/debug.log"
+echo info > "$TMP/src/info.log"
 
 # Run reference rsync
 rsync_output=$(rsync --quiet --recursive \
   --filter='+ core' \
   --filter='-C' \
   --filter='- *.tmp' \
+  --filter='S debug.log' \
+  --filter='- *.log' \
   --filter='+ keep/tmp/file.tmp' \
   --filter='- skip/' \
   --filter='+ keep/***' \
@@ -39,6 +43,8 @@ oc_rsync_raw=$("$OC_RSYNC" --local --recursive \
   --filter='+ core' \
   --filter='-C' \
   --filter='- *.tmp' \
+  --filter='S debug.log' \
+  --filter='- *.log' \
   --filter='+ keep/tmp/file.tmp' \
   --filter='- skip/' \
   --filter='+ keep/***' \
