@@ -14,6 +14,18 @@ have been exercised with `oc-rsync`. For a detailed status matrix see
 | macOS | builds and basic local sync verified |
 | Windows | under active development; path and permission handling incomplete |
 
+## Supported Protocol Versions
+
+| Version | Tests/Fixtures |
+|---------|----------------|
+| 27 | [proto-27 wire log](../tests/interop/wire/proto-27.log) |
+| 28 | [proto-28 wire log](../tests/interop/wire/proto-28.log) |
+| 29 | [version negotiation test](../crates/protocol/tests/protocol.rs#L40-L45) |
+| 30 | [protocol override test](../crates/cli/src/lib.rs#L1958-L2030) |
+| 31 | [server handshake test](../tests/server.rs#L34-L85) |
+| 32 | [rsync 3.3.0 transcript](../tests/interop/wire/rsync-3.3.0.log) |
+| 73 (modern) | [modern negotiation test](../tests/interop/modern.rs#L7-L10) |
+
 ## Interoperability caveats
 
 * SSH and daemon transports are functional but still early implementations and
