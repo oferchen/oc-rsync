@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
+use clap::parser::ValueSource;
 use compress::{available_codecs, Codec, ModernCompress};
 use engine::human_bytes;
 #[cfg(feature = "blake3")]
@@ -535,6 +536,22 @@ pub fn run() -> Result<()> {
     }
     if args.iter().any(|a| a == "--probe") {
         let opts = ProbeOpts::parse_from(&args);
+        run_probe(opts)
+    } else if args.iter().any(|a| a == "--server") {
+        run_server()
+    } else {
+        let cmd = ClientOpts::command();
+        let matches = cmd.get_matches_from(&args);
+        let mut opts = ClientOpts::from_arg_matches(&matches)
+            .map_err(|e| EngineError::Other(e.to_string()))?;
+        if matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
+            if let Ok(val) = env::var("RSYNC_PROTECT_ARGS") {
+                if val != "0" {
+                    opts.secluded_args = true;
+                }
+            }
+        }
+        run_client(opts, &matches)
         return run_probe(opts);
     }
     if args.iter().any(|a| a == "--server") {
@@ -809,6 +826,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             }
         }
         let _ = fs::read_to_string(pf).map_err(|e| EngineError::Other(e.to_string()))?;
+    }
+
+    let mut remote_opts = opts.remote_option.clone();
+    if opts.secluded_args {
+        remote_opts.push("--secluded-args".into());
     }
 
     if let Some(cfg) = &opts.config {
@@ -1159,6 +1181,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
+                    &remote_opts,
                     &opts.sockopts,
                     &opts.remote_option,
                     opts.protocol
@@ -1189,7 +1212,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &rsync_env,
                     remote_bin_vec.as_deref(),
                     remote_env_vec.as_deref().unwrap_or(&[]),
-                    &opts.remote_option,
+                    &remote_opts,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                     opts.port,
@@ -1223,6 +1246,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
+                    &remote_opts,
                     &opts.sockopts,
                     &opts.remote_option,
                     opts.protocol
@@ -1253,7 +1277,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &rsync_env,
                     remote_bin_vec.as_deref(),
                     remote_env_vec.as_deref().unwrap_or(&[]),
-                    &opts.remote_option,
+                    &remote_opts,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                     opts.port,
@@ -1300,7 +1324,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &rsh_cmd.env,
                             remote_bin_vec.as_deref(),
                             remote_env_vec.as_deref().unwrap_or(&[]),
-                            &opts.remote_option,
+                            &remote_opts,
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1315,7 +1339,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &rsh_cmd.env,
                             remote_bin_vec.as_deref(),
                             remote_env_vec.as_deref().unwrap_or(&[]),
-                            &opts.remote_option,
+                            &remote_opts,
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1369,6 +1393,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
+                            &remote_opts,
                             &opts.sockopts,
                             &opts.remote_option,
                             opts.protocol
@@ -1384,6 +1409,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
+                            &remote_opts,
                             &opts.sockopts,
                             &opts.remote_option,
                             opts.protocol
@@ -1408,7 +1434,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &rsh_cmd.env,
                             remote_bin_vec.as_deref(),
                             remote_env_vec.as_deref().unwrap_or(&[]),
-                            &opts.remote_option,
+                            &remote_opts,
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1425,6 +1451,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
+                            &remote_opts,
                             &opts.sockopts,
                             &opts.remote_option,
                             opts.protocol
@@ -1464,6 +1491,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
+                            &remote_opts,
                             &opts.sockopts,
                             &opts.remote_option,
                             opts.protocol
@@ -1477,7 +1505,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &rsh_cmd.env,
                             remote_bin_vec.as_deref(),
                             remote_env_vec.as_deref().unwrap_or(&[]),
-                            &opts.remote_option,
+                            &remote_opts,
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
