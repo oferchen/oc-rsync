@@ -1,7 +1,7 @@
 // crates/engine/benches/large_files.rs
 use checksums::ChecksumConfigBuilder;
 use criterion::{criterion_group, criterion_main, Criterion};
-use engine::compute_delta;
+use engine::{compute_delta, SyncOptions};
 use std::io::{Cursor, Read, Seek, SeekFrom};
 
 fn bench_large_delta(c: &mut Criterion) {
@@ -13,7 +13,16 @@ fn bench_large_delta(c: &mut Criterion) {
         b.iter(|| {
             let mut basis = Cursor::new(data.clone());
             let mut target = Cursor::new(data.clone());
-            for op in compute_delta(&cfg, &mut basis, &mut target, block_size, window).unwrap() {
+            for op in compute_delta(
+                &cfg,
+                &mut basis,
+                &mut target,
+                block_size,
+                window,
+                &SyncOptions::default(),
+            )
+            .unwrap()
+            {
                 op.unwrap();
             }
         });
@@ -67,7 +76,16 @@ fn bench_streaming_delta(c: &mut Criterion) {
         b.iter(|| {
             let mut basis = ZeroReader::new(len);
             let mut target = ZeroReader::new(len);
-            for op in compute_delta(&cfg, &mut basis, &mut target, block_size, window).unwrap() {
+            for op in compute_delta(
+                &cfg,
+                &mut basis,
+                &mut target,
+                block_size,
+                window,
+                &SyncOptions::default(),
+            )
+            .unwrap()
+            {
                 op.unwrap();
             }
         });

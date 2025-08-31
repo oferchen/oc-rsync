@@ -2,7 +2,7 @@
 
 use assert_cmd::Command;
 use checksums::ChecksumConfigBuilder;
-use engine::{cdc, compute_delta, Op};
+use engine::{cdc, compute_delta, Op, SyncOptions};
 use std::fs;
 use std::process::Command as StdCommand;
 use tempfile::tempdir;
@@ -62,10 +62,17 @@ fn delta_block_size_matches_rsync() {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis_f = fs::File::open(&dst_file).unwrap();
         let mut target_f = fs::File::open(&src_file).unwrap();
-        let ops: Vec<Op> = compute_delta(&cfg, &mut basis_f, &mut target_f, block_size, usize::MAX)
-            .unwrap()
-            .map(Result::unwrap)
-            .collect();
+        let ops: Vec<Op> = compute_delta(
+            &cfg,
+            &mut basis_f,
+            &mut target_f,
+            block_size,
+            usize::MAX,
+            &SyncOptions::default(),
+        )
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
         let literal: usize = ops
             .iter()
             .map(|op| match op {
@@ -133,10 +140,17 @@ fn delta_block_size_large_file() {
     let cfg = ChecksumConfigBuilder::new().build();
     let mut basis_f = fs::File::open(&dst_file).unwrap();
     let mut target_f = fs::File::open(&src_file).unwrap();
-    let ops: Vec<Op> = compute_delta(&cfg, &mut basis_f, &mut target_f, block_size, usize::MAX)
-        .unwrap()
-        .map(Result::unwrap)
-        .collect();
+    let ops: Vec<Op> = compute_delta(
+        &cfg,
+        &mut basis_f,
+        &mut target_f,
+        block_size,
+        usize::MAX,
+        &SyncOptions::default(),
+    )
+    .unwrap()
+    .map(Result::unwrap)
+    .collect();
     let literal: usize = ops
         .iter()
         .map(|op| match op {
@@ -187,10 +201,17 @@ fn delta_block_size_unaligned_edit() {
     let cfg = ChecksumConfigBuilder::new().build();
     let mut basis_f = fs::File::open(&dst_file).unwrap();
     let mut target_f = fs::File::open(&src_file).unwrap();
-    let ops: Vec<Op> = compute_delta(&cfg, &mut basis_f, &mut target_f, block_size, usize::MAX)
-        .unwrap()
-        .map(Result::unwrap)
-        .collect();
+    let ops: Vec<Op> = compute_delta(
+        &cfg,
+        &mut basis_f,
+        &mut target_f,
+        block_size,
+        usize::MAX,
+        &SyncOptions::default(),
+    )
+    .unwrap()
+    .map(Result::unwrap)
+    .collect();
     let literal: usize = ops
         .iter()
         .map(|op| match op {
@@ -241,10 +262,17 @@ fn delta_block_size_non_power_two() {
     let cfg = ChecksumConfigBuilder::new().build();
     let mut basis_f = fs::File::open(&dst_file).unwrap();
     let mut target_f = fs::File::open(&src_file).unwrap();
-    let ops: Vec<Op> = compute_delta(&cfg, &mut basis_f, &mut target_f, block_size, usize::MAX)
-        .unwrap()
-        .map(Result::unwrap)
-        .collect();
+    let ops: Vec<Op> = compute_delta(
+        &cfg,
+        &mut basis_f,
+        &mut target_f,
+        block_size,
+        usize::MAX,
+        &SyncOptions::default(),
+    )
+    .unwrap()
+    .map(Result::unwrap)
+    .collect();
     let literal: usize = ops
         .iter()
         .map(|op| match op {
@@ -293,10 +321,17 @@ fn delta_block_size_smaller_file() {
     let cfg = ChecksumConfigBuilder::new().build();
     let mut basis_f = fs::File::open(&dst_file).unwrap();
     let mut target_f = fs::File::open(&src_file).unwrap();
-    let ops: Vec<Op> = compute_delta(&cfg, &mut basis_f, &mut target_f, block_size, usize::MAX)
-        .unwrap()
-        .map(Result::unwrap)
-        .collect();
+    let ops: Vec<Op> = compute_delta(
+        &cfg,
+        &mut basis_f,
+        &mut target_f,
+        block_size,
+        usize::MAX,
+        &SyncOptions::default(),
+    )
+    .unwrap()
+    .map(Result::unwrap)
+    .collect();
     let literal: usize = ops
         .iter()
         .map(|op| match op {

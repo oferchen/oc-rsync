@@ -526,7 +526,7 @@
   },
   {
     "flag": "--preallocate",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {

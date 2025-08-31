@@ -51,6 +51,31 @@ fn max_alloc_zero_is_unlimited() {
 }
 
 #[test]
+fn preallocate_option_creates_files() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("file.bin"), vec![0u8; 1024]).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--preallocate",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert_eq!(fs::metadata(dst.join("file.bin")).unwrap().len(), 1024);
+}
+
+#[test]
 fn max_size_skips_large_files() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");

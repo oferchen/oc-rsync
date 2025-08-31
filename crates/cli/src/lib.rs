@@ -181,6 +181,12 @@ struct ClientOpts {
     max_size: Option<u64>,
     #[arg(long = "min-size", value_name = "SIZE", value_parser = parse_file_size, help_heading = "Misc")]
     min_size: Option<u64>,
+    #[arg(
+        long,
+        help_heading = "Misc",
+        help = "allocate dest files before writing them"
+    )]
+    preallocate: bool,
     #[arg(short = 'b', long, help_heading = "Backup")]
     backup: bool,
     #[arg(long = "backup-dir", value_name = "DIR", help_heading = "Backup")]
@@ -1081,6 +1087,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         max_alloc: opts.max_alloc.unwrap_or(1usize << 30),
         max_size: opts.max_size,
         min_size: opts.min_size,
+        preallocate: opts.preallocate,
         checksum: opts.checksum,
         compress,
         modern_compress,
