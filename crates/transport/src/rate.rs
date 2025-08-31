@@ -65,4 +65,12 @@ impl<T: Transport> Transport for RateLimitedTransport<T> {
     fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.receive(buf)
     }
+
+    fn set_read_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
+        self.inner.set_read_timeout(dur)
+    }
+
+    fn set_write_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
+        self.inner.set_write_timeout(dur)
+    }
 }

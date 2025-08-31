@@ -77,14 +77,6 @@ impl TcpTransport {
         }
         self.stream.write_all(b"\n")
     }
-
-    pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.stream.set_read_timeout(dur)
-    }
-
-    pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.stream.set_write_timeout(dur)
-    }
 }
 
 fn host_matches(ip: &IpAddr, pat: &str) -> bool {
@@ -111,6 +103,14 @@ impl Transport for TcpTransport {
 
     fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.stream.read(buf)
+    }
+
+    fn set_read_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
+        self.stream.set_read_timeout(dur)
+    }
+
+    fn set_write_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
+        self.stream.set_write_timeout(dur)
     }
 }
 
