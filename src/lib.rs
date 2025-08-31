@@ -101,9 +101,10 @@ fn io_context(path: &Path, err: io::Error) -> EngineError {
 fn apply_metadata(dst: &Path, meta: &fs::Metadata) -> Result<()> {
     let atime = FileTime::from_last_access_time(meta);
     let mtime = FileTime::from_last_modification_time(meta);
-    // Provide the destination path in any I/O error.
-    set_file_times(dst, atime, mtime).map_err(|e| io_context(dst, e))?;
+    // Some platforms modify file times when permissions change; set permissions
+    // first and then restore atime/mtime.
     fs::set_permissions(dst, meta.permissions()).map_err(|e| io_context(dst, e))?;
+    set_file_times(dst, atime, mtime).map_err(|e| io_context(dst, e))?;
     Ok(())
 }
 
