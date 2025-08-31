@@ -185,7 +185,11 @@ pub fn parse_config_file(path: &Path) -> io::Result<DaemonConfig> {
 }
 
 pub fn parse_auth_token(token: &str, contents: &str) -> Option<Vec<String>> {
-    for line in contents.lines() {
+    for raw in contents.lines() {
+        let line = raw.split(|c| c == '#' || c == ';').next().unwrap().trim();
+        if line.is_empty() {
+            continue;
+        }
         let mut parts = line.split_whitespace();
         if let Some(tok) = parts.next() {
             if tok == token {

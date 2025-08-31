@@ -717,6 +717,56 @@ fn daemon_authenticates_valid_token() {
 
 #[test]
 #[serial]
+fn daemon_parses_secrets_file_with_comments() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = dir.path().join("auth");
+    fs::write(&secrets, "# comment\n\nsecret data\n").unwrap();
+    #[cfg(unix)]
+    fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let mut child = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            &format!("data={}", dir.path().display()),
+            "--port",
+            &port.to_string(),
+            "--secrets-file",
+            secrets.to_str().unwrap(),
+        ])
+        .current_dir(dir.path())
+        .spawn()
+        .unwrap();
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200)))
+        .unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
+    t.authenticate(Some("secret"), false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
+    t.send(b"data\n").unwrap();
+    t.send(b"\n").unwrap();
+    let n = t.receive(&mut buf).unwrap_or(0);
+    assert_eq!(n, 0);
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
 fn daemon_respects_host_allow_and_deny_lists() {
     if require_network().is_err() {
         eprintln!("skipping daemon test: network access required");
