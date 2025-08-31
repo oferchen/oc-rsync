@@ -1,24 +1,17 @@
-#[cfg(unix)]
-#[cfg(unix)]
+#![cfg(unix)]
+
+// tests/interop/remote_option.rs
+
 use assert_cmd::cargo::cargo_bin;
-#[cfg(unix)]
 use assert_cmd::prelude::*;
-#[cfg(unix)]
 use assert_cmd::Command;
-#[cfg(unix)]
 use oc_rsync_cli as cli;
-#[cfg(unix)]
 use std::fs;
-#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-#[cfg(unix)]
 use std::process::Command as StdCommand;
-#[cfg(unix)]
 use std::process::Stdio;
-#[cfg(unix)]
 use tempfile::tempdir;
 
-#[cfg(unix)]
 fn read_port(child: &mut std::process::Child) -> u16 {
     use std::io::Read;
     let stdout = child.stdout.as_mut().unwrap();
@@ -33,7 +26,6 @@ fn read_port(child: &mut std::process::Child) -> u16 {
     String::from_utf8(buf).unwrap().trim().parse().unwrap()
 }
 
-#[cfg(unix)]
 #[test]
 fn ssh_remote_option_forwarded() {
     let dir = tempdir().unwrap();
@@ -87,7 +79,6 @@ fn ssh_remote_option_forwarded() {
     assert!(logged.contains("--log-file"));
 }
 
-#[cfg(unix)]
 #[test]
 #[ignore] // requires network daemon setup
 fn daemon_remote_option_forwarded() {
