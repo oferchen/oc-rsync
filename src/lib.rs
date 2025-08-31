@@ -1,8 +1,9 @@
 // src/lib.rs
 use compress::available_codecs;
-use engine::{Result, SyncOptions};
-use filetime::{set_file_times, set_symlink_file_times, FileTime};
+use engine::{EngineError, Result, SyncOptions};
 use filters::Matcher;
+use std::{fs, io, path::Path};
+use filetime::{set_file_times, set_symlink_file_times, FileTime};
 #[cfg(unix)]
 use nix::{
     sys::stat::{mknod, Mode, SFlag},
@@ -56,7 +57,18 @@ pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
     Ok(())
 }
 
+fn io_context(path: &Path, err: io::Error) -> EngineError {
+    EngineError::Io(io::Error::new(
+        err.kind(),
+        format!("{}: {}", path.display(), err),
+    ))
+}
+
 fn copy_recursive(src: &Path, dst: &Path) -> Result<()> {
+    for entry in fs::read_dir(src).map_err(|e| io_context(src, e))? {
+        let entry = entry.map_err(|e| io_context(src, e))?;
+        let path = entry.path();
+        let file_type = entry.file_type().map_err(|e| io_context(&path, e))?;
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let src_path = entry.path();
@@ -64,6 +76,10 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<()> {
         let meta = fs::symlink_metadata(&src_path)?;
         let file_type = meta.file_type();
         if file_type.is_dir() {
+            fs::create_dir_all(&dst_path).map_err(|e| io_context(&dst_path, e))?;
+            copy_recursive(&path, &dst_path)?;
+        } else if file_type.is_file() {
+            fs::copy(&path, &dst_path).map_err(|e| io_context(&path, e))?;
             fs::create_dir_all(&dst_path)?;
             copy_recursive(&src_path, &dst_path)?;
         } else if file_type.is_file() {
@@ -72,6 +88,10 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<()> {
             let target = fs::read_link(entry.path())?;
             #[cfg(unix)]
             {
+                let target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
+                std::os::unix::fs::symlink(&target, &dst_path)
+                    .map_err(|e| io_context(&dst_path, e))?;
+
                 let target = fs::read_link(&src_path)?;
                 std::os::unix::fs::symlink(&target, &dst_path)?;
                 let atime = FileTime::from_last_access_time(&meta);
@@ -136,6 +156,7 @@ mod tests {
         let src_dir = dir.path().join("src");
         let dst_dir = dir.path().join("dst");
         fs::create_dir_all(&src_dir).unwrap();
+        fs::create_dir_all(&dst_dir).unwrap();
         fs::File::create(src_dir.join("file.txt"))
             .unwrap()
             .write_all(b"hello world")
@@ -191,6 +212,60 @@ mod tests {
     }
 
     #[cfg(unix)]
+    fn run_copy_unprivileged(src: &Path, dst: &Path) -> (i32, String) {
+        use nix::sys::wait::{waitpid, WaitStatus};
+        use nix::unistd::{fork, setuid, ForkResult, Uid};
+        use std::io::{Read, Write};
+        use std::os::unix::net::UnixStream;
+
+        let (mut parent_sock, mut child_sock) = UnixStream::pair().unwrap();
+        match unsafe { fork() }.expect("fork failed") {
+            ForkResult::Child => {
+                drop(parent_sock);
+                setuid(Uid::from_raw(1)).unwrap();
+                let res = copy_recursive(src, dst);
+                let msg = match &res {
+                    Ok(_) => "ok".to_string(),
+                    Err(e) => e.to_string(),
+                };
+                child_sock.write_all(msg.as_bytes()).unwrap();
+                std::process::exit(if res.is_err() { 0 } else { 1 });
+            }
+            ForkResult::Parent { child } => {
+                drop(child_sock);
+                let mut msg = String::new();
+                parent_sock.read_to_string(&mut msg).unwrap();
+                let status = waitpid(child, None).unwrap();
+                let code = match status {
+                    WaitStatus::Exited(_, c) => c,
+                    _ => -1,
+                };
+                (code, msg)
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn copy_recursive_unreadable_file() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempdir().unwrap();
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o755)).unwrap();
+        let src_dir = dir.path().join("src");
+        let dst_dir = dir.path().join("dst");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::create_dir_all(&dst_dir).unwrap();
+        fs::set_permissions(&dst_dir, fs::Permissions::from_mode(0o777)).unwrap();
+
+        let file_path = src_dir.join("file.txt");
+        fs::write(&file_path, b"data").unwrap();
+        fs::set_permissions(&file_path, fs::Permissions::from_mode(0o000)).unwrap();
+
+        let (code, msg) = run_copy_unprivileged(&src_dir, &dst_dir);
+        assert_eq!(code, 0);
+        assert!(msg.contains("Permission denied"));
+        assert!(msg.contains("file.txt"));
     #[test]
     fn sync_preserves_metadata() {
         use filetime::{set_file_times, FileTime};
@@ -220,6 +295,23 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn copy_recursive_unreadable_directory() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempdir().unwrap();
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o755)).unwrap();
+        let src_dir = dir.path().join("src");
+        let dst_dir = dir.path().join("dst");
+        let subdir = src_dir.join("sub");
+        fs::create_dir_all(&subdir).unwrap();
+        fs::create_dir_all(&dst_dir).unwrap();
+        fs::set_permissions(&dst_dir, fs::Permissions::from_mode(0o777)).unwrap();
+        fs::set_permissions(&subdir, fs::Permissions::from_mode(0o000)).unwrap();
+
+        let (code, msg) = run_copy_unprivileged(&src_dir, &dst_dir);
+        assert_eq!(code, 0);
+        assert!(msg.contains("Permission denied"));
+        assert!(msg.contains("sub"));
     fn sync_preserves_fifo() {
         use filetime::{set_file_times, FileTime};
         use nix::sys::stat::Mode;
