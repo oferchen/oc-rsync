@@ -129,6 +129,7 @@ fn custom_rsh_negotiates_codecs() {
         &rsync_env,
         Some(&remote_cmd),
         &remote_env,
+        &[],
         None,
         true,
         None,
