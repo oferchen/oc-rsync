@@ -148,7 +148,7 @@ fn roundtrip_acl() -> std::io::Result<()> {
                 std::io::Error::new(ioe.kind(), ioe.to_string())
             }
         } else {
-            std::io::Error::new(std::io::ErrorKind::Other, e)
+            std::io::Error::other(e)
         }
     })?;
     acl.set(Qualifier::User(12345), ACL_READ);
@@ -160,7 +160,7 @@ fn roundtrip_acl() -> std::io::Result<()> {
                 std::io::Error::new(ioe.kind(), ioe.to_string())
             }
         } else {
-            std::io::Error::new(std::io::ErrorKind::Other, e)
+            std::io::Error::other(e)
         }
     })?;
 
