@@ -33,7 +33,9 @@ mod tests {
             .unwrap()
             .write_all(b"hello world")
             .unwrap();
+        assert!(!dst_dir.exists());
         synchronize(&src_dir, &dst_dir).unwrap();
+        assert!(dst_dir.exists());
         let out = fs::read(dst_dir.join("file.txt")).unwrap();
         assert_eq!(out, b"hello world");
     }

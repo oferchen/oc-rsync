@@ -1446,6 +1446,18 @@ pub fn sync(
         return Ok(stats);
     }
 
+    if !dst.exists() {
+        fs::create_dir_all(dst).map_err(|e| {
+            std::io::Error::new(
+                e.kind(),
+                format!(
+                    "failed to create destination directory {}: {e}",
+                    dst.display()
+                ),
+            )
+        })?;
+    }
+
     let codec = select_codec(remote, opts);
     let matcher = matcher.clone().with_root(src_root.clone());
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
