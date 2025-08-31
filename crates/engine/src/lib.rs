@@ -83,7 +83,7 @@ fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
     #[cfg(target_os = "macos")]
     unsafe {
         let fd = file.as_raw_fd();
-        let mut fstore = libc::fstore {
+        let mut fstore = libc::fstore_t {
             fst_flags: libc::F_ALLOCATECONTIG,
             fst_posmode: libc::F_PEOFPOSMODE,
             fst_offset: 0,
