@@ -1509,7 +1509,7 @@ pub fn sync(
                     }
                     receiver.copy_metadata(&path, &dest_path)?;
                 } else if file_type.is_symlink() {
-                    let created = !dest_path.exists();
+                    let created = fs::symlink_metadata(&dest_path).is_err();
                     let target = fs::read_link(&path)?;
                     let target_path = if target.is_absolute() {
                         target.clone()
@@ -1556,6 +1556,13 @@ pub fn sync(
                     } else if opts.links {
                         if let Some(parent) = dest_path.parent() {
                             fs::create_dir_all(parent)?;
+                        }
+                        if let Ok(meta) = fs::symlink_metadata(&dest_path) {
+                            if meta.is_dir() {
+                                fs::remove_dir_all(&dest_path)?;
+                            } else {
+                                fs::remove_file(&dest_path)?;
+                            }
                         }
                         #[cfg(unix)]
                         std::os::unix::fs::symlink(&target, &dest_path)?;
