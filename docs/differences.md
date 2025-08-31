@@ -1,50 +1,12 @@
 # Differences from rsync
 
-`oc-rsync` aims for parity with stock `rsync` 3.4.x. When run without the
-`--modern` flag, it intends zero behavioral differences from the traditional
-utility and mirrors the classic command line.
+oc-rsync implements the standard rsync protocol version 31 and also defines a
+private protocol 73 extension used only when both peers are oc-rsync.
 
-## Protocol support
+See [gaps.md](gaps.md) and [feature_matrix.md](feature_matrix.md) for any remaining parity notes.
 
-`oc-rsync` speaks rsync protocol versions 29 through 32 and
-negotiates the highest version that both peers understand. Feature bits
-are advertised to newer implementations while older peers simply ignore
-unknown capabilities, allowing seamless fallback.
+## Protocol 73 features
 
-The `--modern` convenience flag enables additional enhancements beyond
-classic `rsync` behavior. For a complete listing see
-[cli/flags.md](cli/flags.md). For detailed parity status see
-[feature_matrix.md](feature_matrix.md) and outstanding
-[gaps.md](gaps.md).
-
-## `--modern` enhancements
-
-| rsync flag | oc-rsync status | Tests | `--modern` notes |
-|------------|-----------------|-------|------------------|
-| `-z`, `--compress` | ✅ uses zlib by default | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh) | with `--modern`, negotiates zstd or lz4 if supported |
-| `--compress-choice` | ✅ choose zstd or zlib | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | n/a |
-| `--compress-level` | ✅ maps numeric levels | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | applies to zlib or zstd |
-| `-c`, `--checksum` | ✅ strong hashes: MD5 (default), SHA-1, BLAKE3 | [tests/cli.rs](../tests/cli.rs) | `--modern` selects BLAKE3 |
-| `--modern-compress` | oc-rsync only | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | choose `auto`, `zstd`, or `lz4` |
-| `--modern-hash` | oc-rsync only | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | select BLAKE3 hash |
-| `--modern-cdc` | oc-rsync only | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | enable `fastcdc` chunking |
-| `-a`, `--archive` | ✅ sets perms, times, owner, group, links, devices, specials | [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) | n/a |
-| `-R`, `--relative` | ✅ preserves ancestor directories | [tests/cli.rs](../tests/cli.rs) | n/a |
-| `-P` | ✅ keeps partial files and shows progress | [tests/cli.rs](../tests/cli.rs) | n/a |
-| `--numeric-ids` | ✅ uses numeric uid/gid values | [tests/cli.rs](../tests/cli.rs) | n/a |
-| `--modern` | oc-rsync only | [tests/interop/modern.rs](../tests/interop/modern.rs) | negotiates zstd or lz4 compression and BLAKE3 checksums (requires `blake3` feature) |
-
-## Additional notes
-
-- `--daemon` and `--server` have the same syntax and defaults as `rsync`; see [cli.md](cli.md#daemon-and-server-modes).
-- `-e`/`--rsh` defaults to `ssh`, honors the `RSYNC_RSH` environment variable, and supports shell-style quoting and environment variable assignments. `--rsync-path` uses the same parsing to invoke alternative remote commands.
-- Deletion flags `--delete-before`, `--delete-during`, `--delete-delay`,
-  `--delete-after`, and `--delete-excluded` are implemented. See
-  [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)
-  for parity coverage and [feature_matrix.md](feature_matrix.md) for details.
-- Advanced transfer options such as `--partial`, `--bwlimit`, and `--link-dest`
-  behave like `rsync` when available; see
-  [tests/cli.rs](../tests/cli.rs),
-  [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs), and
-  [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs).
-
+- BLAKE3 strong checksums negotiated via `--modern` or `--modern-hash`.
+- zstd and lz4 compression via `--modern` or `--modern-compress`.
+- Optional FastCDC chunking with `--modern-cdc`.
