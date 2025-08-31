@@ -18,7 +18,7 @@ use compress::{
 use filters::Matcher;
 use thiserror::Error;
 
-mod cdc;
+pub mod cdc;
 use cdc::{chunk_file, Manifest};
 
 #[derive(Debug, Error)]
