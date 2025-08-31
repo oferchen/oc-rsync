@@ -306,9 +306,7 @@ impl Metadata {
 
         #[cfg(feature = "xattr")]
         if opts.xattrs {
-            for (name, value) in &self.xattrs {
-                xattr::set(path, name, value)?;
-            }
+            crate::apply_xattrs(path, &self.xattrs)?;
         }
 
         #[cfg(feature = "acl")]

@@ -39,7 +39,9 @@ impl Options {
 #[cfg(unix)]
 use filetime::set_symlink_file_times;
 use filetime::{set_file_times, FileTime};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+#[cfg(all(unix, feature = "xattr"))]
+use std::ffi::OsString;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -125,6 +127,26 @@ impl GidTable {
     pub fn as_slice(&self) -> &[u32] {
         &self.table
     }
+}
+
+/// Apply the provided extended attributes to `path`, removing any
+/// existing attributes that are not present in `xattrs`.
+#[cfg(all(unix, feature = "xattr"))]
+pub fn apply_xattrs(path: &Path, xattrs: &[(OsString, Vec<u8>)]) -> io::Result<()> {
+    let mut existing: HashSet<OsString> = xattr::list(path)?.collect();
+    for (name, value) in xattrs {
+        existing.remove(name);
+        xattr::set(path, name, value)?;
+    }
+    for name in existing {
+        if let Some(s) = name.to_str() {
+            if s == "system.posix_acl_access" || s == "system.posix_acl_default" {
+                continue;
+            }
+        }
+        let _ = xattr::remove(path, &name);
+    }
+    Ok(())
 }
 
 /// Table mapping user IDs to compact indexes.
