@@ -1031,6 +1031,7 @@ pub struct SyncOptions {
     pub delete_excluded: bool,
     pub ignore_missing_args: bool,
     pub delete_missing_args: bool,
+    pub remove_source_files: bool,
     pub max_delete: Option<usize>,
     pub max_alloc: usize,
     pub checksum: bool,
@@ -1113,6 +1114,7 @@ impl Default for SyncOptions {
             delete_excluded: false,
             ignore_missing_args: false,
             delete_missing_args: false,
+            remove_source_files: false,
             max_delete: None,
             max_alloc: 1 << 30,
             checksum: false,
@@ -1337,7 +1339,7 @@ pub fn sync(
         .as_ref()
         .and_then(|p| OpenOptions::new().create(true).append(true).open(p).ok());
     let src_root = fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf());
-        let mut stats = Stats::default();
+    let mut stats = Stats::default();
     if !src_root.exists() {
         if opts.delete_missing_args {
             if dst.exists() {
@@ -1520,6 +1522,9 @@ pub fn sync(
                                             for c in &chunks {
                                                 manifest.insert(&c.hash, &dest_path);
                                             }
+                                            if opts.remove_source_files {
+                                                fs::remove_file(&path)?;
+                                            }
                                             continue;
                                         }
                                     }
@@ -1533,6 +1538,9 @@ pub fn sync(
                                     fs::create_dir_all(parent)?;
                                 }
                                 fs::hard_link(&link_path, &dest_path)?;
+                                if opts.remove_source_files {
+                                    fs::remove_file(&path)?;
+                                }
                                 continue;
                             }
                         }
@@ -1543,12 +1551,18 @@ pub fn sync(
                                     fs::create_dir_all(parent)?;
                                 }
                                 fs::copy(&copy_path, &dest_path)?;
+                                if opts.remove_source_files {
+                                    fs::remove_file(&path)?;
+                                }
                                 continue;
                             }
                         }
                         if let Some(ref compare_dir) = opts.compare_dest {
                             let comp_path = compare_dir.join(rel);
                             if files_identical(&path, &comp_path) {
+                                if opts.remove_source_files {
+                                    fs::remove_file(&path)?;
+                                }
                                 continue;
                             }
                         }
@@ -1574,6 +1588,9 @@ pub fn sync(
                                 }
                             }
                         }
+                    }
+                    if opts.remove_source_files {
+                        fs::remove_file(&path)?;
                     }
                 } else if file_type.is_dir() {
                     let created = !dest_path.exists();
@@ -1626,6 +1643,9 @@ pub fn sync(
                                     }
                                 }
                             }
+                            if opts.remove_source_files {
+                                fs::remove_file(&path)?;
+                            }
                         }
                     } else if opts.links {
                         if let Some(parent) = dest_path.parent() {
@@ -1654,6 +1674,9 @@ pub fn sync(
                             if opts.itemize_changes {
                                 println!("cL+++++++++ {} -> {}", rel.display(), target.display());
                             }
+                        }
+                        if opts.remove_source_files {
+                            fs::remove_file(&path)?;
                         }
                     }
                 } else {
@@ -1688,6 +1711,9 @@ pub fn sync(
                                 .map_err(|e| EngineError::Other(e.to_string()))?;
                             receiver.copy_metadata(&path, &dest_path)?;
                         }
+                    }
+                    if opts.remove_source_files {
+                        fs::remove_file(&path)?;
                     }
                 }
             } else {
