@@ -350,6 +350,27 @@ fn numeric_ids_are_preserved() {
 #[cfg(unix)]
 #[test]
 fn user_and_group_ids_are_mapped() {
+    let uid = get_current_uid();
+    let _gid = get_current_gid();
+    if uid != 0 {
+        eprintln!("skipping user_and_group_ids_are_mapped: requires root or CAP_CHOWN");
+        return;
+    }
+    {
+        let dir = tempdir().unwrap();
+        let probe = dir.path().join("probe");
+        std::fs::write(&probe, b"probe").unwrap();
+        if let Err(err) = chown(&probe, Some(Uid::from_raw(1)), Some(Gid::from_raw(1))) {
+            match err {
+                nix::errno::Errno::EPERM => {
+                    eprintln!("skipping user_and_group_ids_are_mapped: lacks CAP_CHOWN");
+                    return;
+                }
+                _ => panic!("unexpected chown error: {err}"),
+            }
+        }
+    }
+
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
