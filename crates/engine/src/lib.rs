@@ -88,6 +88,7 @@ fn files_identical(a: &Path, b: &Path) -> bool {
 }
 
 fn last_good_block(cfg: &ChecksumConfig, src: &Path, dst: &Path, block_size: usize) -> u64 {
+    let block_size = block_size.max(1);
     let mut src = match File::open(src) {
         Ok(f) => f,
         Err(_) => return 0,
@@ -122,7 +123,7 @@ fn last_good_block(cfg: &ChecksumConfig, src: &Path, dst: &Path, block_size: usi
             break;
         }
     }
-    offset
+    offset - (offset % block_size as u64)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -226,6 +227,7 @@ pub fn compute_delta<'a, R1: Read + Seek, R2: Read + Seek>(
     block_size: usize,
     basis_window: usize,
 ) -> Result<DeltaIter<'a, R2>> {
+    let block_size = block_size.max(1);
     basis.seek(SeekFrom::Start(0))?;
     target.seek(SeekFrom::Start(0))?;
     let mut map: HashMap<u32, Vec<(Vec<u8>, usize, usize)>> = HashMap::new();
@@ -464,6 +466,7 @@ impl Sender {
         codec: Option<Codec>,
         opts: SyncOptions,
     ) -> Self {
+        let block_size = block_size.max(1);
         Self {
             state: SenderState::Idle,
             cfg: ChecksumConfigBuilder::new()

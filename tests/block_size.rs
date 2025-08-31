@@ -145,3 +145,163 @@ fn delta_block_size_large_file() {
     assert_eq!(literal, rsync_literal);
     assert_eq!(literal, block_size);
 }
+
+#[test]
+fn delta_block_size_unaligned_edit() {
+    let block_size = 1024usize;
+    let size = 1 << 20;
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    let src_file = src_dir.join("file.bin");
+    let dst_file = dst_dir.join("file.bin");
+
+    let mut basis = vec![0u8; size];
+    for i in 0..size {
+        basis[i] = (i % 256) as u8;
+    }
+    let mut target = basis.clone();
+    let off = block_size / 2;
+    target[off..off + block_size].fill(0xEE);
+    fs::write(&src_file, &target).unwrap();
+    fs::write(&dst_file, &basis).unwrap();
+
+    let cfg = ChecksumConfigBuilder::new().build();
+    let mut basis_f = fs::File::open(&dst_file).unwrap();
+    let mut target_f = fs::File::open(&src_file).unwrap();
+    let ops: Vec<Op> = compute_delta(&cfg, &mut basis_f, &mut target_f, block_size, usize::MAX)
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    let literal: usize = ops
+        .iter()
+        .map(|op| match op {
+            Op::Data(d) => d.len(),
+            _ => 0,
+        })
+        .sum();
+
+    let output = StdCommand::new("rsync")
+        .arg("--stats")
+        .arg("--recursive")
+        .arg("--block-size")
+        .arg(block_size.to_string())
+        .arg("--no-whole-file")
+        .arg("--checksum")
+        .arg(format!("{}/", src_dir.display()))
+        .arg(dst_dir.to_str().unwrap())
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let rsync_literal = parse_literal(std::str::from_utf8(&output.stdout).unwrap());
+    assert_eq!(literal, rsync_literal);
+    assert_eq!(literal, block_size * 2);
+}
+
+#[test]
+fn delta_block_size_non_power_two() {
+    let block_size = 1000usize;
+    let size = 1 << 20;
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    let src_file = src_dir.join("file.bin");
+    let dst_file = dst_dir.join("file.bin");
+
+    let mut basis = vec![0u8; size];
+    for i in 0..size {
+        basis[i] = (i % 256) as u8;
+    }
+    let mut target = basis.clone();
+    let off = size / 2;
+    target[off..off + block_size].fill(0xBB);
+    fs::write(&src_file, &target).unwrap();
+    fs::write(&dst_file, &basis).unwrap();
+
+    let cfg = ChecksumConfigBuilder::new().build();
+    let mut basis_f = fs::File::open(&dst_file).unwrap();
+    let mut target_f = fs::File::open(&src_file).unwrap();
+    let ops: Vec<Op> = compute_delta(&cfg, &mut basis_f, &mut target_f, block_size, usize::MAX)
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    let literal: usize = ops
+        .iter()
+        .map(|op| match op {
+            Op::Data(d) => d.len(),
+            _ => 0,
+        })
+        .sum();
+
+    let output = StdCommand::new("rsync")
+        .arg("--stats")
+        .arg("--recursive")
+        .arg("--block-size")
+        .arg(block_size.to_string())
+        .arg("--no-whole-file")
+        .arg("--checksum")
+        .arg(format!("{}/", src_dir.display()))
+        .arg(dst_dir.to_str().unwrap())
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let rsync_literal = parse_literal(std::str::from_utf8(&output.stdout).unwrap());
+    assert!(literal >= rsync_literal);
+}
+
+#[test]
+fn delta_block_size_smaller_file() {
+    let block_size = 4096usize;
+    let size = 1024usize;
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    let src_file = src_dir.join("file.bin");
+    let dst_file = dst_dir.join("file.bin");
+
+    let mut basis = vec![0u8; size];
+    for i in 0..size {
+        basis[i] = (i % 256) as u8;
+    }
+    let mut target = basis.clone();
+    target[100..150].fill(0xCC);
+    fs::write(&src_file, &target).unwrap();
+    fs::write(&dst_file, &basis).unwrap();
+
+    let cfg = ChecksumConfigBuilder::new().build();
+    let mut basis_f = fs::File::open(&dst_file).unwrap();
+    let mut target_f = fs::File::open(&src_file).unwrap();
+    let ops: Vec<Op> = compute_delta(&cfg, &mut basis_f, &mut target_f, block_size, usize::MAX)
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    let literal: usize = ops
+        .iter()
+        .map(|op| match op {
+            Op::Data(d) => d.len(),
+            _ => 0,
+        })
+        .sum();
+
+    let output = StdCommand::new("rsync")
+        .arg("--stats")
+        .arg("--recursive")
+        .arg("--block-size")
+        .arg(block_size.to_string())
+        .arg("--no-whole-file")
+        .arg("--checksum")
+        .arg(format!("{}/", src_dir.display()))
+        .arg(dst_dir.to_str().unwrap())
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let rsync_literal = parse_literal(std::str::from_utf8(&output.stdout).unwrap());
+    assert_eq!(literal, rsync_literal);
+    assert_eq!(literal, size);
+}
