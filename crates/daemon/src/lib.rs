@@ -353,7 +353,6 @@ pub fn chroot_and_drop_privileges(_path: &Path, _uid: u32, _gid: u32) -> io::Res
     Ok(())
 }
 
-/// A connection handler invoked after a module has been fully negotiated.
 pub type Handler = dyn Fn(&mut dyn Transport) -> io::Result<()> + Send + Sync;
 
 fn host_matches(ip: &IpAddr, pat: &str) -> bool {
@@ -363,7 +362,6 @@ fn host_matches(ip: &IpAddr, pat: &str) -> bool {
     pat.parse::<IpAddr>().is_ok_and(|p| &p == ip)
 }
 
-/// Determine if `ip` is permitted given allow/deny lists.
 pub fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
     if !allow.is_empty() && !allow.iter().any(|p| host_matches(ip, p)) {
         return false;
@@ -374,11 +372,6 @@ pub fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
     true
 }
 
-/// Handle a single rsync daemon connection on `transport`.
-///
-/// Authentication, MOTD display, module selection and logging are
-/// performed here.  After the module has been accepted and privileges
-/// dropped, the provided `handler` is invoked to service the request.
 #[allow(clippy::too_many_arguments)]
 pub fn handle_connection<T: Transport>(
     transport: &mut T,
@@ -480,7 +473,6 @@ pub fn handle_connection<T: Transport>(
     }
 }
 
-/// Start a TCP rsync daemon using the provided configuration.
 #[allow(clippy::too_many_arguments)]
 pub fn run_daemon(
     modules: HashMap<String, Module>,
@@ -683,7 +675,7 @@ mod tests {
     #[test]
     fn parse_module_accepts_symlinked_dir() {
         let dir = tempdir().unwrap();
-        let link = dir.path().parent().unwrap().join("symlinked");
+        let link = dir.path().join("symlinked");
         symlink(dir.path(), &link).unwrap();
         let module = parse_module(&format!("data={}", link.display())).unwrap();
         assert_eq!(module.path, fs::canonicalize(&link).unwrap());

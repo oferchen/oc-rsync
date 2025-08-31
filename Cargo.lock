@@ -992,6 +992,7 @@ dependencies = [
 name = "oc-rsync-cli"
 version = "0.1.0"
 dependencies = [
+ "assert_cmd",
  "clap",
  "compress",
  "daemon",
