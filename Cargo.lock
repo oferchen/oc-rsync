@@ -398,6 +398,7 @@ name = "daemon"
 version = "0.1.0"
 dependencies = [
  "nix",
+ "tempfile",
  "transport",
 ]
 
