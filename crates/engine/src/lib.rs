@@ -1321,10 +1321,15 @@ pub fn sync(
         .as_ref()
         .and_then(|p| OpenOptions::new().create(true).append(true).open(p).ok());
     let src_root = fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf());
-    let mut stats = Stats::default();
+        let mut stats = Stats::default();
     if !src_root.exists() {
         if opts.delete_missing_args {
             if dst.exists() {
+                if let Some(max) = opts.max_delete {
+                    if stats.files_deleted >= max {
+                        return Err(EngineError::Other("max-delete limit exceeded".into()));
+                    }
+                }
                 let meta = fs::symlink_metadata(dst)?;
                 if opts.backup {
                     let backup_path = if let Some(ref dir) = opts.backup_dir {
