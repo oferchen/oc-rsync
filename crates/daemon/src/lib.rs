@@ -490,6 +490,8 @@ pub fn run_daemon(
     log_file: Option<PathBuf>,
     log_format: Option<String>,
     motd: Option<PathBuf>,
+    lock_file: Option<PathBuf>,
+    state_dir: Option<PathBuf>,
     timeout: Option<Duration>,
     bwlimit: Option<u64>,
     port: u16,
@@ -499,6 +501,22 @@ pub fn run_daemon(
     gid: u32,
     handler: Arc<Handler>,
 ) -> io::Result<()> {
+    let _lock = if let Some(path) = lock_file {
+        let mut f = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(path)?;
+        let _ = writeln!(f, "{}", std::process::id());
+        Some(f)
+    } else {
+        None
+    };
+
+    if let Some(dir) = state_dir {
+        let _ = fs::create_dir_all(dir);
+    }
+
     let (listener, real_port) = TcpTransport::listen(address, port, family)?;
     if port == 0 {
         println!("{}", real_port);

@@ -1,21 +1,19 @@
 // crates/cli/src/lib.rs
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs::{self, OpenOptions};
+use std::fs;
 use std::io::{self, Read, Write};
 use std::net::{IpAddr, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+use std::sync::Arc;
 
-use daemon::{
-    authenticate, authenticate_token, chroot_and_drop_privileges, parse_config_file, parse_module,
-    Module,
-};
+use daemon::{parse_config_file, parse_module, Module};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use clap::parser::ValueSource;
-use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
+use clap::{ArgAction, ArgMatches, Args, CommandFactory, FromArgMatches, Parser};
 use compress::{available_codecs, Codec, ModernCompress};
 #[cfg(feature = "blake3")]
 use engine::ModernHash;
@@ -551,24 +549,10 @@ pub fn parse_rsync_path(raw: Option<String>) -> Result<Option<RshCommand>> {
 struct DaemonOpts {
     #[arg(long)]
     daemon: bool,
-    #[arg(long = "config", value_name = "FILE")]
-    config: Option<PathBuf>,
     #[arg(long, value_parser = parse_module, value_name = "NAME=PATH")]
     module: Vec<Module>,
     #[arg(long)]
     address: Option<IpAddr>,
-    #[arg(long, default_value_t = 873)]
-    port: u16,
-    #[arg(short = '4', long = "ipv4", conflicts_with = "ipv6")]
-    ipv4: bool,
-    #[arg(short = '6', long = "ipv6", conflicts_with = "ipv4")]
-    ipv6: bool,
-    #[arg(long = "timeout", value_name = "SECONDS", value_parser = parse_duration)]
-    timeout: Option<Duration>,
-    #[arg(long = "contimeout", value_name = "SECONDS", value_parser = parse_duration)]
-    contimeout: Option<Duration>,
-    #[arg(long = "bwlimit", value_name = "RATE")]
-    bwlimit: Option<u64>,
     #[arg(long = "secrets-file", value_name = "FILE")]
     secrets_file: Option<PathBuf>,
     #[arg(long = "hosts-allow", value_delimiter = ',', value_name = "LIST")]
@@ -581,6 +565,10 @@ struct DaemonOpts {
     log_file_format: Option<String>,
     #[arg(long = "motd", value_name = "FILE")]
     motd: Option<PathBuf>,
+    #[arg(long = "lock-file", value_name = "FILE")]
+    lock_file: Option<PathBuf>,
+    #[arg(long = "state-dir", value_name = "DIR")]
+    state_dir: Option<PathBuf>,
 }
 
 #[allow(dead_code)]
@@ -594,6 +582,16 @@ struct ProbeOpts {
 }
 
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
+    let daemon_opts =
+        DaemonOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
+    if daemon_opts.daemon {
+        return run_daemon(daemon_opts, matches);
+    }
+    let probe_opts =
+        ProbeOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
+    if probe_opts.probe {
+        return run_probe(probe_opts);
+    }
     let mut opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
     if matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
@@ -607,7 +605,10 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
 }
 
 pub fn cli_command() -> clap::Command {
-    ClientOpts::command()
+    let cmd = ClientOpts::command();
+    let cmd = DaemonOpts::augment_args(cmd);
+    let cmd = ProbeOpts::augment_args(cmd);
+    cmd
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1790,7 +1791,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
 }
 
 #[allow(dead_code)]
-fn run_daemon(opts: DaemonOpts) -> Result<()> {
+fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut modules: HashMap<String, Module> = HashMap::new();
     let mut secrets = opts.secrets_file.clone();
     let mut hosts_allow = opts.hosts_allow.clone();
@@ -1798,12 +1799,13 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     let mut log_file = opts.log_file.clone();
     let log_format = opts.log_file_format.clone();
     let mut motd = opts.motd.clone();
-    let timeout = opts.timeout;
-    let bwlimit = opts.bwlimit;
-    let mut port = opts.port;
+    let lock_file = opts.lock_file.clone();
+    let state_dir = opts.state_dir.clone();
+    let mut port = matches.get_one::<u16>("port").copied().unwrap_or(873);
     let mut address = opts.address;
-
-    if let Some(cfg_path) = &opts.config {
+    let timeout = matches.get_one::<Duration>("timeout").copied();
+    let bwlimit = matches.get_one::<u64>("bwlimit").copied();
+    if let Some(cfg_path) = matches.get_one::<PathBuf>("config") {
         let cfg = parse_config_file(cfg_path).map_err(|e| EngineError::Other(e.to_string()))?;
         for m in cfg.modules {
             modules.insert(m.name.clone(), m);
@@ -1834,200 +1836,40 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     for m in opts.module {
         modules.insert(m.name.clone(), m);
     }
-    let addr_family = if opts.ipv4 {
+
+    let addr_family = if matches.get_flag("ipv4") {
         Some(AddressFamily::V4)
-    } else if opts.ipv6 {
+    } else if matches.get_flag("ipv6") {
         Some(AddressFamily::V6)
     } else {
         None
     };
 
-    let (listener, real_port) = TcpTransport::listen(address, port, addr_family)?;
+    let handler: Arc<daemon::Handler> = Arc::new(|_| Ok(()));
 
-    if port == 0 {
-        println!("{}", real_port);
-        let _ = io::stdout().flush();
-    }
-
-    loop {
-        let (stream, addr) = TcpTransport::accept(&listener, &hosts_allow, &hosts_deny)?;
-        let peer = addr.ip().to_string();
-        let modules = modules.clone();
-        let secrets = secrets.clone();
-        let log_file = log_file.clone();
-        let log_format = log_format.clone();
-        let motd = motd.clone();
-        std::thread::spawn(move || {
-            let mut transport = TcpTransport::from_stream(stream);
-            let _ = transport.set_read_timeout(timeout);
-            if let Some(limit) = bwlimit {
-                let mut transport = RateLimitedTransport::new(transport, limit);
-                if let Err(e) = handle_connection(
-                    &mut transport,
-                    &modules,
-                    secrets.as_deref(),
-                    log_file.as_deref(),
-                    log_format.as_deref(),
-                    motd.as_deref(),
-                    &peer,
-                ) {
-                    eprintln!("connection error: {}", e);
-                }
-            } else if let Err(e) = handle_connection(
-                &mut transport,
-                &modules,
-                secrets.as_deref(),
-                log_file.as_deref(),
-                log_format.as_deref(),
-                motd.as_deref(),
-                &peer,
-            ) {
-                eprintln!("connection error: {}", e);
-            }
-        });
-    }
+    daemon::run_daemon(
+        modules,
+        secrets,
+        hosts_allow,
+        hosts_deny,
+        log_file,
+        log_format,
+        motd,
+        lock_file,
+        state_dir,
+        timeout,
+        bwlimit,
+        port,
+        address,
+        addr_family,
+        65534,
+        65534,
+        handler,
+    )
+    .map_err(|e| EngineError::Other(e.to_string()))
 }
 
 #[allow(dead_code)]
-fn handle_connection<T: Transport>(
-    transport: &mut T,
-    modules: &HashMap<String, Module>,
-    secrets: Option<&Path>,
-    log_file: Option<&Path>,
-    log_format: Option<&str>,
-    motd: Option<&Path>,
-    peer: &str,
-) -> Result<()> {
-    let mut log_file = log_file.map(|p| p.to_path_buf());
-    let mut log_format = log_format.map(|s| s.to_string());
-    let mut buf = [0u8; 4];
-    let n = transport.receive(&mut buf)?;
-    if n == 0 {
-        return Ok(());
-    }
-    let peer_ver = u32::from_be_bytes(buf);
-    transport.send(&LATEST_VERSION.to_be_bytes())?;
-    negotiate_version(LATEST_VERSION, peer_ver).map_err(|e| EngineError::Other(e.to_string()))?;
-
-    let (token, global_allowed, no_motd) =
-        authenticate(transport, secrets).map_err(|e| EngineError::Other(e.to_string()))?;
-
-    if !no_motd {
-        if let Some(mpath) = motd {
-            if let Ok(content) = fs::read_to_string(mpath) {
-                for line in content.lines() {
-                    let msg = format!("@RSYNCD: {line}\n");
-                    transport.send(msg.as_bytes())?;
-                }
-            }
-        }
-    }
-    transport.send(b"@RSYNCD: OK\n")?;
-
-    let mut name_buf = [0u8; 256];
-    let n = transport.receive(&mut name_buf)?;
-    let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
-    let mut opt_buf = [0u8; 256];
-    loop {
-        let n = transport.receive(&mut opt_buf)?;
-        let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
-        if opt.is_empty() {
-            break;
-        }
-        if let Some(v) = opt.strip_prefix("--log-file=") {
-            log_file = Some(PathBuf::from(v));
-        } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
-            log_format = Some(v.to_string());
-        }
-    }
-    if let Some(module) = modules.get(&name) {
-        if let Ok(ip) = peer.parse::<IpAddr>() {
-            if !host_allowed(&ip, &module.hosts_allow, &module.hosts_deny) {
-                let _ = transport.send(b"@ERROR: access denied");
-                return Err(EngineError::Other("host denied".into()));
-            }
-        }
-        let allowed = if let Some(path) = module.secrets_file.as_deref() {
-            match token.as_deref() {
-                Some(tok) => match authenticate_token(tok, path) {
-                    Ok(list) => list,
-                    Err(e) => {
-                        let _ = transport.send(b"@ERROR: access denied");
-                        return Err(EngineError::Other(e.to_string()));
-                    }
-                },
-                None => {
-                    let _ = transport.send(b"@ERROR: access denied");
-                    return Err(EngineError::Other("missing token".into()));
-                }
-            }
-        } else {
-            global_allowed.clone()
-        };
-        if !allowed.is_empty() && !allowed.iter().any(|m| m == &name) {
-            let _ = transport.send(b"@ERROR: access denied");
-            return Err(EngineError::Other("unauthorized module".into()));
-        }
-        if let Some(path) = log_file.as_deref() {
-            let fmt = log_format.as_deref().unwrap_or("%h %m");
-            let line = fmt.replace("%h", peer).replace("%m", &name);
-            let mut f = OpenOptions::new().create(true).append(true).open(path)?;
-            writeln!(f, "{}", line)?;
-            f.flush()?;
-        }
-        #[cfg(unix)]
-        {
-            chroot_and_drop_privileges(&module.path, 65534, 65534)
-                .map_err(|e| EngineError::Other(e.to_string()))?;
-        }
-        let modern = env::var("RSYNC_MODERN").ok().as_deref() == Some("1");
-        let mc = if modern {
-            Some(ModernCompress::Auto)
-        } else {
-            None
-        };
-        #[cfg(feature = "blake3")]
-        let mh = if modern {
-            Some(ModernHash::Blake3)
-        } else {
-            None
-        };
-        #[cfg(not(feature = "blake3"))]
-        let mh = None;
-        sync(
-            Path::new("."),
-            Path::new("."),
-            &Matcher::default(),
-            &available_codecs(mc),
-            &SyncOptions {
-                modern_compress: mc,
-                modern_hash: mh,
-                ..Default::default()
-            },
-        )?;
-    }
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn host_matches(ip: &IpAddr, pat: &str) -> bool {
-    if pat == "*" {
-        return true;
-    }
-    pat.parse::<IpAddr>().map_or(false, |p| &p == ip)
-}
-
-#[allow(dead_code)]
-fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
-    if !allow.is_empty() && !allow.iter().any(|p| host_matches(ip, p)) {
-        return false;
-    }
-    if deny.iter().any(|p| host_matches(ip, p)) {
-        return false;
-    }
-    true
-}
-
 #[allow(dead_code)]
 fn run_probe(opts: ProbeOpts) -> Result<()> {
     if let Some(addr) = opts.addr {
