@@ -34,6 +34,30 @@ fn parse_duration(s: &str) -> std::result::Result<Duration, std::num::ParseIntEr
     Ok(Duration::from_secs(s.parse()?))
 }
 
+fn parse_size(s: &str) -> std::result::Result<usize, String> {
+    let s = s.trim();
+    if s == "0" {
+        return Ok(usize::MAX);
+    }
+    if let Some(last) = s.chars().last() {
+        if last.is_ascii_alphabetic() {
+            let num = s[..s.len() - 1]
+                .parse::<usize>()
+                .map_err(|e| e.to_string())?;
+            let mult = match last.to_ascii_lowercase() {
+                'k' => 1usize << 10,
+                'm' => 1usize << 20,
+                'g' => 1usize << 30,
+                _ => return Err(format!("invalid size suffix: {last}")),
+            };
+            return num
+                .checked_mul(mult)
+                .ok_or_else(|| "size overflow".to_string());
+        }
+    }
+    s.parse::<usize>().map_err(|e| e.to_string())
+}
+
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum ModernCompressArg {
     Auto,
@@ -108,6 +132,10 @@ struct ClientOpts {
     delete_delay: bool,
     #[arg(long = "delete-excluded", help_heading = "Delete")]
     delete_excluded: bool,
+    #[arg(long = "max-delete", value_name = "NUM", help_heading = "Delete")]
+    max_delete: Option<usize>,
+    #[arg(long = "max-alloc", value_name = "SIZE", value_parser = parse_size, help_heading = "Misc")]
+    max_alloc: Option<usize>,
     #[arg(short = 'b', long, help_heading = "Backup")]
     backup: bool,
     #[arg(long = "backup-dir", value_name = "DIR", help_heading = "Backup")]
@@ -205,9 +233,17 @@ struct ClientOpts {
     modern_hash: Option<ModernHashArg>,
     #[arg(long = "modern-cdc", value_enum, help_heading = "Compression")]
     modern_cdc: Option<ModernCdcArg>,
-    #[arg(long = "modern-cdc-min", value_name = "BYTES", help_heading = "Compression")]
+    #[arg(
+        long = "modern-cdc-min",
+        value_name = "BYTES",
+        help_heading = "Compression"
+    )]
     modern_cdc_min: Option<usize>,
-    #[arg(long = "modern-cdc-max", value_name = "BYTES", help_heading = "Compression")]
+    #[arg(
+        long = "modern-cdc-max",
+        value_name = "BYTES",
+        help_heading = "Compression"
+    )]
     modern_cdc_max: Option<usize>,
     #[arg(long, help_heading = "Misc")]
     partial: bool,
@@ -949,6 +985,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let sync_opts = SyncOptions {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
+        max_delete: opts.max_delete,
+        max_alloc: opts.max_alloc.unwrap_or(1usize << 30),
         checksum: opts.checksum,
         compress,
         modern_compress,

@@ -1,6 +1,6 @@
 use logging::{subscriber, LogFormat};
-use tracing::Level;
 use tracing::subscriber::with_default;
+use tracing::Level;
 
 #[test]
 fn info_not_emitted_by_default() {
