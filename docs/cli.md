@@ -8,46 +8,46 @@ lives in the [README's CLI section](../README.md#cli).
 ## Usage
 
 ```sh
-oc-rsync [OPTIONS] <SRC> <DEST>
+oc-rsync [OPTIONS] "<SRC>" "<DEST>"
 ```
 
 ### Examples
 
 - Local directory sync:
   ```sh
-  oc-rsync ./src ./backup
+  oc-rsync "./src" "./backup"
   ```
 - Remote sync over SSH:
   ```sh
-  oc-rsync ./src user@example.com:/var/www
+  oc-rsync "./src" "user@example.com:/var/www"
   ```
 - Dry run with statistics:
   ```sh
-  oc-rsync -n --stats ./src remote:/dst
+  oc-rsync -n --stats "./src" "remote:/dst"
   ```
 - Sync using an explicit config file:
   ```sh
-  oc-rsync --config ./oc-rsync.toml ./src remote:/dst
+  oc-rsync --config "./oc-rsync.toml" "./src" "remote:/dst"
   ```
 - Mirror with exclusions and deletions:
   ```sh
-  oc-rsync -a --delete --exclude '.cache/' ./src/ ./mirror/
+  oc-rsync -a --delete --exclude '.cache/' "./src/" "./mirror/"
   ```
 - Incremental backup using hard links:
   ```sh
-  oc-rsync -a --link-dest=../prev --compare-dest=../base ./src/ ./snapshot/
+  oc-rsync -a --link-dest="../prev" --compare-dest="../base" "./src/" "./snapshot/"
   ```
 - Throttled modern compression:
   ```sh
-  oc-rsync -az --modern --bwlimit=1m ./src/ host:/archive/
+  oc-rsync -az --modern --bwlimit=1m "./src/" "host:/archive/"
   ```
 - Tune delta block size:
   ```sh
-  oc-rsync -B 65536 ./src remote:/dst
+  oc-rsync -B 65536 "./src" "remote:/dst"
   ```
 - Change ownership during transfer (requires root):
   ```sh
-  sudo oc-rsync --chown=0:0 ./src/ remote:/dst/
+  sudo oc-rsync --chown=0:0 "./src/" "remote:/dst/"
   ```
 - Show version:
   ```sh
@@ -59,10 +59,10 @@ oc-rsync [OPTIONS] <SRC> <DEST>
 Just like `rsync`, adding a trailing slash to the source path changes what is
 copied:
 
-- `oc-rsync src/ dest/` copies the *contents* of `src` into `dest`.
-- `oc-rsync src dest/` creates a `dest/src` directory containing the original
+- `oc-rsync "src/" "dest/"` copies the *contents* of `src` into `dest`.
+- `oc-rsync "src" "dest/"` creates a `dest/src` directory containing the original
   files.
-- `oc-rsync remote:/src/ local/` pulls the contents of `/src` from the remote
+- `oc-rsync "remote:/src/" "local/"` pulls the contents of `/src` from the remote
   host into `local`.
 
 ## Options
@@ -252,7 +252,7 @@ quotes much like GNU `rsync`. Leading `VAR=value` tokens set environment
 variables for the spawned command. For example:
 
 ```
-oc-rsync -e 'RUST_LOG=debug ssh -p 2222 -o "StrictHostKeyChecking=no"' src dst
+oc-rsync -e 'RUST_LOG=debug ssh -p 2222 -o "StrictHostKeyChecking=no"' "src" "dst"
 ```
 
 During the connection handshake `oc-rsync` also forwards any environment
