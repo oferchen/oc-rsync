@@ -3,10 +3,12 @@
 use compress::available_codecs;
 use engine::{sync, ModernCdc, SyncOptions};
 use filters::Matcher;
+use serial_test::serial;
 use std::fs;
 use tempfile::tempdir;
 
 #[test]
+#[serial]
 fn cdc_skips_renamed_file() {
     let home = tempdir().unwrap();
     std::env::set_var("HOME", home.path());
@@ -49,6 +51,7 @@ fn cdc_skips_renamed_file() {
 }
 
 #[test]
+#[serial]
 fn cdc_reuses_manifest_with_custom_sizes() {
     let home = tempdir().unwrap();
     std::env::set_var("HOME", home.path());
