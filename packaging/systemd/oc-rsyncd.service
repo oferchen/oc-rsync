@@ -7,6 +7,23 @@ After=network.target
 Type=simple
 ExecStart=/usr/bin/oc-rsync --daemon --no-detach --config /etc/oc-rsyncd/rsyncd.conf
 Restart=on-failure
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictNamespaces=yes
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryDenyWriteExecute=yes
+StateDirectory=oc-rsyncd
 
 [Install]
 WantedBy=multi-user.target

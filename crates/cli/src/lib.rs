@@ -21,7 +21,7 @@ use engine::{
     sync, DeleteMode, EngineError, IdMapper, ModernCdc, Result, Stats, StrongHash, SyncOptions,
 };
 use filters::{default_cvs_rules, parse, Matcher, Rule};
-use logging::human_bytes;
+use logging::{human_bytes, DebugFlag, InfoFlag};
 use meta::{parse_chmod, parse_chown, parse_id_map};
 #[cfg(unix)]
 use nix::unistd::{Uid, User};
@@ -44,7 +44,7 @@ fn parse_duration(s: &str) -> std::result::Result<Duration, std::num::ParseIntEr
 fn parse_size(s: &str) -> std::result::Result<usize, String> {
     let s = s.trim();
     if s == "0" {
-        return Ok(usize::MAX);
+        return Ok(0);
     }
     if let Some(last) = s.chars().last() {
         if last.is_ascii_alphabetic() {
@@ -140,6 +140,22 @@ struct ClientOpts {
     verbose: u8,
     #[arg(long = "log-format", help_heading = "Output", value_parser = ["text", "json"])]
     log_format: Option<String>,
+    #[arg(
+        long,
+        value_name = "FLAGS",
+        value_delimiter = ',',
+        value_enum,
+        help_heading = "Output"
+    )]
+    info: Vec<InfoFlag>,
+    #[arg(
+        long,
+        value_name = "FLAGS",
+        value_delimiter = ',',
+        value_enum,
+        help_heading = "Output"
+    )]
+    debug: Vec<DebugFlag>,
     #[arg(long = "human-readable", help_heading = "Output")]
     human_readable: bool,
     #[arg(short, long, help_heading = "Output")]

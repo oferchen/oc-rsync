@@ -33,6 +33,8 @@ pub mod flist;
 pub enum EngineError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("max-alloc limit exceeded")]
+    MaxAlloc,
     #[error("{0}")]
     Other(String),
 }
@@ -61,7 +63,7 @@ fn io_context(path: &Path, err: std::io::Error) -> EngineError {
 
 fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
     if opts.max_alloc != 0 && len > opts.max_alloc as u64 {
-        Err(EngineError::Other("max-alloc limit exceeded".into()))
+        Err(EngineError::MaxAlloc)
     } else {
         Ok(())
     }

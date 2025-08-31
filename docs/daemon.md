@@ -15,6 +15,15 @@ included in release artifacts:
 - `packaging/rsyncd.conf.example` – example configuration file
 - `packaging/systemd/oc-rsyncd.service` – systemd service unit
 
+### systemd hardening
+
+The bundled `oc-rsyncd.service` applies systemd sandboxing features to reduce
+attack surface. It enables `NoNewPrivileges=yes` and mounts the host filesystem
+read-only with `ProtectSystem=strict`. The unit grants only the
+`CAP_NET_BIND_SERVICE` capability via `CapabilityBoundingSet`/`AmbientCapabilities`
+and creates an isolated state directory with `StateDirectory=oc-rsyncd`.
+These settings may be relaxed if the daemon requires additional privileges.
+
 ## Module setup
 
 Modules map a name to a directory on disk. Each module is supplied on the command line:
