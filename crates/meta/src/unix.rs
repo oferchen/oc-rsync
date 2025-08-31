@@ -284,20 +284,18 @@ impl Metadata {
                 } else if opts.times && !skip_mtime {
                     filetime::set_symlink_file_times(path, cur_atime, self.mtime)?;
                 }
-            } else {
-                if opts.atimes {
-                    if let Some(atime) = self.atime {
-                        if skip_mtime {
-                            filetime::set_file_atime(path, atime)?;
-                        } else {
-                            filetime::set_file_times(path, atime, self.mtime)?;
-                        }
-                    } else if opts.times && !skip_mtime {
-                        filetime::set_file_mtime(path, self.mtime)?;
+            } else if opts.atimes {
+                if let Some(atime) = self.atime {
+                    if skip_mtime {
+                        filetime::set_file_atime(path, atime)?;
+                    } else {
+                        filetime::set_file_times(path, atime, self.mtime)?;
                     }
                 } else if opts.times && !skip_mtime {
                     filetime::set_file_mtime(path, self.mtime)?;
                 }
+            } else if opts.times && !skip_mtime {
+                filetime::set_file_mtime(path, self.mtime)?;
             }
         }
 
@@ -373,10 +371,7 @@ fn get_file_crtime(path: &Path) -> io::Result<Option<FileTime>> {
         Ok(None)
     } else {
         let ts = stx.stx_btime;
-        Ok(Some(FileTime::from_unix_time(
-            ts.tv_sec as i64,
-            ts.tv_nsec as u32,
-        )))
+        Ok(Some(FileTime::from_unix_time(ts.tv_sec, ts.tv_nsec)))
     }
 }
 

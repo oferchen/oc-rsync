@@ -30,7 +30,7 @@ pub fn parse_chmod_spec(spec: &str) -> StdResult<Chmod, String> {
         });
     }
 
-    let (op_pos, op_char) = match rest.find(|c| c == '+' || c == '-' || c == '=') {
+    let (op_pos, op_char) = match rest.find(|c| ['+', '-', '='].contains(&c)) {
         Some(p) => (p, rest.as_bytes()[p] as char),
         None => {
             if let Some(ch) = rest.chars().find(|c| !matches!(*c, 'u' | 'g' | 'o' | 'a')) {
