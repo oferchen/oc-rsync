@@ -146,7 +146,7 @@ negotiates version 73.
 | `--server` | — | ✅ | ❌ | [tests/server.rs](../tests/server.rs) | negotiates protocol version and codecs | ≤3.2 |
 | `--size-only` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--skip-compress` | — | ✅ | ✅ | [tests/skip_compress.rs](../tests/skip_compress.rs) | comma-separated list of file suffixes to avoid compressing | ≤3.2 |
-| `--sockopts` | — | ✅ | ❌ | [tests/sockopts.rs](../tests/sockopts.rs) |  | ≤3.2 |
+| `--sockopts` | — | ✅ | ❌ | [tests/sockopts.rs](../tests/sockopts.rs)<br>[crates/transport/tests/sockopts.rs](../crates/transport/tests/sockopts.rs) | supports `SO_*` and `ip:ttl`/`ip:tos` | ≤3.2 |
 | `--sparse` | `-S` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | creates holes for long zero runs | ≤3.2 |
 | `--specials` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--stats` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |

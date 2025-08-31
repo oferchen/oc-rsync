@@ -790,6 +790,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         None
     };
 
+    // Validate socket options early so parsing errors surface before any I/O
+    parse_sockopts(&opts.sockopts).map_err(|e| EngineError::Other(e))?;
+
     if let Some(pf) = &opts.password_file {
         #[cfg(unix)]
         {
