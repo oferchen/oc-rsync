@@ -41,8 +41,9 @@ name = "preallocate"
 harness = false
 
 [features]
-default = []
+default = ["zstd"]
 lz4 = ["compress/lz4"]
+zstd = []
 xattr = ["meta/xattr"]
 acl = ["meta/acl"]
 blake3 = ["checksums/blake3"]
