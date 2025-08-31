@@ -94,21 +94,6 @@ impl std::fmt::Debug for Options {
     }
 }
 
-impl Options {
-    pub fn needs_metadata(&self) -> bool {
-        self.xattrs
-            || self.acl
-            || self.chmod.is_some()
-            || self.owner
-            || self.group
-            || self.perms
-            || self.executability
-            || self.times
-            || self.atimes
-            || self.crtimes
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
     pub uid: u32,
