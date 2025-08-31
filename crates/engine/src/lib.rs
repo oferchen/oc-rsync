@@ -763,25 +763,25 @@ impl Receiver {
         if resume > src_len {
             resume = src_len;
         }
-        let mut out = if self.opts.inplace
+        let mut out = if self.opts.write_devices {
+            OpenOptions::new().write(true).open(&tmp_dest)?
+        } else if self.opts.inplace
             || self.opts.partial
             || self.opts.append
             || self.opts.append_verify
         {
-            if self.opts.write_devices {
-                OpenOptions::new().write(true).open(&tmp_dest)?
-            } else {
-                OpenOptions::new()
-                    .read(true)
-                    .write(true)
-                    .create(true)
-                    .open(&tmp_dest)?
-            }
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(&tmp_dest)?
         } else {
             File::create(&tmp_dest)?
         };
-        out.set_len(resume)?;
-        out.seek(SeekFrom::Start(resume))?;
+        if !self.opts.write_devices {
+            out.set_len(resume)?;
+            out.seek(SeekFrom::Start(resume))?;
+        }
         let file_codec = if should_compress(src, &self.opts.skip_compress) {
             self.codec
         } else {
@@ -810,8 +810,10 @@ impl Receiver {
             Ok(op)
         });
         apply_delta(&mut basis, ops, &mut out, &self.opts, 0)?;
-        let len = out.seek(SeekFrom::Current(0))?;
-        out.set_len(len)?;
+        if !self.opts.write_devices {
+            let len = out.seek(SeekFrom::Current(0))?;
+            out.set_len(len)?;
+        }
         if !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some()) {
             fs::rename(&tmp_dest, dest)?;
         }
@@ -1712,10 +1714,7 @@ mod tests {
         let mut out = Cursor::new(Vec::new());
         apply_delta(&mut basis, delta, &mut out, &SyncOptions::default(), 0).unwrap();
         assert_eq!(out.into_inner(), data);
-        assert!(
-            after - before < 10 * 1024,
-            "memory grew too much: {}KB",
-            after - before
-        );
+        let growth = after.saturating_sub(before);
+        assert!(growth < 10 * 1024, "memory grew too much: {}KB", growth);
     }
 }
