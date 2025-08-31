@@ -17,13 +17,13 @@ use std::time::Duration;
 use clap::parser::ValueSource;
 use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
 use compress::{available_codecs, Codec, ModernCompress};
-use engine::human_bytes;
 #[cfg(feature = "blake3")]
 use engine::ModernHash;
 use engine::{
     sync, DeleteMode, EngineError, IdMapper, ModernCdc, Result, Stats, StrongHash, SyncOptions,
 };
 use filters::{default_cvs_rules, parse, Matcher, Rule};
+use logging::human_bytes;
 use meta::{parse_chmod, parse_chown, parse_id_map};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;

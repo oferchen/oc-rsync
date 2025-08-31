@@ -226,13 +226,34 @@ fn progress_flag_shows_output() {
     let dst_dir = dir.path().join("dst");
     std::fs::create_dir_all(&src_dir).unwrap();
     std::fs::write(src_dir.join("a.txt"), b"hello").unwrap();
+    let expected = format!("{}: 5 bytes\n", dst_dir.join("a.txt").display());
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args(["--local", "--progress", &src_arg, dst_dir.to_str().unwrap()]);
-    cmd.assert()
-        .success()
-        .stderr(predicates::str::contains("a.txt"));
+    cmd.assert().success().stderr(expected);
+}
+
+#[test]
+fn progress_flag_human_readable() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    // 2 KiB file to exercise unit conversion
+    std::fs::write(src_dir.join("a.txt"), vec![0u8; 2 * 1024]).unwrap();
+    let expected = format!("{}: 2.00KiB\n", dst_dir.join("a.txt").display());
+
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--local",
+        "--progress",
+        "--human-readable",
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success().stderr(expected);
 }
 
 #[test]
