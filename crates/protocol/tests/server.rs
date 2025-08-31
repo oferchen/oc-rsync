@@ -4,7 +4,7 @@ use checksums::StrongHash;
 use compress::{available_codecs, encode_codecs, Codec};
 #[cfg(feature = "blake3")]
 use protocol::CAP_BLAKE3;
-use protocol::{Server, CAP_CODECS, CAP_LZ4, CAP_ZSTD, LATEST_VERSION, SUPPORTED_CAPS};
+use protocol::{Server, CAP_CODECS, CAP_LZ4, CAP_ZSTD, LATEST_VERSION, SUPPORTED_CAPS, V31, V32};
 use std::io::Cursor;
 use std::time::Duration;
 
@@ -82,7 +82,7 @@ fn server_classic_versions() {
     let mut codecs_buf = Vec::new();
     codecs_frame.encode(&mut codecs_buf).unwrap();
 
-    for ver in 27u32..=32 {
+    for ver in [V31, V32] {
         let mut input = Cursor::new({
             let mut v = vec![0];
             v.extend_from_slice(&ver.to_be_bytes());
