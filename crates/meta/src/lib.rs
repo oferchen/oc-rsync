@@ -5,8 +5,11 @@ pub use unix::*;
 
 // Re-export device number helpers so consumers can construct and
 // deconstruct `dev_t` values without depending on `nix` directly.
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(target_os = "linux")]
 pub use nix::sys::stat::{makedev, major, minor};
+
+#[cfg(target_os = "macos")]
+pub use libc::{makedev, major, minor};
 
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
 mod stub;
