@@ -10,9 +10,11 @@ use std::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::process::{Child, Command as StdCommand, Stdio};
+use std::sync::mpsc;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use transport::{TcpTransport, Transport};
+use wait_timeout::ChildExt;
 
 struct Skip;
 
@@ -22,31 +24,87 @@ fn require_network() -> Result<(), Skip> {
     Ok(())
 }
 
-fn read_port(child: &mut Child) -> u16 {
-    let stdout = child.stdout.as_mut().unwrap();
-    let mut buf = Vec::new();
-    let mut byte = [0u8; 1];
-    while stdout.read(&mut byte).unwrap() == 1 {
-        if byte[0] == b'\n' {
-            break;
+fn read_port(child: &mut Child) -> io::Result<u16> {
+    let mut stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "missing stdout"))?;
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        let mut byte = [0u8; 1];
+        let res: io::Result<u16> = loop {
+            match stdout.read(&mut byte) {
+                Ok(0) => {
+                    break Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "daemon closed",
+                    ))
+                }
+                Ok(1) => {
+                    if byte[0] == b'\n' {
+                        break String::from_utf8(buf)
+                            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+                            .and_then(|s| {
+                                s.trim()
+                                    .parse()
+                                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+                            });
+                    }
+                    buf.push(byte[0]);
+                }
+                Ok(_) => unreachable!(),
+                Err(e) => break Err(e),
+            }
+        };
+        let _ = tx.send(res);
+    });
+    match rx.recv_timeout(Duration::from_secs(5)) {
+        Ok(res) => res,
+        Err(mpsc::RecvTimeoutError::Timeout) => {
+            if child
+                .wait_timeout(Duration::from_secs(0))
+                .ok()
+                .flatten()
+                .is_some()
+            {
+                Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "daemon exited before writing port",
+                ))
+            } else {
+                Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "timed out waiting for daemon port",
+                ))
+            }
         }
-        buf.push(byte[0]);
+        Err(mpsc::RecvTimeoutError::Disconnected) => Err(io::Error::new(
+            io::ErrorKind::Other,
+            "failed to read daemon port",
+        )),
     }
-    String::from_utf8(buf).unwrap().trim().parse().unwrap()
 }
 
-fn spawn_daemon() -> (Child, u16) {
+fn spawn_daemon() -> io::Result<(Child, u16)> {
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--daemon", "--module", "data=/tmp", "--port", "0"])
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
-    let port = read_port(&mut child);
-    (child, port)
+    let port = match read_port(&mut child) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(e);
+        }
+    };
+    Ok((child, port))
 }
 
-fn spawn_temp_daemon() -> (Child, u16, tempfile::TempDir) {
+fn spawn_temp_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
@@ -60,11 +118,18 @@ fn spawn_temp_daemon() -> (Child, u16, tempfile::TempDir) {
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
-    let port = read_port(&mut child);
-    (child, port, dir)
+    let port = match read_port(&mut child) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(e);
+        }
+    };
+    Ok((child, port, dir))
 }
 
-fn spawn_daemon_with_address(addr: &str) -> (Child, u16) {
+fn spawn_daemon_with_address(addr: &str) -> io::Result<(Child, u16)> {
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
@@ -79,30 +144,51 @@ fn spawn_daemon_with_address(addr: &str) -> (Child, u16) {
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
-    let port = read_port(&mut child);
-    (child, port)
+    let port = match read_port(&mut child) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(e);
+        }
+    };
+    Ok((child, port))
 }
 
-fn spawn_daemon_ipv4() -> (Child, u16) {
+fn spawn_daemon_ipv4() -> io::Result<(Child, u16)> {
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--daemon", "--module", "data=/tmp", "--port", "0", "-4"])
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
-    let port = read_port(&mut child);
-    (child, port)
+    let port = match read_port(&mut child) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(e);
+        }
+    };
+    Ok((child, port))
 }
 
-fn spawn_daemon_ipv6() -> (Child, u16) {
+fn spawn_daemon_ipv6() -> io::Result<(Child, u16)> {
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--daemon", "--module", "data=/tmp", "--port", "0", "-6"])
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
-    let port = read_port(&mut child);
-    (child, port)
+    let port = match read_port(&mut child) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(e);
+        }
+    };
+    Ok((child, port))
 }
 
 fn supports_ipv6() -> bool {
@@ -136,7 +222,13 @@ fn daemon_negotiates_version_with_client() {
         eprintln!("skipping daemon test: network access required");
         return;
     }
-    let (mut child, port) = spawn_daemon();
+    let (mut child, port) = match spawn_daemon() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
     assert_ne!(port, 873);
     wait_for_daemon(port);
     let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
@@ -155,7 +247,13 @@ fn daemon_binds_to_specified_address() {
         eprintln!("skipping daemon test: network access required");
         return;
     }
-    let (mut child, port) = spawn_daemon_with_address("127.0.0.1");
+    let (mut child, port) = match spawn_daemon_with_address("127.0.0.1") {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
     wait_for_daemon(port);
     TcpStream::connect(("127.0.0.1", port)).unwrap();
     assert!(TcpStream::connect(("127.0.0.2", port)).is_err());
@@ -170,7 +268,13 @@ fn daemon_binds_with_ipv4_flag() {
         eprintln!("skipping daemon test: network access required");
         return;
     }
-    let (mut child, port) = spawn_daemon_ipv4();
+    let (mut child, port) = match spawn_daemon_ipv4() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
     wait_for_daemon(port);
     TcpStream::connect(("127.0.0.1", port)).unwrap();
     assert!(TcpStream::connect(("::1", port)).is_err());
@@ -189,7 +293,13 @@ fn daemon_binds_with_ipv6_flag() {
         eprintln!("IPv6 unsupported; skipping test");
         return;
     }
-    let (mut child, port) = spawn_daemon_ipv6();
+    let (mut child, port) = match spawn_daemon_ipv6() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
     wait_for_daemon_v6(port);
     TcpStream::connect(("::1", port)).unwrap();
     let _ = child.kill();
@@ -203,7 +313,13 @@ fn probe_connects_to_daemon() {
         eprintln!("skipping daemon test: network access required");
         return;
     }
-    let (mut child, port) = spawn_daemon();
+    let (mut child, port) = match spawn_daemon() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
     wait_for_daemon(port);
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -235,7 +351,13 @@ fn daemon_accepts_connection_on_ephemeral_port() {
         eprintln!("skipping daemon test: network access required");
         return;
     }
-    let (mut child, port, _dir) = spawn_temp_daemon();
+    let (mut child, port, _dir) = match spawn_temp_daemon() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
     wait_for_daemon(port);
     TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
     let _ = child.kill();
@@ -249,7 +371,13 @@ fn daemon_allows_module_access() {
         eprintln!("skipping daemon test: network access required");
         return;
     }
-    let (mut child, port, _dir) = spawn_temp_daemon();
+    let (mut child, port, _dir) = match spawn_temp_daemon() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
     wait_for_daemon(port);
     let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_millis(200)))
@@ -257,7 +385,11 @@ fn daemon_allows_module_access() {
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
+    t.authenticate(None, false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
     t.send(b"data\n").unwrap();
+    t.send(b"\n").unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
     assert!(n == 0 || !String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR"));
     let _ = child.kill();
@@ -304,7 +436,7 @@ fn daemon_rejects_invalid_token() {
     t.receive(&mut buf).unwrap();
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
 
-    t.authenticate(Some("bad")).unwrap();
+    t.authenticate(Some("bad"), false).unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
     assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).starts_with("@ERR"));
     let _ = child.kill();
@@ -351,8 +483,11 @@ fn daemon_rejects_unauthorized_module() {
     t.receive(&mut buf).unwrap();
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
 
-    t.authenticate(Some("secret")).unwrap();
+    t.authenticate(Some("secret"), false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
     t.send(b"data\n").unwrap();
+    t.send(b"\n").unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
     assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).starts_with("@ERR"));
     let _ = child.kill();
@@ -399,8 +534,11 @@ fn daemon_authenticates_valid_token() {
     t.receive(&mut buf).unwrap();
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
 
-    t.authenticate(Some("secret")).unwrap();
+    t.authenticate(Some("secret"), false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
     t.send(b"data\n").unwrap();
+    t.send(b"\n").unwrap();
     let res = t.receive(&mut buf);
     match res {
         Ok(0) => {}
@@ -517,10 +655,51 @@ fn daemon_displays_motd() {
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
-    t.authenticate(None).unwrap();
+    t.authenticate(None, false).unwrap();
     let mut motd_buf = [0u8; 64];
     let n = t.receive(&mut motd_buf).unwrap();
     assert!(String::from_utf8_lossy(&motd_buf[..n]).contains("Hello world"));
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_suppresses_motd_when_requested() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let motd = dir.path().join("motd");
+    fs::write(&motd, "Hello world\n").unwrap();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let mut child = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            "data=/tmp",
+            "--port",
+            &port.to_string(),
+            "--motd",
+            motd.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    t.authenticate(None, true).unwrap();
+    let mut motd_buf = [0u8; 64];
+    let n = t.receive(&mut motd_buf).unwrap();
+    assert_eq!(String::from_utf8_lossy(&motd_buf[..n]), "@RSYNCD: OK\n");
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -620,7 +799,11 @@ fn daemon_writes_log_file() {
         t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
         let mut buf = [0u8; 4];
         t.receive(&mut buf).unwrap();
+        t.authenticate(None, false).unwrap();
+        let mut ok = [0u8; 64];
+        t.receive(&mut ok).unwrap();
         t.send(b"data\n").unwrap();
+        t.send(b"\n").unwrap();
     }
     sleep(Duration::from_millis(100));
     let contents = fs::read_to_string(&log).unwrap();
@@ -665,6 +848,7 @@ fn daemon_honors_bwlimit() {
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
+    t.authenticate(None, false).unwrap();
     let mut first = vec![0u8; 300];
     let n1 = t.receive(&mut first).unwrap();
     assert!(!String::from_utf8_lossy(&first[..n1]).contains("second"));

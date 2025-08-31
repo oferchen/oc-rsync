@@ -8,7 +8,8 @@ use std::net::{IpAddr, TcpStream};
 use std::os::unix::fs::PermissionsExt;
 
 use daemon::{
-    authenticate_token, chroot_and_drop_privileges, parse_config_file, parse_module, Module,
+    authenticate, authenticate_token, chroot_and_drop_privileges, parse_config_file, parse_module,
+    Module,
 };
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -344,10 +345,16 @@ struct ClientOpts {
         short = 'M',
         long = "remote-option",
         value_name = "OPT",
-        allow_hyphen_values = true
+        allow_hyphen_values = true,
+        help = "send OPTION to the remote side only"
     )]
     remote_option: Vec<String>,
-    #[arg(short = 's', long = "secluded-args", help_heading = "Misc")]
+    #[arg(
+        short = 's',
+        long = "secluded-args",
+        help_heading = "Misc",
+        help = "use the protocol to safely send the args"
+    )]
     secluded_args: bool,
     #[arg(
         long = "sockopts",
@@ -689,7 +696,7 @@ pub fn spawn_daemon_session(
     let token = password_file
         .and_then(|p| fs::read_to_string(p).ok())
         .and_then(|s| s.lines().next().map(|l| l.to_string()));
-    t.authenticate(token.as_deref())
+    t.authenticate(token.as_deref(), no_motd)
         .map_err(EngineError::from)?;
 
     let mut line = Vec::new();
@@ -1735,23 +1742,20 @@ fn handle_connection<T: Transport>(
     transport.send(&LATEST_VERSION.to_be_bytes())?;
     negotiate_version(LATEST_VERSION, peer_ver).map_err(|e| EngineError::Other(e.to_string()))?;
 
-    let mut tok_buf = [0u8; 256];
-    let tn = transport.receive(&mut tok_buf)?;
-    let token = if tn == 0 {
-        None
-    } else {
-        Some(String::from_utf8_lossy(&tok_buf[..tn]).trim().to_string())
-    };
+    let (token, global_allowed, no_motd) =
+        authenticate(transport, secrets).map_err(|e| EngineError::Other(e.to_string()))?;
 
-    if let Some(mpath) = motd {
-        if let Ok(content) = fs::read_to_string(mpath) {
-            for line in content.lines() {
-                let msg = format!("@RSYNCD: {line}\n");
-                transport.send(msg.as_bytes())?;
+    if !no_motd {
+        if let Some(mpath) = motd {
+            if let Ok(content) = fs::read_to_string(mpath) {
+                for line in content.lines() {
+                    let msg = format!("@RSYNCD: {line}\n");
+                    transport.send(msg.as_bytes())?;
+                }
             }
-            transport.send(b"@RSYNCD: OK\n")?;
         }
     }
+    transport.send(b"@RSYNCD: OK\n")?;
 
     let mut name_buf = [0u8; 256];
     let n = transport.receive(&mut name_buf)?;
@@ -1776,8 +1780,7 @@ fn handle_connection<T: Transport>(
                 return Err(EngineError::Other("host denied".into()));
             }
         }
-        let secrets_path = module.secrets_file.as_deref().or(secrets);
-        let allowed = if let Some(path) = secrets_path {
+        let allowed = if let Some(path) = module.secrets_file.as_deref() {
             match token.as_deref() {
                 Some(tok) => match authenticate_token(tok, path) {
                     Ok(list) => list,
@@ -1792,7 +1795,7 @@ fn handle_connection<T: Transport>(
                 }
             }
         } else {
-            Vec::new()
+            global_allowed.clone()
         };
         if !allowed.is_empty() && !allowed.iter().any(|m| m == &name) {
             let _ = transport.send(b"@ERROR: access denied");
