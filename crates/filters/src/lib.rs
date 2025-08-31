@@ -191,7 +191,8 @@ impl Matcher {
             let fname = path.file_name().map(|f| f.to_string_lossy().to_string());
             for (depth_idx, d) in dirs.iter().enumerate() {
                 let depth = depth_idx + 1;
-                if depth_idx == dirs.len() - 1 {
+                for (idx, rule) in self.dir_rules_at(d, for_delete, xattr)? {
+                    let mut idx_adj = idx;
                     if let Some(ref f) = fname {
                         let mut is_merge = self.per_dir.iter().any(|(_, pd)| pd.file == *f);
                         if !is_merge {
@@ -200,12 +201,10 @@ impl Matcher {
                             }
                         }
                         if is_merge {
-                            continue;
+                            idx_adj += 2;
                         }
                     }
-                }
-                for (idx, rule) in self.dir_rules_at(d, for_delete, xattr)? {
-                    active.push((idx, depth, seq, rule));
+                    active.push((idx_adj, depth, seq, rule));
                     seq += 1;
                 }
             }
@@ -227,7 +226,7 @@ impl Matcher {
         }
 
         let mut decision: Option<bool> = None;
-        for rule in ordered.iter().rev() {
+        for rule in ordered.iter() {
             match rule {
                 Rule::Protect(data) => {
                     if !data.flags.applies(for_delete, xattr) {
@@ -482,6 +481,25 @@ impl Matcher {
                 content = buf;
             }
             if let Some(ch) = sign {
+                fn split_mods<'a>(s: &'a str) -> (&'a str, &'a str) {
+                    let s = s.trim_start();
+                    let mut idx = 0;
+                    let bytes = s.as_bytes();
+                    if bytes.get(0) == Some(&b',') {
+                        idx += 1;
+                    }
+                    while let Some(&c) = bytes.get(idx) {
+                        if b"/!Csrpx".contains(&c) {
+                            idx += 1;
+                        } else {
+                            break;
+                        }
+                    }
+                    let mods = &s[..idx];
+                    let rest = s[idx..].trim_start();
+                    (mods, rest)
+                }
+
                 let rel_str = rel.map(|p| p.to_string_lossy().to_string());
                 let mut buf = String::new();
                 for raw_line in content.lines() {
@@ -498,7 +516,15 @@ impl Matcher {
                             (Some(c), line[1..].trim_start())
                         }
                         _ => (None, line),
+                    let rest = if matches!(
+                        line.chars().next(),
+                        Some('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R')
+                    ) {
+                        &line[1..]
+                    } else {
+                        line
                     };
+                    let (mods, pat) = split_mods(rest);
                     let new_pat = if let Some(rel_str) = &rel_str {
                         if pat.starts_with('/') {
                             format!("/{}/{}", rel_str, pat.trim_start_matches('/'))
@@ -509,6 +535,8 @@ impl Matcher {
                         pat.to_string()
                     };
                     buf.push(prefix.unwrap_or(ch));
+                    buf.push(ch);
+                    buf.push_str(mods);
                     buf.push(' ');
                     buf.push_str(&new_pat);
                     buf.push('\n');

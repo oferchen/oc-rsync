@@ -168,41 +168,42 @@ fn ignores_parent_rsync_filter_with_ff() {
 
 #[test]
 fn perdir_sign_parity() {
-    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/filter_corpus");
-    let path = fixture_dir.join("perdir_sign.rules");
-    let rules_line = fs::read_to_string(&path).unwrap();
-    let args = split(rules_line.trim()).unwrap();
-    let tmp = tempdir().unwrap();
-    let src = tmp.path().join("src");
-    let rsync_dst = tmp.path().join("rsync");
-    let ours_dst = tmp.path().join("ours");
-    fs::create_dir_all(&src).unwrap();
-    fs::create_dir_all(&rsync_dst).unwrap();
-    fs::create_dir_all(&ours_dst).unwrap();
-    setup_perdir(&src);
-    let src_arg = format!("{}/", src.display());
+    let cases = [
+        vec!["--filter=:+ .rsync-filter", "--filter=- .rsync-filter"],
+        vec!["--filter=:+,r .rsync-filter", "--filter=- .rsync-filter"],
+    ];
+    for args in cases { 
+        let tmp = tempdir().unwrap();
+        let src = tmp.path().join("src");
+        let rsync_dst = tmp.path().join("rsync");
+        let ours_dst = tmp.path().join("ours");
+        fs::create_dir_all(&src).unwrap();
+        fs::create_dir_all(&rsync_dst).unwrap();
+        fs::create_dir_all(&ours_dst).unwrap();
+        setup_perdir(&src);
+        let src_arg = format!("{}/", src.display());
 
-    let mut rsync_cmd = StdCommand::new("rsync");
-    rsync_cmd.args(["-r", "--quiet"]);
-    rsync_cmd.args(&args);
-    rsync_cmd.arg(&src_arg);
-    rsync_cmd.arg(&rsync_dst);
-    let rsync_out = rsync_cmd.output().unwrap();
-    assert!(rsync_out.status.success());
-    let rsync_output = String::from_utf8_lossy(&rsync_out.stdout).to_string()
-        + &String::from_utf8_lossy(&rsync_out.stderr);
+        let mut rsync_cmd = StdCommand::new("rsync");
+        rsync_cmd.args(["-r", "--quiet"]);
+        rsync_cmd.args(&args);
+        rsync_cmd.arg(&src_arg);
+        rsync_cmd.arg(&rsync_dst);
+        let rsync_out = rsync_cmd.output().unwrap();
+        assert!(rsync_out.status.success());
+        let rsync_output = String::from_utf8_lossy(&rsync_out.stdout).to_string()
+            + &String::from_utf8_lossy(&rsync_out.stderr);
 
-    let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
-    ours_cmd.args(["--local", "--recursive"]);
-    ours_cmd.args(&args);
-    ours_cmd.arg(&src_arg);
-    ours_cmd.arg(&ours_dst);
-    let ours_out = ours_cmd.output().unwrap();
-    assert!(ours_out.status.success());
-    let mut ours_output = String::from_utf8_lossy(&ours_out.stdout).to_string()
-        + &String::from_utf8_lossy(&ours_out.stderr);
-    ours_output = ours_output.replace("recursive mode enabled\n", "");
-    assert_eq!(rsync_output, ours_output);
+        let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
+        ours_cmd.args(["--local", "--recursive"]);
+        ours_cmd.args(&args);
+        ours_cmd.arg(&src_arg);
+        ours_cmd.arg(&ours_dst);
+        let ours_out = ours_cmd.output().unwrap();
+        assert!(ours_out.status.success());
+        let mut ours_output = String::from_utf8_lossy(&ours_out.stdout).to_string()
+            + &String::from_utf8_lossy(&ours_out.stderr);
+        ours_output = ours_output.replace("recursive mode enabled\n", "");
+        assert_eq!(rsync_output, ours_output);
 
     let diff = StdCommand::new("diff")
         .arg("-r")
@@ -219,4 +220,12 @@ fn perdir_sign_parity() {
     assert!(!ours_dst.join(".rsync-filter").exists());
     assert!(!ours_dst.join("sub/.rsync-filter").exists());
     assert!(!ours_dst.join("sub/nested/.rsync-filter").exists());
+        let diff = StdCommand::new("diff")
+            .arg("-r")
+            .arg(&rsync_dst)
+            .arg(&ours_dst)
+            .output()
+            .unwrap();
+        assert!(diff.status.success(), "directory trees differ");
+    }
 }
