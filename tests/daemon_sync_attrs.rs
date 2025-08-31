@@ -18,7 +18,7 @@ use std::time::Duration;
 use tempfile::tempdir;
 
 #[cfg(all(unix, feature = "acl"))]
-use posix_acl::{PosixACL, Qualifier, ACL_READ};
+use posix_acl::{PosixACL, Qualifier, ACL_READ, ACL_WRITE};
 #[cfg(all(unix, feature = "xattr"))]
 use xattr;
 
@@ -98,7 +98,9 @@ fn daemon_preserves_acls() {
     fs::write(&file, b"hi").unwrap();
 
     let mut acl = PosixACL::read_acl(&file).unwrap();
+    // Add a pair of custom ACL entries to ensure they survive the transfer.
     acl.set(Qualifier::User(12345), ACL_READ);
+    acl.set(Qualifier::User(23456), ACL_WRITE);
     acl.write_acl(&file).unwrap();
 
     let (mut child, port) = spawn_daemon(&srv);
