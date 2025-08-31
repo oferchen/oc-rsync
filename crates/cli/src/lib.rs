@@ -344,10 +344,16 @@ struct ClientOpts {
         short = 'M',
         long = "remote-option",
         value_name = "OPT",
-        allow_hyphen_values = true
+        allow_hyphen_values = true,
+        help = "send OPTION to the remote side only"
     )]
     remote_option: Vec<String>,
-    #[arg(short = 's', long = "secluded-args", help_heading = "Misc")]
+    #[arg(
+        short = 's',
+        long = "secluded-args",
+        help_heading = "Misc",
+        help = "use the protocol to safely send the args"
+    )]
     secluded_args: bool,
     #[arg(
         long = "sockopts",
