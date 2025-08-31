@@ -9,6 +9,12 @@ pub use rate::RateLimitedTransport;
 pub use ssh::SshStdioTransport;
 pub use tcp::TcpTransport;
 
+/// Wrap a [`Transport`] with a bandwidth limiter using rsync's
+/// token-bucket algorithm.
+pub fn rate_limited<T: Transport>(inner: T, bwlimit: u64) -> RateLimitedTransport<T> {
+    RateLimitedTransport::new(inner, bwlimit)
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum AddressFamily {
     V4,
