@@ -1577,7 +1577,14 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     if s.is_empty() {
                         return None;
                     }
-                    let p = String::from_utf8_lossy(s).to_string();
+                    let mut end = s.len();
+                    while end > 0 && (s[end - 1] == b'\n' || s[end - 1] == b'\r') {
+                        end -= 1;
+                    }
+                    if end == 0 {
+                        return None;
+                    }
+                    let p = String::from_utf8_lossy(&s[..end]).to_string();
                     if p.is_empty() {
                         None
                     } else {

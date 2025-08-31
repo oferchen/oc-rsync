@@ -856,6 +856,66 @@ fn files_from_zero_separated_list() {
 }
 
 #[test]
+fn files_from_zero_separated_list_with_crlf() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("keep me.txt"), b"k").unwrap();
+    std::fs::write(src.join("skip.txt"), b"s").unwrap();
+    let list = dir.path().join("files.lst");
+    std::fs::write(&list, b"keep me.txt\r\n\0").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--from0",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep me.txt").exists());
+    assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
+fn exclude_from_zero_separated_list_with_crlf() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("keep.txt"), b"k").unwrap();
+    std::fs::write(src.join("skip.log"), b"s").unwrap();
+    let list = dir.path().join("exclude.lst");
+    std::fs::write(&list, b"*.log\r\n\0").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--from0",
+            "--exclude-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep.txt").exists());
+    assert!(!dst.join("skip.log").exists());
+}
+
+#[test]
 fn files_from_list_file() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
