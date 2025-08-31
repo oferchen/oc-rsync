@@ -88,7 +88,7 @@ fn ssh_remote_option_forwarded() {
 
 #[cfg(unix)]
 #[test]
-#[ignore]
+#[ignore] // requires network daemon setup
 fn daemon_remote_option_forwarded() {
     let dir = tempdir().unwrap();
     let module_dir = dir.path().join("module");

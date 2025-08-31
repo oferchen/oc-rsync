@@ -205,9 +205,17 @@ struct ClientOpts {
     modern_hash: Option<ModernHashArg>,
     #[arg(long = "modern-cdc", value_enum, help_heading = "Compression")]
     modern_cdc: Option<ModernCdcArg>,
-    #[arg(long = "modern-cdc-min", value_name = "BYTES", help_heading = "Compression")]
+    #[arg(
+        long = "modern-cdc-min",
+        value_name = "BYTES",
+        help_heading = "Compression"
+    )]
     modern_cdc_min: Option<usize>,
-    #[arg(long = "modern-cdc-max", value_name = "BYTES", help_heading = "Compression")]
+    #[arg(
+        long = "modern-cdc-max",
+        value_name = "BYTES",
+        help_heading = "Compression"
+    )]
     modern_cdc_max: Option<usize>,
     #[arg(long, help_heading = "Misc")]
     partial: bool,
@@ -308,10 +316,16 @@ struct ClientOpts {
         short = 'M',
         long = "remote-option",
         value_name = "OPT",
-        allow_hyphen_values = true
+        allow_hyphen_values = true,
+        help = "send OPTION to the remote side only"
     )]
     remote_option: Vec<String>,
-    #[arg(short = 's', long = "secluded-args", help_heading = "Misc")]
+    #[arg(
+        short = 's',
+        long = "secluded-args",
+        help_heading = "Misc",
+        help = "use the protocol to safely send the args"
+    )]
     secluded_args: bool,
     #[arg(
         long = "sockopts",
