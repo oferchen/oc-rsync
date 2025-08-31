@@ -1,8 +1,4 @@
 // crates/filelist/src/lib.rs
-//! Encoding and decoding of rsync's file list (flist).
-//!
-//! Paths are delta-encoded relative to the previous entry.
-//! UID/GID values are transmitted via small tables as rsync does.
 
 use std::collections::HashMap;
 use std::io::Read;
@@ -85,9 +81,7 @@ impl Decoder {
         let path = String::from_utf8(path_bytes).map_err(|_| DecodeError::Utf8)?;
         let (uid, rest) = decode_id(input, &mut self.uid_table, true)?;
         let (gid, rest) = decode_id(rest, &mut self.gid_table, false)?;
-        if !rest.is_empty() {
-            // extra bytes are ignored but should not be present
-        }
+        if !rest.is_empty() {}
         self.prev_path = path.clone();
         Ok(Entry { path, uid, gid })
     }

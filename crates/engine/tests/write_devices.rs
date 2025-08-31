@@ -35,7 +35,7 @@ fn requires_flag_to_write_devices() {
         &SyncOptions::default(),
     )
     .unwrap_err();
-    assert!(format!("{}", err).contains(dev.to_string_lossy().as_ref()));
+    assert!(format!("{}", err).contains("refusing to write to device"));
 
     sync(
         &src,

@@ -858,7 +858,6 @@ fn daemon_respects_module_host_lists() {
     let dir = tempfile::tempdir().unwrap();
     let cfg = dir.path().join("rsyncd.conf");
 
-    // allow list
     fs::write(&cfg, "[data]\npath=/tmp\nhosts allow=127.0.0.1\n").unwrap();
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
@@ -885,7 +884,6 @@ fn daemon_respects_module_host_lists() {
     let _ = child.kill();
     let _ = child.wait();
 
-    // deny list
     fs::write(&cfg, "[data]\npath=/tmp\nhosts deny=127.0.0.1\n").unwrap();
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()

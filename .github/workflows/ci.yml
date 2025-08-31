@@ -114,6 +114,18 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: cargo test --test remote_remote --features blake3
 
+  verify-comments:
+    name: Verify comment headers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - run: make verify-comments
+
   release:
     if: startsWith(github.ref, 'refs/tags/')
     needs: test
