@@ -2,8 +2,12 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
-use crate::{negotiate_version, Demux, Frame, Message, Mux, CAP_CODECS};
-use compress::{decode_codecs, encode_codecs, Codec};
+#[cfg(feature = "blake3")]
+use crate::CAP_BLAKE3;
+use crate::{negotiate_version, Demux, Frame, Message, Mux, CAP_CODECS, CAP_LZ4, CAP_ZSTD};
+#[cfg(feature = "blake3")]
+use checksums::StrongHash;
+use compress::{decode_codecs, encode_codecs, negotiate_codec, Codec};
 
 pub struct Server<R: Read, W: Write> {
     reader: R,
@@ -81,6 +85,29 @@ impl<R: Read, W: Write> Server<R, W> {
                 Err(e) => return Err(e),
             }
         }
+
+        #[cfg(feature = "blake3")]
+        if self.caps & CAP_BLAKE3 != 0 {
+            self.mux.strong_hash = StrongHash::Blake3;
+            self.demux.strong_hash = StrongHash::Blake3;
+        }
+
+        let mut selected = Codec::Zlib;
+        if self.caps & CAP_CODECS != 0 {
+            if let Some(codec) = negotiate_codec(codecs, &peer_codecs) {
+                match codec {
+                    Codec::Zstd if self.caps & CAP_ZSTD != 0 => selected = Codec::Zstd,
+                    Codec::Lz4 if self.caps & CAP_LZ4 != 0 => selected = Codec::Lz4,
+                    _ => {}
+                }
+            }
+        } else if self.caps & CAP_ZSTD != 0 {
+            selected = Codec::Zstd;
+        } else if self.caps & CAP_LZ4 != 0 {
+            selected = Codec::Lz4;
+        }
+        self.mux.compressor = selected;
+        self.demux.compressor = selected;
 
         Ok((self.caps, peer_codecs))
     }
