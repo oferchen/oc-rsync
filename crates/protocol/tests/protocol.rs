@@ -1,5 +1,6 @@
 // crates/protocol/tests/protocol.rs
-use protocol::{negotiate_version, Frame, Message, Msg, Tag, V31, V32};
+use filelist::{Decoder as FDecoder, Encoder as FEncoder, Entry as FEntry};
+use protocol::{negotiate_version, Frame, Message, Msg, Tag, V31, V32, V73};
 
 #[test]
 fn frame_roundtrip() {
@@ -47,19 +48,37 @@ fn version_negotiation() {
 
 #[test]
 fn captured_frames_roundtrip() {
-    const FILE_LIST: [u8; 16] = [
-        0, 0, 0, 4, 0, 0, 0, 8, b'f', b'i', b'l', b'e', b'.', b't', b'x', b't',
-    ];
-    let frame = Frame::decode(&FILE_LIST[..]).unwrap();
+    let entry = FEntry {
+        path: "file.txt".into(),
+        uid: 0,
+        gid: 0,
+    };
+    let mut fenc = FEncoder::new();
+    let payload = fenc.encode_entry(&entry);
+    let mut expected = Vec::new();
+    Frame {
+        header: protocol::FrameHeader {
+            channel: 0,
+            tag: Tag::Message,
+            msg: Msg::FileListEntry,
+            len: payload.len() as u32,
+        },
+        payload: payload.clone(),
+    }
+    .encode(&mut expected)
+    .unwrap();
+    let frame = Frame::decode(&expected[..]).unwrap();
     assert_eq!(frame.header.msg, Msg::FileListEntry);
     let msg = Message::from_frame(frame.clone()).unwrap();
-    assert_eq!(msg, Message::FileListEntry(b"file.txt".to_vec()));
+    assert_eq!(msg, Message::FileListEntry(payload.clone()));
     let mut buf = Vec::new();
-    Message::FileListEntry(b"file.txt".to_vec())
+    Message::FileListEntry(payload.clone())
         .into_frame(0)
         .encode(&mut buf)
         .unwrap();
-    assert_eq!(buf, FILE_LIST);
+    assert_eq!(buf, expected);
+    let mut fdec = FDecoder::new();
+    assert_eq!(msg.to_file_list(&mut fdec).unwrap(), entry);
 
     const ATTRS: [u8; 16] = [
         0, 0, 0, 5, 0, 0, 0, 8, b'm', b'o', b'd', b'e', b'=', b'7', b'5', b'5',

@@ -27,6 +27,7 @@ use thiserror::Error;
 
 pub mod cdc;
 use cdc::{chunk_file, Manifest};
+pub mod flist;
 
 #[derive(Debug, Error)]
 pub enum EngineError {

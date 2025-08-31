@@ -8,6 +8,7 @@ byteorder = "1"
 indexmap = "2"
 compress = { path = "../compress" }
 checksums = { path = "../checksums" }
+filelist = { path = "../filelist" }
 
 [features]
 default = []

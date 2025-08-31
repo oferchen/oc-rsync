@@ -1,5 +1,6 @@
 // crates/protocol/src/lib.rs
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use filelist::{Decoder as FlistDecoder, Encoder as FlistEncoder, Entry as FlistEntry};
 use std::convert::TryFrom;
 use std::fmt;
 use std::io::{self, Read, Write};
@@ -430,6 +431,22 @@ impl Message {
                     "unexpected keepalive message",
                 )),
             },
+        }
+    }
+
+    pub fn from_file_list(entry: &FlistEntry, enc: &mut FlistEncoder) -> Self {
+        Message::FileListEntry(enc.encode_entry(entry))
+    }
+
+    pub fn to_file_list(&self, dec: &mut FlistDecoder) -> io::Result<FlistEntry> {
+        match self {
+            Message::FileListEntry(bytes) => dec
+                .decode_entry(bytes)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e)),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "not a file list entry",
+            )),
         }
     }
 }

@@ -7,6 +7,12 @@ outstanding parity gaps.
 Classic `rsync` protocol versions 27–32 are supported, while modern mode
 negotiates version 73.
 
+## Internal features
+
+| Feature | Supported | Notes |
+| --- | --- | --- |
+| File list path-delta encoding with uid/gid tables | ✅ | Exercised via `filelist` tests |
+
 | Option | Short | Supported | Parity scope | Tests link | Notes | Version introduced |
 | --- | --- | --- | --- | --- | --- | --- |
 | `--8-bit-output` | `-8` | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
