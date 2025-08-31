@@ -531,19 +531,60 @@ pub fn run() -> Result<()> {
     }
     if args.iter().any(|a| a == "--daemon") {
         let opts = DaemonOpts::parse_from(&args);
-        run_daemon(opts)
-    } else if args.iter().any(|a| a == "--probe") {
-        let opts = ProbeOpts::parse_from(&args);
-        run_probe(opts)
-    } else if args.iter().any(|a| a == "--server") {
-        run_server()
-    } else {
-        let cmd = ClientOpts::command();
-        let matches = cmd.get_matches_from(&args);
-        let opts = ClientOpts::from_arg_matches(&matches)
-            .map_err(|e| EngineError::Other(e.to_string()))?;
-        run_client(opts, &matches)
+        return run_daemon(opts);
     }
+    if args.iter().any(|a| a == "--probe") {
+        let opts = ProbeOpts::parse_from(&args);
+        return run_probe(opts);
+    }
+    if args.iter().any(|a| a == "--server") {
+        return run_server();
+    }
+
+    // Extract any remote -M options before handing over to clap so that the
+    // option values aren't interpreted as local flags.
+    let mut remote_opts = Vec::new();
+    let mut filtered = Vec::with_capacity(args.len());
+    if let Some(first) = args.first() {
+        filtered.push(first.clone());
+    }
+    let mut i = 1;
+    while i < args.len() {
+        let arg = &args[i];
+        if arg == "-M" {
+            if let Some(val) = args.get(i + 1).cloned() {
+                remote_opts.push(val);
+                i += 2;
+                continue;
+            } else {
+                i += 1;
+                continue;
+            }
+        } else if let Some(rest) = arg.strip_prefix("-M") {
+            if rest.is_empty() {
+                if let Some(val) = args.get(i + 1).cloned() {
+                    remote_opts.push(val);
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+                continue;
+            }
+            let val = rest.strip_prefix('=').unwrap_or(rest);
+            remote_opts.push(val.to_string());
+            i += 1;
+            continue;
+        }
+        filtered.push(arg.clone());
+        i += 1;
+    }
+
+    let cmd = ClientOpts::command();
+    let matches = cmd.get_matches_from(&filtered);
+    let mut opts =
+        ClientOpts::from_arg_matches(&matches).map_err(|e| EngineError::Other(e.to_string()))?;
+    opts.remote_option.extend(remote_opts);
+    run_client(opts, &matches)
 }
 
 pub fn cli_command() -> clap::Command {
