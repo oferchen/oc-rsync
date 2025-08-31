@@ -55,6 +55,23 @@ fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
     }
 }
 
+fn atomic_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
+    match fs::rename(src, dst) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            #[cfg(unix)]
+            {
+                if e.raw_os_error() == Some(nix::errno::Errno::EXDEV as i32) {
+                    let _ = fs::copy(src, dst)?;
+                    fs::remove_file(src)?;
+                    return Ok(());
+                }
+            }
+            Err(e)
+        }
+    }
+}
+
 fn files_identical(a: &Path, b: &Path) -> bool {
     if let (Ok(ma), Ok(mb)) = (fs::metadata(a), fs::metadata(b)) {
         if ma.len() != mb.len() {
@@ -639,7 +656,7 @@ impl Sender {
             if let Some(parent) = backup_path.parent() {
                 fs::create_dir_all(parent)?;
             }
-            fs::rename(dest, &backup_path)?;
+            atomic_rename(dest, &backup_path)?;
         }
         let mut skip = resume as u64;
         let adjusted = delta.filter_map(move |op_res| match op_res {
@@ -883,8 +900,9 @@ impl Receiver {
             let len = out.seek(SeekFrom::Current(0))?;
             out.set_len(len)?;
         }
+        drop(out);
         if needs_rename {
-            fs::rename(&tmp_dest, dest)?;
+            atomic_rename(&tmp_dest, dest)?;
             if let Some(tmp_parent) = tmp_dest.parent() {
                 if dest.parent().map_or(true, |p| p != tmp_parent) {
                     if tmp_parent
@@ -1302,7 +1320,9 @@ fn delete_extraneous(
                         } else {
                             Ok(())
                         };
-                        dir_res.and_then(|_| fs::rename(&path, &backup_path)).err()
+                        dir_res
+                            .and_then(|_| atomic_rename(&path, &backup_path))
+                            .err()
                     } else if file_type.is_dir() {
                         fs::remove_dir_all(&path).err()
                     } else {
@@ -1368,7 +1388,7 @@ pub fn sync(
                     if let Some(parent) = backup_path.parent() {
                         fs::create_dir_all(parent)?;
                     }
-                    fs::rename(dst, &backup_path)?;
+                    atomic_rename(dst, &backup_path)?;
                 } else if meta.file_type().is_dir() {
                     fs::remove_dir_all(dst)?;
                 } else {
