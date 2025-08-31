@@ -28,6 +28,7 @@ SCENARIOS=(
   "remote_remote"
   "append --append"
   "append_verify --append-verify"
+  "resume --partial"
   "progress --progress"
 )
 
@@ -223,6 +224,10 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             if [[ "$name" == drop_connection ]]; then
               dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
               timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
+            elif [[ "$name" == resume ]]; then
+              dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
+              timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
             elif [[ "$name" == vanished ]]; then
               (sleep 0.1 && rm -f "$src/file.txt") &
               "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
@@ -265,6 +270,10 @@ for c in "${CLIENT_VERSIONS[@]}"; do
               if [[ "$name" == drop_connection ]]; then
                 dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
                 timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
+              elif [[ "$name" == resume ]]; then
+                dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
+                timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
+                "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null
               elif [[ "$name" == vanished ]]; then
                 (sleep 0.1 && rm -f "$src/file.txt") &
                 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
