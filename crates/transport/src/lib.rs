@@ -98,7 +98,10 @@ impl<T> TimeoutTransport<T> {
 
     fn check_timeout(&self) -> io::Result<()> {
         if self.last.elapsed() > self.timeout {
-            Err(io::Error::new(io::ErrorKind::TimedOut, "connection timed out"))
+            Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "connection timed out",
+            ))
         } else {
             Ok(())
         }
@@ -127,11 +130,13 @@ pub trait SshTransport: Transport {}
 
 pub trait DaemonTransport: Transport {}
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SockOpt {
     KeepAlive(bool),
     SendBuf(usize),
     RecvBuf(usize),
+    IpTtl(u32),
+    IpTos(u32),
 }
 
 pub fn parse_sockopts(opts: &[String]) -> Result<Vec<SockOpt>, String> {
@@ -139,6 +144,10 @@ pub fn parse_sockopts(opts: &[String]) -> Result<Vec<SockOpt>, String> {
 }
 
 fn parse_sockopt(s: &str) -> Result<SockOpt, String> {
+    if let Some((prefix, rest)) = s.split_once(':') {
+        return parse_prefixed_sockopt(prefix, rest);
+    }
+
     let (name, value) = match s.split_once('=') {
         Some((n, v)) => (n.trim(), Some(v.trim())),
         None => (s.trim(), None),
@@ -163,5 +172,32 @@ fn parse_sockopt(s: &str) -> Result<SockOpt, String> {
             Ok(SockOpt::RecvBuf(size))
         }
         _ => Err(format!("unknown socket option: {name}")),
+    }
+}
+
+fn parse_prefixed_sockopt(prefix: &str, rest: &str) -> Result<SockOpt, String> {
+    match prefix.to_ascii_lowercase().as_str() {
+        "ip" => {
+            let (name, value) = rest
+                .split_once('=')
+                .ok_or_else(|| "ip option requires a value".to_string())?;
+            let val = parse_u32(value)?;
+            match name.to_ascii_lowercase().as_str() {
+                "ttl" => Ok(SockOpt::IpTtl(val)),
+                "tos" => Ok(SockOpt::IpTos(val)),
+                _ => Err(format!("unknown ip socket option: {name}")),
+            }
+        }
+        _ => Err(format!("unknown socket option: {prefix}:{rest}")),
+    }
+}
+
+fn parse_u32(s: &str) -> Result<u32, String> {
+    let s = s.trim();
+    if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+        u32::from_str_radix(hex, 16).map_err(|_| "invalid numeric value".to_string())
+    } else {
+        s.parse::<u32>()
+            .map_err(|_| "invalid numeric value".to_string())
     }
 }

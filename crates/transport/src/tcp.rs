@@ -90,6 +90,8 @@ impl TcpTransport {
                 SockOpt::KeepAlive(v) => sock.set_keepalive(v)?,
                 SockOpt::SendBuf(size) => sock.set_send_buffer_size(size)?,
                 SockOpt::RecvBuf(size) => sock.set_recv_buffer_size(size)?,
+                SockOpt::IpTtl(v) => sock.set_ttl(v)?,
+                SockOpt::IpTos(v) => sock.set_tos(v)?,
             }
         }
         Ok(())

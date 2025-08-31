@@ -221,7 +221,7 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--server` | off | negotiates protocol version and codecs | [matrix](feature_matrix.md#--server) |
 |  | `--size-only` | off |  | [matrix](feature_matrix.md#--size-only) |
 |  | `--skip-compress` | off |  | [matrix](feature_matrix.md#--skip-compress) |
-|  | `--sockopts` | off |  | [matrix](feature_matrix.md#--sockopts) |
+|  | `--sockopts` | off | comma-separated socket options, e.g. `SO_KEEPALIVE` or `ip:ttl=64` | [matrix](feature_matrix.md#--sockopts) |
 | `-S` | `--sparse` | off | creates holes for long zero runs | [matrix](feature_matrix.md#--sparse) |
 |  | `--specials` | off |  | [matrix](feature_matrix.md#--specials) |
 |  | `--stats` | off |  | [matrix](feature_matrix.md#--stats) |
