@@ -1200,7 +1200,7 @@ impl Receiver {
                 xattrs: {
                     #[cfg(feature = "xattr")]
                     {
-                        self.opts.xattrs
+                        self.opts.xattrs || self.opts.fake_super
                     }
                     #[cfg(not(feature = "xattr"))]
                     {
@@ -1229,12 +1229,20 @@ impl Receiver {
                 omit_link_times: self.opts.omit_link_times,
                 uid_map,
                 gid_map,
+                fake_super: self.opts.fake_super,
             };
 
             if meta_opts.needs_metadata() {
                 let meta =
                     meta::Metadata::from_path(src, meta_opts.clone()).map_err(EngineError::from)?;
-                meta.apply(dest, meta_opts).map_err(EngineError::from)?;
+                meta.apply(dest, meta_opts.clone())
+                    .map_err(EngineError::from)?;
+                if self.opts.fake_super {
+                    #[cfg(feature = "xattr")]
+                    {
+                        meta::store_fake_super(dest, meta.uid, meta.gid, meta.mode);
+                    }
+                }
             }
         }
         let _ = (src, dest);
@@ -1332,6 +1340,7 @@ pub struct SyncOptions {
     pub hard_links: bool,
     pub devices: bool,
     pub specials: bool,
+    pub fake_super: bool,
     #[cfg(feature = "xattr")]
     pub xattrs: bool,
     #[cfg(feature = "acl")]
@@ -1418,6 +1427,7 @@ impl Default for SyncOptions {
             hard_links: false,
             devices: false,
             specials: false,
+            fake_super: false,
             #[cfg(feature = "xattr")]
             xattrs: false,
             #[cfg(feature = "acl")]
@@ -1797,14 +1807,13 @@ pub fn sync(
                             if let (Ok(src_mtime), Ok(dst_mtime)) =
                                 (src_meta.modified(), dst_meta.modified())
                             {
-                                if dst_mtime > src_mtime {
-                                    if dst_mtime
+                                if dst_mtime > src_mtime
+                                    && dst_mtime
                                         .duration_since(src_mtime)
                                         .unwrap_or(Duration::ZERO)
                                         > opts.modify_window
-                                    {
-                                        continue;
-                                    }
+                                {
+                                    continue;
                                 }
                             }
                         }

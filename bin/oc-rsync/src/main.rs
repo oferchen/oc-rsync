@@ -1,5 +1,5 @@
 // bin/oc-rsync/src/main.rs
-use engine::{EngineError, Result};
+use engine::EngineError;
 use logging::{DebugFlag, InfoFlag, LogFormat};
 
 use oc_rsync_cli::cli_command;
@@ -30,7 +30,7 @@ fn main() {
             }
         })
         .unwrap_or(LogFormat::Text);
-    logging::init(log_format, verbose, info, debug);
+    logging::init(log_format, verbose, &info, &debug);
     if let Err(e) = oc_rsync_cli::run(&matches) {
         let code = match e {
             EngineError::MaxAlloc => ExitCode::Malloc,
@@ -38,5 +38,4 @@ fn main() {
         };
         std::process::exit(u8::from(code) as i32);
     }
-    oc_rsync_cli::run(&matches)
 }

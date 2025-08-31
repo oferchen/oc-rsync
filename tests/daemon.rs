@@ -1,4 +1,5 @@
 // tests/daemon.rs
+#![allow(clippy::io_other_error)]
 
 use assert_cmd::prelude::*;
 use assert_cmd::Command;

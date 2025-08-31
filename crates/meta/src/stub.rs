@@ -41,6 +41,7 @@ mod non_unix {
     pub struct Options {
         pub xattrs: bool,
         pub acl: bool,
+        pub fake_super: bool,
         pub chmod: Option<Vec<Chmod>>,
         pub owner: bool,
         pub group: bool,
@@ -60,6 +61,7 @@ mod non_unix {
             f.debug_struct("Options")
                 .field("xattrs", &self.xattrs)
                 .field("acl", &self.acl)
+                .field("fake_super", &self.fake_super)
                 .field("chmod", &self.chmod)
                 .field("owner", &self.owner)
                 .field("group", &self.group)
@@ -111,6 +113,9 @@ mod non_unix {
         }
     }
 }
+
+#[cfg(feature = "xattr")]
+pub fn store_fake_super(_path: &Path, _uid: u32, _gid: u32, _mode: u32) {}
 
 #[cfg(not(unix))]
 pub use non_unix::*;
