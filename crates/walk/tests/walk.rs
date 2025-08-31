@@ -40,7 +40,9 @@ fn walk_includes_files_dirs_and_symlinks() {
     assert!(entries
         .iter()
         .any(|(p, t)| p == &link_path && t.is_symlink()));
-    assert!(!entries.iter().any(|(p, _)| p == &root.join("small.txt")));
+    assert!(entries
+        .iter()
+        .any(|(p, t)| p == &root.join("small.txt") && t.is_file()));
 }
 
 #[test]
@@ -70,8 +72,10 @@ fn walk_preserves_order_and_bounds_batches() {
         root.to_path_buf(),
         root.join("dir"),
         root.join("dir/big1"),
+        root.join("dir/small1"),
         root.join("dir/sub"),
         root.join("dir/sub/big2"),
+        root.join("top_small.txt"),
     ];
     assert_eq!(paths, expected);
 }
