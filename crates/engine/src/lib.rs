@@ -893,6 +893,17 @@ impl Receiver {
         }
         if needs_rename {
             fs::rename(&tmp_dest, dest)?;
+            if let Some(tmp_parent) = tmp_dest.parent() {
+                if dest.parent().map_or(true, |p| p != tmp_parent) {
+                    if tmp_parent
+                        .read_dir()
+                        .map(|mut i| i.next().is_none())
+                        .unwrap_or(false)
+                    {
+                        let _ = fs::remove_dir(tmp_parent);
+                    }
+                }
+            }
         }
         if self.opts.progress {
             let len = fs::metadata(dest)?.len();
