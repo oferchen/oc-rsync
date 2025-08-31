@@ -22,13 +22,13 @@ This document tracks outstanding gaps in `oc-rsync` compared to the reference `r
  - `--chown` — not implemented. [feature_matrix](feature_matrix.md#L25) ([TODO](#testing-gaps))
  - `--copy-devices` — not implemented. [feature_matrix](feature_matrix.md#L35) ([TODO](#testing-gaps))
  - `--devices` — device file handling lacks parity. [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) [feature_matrix](feature_matrix.md#L52)
- - `--groupmap` — not implemented. [feature_matrix](feature_matrix.md#L68) ([TODO](#testing-gaps))
+ - `--groupmap` — numeric gid mapping only; group names unsupported and requires root or CAP_CHOWN. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L74)
  - `--hard-links` — hard link tracking incomplete. [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) [feature_matrix](feature_matrix.md#L69)
  - `--keep-dirlinks` — not implemented. [feature_matrix](feature_matrix.md#L84) ([TODO](#testing-gaps))
  - `--links` — symlink handling lacks parity. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L86)
  - `--owner` — ownership restoration lacks parity. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L113)
  - `--perms` — permission preservation incomplete. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L117)
- - `--usermap` — not implemented. [feature_matrix](feature_matrix.md#L151) ([TODO](#testing-gaps))
+ - `--usermap` — numeric uid mapping only; user names unsupported and requires root or CAP_CHOWN. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L163)
  - `--xattrs` — extended attribute support requires optional feature and lacks parity. [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) [feature_matrix](feature_matrix.md#L157)
 
 ## Filter gaps
