@@ -1419,6 +1419,9 @@ pub fn sync(
                     } else {
                         false
                     };
+                    if opts.update && !dest_path.exists() && !partial_exists {
+                        continue;
+                    }
                     if !dest_path.exists() && !partial_exists {
                         if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
                             if let Ok(chunks) = chunk_file(

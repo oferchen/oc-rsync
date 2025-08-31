@@ -57,3 +57,24 @@ fn update_replaces_older_dest() {
     .unwrap();
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"new");
 }
+
+#[test]
+fn update_skips_new_files() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("new.txt"), b"new").unwrap();
+    let mut opts = SyncOptions::default();
+    opts.update = true;
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &opts,
+    )
+    .unwrap();
+    assert!(!dst.join("new.txt").exists());
+}
