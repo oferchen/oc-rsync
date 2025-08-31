@@ -185,15 +185,38 @@ pub fn authenticate<T: Transport>(t: &mut T, path: Option<&Path>) -> io::Result<
         }
     }
     let contents = fs::read_to_string(auth_path)?;
-    let mut buf = [0u8; 256];
-    let n = t.receive(&mut buf)?;
-    if n == 0 {
-        return Err(io::Error::new(
-            io::ErrorKind::PermissionDenied,
-            "missing token",
-        ));
+    const MAX_TOKEN: usize = 256;
+    let mut token = Vec::new();
+    let mut buf = [0u8; 64];
+    loop {
+        let n = t.receive(&mut buf)?;
+        if n == 0 {
+            if token.is_empty() {
+                return Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "missing token",
+                ));
+            } else {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "missing terminator",
+                ));
+            }
+        }
+        if let Some(pos) = buf[..n].iter().position(|&b| b == b'\n') {
+            token.extend_from_slice(&buf[..pos]);
+            if token.len() > MAX_TOKEN {
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "token too long"));
+            }
+            break;
+        } else {
+            token.extend_from_slice(&buf[..n]);
+            if token.len() > MAX_TOKEN {
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "token too long"));
+            }
+        }
     }
-    let token = String::from_utf8_lossy(&buf[..n]).trim().to_string();
+    let token = String::from_utf8_lossy(&token).trim().to_string();
     if let Some(allowed) = parse_auth_token(&token, &contents) {
         Ok(allowed)
     } else {
@@ -218,4 +241,72 @@ pub fn chroot_and_drop_privileges(path: &Path, uid: u32, gid: u32) -> io::Result
 #[cfg(not(unix))]
 pub fn chroot_and_drop_privileges(_path: &Path, _uid: u32, _gid: u32) -> io::Result<()> {
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::io::{self, Read};
+    use tempfile::tempdir;
+    use transport::LocalPipeTransport;
+
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+
+    struct ChunkReader {
+        data: Vec<u8>,
+        pos: usize,
+        chunk: usize,
+    }
+
+    impl Read for ChunkReader {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            if self.pos >= self.data.len() {
+                return Ok(0);
+            }
+            let end = (self.pos + self.chunk).min(self.data.len());
+            let len = end - self.pos;
+            buf[..len].copy_from_slice(&self.data[self.pos..end]);
+            self.pos = end;
+            Ok(len)
+        }
+    }
+
+    #[test]
+    fn authenticate_handles_split_reads() {
+        let dir = tempdir().unwrap();
+        let auth_path = dir.path().join("auth");
+        fs::write(&auth_path, "secret user\n").unwrap();
+        #[cfg(unix)]
+        fs::set_permissions(&auth_path, fs::Permissions::from_mode(0o600)).unwrap();
+
+        let reader = ChunkReader {
+            data: b"secret\n".to_vec(),
+            pos: 0,
+            chunk: 1,
+        };
+        let writer = io::sink();
+        let mut t = LocalPipeTransport::new(reader, writer);
+        let allowed = authenticate(&mut t, Some(&auth_path)).unwrap();
+        assert_eq!(allowed, vec!["user".to_string()]);
+    }
+
+    #[test]
+    fn authenticate_rejects_long_token() {
+        let dir = tempdir().unwrap();
+        let auth_path = dir.path().join("auth");
+        fs::write(&auth_path, "tok user\n").unwrap();
+        #[cfg(unix)]
+        fs::set_permissions(&auth_path, fs::Permissions::from_mode(0o600)).unwrap();
+
+        let mut data = vec![b'a'; 257];
+        data.push(b'\n');
+        let reader = std::io::Cursor::new(data);
+        let writer = io::sink();
+        let mut t = LocalPipeTransport::new(reader, writer);
+        let err = authenticate(&mut t, Some(&auth_path)).unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert_eq!(err.to_string(), "token too long");
+    }
 }

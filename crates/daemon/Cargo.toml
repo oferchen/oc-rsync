@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 transport = { path = "../transport" }
 nix = { version = "0.27", features = ["user", "fs"] }
+
+[dev-dependencies]
+tempfile = "3"
