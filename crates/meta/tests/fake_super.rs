@@ -1,12 +1,13 @@
 // crates/meta/tests/fake_super.rs
+#[cfg(all(unix, feature = "xattr"))]
 use meta::{Metadata, Options};
+#[cfg(all(unix, feature = "xattr"))]
 use std::fs;
+#[cfg(all(unix, feature = "xattr"))]
 use tempfile::tempdir;
 
 #[cfg(all(unix, feature = "xattr"))]
 use nix::unistd::Uid;
-#[cfg(all(unix, feature = "xattr"))]
-use xattr;
 
 #[cfg(all(unix, feature = "xattr"))]
 #[test]
