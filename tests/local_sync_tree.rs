@@ -344,12 +344,20 @@ fn sync_preserves_device_nodes() {
     let dst = tmp.path().join("dst");
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst).unwrap();
-    let dev = src.join("null");
+    let cdev = src.join("char");
     mknod(
-        &dev,
+        &cdev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
         makedev(1, 3),
+    )
+    .unwrap();
+    let bdev = src.join("block");
+    mknod(
+        &bdev,
+        SFlag::S_IFBLK,
+        Mode::from_bits_truncate(0o600),
+        makedev(8, 1),
     )
     .unwrap();
 
@@ -362,12 +370,19 @@ fn sync_preserves_device_nodes() {
         .stdout("")
         .stderr("");
 
-    let meta = fs::symlink_metadata(dst.join("null")).unwrap();
+    let meta = fs::symlink_metadata(dst.join("char")).unwrap();
     assert!(meta.file_type().is_char_device());
     let rdev = meta.rdev();
     assert_eq!(rdev, makedev(1, 3));
     assert_eq!(major(rdev), 1);
     assert_eq!(minor(rdev), 3);
+
+    let meta = fs::symlink_metadata(dst.join("block")).unwrap();
+    assert!(meta.file_type().is_block_device());
+    let rdev = meta.rdev();
+    assert_eq!(rdev, makedev(8, 1));
+    assert_eq!(major(rdev), 8);
+    assert_eq!(minor(rdev), 1);
 }
 
 #[cfg(unix)]
