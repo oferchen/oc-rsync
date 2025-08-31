@@ -159,7 +159,7 @@ struct ClientOpts {
     delete: bool,
     #[arg(long = "delete-before", help_heading = "Delete")]
     delete_before: bool,
-    #[arg(long = "delete-during", help_heading = "Delete", alias = "del")]
+    #[arg(long = "delete-during", help_heading = "Delete", visible_alias = "del")]
     delete_during: bool,
     #[arg(long = "delete-after", help_heading = "Delete")]
     delete_after: bool,
@@ -169,6 +169,8 @@ struct ClientOpts {
     delete_excluded: bool,
     #[arg(long = "delete-missing-args", help_heading = "Delete")]
     delete_missing_args: bool,
+    #[arg(long = "ignore-missing-args", help_heading = "Delete")]
+    ignore_missing_args: bool,
     #[arg(long = "remove-source-files", help_heading = "Delete")]
     remove_source_files: bool,
     #[arg(long = "ignore-errors", help_heading = "Delete")]
@@ -1124,7 +1126,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let sync_opts = SyncOptions {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
-        ignore_missing_args: false,
+        ignore_missing_args: opts.ignore_missing_args,
         delete_missing_args: opts.delete_missing_args,
         remove_source_files: opts.remove_source_files,
         ignore_errors: opts.ignore_errors,
