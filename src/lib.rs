@@ -47,12 +47,15 @@ mod tests {
         let dir = tempdir().unwrap();
         let src_dir = dir.path().join("src");
         let dst_dir = dir.path().join("dst");
+        fs::create_dir_all(&dst_dir).unwrap();
         fs::create_dir_all(&src_dir).unwrap();
         fs::File::create(src_dir.join("file.txt"))
             .unwrap()
             .write_all(b"hello world")
             .unwrap();
+        assert!(!dst_dir.exists());
         synchronize(&src_dir, &dst_dir).unwrap();
+        assert!(dst_dir.exists());
         let out = fs::read(dst_dir.join("file.txt")).unwrap();
         assert_eq!(out, b"hello world");
     }
