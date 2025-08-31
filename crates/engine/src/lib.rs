@@ -1030,6 +1030,7 @@ pub struct SyncOptions {
     pub dirs: bool,
     pub list_only: bool,
     pub update: bool,
+    pub existing: bool,
     pub ignore_existing: bool,
     pub size_only: bool,
     pub ignore_times: bool,
@@ -1135,6 +1136,7 @@ impl Default for SyncOptions {
             dirs: false,
             list_only: false,
             update: false,
+            existing: false,
             ignore_existing: false,
             size_only: false,
             ignore_times: false,
@@ -1477,6 +1479,9 @@ pub fn sync(
                     } else {
                         false
                     };
+                    if opts.existing && !dest_path.exists() && !partial_exists {
+                        continue;
+                    }
                     if opts.update && !dest_path.exists() && !partial_exists {
                         continue;
                     }

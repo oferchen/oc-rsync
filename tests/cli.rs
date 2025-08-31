@@ -78,7 +78,9 @@ fn ignore_existing_skips_file() {
     std::fs::create_dir_all(&src_dir).unwrap();
     std::fs::create_dir_all(&dst_dir).unwrap();
     fs::write(src_dir.join("a.txt"), b"new").unwrap();
-    fs::write(dst_dir.join("a.txt"), b"old").unwrap();
+    let dst_file = dst_dir.join("a.txt");
+    fs::write(&dst_file, b"old").unwrap();
+    set_file_mtime(&dst_file, FileTime::from_unix_time(0, 0)).unwrap();
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -92,6 +94,44 @@ fn ignore_existing_skips_file() {
         .success();
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, b"old");
+}
+
+#[test]
+fn existing_skips_new_file() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    fs::write(src_dir.join("a.txt"), b"new").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--existing", &src_arg, dst_dir.to_str().unwrap()])
+        .assert()
+        .success();
+    assert!(!dst_dir.join("a.txt").exists());
+}
+
+#[test]
+fn existing_updates_existing_file() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    fs::write(src_dir.join("a.txt"), b"new").unwrap();
+    let dst_file = dst_dir.join("a.txt");
+    fs::write(&dst_file, b"old").unwrap();
+    set_file_mtime(&dst_file, FileTime::from_unix_time(0, 0)).unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--existing", &src_arg, dst_dir.to_str().unwrap()])
+        .assert()
+        .success();
+    let out = fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, b"new");
 }
 
 #[test]
