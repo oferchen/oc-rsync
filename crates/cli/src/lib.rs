@@ -779,7 +779,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
         #[cfg_attr(not(feature = "blake3"), allow(unused_mut))]
-        let mut list = vec!["md5", "sha1"];
+        let mut list = vec!["md5", "sha1", "md4"];
         #[cfg(feature = "blake3")]
         if modern_hash.is_some() || matches!(opts.checksum_choice.as_deref(), Some("blake3")) {
             list.insert(0, "blake3");
@@ -798,6 +798,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         match choice {
             "md5" => StrongHash::Md5,
             "sha1" => StrongHash::Sha1,
+            "md4" => StrongHash::Md4,
             #[cfg(feature = "blake3")]
             "blake3" => StrongHash::Blake3,
             other => {
@@ -824,6 +825,10 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 }
                 "md5" => {
                     chosen = StrongHash::Md5;
+                    break;
+                }
+                "md4" => {
+                    chosen = StrongHash::Md4;
                     break;
                 }
                 _ => {}
@@ -1925,6 +1930,8 @@ mod tests {
     fn parses_checksum_choice_and_alias() {
         let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "sha1", "src", "dst"]);
         assert_eq!(opts.checksum_choice.as_deref(), Some("sha1"));
+        let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "md4", "src", "dst"]);
+        assert_eq!(opts.checksum_choice.as_deref(), Some("md4"));
         let opts = ClientOpts::parse_from(["prog", "--cc", "md5", "src", "dst"]);
         assert_eq!(opts.checksum_choice.as_deref(), Some("md5"));
     }

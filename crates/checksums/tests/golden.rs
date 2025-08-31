@@ -36,6 +36,7 @@ fn builder_strong_digests() {
     let cfg_sha1 = ChecksumConfigBuilder::new()
         .strong(StrongHash::Sha1)
         .build();
+    let cfg_md4 = ChecksumConfigBuilder::new().strong(StrongHash::Md4).build();
     let data = b"hello world";
 
     let cs_md5 = cfg_md5.checksum(data);
@@ -50,6 +51,13 @@ fn builder_strong_digests() {
     assert_eq!(
         hex::encode(cs_sha1.strong),
         "1fb6475c524899f98b088f7608bdab8f1591e078"
+    );
+
+    let cs_md4 = cfg_md4.checksum(data);
+    assert_eq!(cs_md4.weak, rolling_checksum(data));
+    assert_eq!(
+        hex::encode(cs_md4.strong),
+        "ea91f391e02b5e19f432b43bd87a531d"
     );
 
     #[cfg(feature = "blake3")]
