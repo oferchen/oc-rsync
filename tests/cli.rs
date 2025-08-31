@@ -485,6 +485,7 @@ fn numeric_ids_are_preserved() {
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
     std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
     let file = src_dir.join("id.txt");
     std::fs::write(&file, b"ids").unwrap();
     #[cfg(unix)]
@@ -498,6 +499,20 @@ fn numeric_ids_are_preserved() {
             }
         }
     };
+
+    // Pre-create destination with incorrect ownership
+    let dst_file = dst_dir.join("id.txt");
+    std::fs::copy(&file, &dst_file).unwrap();
+    #[cfg(unix)]
+    {
+        let new_uid = if uid.as_raw() == 0 { 1 } else { 0 };
+        let new_gid = if gid.as_raw() == 0 { 1 } else { 0 };
+        let _ = chown(
+            &dst_file,
+            Some(Uid::from_raw(new_uid)),
+            Some(Gid::from_raw(new_gid)),
+        );
+    }
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
@@ -707,9 +722,13 @@ fn perms_flag_preserves_permissions() {
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
     fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
     let file = src_dir.join("a.txt");
     fs::write(&file, b"hi").unwrap();
     fs::set_permissions(&file, fs::Permissions::from_mode(0o741)).unwrap();
+    let dst_file = dst_dir.join("a.txt");
+    fs::copy(&file, &dst_file).unwrap();
+    fs::set_permissions(&dst_file, fs::Permissions::from_mode(0o600)).unwrap();
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
@@ -1391,10 +1410,14 @@ fn times_preserve_mtime() {
     let src = dir.path().join("src");
     let dst = dir.path().join("dst");
     std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(&dst).unwrap();
     let file = src.join("file");
     std::fs::write(&file, b"hi").unwrap();
     let mtime = FileTime::from_unix_time(1_000_000, 0);
     set_file_mtime(&file, mtime).unwrap();
+    let dst_file = dst.join("file");
+    std::fs::copy(&file, &dst_file).unwrap();
+    set_file_mtime(&dst_file, FileTime::from_unix_time(0, 0)).unwrap();
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
