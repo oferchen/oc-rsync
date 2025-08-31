@@ -69,7 +69,8 @@ fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
 #[cfg(unix)]
 fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
     use std::os::fd::AsRawFd;
-    #[cfg(target_os = "linux")]
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     unsafe {
         let ret = libc::fallocate(file.as_raw_fd(), 0, 0, len as libc::off_t);
         if ret == 0 {
@@ -78,7 +79,42 @@ fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
             Err(std::io::Error::from_raw_os_error(ret))
         }
     }
-    #[cfg(not(target_os = "linux"))]
+
+    #[cfg(target_os = "macos")]
+    unsafe {
+        let fd = file.as_raw_fd();
+        let mut fstore = libc::fstore {
+            fst_flags: libc::F_ALLOCATECONTIG,
+            fst_posmode: libc::F_PEOFPOSMODE,
+            fst_offset: 0,
+            fst_length: len as libc::off_t,
+            fst_bytesalloc: 0,
+        };
+        let ret = libc::fcntl(fd, libc::F_PREALLOCATE, &fstore);
+        if ret == -1 {
+            fstore.fst_flags = libc::F_ALLOCATEALL;
+            if libc::fcntl(fd, libc::F_PREALLOCATE, &fstore) == -1 {
+                if libc::ftruncate(fd, len as libc::off_t) == -1 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                return Ok(());
+            }
+        }
+        if libc::ftruncate(fd, len as libc::off_t) == -1 {
+            Err(std::io::Error::last_os_error())
+        } else {
+            Ok(())
+        }
+    }
+
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "dragonfly",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "illumos",
+        target_os = "solaris"
+    ))]
     unsafe {
         let ret = libc::posix_fallocate(file.as_raw_fd(), 0, len as libc::off_t);
         if ret == 0 {
@@ -86,6 +122,21 @@ fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
         } else {
             Err(std::io::Error::from_raw_os_error(ret))
         }
+    }
+
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "dragonfly",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "illumos",
+        target_os = "solaris"
+    )))]
+    {
+        file.set_len(len)
     }
 }
 
