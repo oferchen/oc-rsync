@@ -270,8 +270,8 @@ fn progress_flag_shows_output() {
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
     std::fs::create_dir_all(&src_dir).unwrap();
-    std::fs::write(src_dir.join("a.txt"), b"hello").unwrap();
-    let expected = format!("{}: 5 bytes\n", dst_dir.join("a.txt").display());
+    std::fs::write(src_dir.join("a.txt"), vec![0u8; 2048]).unwrap();
+    let expected = format!("{}: 2048 bytes\n", dst_dir.join("a.txt").display());
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
