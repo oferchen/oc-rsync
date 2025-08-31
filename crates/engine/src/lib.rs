@@ -57,11 +57,39 @@ fn io_context(path: &Path, err: std::io::Error) -> EngineError {
 }
 
 fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
-    if len > opts.max_alloc as u64 {
+    if opts.max_alloc != 0 && len > opts.max_alloc as u64 {
         Err(EngineError::Other("max-alloc limit exceeded".into()))
     } else {
         Ok(())
     }
+}
+
+#[cfg(unix)]
+fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
+    use std::os::fd::AsRawFd;
+    #[cfg(target_os = "linux")]
+    unsafe {
+        let ret = libc::fallocate(file.as_raw_fd(), 0, 0, len as libc::off_t);
+        if ret == 0 {
+            Ok(())
+        } else {
+            Err(std::io::Error::from_raw_os_error(ret))
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    unsafe {
+        let ret = libc::posix_fallocate(file.as_raw_fd(), 0, len as libc::off_t);
+        if ret == 0 {
+            Ok(())
+        } else {
+            Err(std::io::Error::from_raw_os_error(ret))
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn preallocate(_file: &File, _len: u64) -> std::io::Result<()> {
+    Ok(())
 }
 
 fn outside_size_bounds(len: u64, opts: &SyncOptions) -> bool {
@@ -160,15 +188,22 @@ fn files_identical(a: &Path, b: &Path) -> bool {
     }
 }
 
-fn last_good_block(cfg: &ChecksumConfig, src: &Path, dst: &Path, block_size: usize) -> u64 {
+fn last_good_block(
+    cfg: &ChecksumConfig,
+    src: &Path,
+    dst: &Path,
+    block_size: usize,
+    opts: &SyncOptions,
+) -> Result<u64> {
     let block_size = block_size.max(1);
+    ensure_max_alloc(block_size as u64, opts)?;
     let mut src = match File::open(src) {
         Ok(f) => f,
-        Err(_) => return 0,
+        Err(_) => return Ok(0),
     };
     let mut dst = match File::open(dst) {
         Ok(f) => f,
-        Err(_) => return 0,
+        Err(_) => return Ok(0),
     };
     let mut offset = 0u64;
     let mut src_buf = vec![0u8; block_size];
@@ -196,7 +231,7 @@ fn last_good_block(cfg: &ChecksumConfig, src: &Path, dst: &Path, block_size: usi
             break;
         }
     }
-    offset - (offset % block_size as u64)
+    Ok(offset - (offset % block_size as u64))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -303,8 +338,10 @@ pub fn compute_delta<'a, R1: Read + Seek, R2: Read + Seek>(
     target: &'a mut R2,
     block_size: usize,
     basis_window: usize,
+    opts: &SyncOptions,
 ) -> Result<DeltaIter<'a, R2>> {
     let block_size = block_size.max(1);
+    ensure_max_alloc(block_size as u64, opts)?;
     basis.seek(SeekFrom::Start(0))?;
     target.seek(SeekFrom::Start(0))?;
     let mut map: HashMap<u32, Vec<(Vec<u8>, usize, usize)>> = HashMap::new();
@@ -473,6 +510,7 @@ fn apply_delta<R: Read + Seek, W: Write + Seek + Any, I>(
 where
     I: IntoIterator<Item = Result<Op>>,
 {
+    ensure_max_alloc(8192, opts)?;
     let mut buf = vec![0u8; 8192];
     let mut adjust = |op: Op| -> Option<Op> {
         if skip == 0 {
@@ -650,10 +688,10 @@ impl Sender {
             dest.to_path_buf()
         };
         let mut resume = if self.opts.partial && partial_path.exists() {
-            last_good_block(&self.cfg, path, &partial_path, self.block_size)
+            last_good_block(&self.cfg, path, &partial_path, self.block_size, &self.opts)?
         } else if self.opts.append || self.opts.append_verify {
             if self.opts.append_verify {
-                last_good_block(&self.cfg, path, dest, self.block_size)
+                last_good_block(&self.cfg, path, dest, self.block_size, &self.opts)?
             } else {
                 fs::metadata(dest).map(|m| m.len()).unwrap_or(0)
             }
@@ -681,6 +719,7 @@ impl Sender {
         {
             Box::new(std::iter::empty())
         } else if self.opts.whole_file {
+            ensure_max_alloc(self.block_size.max(8192) as u64, &self.opts)?;
             let mut buf = vec![0u8; self.block_size.max(8192)];
             Box::new(std::iter::from_fn(move || {
                 match src_reader.read(&mut buf) {
@@ -696,6 +735,7 @@ impl Sender {
                 &mut src_reader,
                 self.block_size,
                 DEFAULT_BASIS_WINDOW,
+                &self.opts,
             )?)
         };
         if self.opts.backup && dest.exists() {
@@ -848,7 +888,7 @@ impl Receiver {
             if self.opts.append && !self.opts.append_verify {
                 fs::metadata(&tmp_dest).map(|m| m.len()).unwrap_or(0)
             } else {
-                last_good_block(&cfg, src, &tmp_dest, self.opts.block_size)
+                last_good_block(&cfg, src, &tmp_dest, self.opts.block_size, &self.opts)?
             }
         } else {
             0
@@ -927,6 +967,9 @@ impl Receiver {
         if !self.opts.write_devices {
             out.set_len(resume)?;
             out.seek(SeekFrom::Start(resume))?;
+            if self.opts.preallocate {
+                preallocate(&out, src_len)?;
+            }
         }
         let file_codec = if should_compress(src, &self.opts.skip_compress) {
             self.codec
@@ -1117,6 +1160,7 @@ pub struct SyncOptions {
     pub max_alloc: usize,
     pub max_size: Option<u64>,
     pub min_size: Option<u64>,
+    pub preallocate: bool,
     pub checksum: bool,
     pub compress: bool,
     pub modern_compress: Option<ModernCompress>,
@@ -1205,6 +1249,7 @@ impl Default for SyncOptions {
             max_alloc: 1 << 30,
             max_size: None,
             min_size: None,
+            preallocate: false,
             checksum: false,
             compress: false,
             modern_compress: None,
@@ -1910,7 +1955,15 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(b"hello world".to_vec());
         let mut target = Cursor::new(b"hello brave new world".to_vec());
-        let delta = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX).unwrap();
+        let delta = compute_delta(
+            &cfg,
+            &mut basis,
+            &mut target,
+            4,
+            usize::MAX,
+            &SyncOptions::default(),
+        )
+        .unwrap();
         let mut basis = Cursor::new(b"hello world".to_vec());
         let mut out = Cursor::new(Vec::new());
         apply_delta(&mut basis, delta, &mut out, &SyncOptions::default(), 0).unwrap();
@@ -1926,11 +1979,17 @@ mod tests {
         let basis: Vec<u8> = [block1.as_ref(), block2.as_ref()].concat();
         let mut basis_reader = Cursor::new(basis.clone());
         let mut target_reader = Cursor::new(basis.clone());
-        let delta: Vec<Op> =
-            compute_delta(&cfg, &mut basis_reader, &mut target_reader, 3, usize::MAX)
-                .unwrap()
-                .collect::<Result<_>>()
-                .unwrap();
+        let delta: Vec<Op> = compute_delta(
+            &cfg,
+            &mut basis_reader,
+            &mut target_reader,
+            3,
+            usize::MAX,
+            &SyncOptions::default(),
+        )
+        .unwrap()
+        .collect::<Result<_>>()
+        .unwrap();
         assert_eq!(
             delta,
             vec![
@@ -1956,10 +2015,17 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(Vec::new());
         let mut target = Cursor::new(b"abc".to_vec());
-        let delta: Vec<Op> = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX)
-            .unwrap()
-            .collect::<Result<_>>()
-            .unwrap();
+        let delta: Vec<Op> = compute_delta(
+            &cfg,
+            &mut basis,
+            &mut target,
+            4,
+            usize::MAX,
+            &SyncOptions::default(),
+        )
+        .unwrap()
+        .collect::<Result<_>>()
+        .unwrap();
         assert_eq!(delta, vec![Op::Data(b"abc".to_vec())]);
     }
 
@@ -1968,10 +2034,17 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(b"hello".to_vec());
         let mut target = Cursor::new(Vec::new());
-        let delta: Vec<Op> = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX)
-            .unwrap()
-            .collect::<Result<_>>()
-            .unwrap();
+        let delta: Vec<Op> = compute_delta(
+            &cfg,
+            &mut basis,
+            &mut target,
+            4,
+            usize::MAX,
+            &SyncOptions::default(),
+        )
+        .unwrap()
+        .collect::<Result<_>>()
+        .unwrap();
         assert!(delta.is_empty());
     }
 
@@ -1980,10 +2053,17 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(b"abc".to_vec());
         let mut target = Cursor::new(b"abc".to_vec());
-        let delta: Vec<Op> = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX)
-            .unwrap()
-            .collect::<Result<_>>()
-            .unwrap();
+        let delta: Vec<Op> = compute_delta(
+            &cfg,
+            &mut basis,
+            &mut target,
+            4,
+            usize::MAX,
+            &SyncOptions::default(),
+        )
+        .unwrap()
+        .collect::<Result<_>>()
+        .unwrap();
         assert_eq!(delta, vec![Op::Copy { offset: 0, len: 3 }]);
     }
 
@@ -1992,10 +2072,17 @@ mod tests {
         let cfg = ChecksumConfigBuilder::new().build();
         let mut basis = Cursor::new(b"hello".to_vec());
         let mut target = Cursor::new(b"hello".to_vec());
-        let delta: Vec<Op> = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX)
-            .unwrap()
-            .collect::<Result<_>>()
-            .unwrap();
+        let delta: Vec<Op> = compute_delta(
+            &cfg,
+            &mut basis,
+            &mut target,
+            4,
+            usize::MAX,
+            &SyncOptions::default(),
+        )
+        .unwrap()
+        .collect::<Result<_>>()
+        .unwrap();
         assert_eq!(
             delta,
             vec![
@@ -2013,7 +2100,10 @@ mod tests {
         let dst = tmp.path().join("dst.bin");
         fs::write(&src, b"abcd1234").unwrap();
         fs::write(&dst, b"abcdxxxx").unwrap();
-        assert_eq!(last_good_block(&cfg, &src, &dst, 4), 4);
+        assert_eq!(
+            last_good_block(&cfg, &src, &dst, 4, &SyncOptions::default()).unwrap(),
+            4
+        );
     }
 
     #[test]
@@ -2094,7 +2184,15 @@ mod tests {
         let mut target = Cursor::new(data.clone());
 
         let before = mem_usage_kb();
-        let delta = compute_delta(&cfg, &mut basis, &mut target, block_size, window).unwrap();
+        let delta = compute_delta(
+            &cfg,
+            &mut basis,
+            &mut target,
+            block_size,
+            window,
+            &SyncOptions::default(),
+        )
+        .unwrap();
         let after = mem_usage_kb();
         let mut basis = Cursor::new(data.clone());
         let mut out = Cursor::new(Vec::new());
@@ -2110,10 +2208,17 @@ mod tests {
         let data = vec![42u8; LIT_CAP * 3 + 123];
         let mut basis = Cursor::new(Vec::new());
         let mut target = Cursor::new(data.clone());
-        let ops: Vec<Op> = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX)
-            .unwrap()
-            .collect::<Result<_>>()
-            .unwrap();
+        let ops: Vec<Op> = compute_delta(
+            &cfg,
+            &mut basis,
+            &mut target,
+            4,
+            usize::MAX,
+            &SyncOptions::default(),
+        )
+        .unwrap()
+        .collect::<Result<_>>()
+        .unwrap();
         assert!(ops.iter().all(|op| match op {
             Op::Data(d) => d.len() <= LIT_CAP,
             _ => false,

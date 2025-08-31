@@ -105,7 +105,7 @@
 | --password-file | Supported |  |
 | --perms | Supported |  |
 | --port | Supported |  |
-| --preallocate | Error |  |
+| --preallocate | Supported |  |
 | --progress | Supported |  |
 | --protocol | Supported |  |
 | --prune-empty-dirs | Supported |  |

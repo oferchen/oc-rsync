@@ -5,6 +5,15 @@ compression and rolling checksums. When AVX2/AVX-512/SSE4.2 are available the
 engine selects optimized code paths while maintaining scalar fallbacks for other
 architectures.
 
+Two new options improve resource usage during transfers:
+
+* `--max-alloc` limits in-memory buffer sizes. The engine now enforces this cap
+  before allocating buffers in core routines, preventing pathological memory
+  spikes during large transfers.
+* `--preallocate` uses platform-specific `fallocate`/`posix_fallocate` to
+  allocate destination files up front, reducing fragmentation and surfacing
+  out-of-space errors early.
+
 Benchmarks are available under `crates/engine/benches`. Running on the default
 CI environment produced the following sample results:
 

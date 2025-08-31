@@ -65,10 +65,17 @@ fn resume_large_file_minimal_network_io() {
     let cfg = ChecksumConfigBuilder::new().build();
     let mut basis = File::open(dst.join("big.bin.partial")).unwrap();
     let mut target = File::open(src.join("big.bin")).unwrap();
-    let delta: Vec<Op> = compute_delta(&cfg, &mut basis, &mut target, block_size, usize::MAX)
-        .unwrap()
-        .collect::<engine::Result<_>>()
-        .unwrap();
+    let delta: Vec<Op> = compute_delta(
+        &cfg,
+        &mut basis,
+        &mut target,
+        block_size,
+        usize::MAX,
+        &SyncOptions::default(),
+    )
+    .unwrap()
+    .collect::<engine::Result<_>>()
+    .unwrap();
     let mut sent = 0usize;
     for op in &delta {
         if let Op::Data(d) = op {

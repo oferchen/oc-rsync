@@ -183,7 +183,7 @@
 | -x | --one-file-system | don't cross filesystem boundaries | no |  | no |
 |  | --partial | keep partially transferred files | yes |  | no |
 |  | --partial-dir=DIR | put a partially transferred file into DIR | yes |  | no |
-|  | --preallocate | allocate dest files before writing them | no |  | no |
+|  | --preallocate | allocate dest files before writing them | yes |  | no |
 | -m | --prune-empty-dirs | prune empty directory chains from file-list | yes |  | no |
 | -r | --recursive | recurse into directories | yes |  | no |
 | -R | --relative | use relative path names | yes |  | no |
