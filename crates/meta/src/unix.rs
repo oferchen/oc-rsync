@@ -3,6 +3,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+use crate::normalize_mode;
 use filetime::{self, FileTime};
 use nix::errno::Errno;
 use nix::sys::stat::{self, FchmodatFlags, Mode};
@@ -115,7 +116,7 @@ impl Metadata {
         let st = stat::lstat(path).map_err(nix_to_io)?;
         let uid = st.st_uid;
         let gid = st.st_gid;
-        let mode = (st.st_mode as u32) & 0o7777;
+        let mode = normalize_mode(st.st_mode as u32);
         let mtime = FileTime::from_unix_time(st.st_mtime, st.st_mtime_nsec as u32);
 
         // Mirror the lstat call above by avoiding symlink traversal when
@@ -227,9 +228,9 @@ impl Metadata {
 
         if (opts.perms || opts.chmod.is_some() || opts.executability) && !is_symlink {
             let mut mode_val = if opts.perms {
-                self.mode
+                normalize_mode(self.mode)
             } else {
-                meta.permissions().mode() & 0o7777
+                normalize_mode(meta.permissions().mode())
             };
             if opts.executability && !opts.perms {
                 mode_val = (mode_val & !0o111) | (self.mode & 0o111);
@@ -255,6 +256,7 @@ impl Metadata {
                     }
                 }
             }
+            mode_val = normalize_mode(mode_val);
             let mode_t: libc::mode_t = mode_val as libc::mode_t;
             let mode = Mode::from_bits_truncate(mode_t);
             if let Err(err) = stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink) {

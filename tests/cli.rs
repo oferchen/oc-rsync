@@ -527,7 +527,35 @@ fn perms_flag_preserves_permissions() {
         .unwrap()
         .permissions()
         .mode();
-    assert_eq!(mode & 0o777, 0o741);
+    assert_eq!(mode & 0o7777, 0o741);
+}
+
+#[cfg(unix)]
+#[test]
+fn chmod_masks_file_type_bits() {
+    use std::fs;
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    let file = src_dir.join("a.txt");
+    fs::write(&file, b"hi").unwrap();
+
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--local",
+        "--chmod=100644",
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    let mode = fs::metadata(dst_dir.join("a.txt"))
+        .unwrap()
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o7777, 0o644);
 }
 
 #[test]
@@ -893,7 +921,7 @@ fn perms_preserve_permissions() {
         .success();
 
     let meta = std::fs::metadata(dst.join("file")).unwrap();
-    assert_eq!(meta.permissions().mode() & 0o777, 0o640);
+    assert_eq!(meta.permissions().mode() & 0o7777, 0o640);
 }
 
 #[cfg(unix)]
