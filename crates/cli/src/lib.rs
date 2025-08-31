@@ -25,6 +25,8 @@ use engine::{
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::human_bytes;
 use meta::{parse_chmod, parse_chown, parse_id_map};
+#[cfg(unix)]
+use nix::unistd::{Uid, User};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
 use transport::{
@@ -216,6 +218,12 @@ struct ClientOpts {
     chmod: Vec<String>,
     #[arg(long = "chown", value_name = "USER:GROUP", help_heading = "Attributes")]
     chown: Option<String>,
+    #[arg(
+        long = "copy-as",
+        value_name = "USER[:GROUP]",
+        help_heading = "Attributes"
+    )]
+    copy_as: Option<String>,
     #[arg(
         long = "usermap",
         value_name = "FROM:TO",
@@ -1060,6 +1068,28 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     } else {
         None
     };
+    let copy_as = if let Some(ref spec) = opts.copy_as {
+        let (uid_opt, gid_opt) = parse_chown(spec).map_err(|e| EngineError::Other(e))?;
+        let uid = uid_opt.ok_or_else(|| EngineError::Other("--copy-as requires a user".into()))?;
+        let gid = if let Some(g) = gid_opt {
+            Some(g)
+        } else {
+            #[cfg(unix)]
+            {
+                User::from_uid(Uid::from_raw(uid))
+                    .ok()
+                    .flatten()
+                    .map(|u| u.gid.as_raw())
+            }
+            #[cfg(not(unix))]
+            {
+                None
+            }
+        };
+        Some((uid, gid))
+    } else {
+        None
+    };
     let uid_map = if !opts.usermap.is_empty() {
         let spec = opts.usermap.join(",");
         Some(IdMapper(
@@ -1163,6 +1193,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             Some(chmod_rules)
         },
         chown: chown_ids,
+        copy_as,
         uid_map,
         gid_map,
         eight_bit_output: opts.eight_bit_output,
