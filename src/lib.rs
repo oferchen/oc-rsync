@@ -69,11 +69,27 @@ pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Resu
     })
 }
 
-/// Synchronize two directories using the default configuration.
+/// Synchronize two directories using the default [`SyncConfig`].
+///
+/// This is a convenience wrapper around [`synchronize_with_config`]. It
+/// initializes logging and verbosity with [`SyncConfig::default`], performs the
+/// engine-driven synchronization, and then falls back to [`copy_recursive`] for
+/// any entries the engine did not handle.
+///
+/// # Errors
+///
+/// Propagates any [`EngineError`] produced by the engine or filesystem
+/// operations, such as failing to create directories, copy files, or apply
+/// metadata.
 pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
     synchronize_with_config(src, dst, &SyncConfig::default())
 }
 
+/// Wrap an [`io::Error`] with the path that caused it.
+///
+/// This helper creates an [`EngineError::Io`] whose message includes the
+/// offending path. It is used throughout file operations (e.g.
+/// [`apply_metadata`], [`copy_recursive`]) to attach context to errors.
 fn io_context(path: &Path, err: io::Error) -> EngineError {
     EngineError::Io(io::Error::new(
         err.kind(),
@@ -84,13 +100,25 @@ fn io_context(path: &Path, err: io::Error) -> EngineError {
 fn apply_metadata(dst: &Path, meta: &fs::Metadata) -> Result<()> {
     let atime = FileTime::from_last_access_time(meta);
     let mtime = FileTime::from_last_modification_time(meta);
+    // Provide the destination path in any I/O error.
     set_file_times(dst, atime, mtime).map_err(|e| io_context(dst, e))?;
     fs::set_permissions(dst, meta.permissions()).map_err(|e| io_context(dst, e))?;
     Ok(())
 }
 
+/// Recursively copy remaining entries from `src` into `dst`.
+///
+/// Returns the number of new entries created in `dst`. Directories are not
+/// counted; only files, symlinks, and special files increment the total.
+///
+/// # Errors
+///
+/// Fails if any filesystem operation fails, such as reading a directory,
+/// copying a file, creating a symlink or special file, or setting metadata. All
+/// such errors include path context via [`io_context`].
 fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
     let mut copied = 0;
+    // Attach the source path to directory read errors.
     for entry in fs::read_dir(src).map_err(|e| io_context(src, e))? {
         let entry = entry.map_err(|e| io_context(src, e))?;
         let src_path = entry.path();
