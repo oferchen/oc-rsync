@@ -5,7 +5,7 @@ use assert_cmd::cargo::cargo_bin;
 #[cfg(unix)]
 use assert_cmd::Command as AssertCommand;
 #[cfg(unix)]
-use cli::parse_rsh;
+use oc_rsync_cli::parse_rsh;
 #[cfg(unix)]
 use compress::available_codecs;
 use protocol::LATEST_VERSION;
