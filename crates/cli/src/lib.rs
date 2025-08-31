@@ -323,6 +323,8 @@ struct ClientOpts {
     sockopts: Vec<String>,
     #[arg(long = "write-batch", value_name = "FILE", help_heading = "Misc")]
     write_batch: Option<PathBuf>,
+    #[arg(long = "copy-devices", help_heading = "Misc")]
+    copy_devices: bool,
     #[arg(long = "write-devices", help_heading = "Misc")]
     write_devices: bool,
     #[arg(long, hide = true)]
@@ -1021,6 +1023,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         secluded_args: opts.secluded_args,
         sockopts: opts.sockopts.clone(),
         write_batch: opts.write_batch.clone(),
+        copy_devices: opts.copy_devices,
         write_devices: opts.write_devices,
     };
     let stats = if opts.local {

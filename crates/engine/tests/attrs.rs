@@ -456,6 +456,38 @@ fn devices_roundtrip() {
 }
 
 #[test]
+fn copy_devices_creates_regular_files() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let dev = src.join("null");
+    mknod(
+        &dev,
+        SFlag::S_IFCHR,
+        Mode::from_bits_truncate(0o600),
+        makedev(1, 3),
+    )
+    .unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &SyncOptions {
+            copy_devices: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let meta = fs::metadata(dst.join("null")).unwrap();
+    assert!(meta.is_file());
+    assert_eq!(meta.len(), 0);
+    assert!(!meta.file_type().is_char_device());
+}
+
+#[test]
 fn specials_roundtrip() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");

@@ -740,9 +740,13 @@ impl Receiver {
             if let Ok(meta) = fs::symlink_metadata(&tmp_dest) {
                 let ft = meta.file_type();
                 if ft.is_block_device() || ft.is_char_device() {
-                    return Err(EngineError::Other(
-                        "refusing to write to device; use --write-devices".into(),
-                    ));
+                    if self.opts.copy_devices {
+                        fs::remove_file(&tmp_dest)?;
+                    } else {
+                        return Err(EngineError::Other(
+                            "refusing to write to device; use --write-devices".into(),
+                        ));
+                    }
                 }
             }
         }
@@ -1002,6 +1006,7 @@ pub struct SyncOptions {
     pub secluded_args: bool,
     pub sockopts: Vec<String>,
     pub write_batch: Option<PathBuf>,
+    pub copy_devices: bool,
     pub write_devices: bool,
 }
 
@@ -1076,6 +1081,7 @@ impl Default for SyncOptions {
             secluded_args: false,
             sockopts: Vec::new(),
             write_batch: None,
+            copy_devices: false,
             write_devices: false,
         }
     }
@@ -1268,7 +1274,10 @@ pub fn sync(
                 if opts.dirs && !file_type.is_dir() {
                     continue;
                 }
-                if file_type.is_file() {
+                if file_type.is_file()
+                    || (opts.copy_devices
+                        && (file_type.is_char_device() || file_type.is_block_device()))
+                {
                     if opts.ignore_existing && dest_path.exists() {
                         continue;
                     }
@@ -1460,6 +1469,7 @@ pub fn sync(
                     {
                         if (file_type.is_char_device() || file_type.is_block_device())
                             && opts.devices
+                            && !opts.copy_devices
                         {
                             use nix::sys::stat::{mknod, Mode, SFlag};
                             let meta = fs::symlink_metadata(&path)?;
