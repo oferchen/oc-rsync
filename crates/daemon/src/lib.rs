@@ -3,6 +3,7 @@
 //! `parse_config` returns an [`io::Error`] when configuration entries are
 //! invalid, such as when the `port` value cannot be parsed.
 
+use std::env;
 use std::fs;
 use std::io::{self};
 use std::path::{Path, PathBuf};
@@ -38,9 +39,19 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
     let path = parts
         .next()
         .ok_or_else(|| "missing module path".to_string())?;
+    let raw = PathBuf::from(path);
+    let abs = if raw.is_absolute() {
+        raw.clone()
+    } else {
+        env::current_dir().map_err(|e| e.to_string())?.join(&raw)
+    };
+    let canonical = fs::canonicalize(&abs).map_err(|e| e.to_string())?;
+    if !canonical.starts_with(&abs) {
+        return Err("module path escapes module root".to_string());
+    }
     Ok(Module {
         name,
-        path: PathBuf::from(path),
+        path: canonical,
         hosts_allow: Vec::new(),
         hosts_deny: Vec::new(),
         auth_users: Vec::new(),

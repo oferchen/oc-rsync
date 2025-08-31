@@ -129,6 +129,39 @@ fn spawn_temp_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
     Ok((child, port, dir))
 }
 
+#[test]
+#[serial]
+fn daemon_blocks_path_traversal() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let (mut child, port, dir) = match spawn_temp_daemon() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
+    wait_for_daemon(port);
+    let parent = dir.path().parent().unwrap().to_path_buf();
+    let secret = parent.join("secret");
+    fs::write(&secret, b"top secret").unwrap();
+    let dest = tempfile::tempdir().unwrap();
+    let status = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            &format!("rsync://127.0.0.1:{port}/data/../secret"),
+            dest.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    assert!(!dest.path().join("secret").exists());
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 fn spawn_daemon_with_address(addr: &str) -> io::Result<(Child, u16)> {
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
