@@ -1311,15 +1311,16 @@ pub fn sync(
         .write_batch
         .as_ref()
         .and_then(|p| OpenOptions::new().create(true).append(true).open(p).ok());
+    let src_root = fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf());
     if opts.list_only {
-        let matcher = matcher.clone().with_root(src.to_path_buf());
-        let mut walker = walk(src, 1024);
+        let matcher = matcher.clone().with_root(src_root.clone());
+        let mut walker = walk(&src_root, 1024);
         let mut state = String::new();
         while let Some(batch) = walker.next() {
             let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
             for entry in batch {
                 let path = entry.apply(&mut state);
-                if let Ok(rel) = path.strip_prefix(src) {
+                if let Ok(rel) = path.strip_prefix(&src_root) {
                     if !matcher
                         .is_included(rel)
                         .map_err(|e| EngineError::Other(format!("{:?}", e)))?
@@ -1343,7 +1344,7 @@ pub fn sync(
     }
 
     let codec = select_codec(remote, opts);
-    let matcher = matcher.clone().with_root(src.to_path_buf());
+    let matcher = matcher.clone().with_root(src_root.clone());
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
     let mut receiver = Receiver::new(codec, opts.clone());
     let mut stats = Stats::default();
@@ -1353,19 +1354,19 @@ pub fn sync(
         Manifest::default()
     };
     if matches!(opts.delete, Some(DeleteMode::Before)) {
-        delete_extraneous(src, dst, &matcher, opts, &mut stats)?;
+        delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
     }
     sender.start();
     #[cfg(unix)]
     let mut hard_links: HashMap<(u64, u64), std::path::PathBuf> = HashMap::new();
-    let mut walker = walk(src, 1024);
+    let mut walker = walk(&src_root, 1024);
     let mut state = String::new();
     while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
             let path = entry.apply(&mut state);
             let file_type = entry.file_type;
-            if let Ok(rel) = path.strip_prefix(src) {
+            if let Ok(rel) = path.strip_prefix(&src_root) {
                 if !matcher
                     .is_included(rel)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?
@@ -1517,7 +1518,7 @@ pub fn sync(
                         path.parent().unwrap_or(Path::new("")).join(&target)
                     };
                     let is_unsafe = match fs::canonicalize(&target_path) {
-                        Ok(p) => !p.starts_with(src),
+                        Ok(p) => !p.starts_with(&src_root),
                         Err(_) => true,
                     };
                     if opts.safe_links && is_unsafe {

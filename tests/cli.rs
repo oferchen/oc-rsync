@@ -799,6 +799,35 @@ fn copy_dirlinks_transforms_directory_symlinks() {
 
 #[cfg(unix)]
 #[test]
+fn safe_links_resolve_source_symlink() {
+    let dir = tempdir().unwrap();
+    let real = dir.path().join("real");
+    let link = dir.path().join("link");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&real).unwrap();
+    std::fs::write(real.join("file"), b"hi").unwrap();
+    symlink("file", real.join("safe")).unwrap();
+    symlink("real", &link).unwrap();
+
+    let src_arg = format!("{}/", link.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--links",
+            "--safe-links",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let meta = std::fs::symlink_metadata(dst.join("safe")).unwrap();
+    assert!(meta.file_type().is_symlink());
+}
+
+#[cfg(unix)]
+#[test]
 fn perms_preserve_permissions() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
