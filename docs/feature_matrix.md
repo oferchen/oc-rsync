@@ -53,7 +53,7 @@ negotiates version 73.
 | `--delete-delay` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | ≤3.2 |
 | `--delete-during` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | ≤3.2 |
 | `--delete-excluded` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | ≤3.2 |
-| `--delete-missing-args` | — | ❌ | — | — |  | ≤3.2 |
+| `--delete-missing-args` | — | ✅ | ✅ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--devices` | — | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--dirs` | `-d` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--dparam` | `-M` | ❌ | — | — |  | ≤3.2 |
@@ -76,7 +76,7 @@ negotiates version 73.
 | `--help` | `-h (*)` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--human-readable` |  | ✅ | ✅ | [tests/golden/cli_parity/human-readable.sh](../tests/golden/cli_parity/human-readable.sh) |  | ≤3.2 |
 | `--iconv` | — | ❌ | — | — |  | ≤3.2 |
-| `--ignore-errors` | — | ❌ | — | — |  | ≤3.2 |
+| `--ignore-errors` | — | ✅ | ❌ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--ignore-existing` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--ignore-missing-args` | — | ❌ | — | — |  | ≤3.2 |
 | `--ignore-times` | `-I` | ❌ | — | — |  | ≤3.2 |
@@ -94,7 +94,7 @@ negotiates version 73.
 | `--log-file` | — | ❌ | — | — |  | ≤3.2 |
 | `--log-file-format` | — | ❌ | — | — |  | ≤3.2 |
 | `--max-alloc` | — | ❌ | — | — |  | ≤3.2 |
-| `--max-delete` | — | ❌ | — | — |  | ≤3.2 |
+| `--max-delete` | — | ✅ | ✅ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--max-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
 | `--min-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
 | `--mkpath` | — | ❌ | — | — |  | ≤3.2 |
@@ -137,7 +137,7 @@ negotiates version 73.
 | `--recursive` | `-r` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--relative` | `-R` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--remote-option` | `-M` | ✅ | ❌ | [tests/interop/remote_option.rs](../tests/interop/remote_option.rs) |  | ≤3.2 |
-| `--remove-source-files` | — | ❌ | — | — |  | ≤3.2 |
+| `--remove-source-files` | — | ✅ | ✅ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--rsh` | `-e` | ✅ | ✅ | [tests/rsh.rs](../tests/rsh.rs) | supports quoting, env vars, and `RSYNC_RSH` | ≤3.2 |
 | `--rsync-path` | — | ✅ | ✅ | [tests/rsh.rs](../tests/rsh.rs)<br>[tests/rsync_path.rs](../tests/rsync_path.rs) | accepts remote commands with env vars | ≤3.2 |
 | `--safe-links` | — | ✅ | ❌ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) |  | ≤3.2 |

@@ -165,6 +165,12 @@ struct ClientOpts {
     delete_delay: bool,
     #[arg(long = "delete-excluded", help_heading = "Delete")]
     delete_excluded: bool,
+    #[arg(long = "delete-missing-args", help_heading = "Delete")]
+    delete_missing_args: bool,
+    #[arg(long = "remove-source-files", help_heading = "Delete")]
+    remove_source_files: bool,
+    #[arg(long = "ignore-errors", help_heading = "Delete")]
+    ignore_errors: bool,
     #[arg(long = "max-delete", value_name = "NUM", help_heading = "Delete")]
     max_delete: Option<usize>,
     #[arg(long = "max-alloc", value_name = "SIZE", value_parser = parse_size, help_heading = "Misc")]
@@ -1066,7 +1072,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
         ignore_missing_args: false,
-        delete_missing_args: false,
+        delete_missing_args: opts.delete_missing_args,
+        remove_source_files: opts.remove_source_files,
+        ignore_errors: opts.ignore_errors,
         max_delete: opts.max_delete,
         max_alloc: opts.max_alloc.unwrap_or(1usize << 30),
         max_size: opts.max_size,
@@ -1138,7 +1146,6 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         link_dest: opts.link_dest.clone(),
         copy_dest: opts.copy_dest.clone(),
         compare_dest: opts.compare_dest.clone(),
-        remove_source_files: false,
         backup: opts.backup || opts.backup_dir.is_some(),
         backup_dir: opts.backup_dir.clone(),
         chmod: if chmod_rules.is_empty() {
