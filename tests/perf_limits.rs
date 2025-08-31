@@ -128,3 +128,23 @@ fn min_size_skips_small_files() {
     assert!(!dst.join("small.bin").exists());
     assert!(dst.join("large.bin").exists());
 }
+
+#[test]
+fn transfers_sub_kilobyte_files() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("tiny.bin"), vec![0u8; 512]).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--recursive", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let meta = fs::metadata(dst.join("tiny.bin")).unwrap();
+    assert_eq!(meta.len(), 512);
+}
