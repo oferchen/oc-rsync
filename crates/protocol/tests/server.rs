@@ -38,7 +38,7 @@ fn server_negotiates_version() {
 }
 
 #[test]
-fn server_falls_back_to_v32() {
+fn server_accepts_legacy_version() {
     let legacy = LATEST_VERSION - 1;
     let payload = encode_codecs(&available_codecs(None));
     let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
@@ -56,11 +56,11 @@ fn server_falls_back_to_v32() {
     let (caps, peer_codecs) = srv
         .handshake(LATEST_VERSION, SUPPORTED_CAPS, &available_codecs(None))
         .unwrap();
-    assert_eq!(srv.version, 32);
+    assert_eq!(srv.version, legacy);
     assert_eq!(caps & CAP_CODECS, CAP_CODECS);
     assert_eq!(peer_codecs, available_codecs(None));
     let expected = {
-        let mut v = 32u32.to_be_bytes().to_vec();
+        let mut v = legacy.to_be_bytes().to_vec();
         v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
         let mut out_frame = Vec::new();
         codecs_frame.encode(&mut out_frame).unwrap();

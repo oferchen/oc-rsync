@@ -3,7 +3,9 @@ use std::io::{self, Read, Write};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
-use crate::{AddressFamily, DaemonTransport, Transport};
+use socket2::SockRef;
+
+use crate::{AddressFamily, DaemonTransport, SockOpt, Transport};
 
 pub struct TcpTransport {
     stream: TcpStream,
@@ -78,6 +80,21 @@ impl TcpTransport {
         self.stream.write_all(b"\n")
     }
 
+    pub fn apply_sockopts(&self, opts: &[SockOpt]) -> io::Result<()> {
+        if opts.is_empty() {
+            return Ok(());
+        }
+        let sock = SockRef::from(&self.stream);
+        for opt in opts {
+            match *opt {
+                SockOpt::KeepAlive(v) => sock.set_keepalive(v)?,
+                SockOpt::SendBuf(size) => sock.set_send_buffer_size(size)?,
+                SockOpt::RecvBuf(size) => sock.set_recv_buffer_size(size)?,
+            }
+        }
+        Ok(())
+    }
+
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.stream.set_read_timeout(dur)
     }
@@ -111,6 +128,14 @@ impl Transport for TcpTransport {
 
     fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.stream.read(buf)
+    }
+
+    fn set_read_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
+        self.stream.set_read_timeout(dur)
+    }
+
+    fn set_write_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
+        self.stream.set_write_timeout(dur)
     }
 }
 

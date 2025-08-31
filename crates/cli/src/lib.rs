@@ -25,7 +25,15 @@ use filters::{default_cvs_rules, parse, Matcher, Rule};
 use meta::{parse_chmod, parse_chown};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
-use transport::{AddressFamily, RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
+use transport::{
+    parse_sockopts,
+    AddressFamily,
+    RateLimitedTransport,
+    SshStdioTransport,
+    TcpTransport,
+    Transport,
+    SockOpt,
+};
 
 fn parse_filters(s: &str) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
@@ -524,8 +532,9 @@ pub fn run() -> Result<()> {
     }
     if args.iter().any(|a| a == "--daemon") {
         let opts = DaemonOpts::parse_from(&args);
-        run_daemon(opts)
-    } else if args.iter().any(|a| a == "--probe") {
+        return run_daemon(opts);
+    }
+    if args.iter().any(|a| a == "--probe") {
         let opts = ProbeOpts::parse_from(&args);
         run_probe(opts)
     } else if args.iter().any(|a| a == "--server") {
@@ -543,7 +552,56 @@ pub fn run() -> Result<()> {
             }
         }
         run_client(opts, &matches)
+        return run_probe(opts);
     }
+    if args.iter().any(|a| a == "--server") {
+        return run_server();
+    }
+
+    // Extract any remote -M options before handing over to clap so that the
+    // option values aren't interpreted as local flags.
+    let mut remote_opts = Vec::new();
+    let mut filtered = Vec::with_capacity(args.len());
+    if let Some(first) = args.first() {
+        filtered.push(first.clone());
+    }
+    let mut i = 1;
+    while i < args.len() {
+        let arg = &args[i];
+        if arg == "-M" {
+            if let Some(val) = args.get(i + 1).cloned() {
+                remote_opts.push(val);
+                i += 2;
+                continue;
+            } else {
+                i += 1;
+                continue;
+            }
+        } else if let Some(rest) = arg.strip_prefix("-M") {
+            if rest.is_empty() {
+                if let Some(val) = args.get(i + 1).cloned() {
+                    remote_opts.push(val);
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+                continue;
+            }
+            let val = rest.strip_prefix('=').unwrap_or(rest);
+            remote_opts.push(val.to_string());
+            i += 1;
+            continue;
+        }
+        filtered.push(arg.clone());
+        i += 1;
+    }
+
+    let cmd = ClientOpts::command();
+    let matches = cmd.get_matches_from(&filtered);
+    let mut opts =
+        ClientOpts::from_arg_matches(&matches).map_err(|e| EngineError::Other(e.to_string()))?;
+    opts.remote_option.extend(remote_opts);
+    run_client(opts, &matches)
 }
 
 pub fn cli_command() -> clap::Command {
@@ -677,6 +735,7 @@ pub fn spawn_daemon_session(
     timeout: Option<Duration>,
     contimeout: Option<Duration>,
     family: Option<AddressFamily>,
+    sockopts: &[String],
     remote_opts: &[String],
     version: u32,
     early_input: Option<&Path>,
@@ -689,6 +748,9 @@ pub fn spawn_daemon_session(
     };
     let mut t = TcpTransport::connect(host, port, contimeout, family)
         .map_err(|e| EngineError::Other(e.to_string()))?;
+    let parsed: Vec<SockOpt> = parse_sockopts(sockopts)
+        .map_err(|e| EngineError::Other(e))?;
+    t.apply_sockopts(&parsed).map_err(EngineError::from)?;
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
     if let Some(p) = early_input {
         if let Ok(data) = fs::read(p) {
@@ -1120,6 +1182,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.contimeout,
                     addr_family,
                     &remote_opts,
+                    &opts.sockopts,
+                    &opts.remote_option,
                     opts.protocol
                         .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                     opts.early_input.as_deref(),
@@ -1183,6 +1247,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.contimeout,
                     addr_family,
                     &remote_opts,
+                    &opts.sockopts,
+                    &opts.remote_option,
                     opts.protocol
                         .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                     opts.early_input.as_deref(),
@@ -1328,6 +1394,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                             &remote_opts,
+                            &opts.sockopts,
+                            &opts.remote_option,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
@@ -1342,6 +1410,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                             &remote_opts,
+                            &opts.sockopts,
+                            &opts.remote_option,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
@@ -1382,6 +1452,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                             &remote_opts,
+                            &opts.sockopts,
+                            &opts.remote_option,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
@@ -1420,6 +1492,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                             &remote_opts,
+                            &opts.sockopts,
+                            &opts.remote_option,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
@@ -2115,6 +2189,7 @@ mod tests {
             None,
             None,
             &[],
+            &[],
             30,
             None,
         )
@@ -2171,6 +2246,7 @@ mod tests {
             None,
             None,
             None,
+            &[],
             &[],
             30,
             Some(&path),

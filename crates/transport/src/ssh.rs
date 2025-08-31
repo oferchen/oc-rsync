@@ -415,13 +415,6 @@ impl SshStdioTransport {
         Ok(inner.into_inner())
     }
 
-    pub fn set_read_timeout(&mut self, dur: Option<Duration>) {
-        self.read_timeout = dur;
-    }
-
-    pub fn set_write_timeout(&mut self, dur: Option<Duration>) {
-        self.write_timeout = dur;
-    }
 }
 
 type InnerPipe = LocalPipeTransport<BufReader<ChildStdout>, ChildStdin>;
@@ -485,6 +478,16 @@ impl Transport for SshStdioTransport {
                 Err(err)
             }
         }
+    }
+
+    fn set_read_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
+        self.read_timeout = dur;
+        Ok(())
+    }
+
+    fn set_write_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
+        self.write_timeout = dur;
+        Ok(())
     }
 }
 
