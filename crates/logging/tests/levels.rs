@@ -41,3 +41,11 @@ fn info_flag_enables_info() {
         assert!(tracing::enabled!(Level::INFO));
     });
 }
+
+#[test]
+fn json_verbose_enables_info() {
+    let sub = subscriber(LogFormat::Json, 1, false, false);
+    with_default(sub, || {
+        assert!(tracing::enabled!(Level::INFO));
+    });
+}

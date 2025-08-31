@@ -57,6 +57,12 @@ Quick links:
 - [Flags](docs/cli.md#flags)
 - [Configuration precedence](docs/cli.md#configuration-precedence)
 
+### Logging
+
+Enable structured JSON logs on the command line with `--log-format json`. Library
+callers can configure logging by building a [`SyncConfig`] with
+`log_format: LogFormat::Json` and passing it to [`synchronize`].
+
 ## Architecture
 See [docs/architecture.md](docs/architecture.md) for a deeper overview of crate
 boundaries, data flow, and key algorithms.

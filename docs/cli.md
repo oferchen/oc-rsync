@@ -37,6 +37,22 @@ oc-rsync [OPTIONS] "<SRC>" "<DEST>"
   ```sh
   oc-rsync -a --link-dest="../prev" --compare-dest="../base" "./src/" "./snapshot/"
   ```
+  - Throttled modern compression:
+    ```sh
+    oc-rsync -az --modern --bwlimit=1m ./src/ host:/archive/
+    ```
+  - Tune delta block size:
+    ```sh
+    oc-rsync -B 65536 ./src remote:/dst
+    ```
+  - Emit JSON-formatted logs:
+    ```sh
+    oc-rsync --log-format json -v ./src ./dst
+    ```
+  - Change ownership during transfer (requires root):
+    ```sh
+    sudo oc-rsync --chown=0:0 ./src/ remote:/dst/
+    ```
 - Throttled modern compression:
   ```sh
   oc-rsync -az --modern --bwlimit=1m "./src/" "host:/archive/"
