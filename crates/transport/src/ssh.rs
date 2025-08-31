@@ -393,17 +393,27 @@ impl SshStdioTransport {
         }
     }
 
-    pub fn into_inner(mut self) -> (BufReader<ChildStdout>, ChildStdin) {
+    pub fn into_inner(mut self) -> io::Result<(BufReader<ChildStdout>, ChildStdin)> {
         if let Some(handle) = self.handle.take() {
             std::mem::forget(handle);
         }
-        self.inner.take().expect("inner").into_inner()
+        let inner = self
+            .inner
+            .take()
+            .ok_or_else(|| io::Error::other("missing inner transport"))?;
+        Ok(inner.into_inner())
     }
+}
+
+type InnerPipe = LocalPipeTransport<BufReader<ChildStdout>, ChildStdin>;
+
+fn inner_pipe<'a>(inner: Option<&'a mut InnerPipe>) -> io::Result<&'a mut InnerPipe> {
+    inner.ok_or_else(|| io::Error::other("missing inner transport"))
 }
 
 impl Transport for SshStdioTransport {
     fn send(&mut self, data: &[u8]) -> io::Result<()> {
-        match self.inner.as_mut().expect("inner").send(data) {
+        match inner_pipe(self.inner.as_mut())?.send(data) {
             Ok(()) => Ok(()),
             Err(err) => {
                 let (stderr, _) = self.stderr();
@@ -419,7 +429,7 @@ impl Transport for SshStdioTransport {
     }
 
     fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match self.inner.as_mut().expect("inner").receive(buf) {
+        match inner_pipe(self.inner.as_mut())?.receive(buf) {
             Ok(n) => Ok(n),
             Err(err) => {
                 let (stderr, _) = self.stderr();
@@ -443,5 +453,36 @@ impl Drop for SshStdioTransport {
         if let Some(handle) = self.handle.take() {
             drop(handle);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn empty() -> SshStdioTransport {
+        SshStdioTransport {
+            inner: None,
+            stderr: Arc::new(Mutex::new(CapturedStderr::default())),
+            handle: None,
+        }
+    }
+
+    #[test]
+    fn send_fails_without_inner() {
+        let mut t = empty();
+        assert!(t.send(b"data").is_err());
+    }
+
+    #[test]
+    fn receive_fails_without_inner() {
+        let mut t = empty();
+        assert!(t.receive(&mut [0u8; 1]).is_err());
+    }
+
+    #[test]
+    fn into_inner_fails_without_inner() {
+        let t = empty();
+        assert!(t.into_inner().is_err());
     }
 }

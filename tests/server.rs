@@ -23,8 +23,8 @@ fn server_remote_pair_reports_error() {
 
     let src_session = spawn_reader(&format!("cat {}", src.display()));
     let dst_session = spawn_writer("exec 0<&-; sleep 1");
-    let (mut src_reader, _) = src_session.into_inner();
-    let (_, mut dst_writer) = dst_session.into_inner();
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
     let res = std::io::copy(&mut src_reader, &mut dst_writer);
     assert!(res.is_err());
 }
