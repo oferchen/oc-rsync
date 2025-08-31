@@ -24,7 +24,10 @@ impl TcpTransport {
         }
         .ok_or_else(|| io::Error::other("invalid address"))?;
         let stream = if let Some(dur) = timeout {
-            TcpStream::connect_timeout(&addr, dur)?
+            let stream = TcpStream::connect_timeout(&addr, dur)?;
+            stream.set_read_timeout(Some(dur))?;
+            stream.set_write_timeout(Some(dur))?;
+            stream
         } else {
             TcpStream::connect(addr)?
         };
@@ -74,6 +77,10 @@ impl TcpTransport {
 
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.stream.set_read_timeout(dur)
+    }
+
+    pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        self.stream.set_write_timeout(dur)
     }
 }
 

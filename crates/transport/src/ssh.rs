@@ -1,11 +1,13 @@
 // crates/transport/src/ssh.rs
 use std::ffi::OsStr;
-use std::io::{self, BufReader, Read};
+use std::io::{self, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
+use std::os::unix::io::{AsRawFd, BorrowedFd, RawFd};
+use nix::poll::{poll, PollFd, PollFlags, PollTimeout};
 
 use compress::{available_codecs, Codec, ModernCompress};
 use protocol::{
@@ -21,6 +23,8 @@ pub struct SshStdioTransport {
     inner: Option<LocalPipeTransport<BufReader<ChildStdout>, ChildStdin>>,
     stderr: Arc<Mutex<CapturedStderr>>,
     handle: Option<ProcessHandle>,
+    read_timeout: Option<Duration>,
+    write_timeout: Option<Duration>,
 }
 
 struct ProcessHandle {
@@ -162,6 +166,8 @@ impl SshStdioTransport {
             )),
             stderr: stderr_buf,
             handle: Some(handle),
+            read_timeout: None,
+            write_timeout: None,
         })
     }
 
@@ -408,6 +414,14 @@ impl SshStdioTransport {
             .ok_or_else(|| io::Error::other("missing inner transport"))?;
         Ok(inner.into_inner())
     }
+
+    pub fn set_read_timeout(&mut self, dur: Option<Duration>) {
+        self.read_timeout = dur;
+    }
+
+    pub fn set_write_timeout(&mut self, dur: Option<Duration>) {
+        self.write_timeout = dur;
+    }
 }
 
 type InnerPipe = LocalPipeTransport<BufReader<ChildStdout>, ChildStdin>;
@@ -416,11 +430,26 @@ fn inner_pipe<'a>(inner: Option<&'a mut InnerPipe>) -> io::Result<&'a mut InnerP
     inner.ok_or_else(|| io::Error::other("missing inner transport"))
 }
 
+fn wait_fd(fd: RawFd, flags: PollFlags, timeout: Option<Duration>) -> io::Result<()> {
+    if let Some(dur) = timeout {
+        let timeout = PollTimeout::try_from(dur).map_err(|_| io::Error::other("timeout overflow"))?;
+        let mut fds = [PollFd::new(unsafe { BorrowedFd::borrow_raw(fd) }, flags)];
+        let res = poll(&mut fds, timeout).map_err(|e| io::Error::from(e))?;
+        if res == 0 {
+            return Err(io::Error::new(io::ErrorKind::TimedOut, "operation timed out"));
+        }
+    }
+    Ok(())
+}
+
 impl Transport for SshStdioTransport {
     fn send(&mut self, data: &[u8]) -> io::Result<()> {
-        match inner_pipe(self.inner.as_mut())?.send(data) {
-            Ok(()) => Ok(()),
-            Err(err) => {
+        let pipe = inner_pipe(self.inner.as_mut())?;
+        {
+            let writer = pipe.writer_mut();
+            let fd = writer.as_raw_fd();
+            wait_fd(fd, PollFlags::POLLOUT, self.write_timeout)?;
+            if let Err(err) = writer.write_all(data).and_then(|_| writer.flush()) {
                 let (stderr, _) = self.stderr();
                 if !stderr.is_empty() {
                     return Err(io::Error::new(
@@ -428,13 +457,18 @@ impl Transport for SshStdioTransport {
                         String::from_utf8_lossy(&stderr).into_owned(),
                     ));
                 }
-                Err(err)
+                return Err(err);
             }
         }
+        Ok(())
     }
 
     fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match inner_pipe(self.inner.as_mut())?.receive(buf) {
+        let pipe = inner_pipe(self.inner.as_mut())?;
+        let reader = pipe.reader_mut();
+        let fd = reader.get_ref().as_raw_fd();
+        wait_fd(fd, PollFlags::POLLIN, self.read_timeout)?;
+        match reader.read(buf) {
             Ok(n) => Ok(n),
             Err(err) => {
                 let (stderr, _) = self.stderr();
@@ -470,6 +504,8 @@ mod tests {
             inner: None,
             stderr: Arc::new(Mutex::new(CapturedStderr::default())),
             handle: None,
+            read_timeout: None,
+            write_timeout: None,
         }
     }
 

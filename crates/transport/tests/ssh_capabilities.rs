@@ -44,7 +44,7 @@ fn handshake_reads_capabilities_in_multiple_chunks() {
     let version_bytes = LATEST_VERSION.to_be_bytes().to_vec();
     let mut transport = ChunkedTransport::new(vec![version_bytes, vec![0], vec![0, 0, 0]]);
 
-    let codecs =
+    let (codecs, _caps) =
         SshStdioTransport::handshake(&mut transport, &[], None, LATEST_VERSION).expect("handshake");
 
     assert_eq!(codecs, vec![Codec::Zlib]);
