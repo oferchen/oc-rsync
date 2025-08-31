@@ -245,25 +245,14 @@ pub fn authenticate<T: Transport>(
         if !auth_path.exists() {
             return Err(io::Error::new(io::ErrorKind::NotFound, "auth file missing"));
         }
-        #[cfg(unix)]
-        {
-            let mode = fs::metadata(auth_path)?.permissions().mode();
-            if mode & 0o077 != 0 {
-                return Err(io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "auth file permissions are too open",
-                ));
-            }
-        }
-        let contents = fs::read_to_string(auth_path)?;
-        if let Some(allowed) = parse_auth_token(&token_str, &contents) {
-            Ok((Some(token_str), allowed, no_motd))
-        } else {
-            Err(io::Error::new(
+        if token_str.is_empty() {
+            return Err(io::Error::new(
                 io::ErrorKind::PermissionDenied,
-                "unauthorized",
-            ))
+                "missing token",
+            ));
         }
+        let allowed = authenticate_token(&token_str, auth_path)?;
+        Ok((Some(token_str), allowed, no_motd))
     } else {
         let token_opt = if token_str.is_empty() {
             None
