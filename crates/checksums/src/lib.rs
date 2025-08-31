@@ -84,6 +84,7 @@ impl ChecksumConfig {
     }
 }
 
+#[allow(clippy::needless_borrows_for_generic_args)]
 pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
     match alg {
         StrongHash::Md5 => {

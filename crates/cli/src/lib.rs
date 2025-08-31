@@ -520,6 +520,7 @@ pub fn parse_rsync_path(raw: Option<String>) -> Result<Option<RshCommand>> {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Parser, Debug)]
 struct DaemonOpts {
     #[arg(long)]
@@ -556,6 +557,7 @@ struct DaemonOpts {
     motd: Option<PathBuf>,
 }
 
+#[allow(dead_code)]
 #[derive(Parser, Debug)]
 struct ProbeOpts {
     #[arg(long)]
@@ -1734,6 +1736,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     Ok(Matcher::new(rules))
 }
 
+#[allow(dead_code)]
 fn run_daemon(opts: DaemonOpts) -> Result<()> {
     let mut modules: HashMap<String, Module> = HashMap::new();
     let mut secrets = opts.secrets_file.clone();
@@ -1832,6 +1835,7 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     }
 }
 
+#[allow(dead_code)]
 fn handle_connection<T: Transport>(
     transport: &mut T,
     modules: &HashMap<String, Module>,
@@ -1952,6 +1956,7 @@ fn handle_connection<T: Transport>(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn host_matches(ip: &IpAddr, pat: &str) -> bool {
     if pat == "*" {
         return true;
@@ -1959,6 +1964,7 @@ fn host_matches(ip: &IpAddr, pat: &str) -> bool {
     pat.parse::<IpAddr>().map_or(false, |p| &p == ip)
 }
 
+#[allow(dead_code)]
 fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
     if !allow.is_empty() && !allow.iter().any(|p| host_matches(ip, p)) {
         return false;
@@ -1969,6 +1975,7 @@ fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
     true
 }
 
+#[allow(dead_code)]
 fn run_probe(opts: ProbeOpts) -> Result<()> {
     if let Some(addr) = opts.addr {
         let mut stream = TcpStream::connect(&addr)?;
@@ -1988,6 +1995,7 @@ fn run_probe(opts: ProbeOpts) -> Result<()> {
     }
 }
 
+#[allow(dead_code)]
 fn run_server() -> Result<()> {
     use protocol::{Server, CAP_CODECS, LATEST_VERSION, SUPPORTED_CAPS};
     let stdin = io::stdin();
