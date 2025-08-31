@@ -28,7 +28,7 @@ section.
 .IP
 .nf
 \f[C]
-oc-rsync [OPTIONS] <SRC> <DEST>
+oc-rsync [OPTIONS] \[dq]<SRC>\[dq] \[dq]<DEST>\[dq]
 \f[R]
 .fi
 .SS Examples
@@ -38,7 +38,7 @@ Local directory sync:
 .IP
 .nf
 \f[C]
-oc-rsync ./src ./backup
+oc-rsync \[dq]./src\[dq] \[dq]./backup\[dq]
 \f[R]
 .fi
 .RE
@@ -48,7 +48,7 @@ Remote sync over SSH:
 .IP
 .nf
 \f[C]
-oc-rsync ./src user\[at]example.com:/var/www
+oc-rsync \[dq]./src\[dq] \[dq]user\[at]example.com:/var/www\[dq]
 \f[R]
 .fi
 .RE
@@ -58,7 +58,7 @@ Dry run with statistics:
 .IP
 .nf
 \f[C]
-oc-rsync -n --stats ./src remote:/dst
+oc-rsync -n --stats \[dq]./src\[dq] \[dq]remote:/dst\[dq]
 \f[R]
 .fi
 .RE
@@ -68,7 +68,7 @@ Sync using an explicit config file:
 .IP
 .nf
 \f[C]
-oc-rsync --config ./oc-rsync.toml ./src remote:/dst
+oc-rsync --config \[dq]./oc-rsync.toml\[dq] \[dq]./src\[dq] \[dq]remote:/dst\[dq]
 \f[R]
 .fi
 .RE
@@ -78,7 +78,7 @@ Mirror with exclusions and deletions:
 .IP
 .nf
 \f[C]
-oc-rsync -a --delete --exclude \[aq].cache/\[aq] ./src/ ./mirror/
+oc-rsync -a --delete --exclude \[aq].cache/\[aq] \[dq]./src/\[dq] \[dq]./mirror/\[dq]
 \f[R]
 .fi
 .RE
@@ -88,7 +88,7 @@ Incremental backup using hard links:
 .IP
 .nf
 \f[C]
-oc-rsync -a --link-dest=../prev --compare-dest=../base ./src/ ./snapshot/
+oc-rsync -a --link-dest=\[dq]../prev\[dq] --compare-dest=\[dq]../base\[dq] \[dq]./src/\[dq] \[dq]./snapshot/\[dq]
 \f[R]
 .fi
 .RE
@@ -98,7 +98,7 @@ Throttled modern compression:
 .IP
 .nf
 \f[C]
-oc-rsync -az --modern --bwlimit=1m ./src/ host:/archive/
+oc-rsync -az --modern --bwlimit=1m \[dq]./src/\[dq] \[dq]host:/archive/\[dq]
 \f[R]
 .fi
 .RE
@@ -108,7 +108,7 @@ Tune delta block size:
 .IP
 .nf
 \f[C]
-oc-rsync -B 65536 ./src remote:/dst
+oc-rsync -B 65536 \[dq]./src\[dq] \[dq]remote:/dst\[dq]
 \f[R]
 .fi
 .RE
@@ -127,13 +127,13 @@ oc-rsync --version
 Just like \f[V]rsync\f[R], adding a trailing slash to the source path
 changes what is copied:
 .IP \[bu] 2
-\f[V]oc-rsync src/ dest/\f[R] copies the \f[I]contents\f[R] of
+\f[V]oc-rsync \[dq]src/\[dq] \[dq]dest/\[dq]\f[R] copies the \f[I]contents\f[R] of
 \f[V]src\f[R] into \f[V]dest\f[R].
 .IP \[bu] 2
-\f[V]oc-rsync src dest/\f[R] creates a \f[V]dest/src\f[R] directory
+\f[V]oc-rsync \[dq]src\[dq] \[dq]dest/\[dq]\f[R] creates a \f[V]dest/src\f[R] directory
 containing the original files.
 .IP \[bu] 2
-\f[V]oc-rsync remote:/src/ local/\f[R] pulls the contents of
+\f[V]oc-rsync \[dq]remote:/src/\[dq] \[dq]local/\[dq]\f[R] pulls the contents of
 \f[V]/src\f[R] from the remote host into \f[V]local\f[R].
 .SS Options
 .PP
@@ -1664,7 +1664,7 @@ For example:
 .IP
 .nf
 \f[C]
-oc-rsync -e \[aq]RUST_LOG=debug ssh -p 2222 -o \[dq]StrictHostKeyChecking=no\[dq]\[aq] src dst
+oc-rsync -e \[aq]RUST_LOG=debug ssh -p 2222 -o \[dq]StrictHostKeyChecking=no\[dq]\[aq] \[dq]src\[dq] \[dq]dst\[dq]
 \f[R]
 .fi
 .PP

@@ -1,3 +1,4 @@
+#![cfg(unix)]
 // tests/remote_remote.rs
 
 use assert_cmd::cargo::cargo_bin;
