@@ -548,6 +548,11 @@ impl Sender {
         let src_len = meta.len();
         ensure_max_alloc(src_len, &self.opts)?;
         let file_type = meta.file_type();
+        let atime_guard = if self.opts.atimes {
+            meta::AccessTime::new(path).ok()
+        } else {
+            None
+        };
         let src = File::open(path)?;
         let mut src_reader = BufReader::new(src);
         let file_codec = if should_compress(path, &self.opts.skip_compress) {
@@ -695,6 +700,8 @@ impl Sender {
             Ok(op)
         });
         recv.apply(path, dest, ops)?;
+        drop(atime_guard);
+        recv.copy_metadata(path, dest)?;
         Ok(true)
     }
 }
@@ -878,7 +885,6 @@ impl Receiver {
         if needs_rename {
             fs::rename(&tmp_dest, dest)?;
         }
-        self.copy_metadata(src, dest)?;
         if self.opts.progress {
             let len = fs::metadata(dest)?.len();
             if self.opts.human_readable {
