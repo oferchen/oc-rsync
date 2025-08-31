@@ -136,6 +136,8 @@ _oc-rsync() {
 '--copy-links[]' \
 '-k[]' \
 '--copy-dirlinks[]' \
+'-K[]' \
+'--keep-dirlinks[]' \
 '--copy-unsafe-links[]' \
 '--safe-links[]' \
 '--hard-links[]' \

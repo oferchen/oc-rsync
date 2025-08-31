@@ -81,7 +81,7 @@ impl Decoder {
         let path = String::from_utf8(path_bytes).map_err(|_| DecodeError::Utf8)?;
         let (uid, rest) = decode_id(input, &mut self.uid_table, true)?;
         let (gid, rest) = decode_id(rest, &mut self.gid_table, false)?;
-        let _ = rest;
+        debug_assert!(rest.is_empty());
         self.prev_path = path.clone();
         Ok(Entry { path, uid, gid })
     }

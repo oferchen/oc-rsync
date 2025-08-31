@@ -99,7 +99,7 @@ fn server_rejects_unsupported_version() {
         .unwrap();
     let mut stdin = child.stdin.take().unwrap();
 
-    let bad = (MIN_VERSION - 1) as u32;
+    let bad = MIN_VERSION - 1;
     stdin.write_all(&[0]).unwrap();
     stdin.write_all(&bad.to_be_bytes()).unwrap();
     drop(stdin);

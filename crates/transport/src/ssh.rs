@@ -277,6 +277,7 @@ impl SshStdioTransport {
         Ok((peer_codecs, caps))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn spawn_with_rsh(
         host: &str,
         path: &Path,
@@ -291,7 +292,7 @@ impl SshStdioTransport {
         connect_timeout: Option<Duration>,
         family: Option<AddressFamily>,
     ) -> io::Result<Self> {
-        let program = rsh.get(0).map(|s| s.as_str()).unwrap_or("ssh");
+        let program = rsh.first().map(|s| s.as_str()).unwrap_or("ssh");
         if program == "ssh" {
             let mut cmd = Command::new(program);
             cmd.args(&rsh[1..]);
@@ -363,6 +364,7 @@ impl SshStdioTransport {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn connect_with_rsh(
         host: &str,
         path: &Path,
@@ -420,7 +422,7 @@ impl SshStdioTransport {
 
 type InnerPipe = LocalPipeTransport<BufReader<ChildStdout>, ChildStdin>;
 
-fn inner_pipe<'a>(inner: Option<&'a mut InnerPipe>) -> io::Result<&'a mut InnerPipe> {
+fn inner_pipe(inner: Option<&mut InnerPipe>) -> io::Result<&mut InnerPipe> {
     inner.ok_or_else(|| io::Error::other("missing inner transport"))
 }
 
@@ -429,7 +431,7 @@ fn wait_fd(fd: RawFd, flags: PollFlags, timeout: Option<Duration>) -> io::Result
         let timeout =
             PollTimeout::try_from(dur).map_err(|_| io::Error::other("timeout overflow"))?;
         let mut fds = [PollFd::new(unsafe { BorrowedFd::borrow_raw(fd) }, flags)];
-        let res = poll(&mut fds, timeout).map_err(|e| io::Error::from(e))?;
+        let res = poll(&mut fds, timeout).map_err(io::Error::from)?;
         if res == 0 {
             return Err(io::Error::new(
                 io::ErrorKind::TimedOut,

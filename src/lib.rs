@@ -125,12 +125,12 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
                     .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
                     .map_err(|e| io_context(&dst_path, e))?;
             } else if file_type.is_char_device() {
-                let dev: dev_t = meta.rdev().try_into().unwrap();
+                let dev: dev_t = meta.rdev() as dev_t;
                 mknod(&dst_path, SFlag::S_IFCHR, mode, dev)
                     .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
                     .map_err(|e| io_context(&dst_path, e))?;
             } else if file_type.is_block_device() {
-                let dev: dev_t = meta.rdev().try_into().unwrap();
+                let dev: dev_t = meta.rdev() as dev_t;
                 mknod(&dst_path, SFlag::S_IFBLK, mode, dev)
                     .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
                     .map_err(|e| io_context(&dst_path, e))?;

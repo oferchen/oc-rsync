@@ -7,8 +7,6 @@ use filetime::{set_file_atime, FileTime};
 use meta::{makedev, mkfifo, mknod};
 #[cfg(unix)]
 use nix::sys::stat::Mode;
-#[cfg(target_os = "linux")]
-use nix::sys::stat::SFlag;
 use std::collections::BTreeMap;
 use std::fs;
 #[cfg(unix)]
@@ -55,6 +53,64 @@ fn sync_directory_tree() {
         .stderr("");
 
     assert_eq!(collect(&src), collect(&dst));
+}
+
+#[cfg(unix)]
+#[test]
+fn sync_replaces_symlinked_dir_by_default() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    let target = tmp.path().join("target");
+    fs::create_dir_all(src.join("sub")).unwrap();
+    fs::write(src.join("sub/file"), b"data").unwrap();
+    fs::create_dir_all(&target).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    symlink(&target, dst.join("sub")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let meta = fs::symlink_metadata(dst.join("sub")).unwrap();
+    assert!(meta.file_type().is_dir());
+    assert!(!meta.file_type().is_symlink());
+    assert!(!target.join("file").exists());
+    assert!(dst.join("sub/file").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn sync_keep_dirlinks_preserves_symlinked_dir() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    let target = tmp.path().join("target");
+    fs::create_dir_all(src.join("sub")).unwrap();
+    fs::write(src.join("sub/file"), b"data").unwrap();
+    fs::create_dir_all(&target).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    symlink(&target, dst.join("sub")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--keep-dirlinks",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let meta = fs::symlink_metadata(dst.join("sub")).unwrap();
+    assert!(meta.file_type().is_symlink());
+    assert!(target.join("file").exists());
+    assert!(!dst.join("sub/file").exists());
 }
 
 #[cfg(all(unix, feature = "xattr"))]
@@ -109,7 +165,7 @@ fn sync_preserves_acls() {
         .stderr("");
 
     let acl_src = PosixACL::read_acl(&file).unwrap();
-    let acl_dst = PosixACL::read_acl(&dst.join("file")).unwrap();
+    let acl_dst = PosixACL::read_acl(dst.join("file")).unwrap();
     assert_eq!(acl_src.entries(), acl_dst.entries());
 }
 
@@ -243,14 +299,11 @@ fn sync_preserves_crtimes() {
         .stderr("");
 
     let dst_meta = fs::metadata(dst.join("file")).unwrap();
-    match FileTime::from_creation_time(&dst_meta) {
-        Some(t) => {
-            if cfg!(target_os = "linux") && t != src_crtime {
-                return;
-            }
-            assert_eq!(src_crtime, t)
+    if let Some(t) = FileTime::from_creation_time(&dst_meta) {
+        if cfg!(target_os = "linux") && t != src_crtime {
+            return;
         }
-        None => {}
+        assert_eq!(src_crtime, t)
     }
 }
 
