@@ -4,6 +4,34 @@ use engine::{Result, SyncOptions};
 use filters::Matcher;
 use std::{fs, path::Path};
 
+/// Synchronizes the contents of the `src` directory into the `dst` directory.
+///
+/// The destination directory is created if it does not exist and any existing
+/// files are overwritten to match the source. The rsync engine performs the
+/// main transfer using default options and available compression codecs. After
+/// the engine runs, any files it does not handle are copied with a simple
+/// recursive copy via `copy_recursive`.
+///
+/// # Errors
+///
+/// Returns an error if the destination cannot be created, if reading from the
+/// source fails, if the underlying engine encounters an error, or if copying
+/// any remaining files fails.
+///
+/// # Examples
+///
+/// ```
+/// use std::fs;
+/// use oc_rsync::synchronize;
+/// # use tempfile::tempdir;
+/// # let dir = tempdir().unwrap();
+/// # let src = dir.path().join("src");
+/// # let dst = dir.path().join("dst");
+/// # fs::create_dir(&src).unwrap();
+/// # fs::write(src.join("file.txt"), b"hello").unwrap();
+/// synchronize(&src, &dst).unwrap();
+/// assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello");
+/// ```
 pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
     if !dst.exists() {
         fs::create_dir_all(dst)?;
