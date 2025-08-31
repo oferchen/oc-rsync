@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 const MAX_PARSE_DEPTH: usize = 64;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Hash, PartialEq, Eq)]
 pub struct RuleFlags {
     sender: bool,
     receiver: bool,
@@ -17,7 +17,10 @@ pub struct RuleFlags {
 }
 
 impl RuleFlags {
-    fn applies(&self, for_delete: bool) -> bool {
+    fn applies(&self, for_delete: bool, xattr: bool) -> bool {
+        if self.xattr != xattr {
+            return false;
+        }
         if for_delete {
             if self.sender && !self.receiver {
                 return false;
@@ -26,6 +29,15 @@ impl RuleFlags {
             return false;
         }
         true
+    }
+
+    fn union(&self, other: &Self) -> Self {
+        Self {
+            sender: self.sender || other.sender,
+            receiver: self.receiver || other.receiver,
+            perishable: self.perishable || other.perishable,
+            xattr: self.xattr || other.xattr,
+        }
     }
 }
 
@@ -58,6 +70,7 @@ pub struct PerDir {
     cvs: bool,
     word_split: bool,
     sign: Option<char>,
+    flags: RuleFlags,
 }
 
 #[derive(Clone)]
@@ -120,14 +133,25 @@ impl Matcher {
     }
 
     pub fn is_included<P: AsRef<Path>>(&self, path: P) -> Result<bool, ParseError> {
-        self.check(path.as_ref(), false)
+        self.check(path.as_ref(), false, false)
     }
 
     pub fn is_included_for_delete<P: AsRef<Path>>(&self, path: P) -> Result<bool, ParseError> {
-        self.check(path.as_ref(), true)
+        self.check(path.as_ref(), true, false)
     }
 
-    fn check(&self, path: &Path, for_delete: bool) -> Result<bool, ParseError> {
+    pub fn is_xattr_included<P: AsRef<Path>>(&self, name: P) -> Result<bool, ParseError> {
+        self.check(name.as_ref(), false, true)
+    }
+
+    pub fn is_xattr_included_for_delete<P: AsRef<Path>>(
+        &self,
+        name: P,
+    ) -> Result<bool, ParseError> {
+        self.check(name.as_ref(), true, true)
+    }
+
+    fn check(&self, path: &Path, for_delete: bool, xattr: bool) -> Result<bool, ParseError> {
         let path = path;
         if self.existing {
             if let Some(root) = &self.root {
@@ -161,7 +185,7 @@ impl Matcher {
 
             for (depth, d) in dirs.iter().enumerate() {
                 let depth = depth + 1;
-                for (idx, rule) in self.dir_rules_at(d)? {
+                for (idx, rule) in self.dir_rules_at(d, for_delete, xattr)? {
                     active.push((idx, depth, seq, rule));
                     seq += 1;
                 }
@@ -187,7 +211,7 @@ impl Matcher {
         for rule in &ordered {
             match rule {
                 Rule::Protect(data) => {
-                    if !data.flags.applies(for_delete) {
+                    if !data.flags.applies(for_delete, xattr) {
                         continue;
                     }
                     if for_delete && data.flags.perishable {
@@ -200,7 +224,7 @@ impl Matcher {
                     }
                 }
                 Rule::Include(data) => {
-                    if !data.flags.applies(for_delete) {
+                    if !data.flags.applies(for_delete, xattr) {
                         continue;
                     }
                     if for_delete && data.flags.perishable {
@@ -213,7 +237,7 @@ impl Matcher {
                     }
                 }
                 Rule::Exclude(data) => {
-                    if !data.flags.applies(for_delete) {
+                    if !data.flags.applies(for_delete, xattr) {
                         continue;
                     }
                     if for_delete && data.flags.perishable {
@@ -242,7 +266,7 @@ impl Matcher {
                     for entry in fs::read_dir(&full)? {
                         let entry = entry?;
                         let rel = path.join(entry.file_name());
-                        if self.check(&rel, for_delete)? {
+                        if self.check(&rel, for_delete, xattr)? {
                             has_child = true;
                             break;
                         }
@@ -277,7 +301,12 @@ impl Matcher {
         }
     }
 
-    fn dir_rules_at(&self, dir: &Path) -> Result<Vec<(usize, Rule)>, ParseError> {
+    fn dir_rules_at(
+        &self,
+        dir: &Path,
+        for_delete: bool,
+        xattr: bool,
+    ) -> Result<Vec<(usize, Rule)>, ParseError> {
         if let Some(root) = &self.root {
             if !dir.starts_with(root) {
                 return Ok(Vec::new());
@@ -299,6 +328,9 @@ impl Matcher {
         let mut new_merges = Vec::new();
 
         for (idx, pd) in per_dirs {
+            if !pd.flags.applies(for_delete, xattr) {
+                continue;
+            }
             let path = if pd.root_only {
                 if let Some(root) = &self.root {
                     root.join(&pd.file)
@@ -345,8 +377,23 @@ impl Matcher {
                 cached
             };
 
-            combined.extend(state.rules.clone());
-            new_merges.extend(state.merges.clone());
+            for (ridx, rule) in state.rules.iter() {
+                let mut r = rule.clone();
+                match &mut r {
+                    Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => {
+                        d.flags = d.flags.union(&pd.flags);
+                    }
+                    Rule::DirMerge(sub) => {
+                        sub.flags = sub.flags.union(&pd.flags);
+                    }
+                    _ => {}
+                }
+                combined.push((*ridx, r));
+            }
+            for (midx, mut mpd) in state.merges.iter().cloned() {
+                mpd.flags = mpd.flags.union(&pd.flags);
+                new_merges.push((midx, mpd));
+            }
         }
 
         if !new_merges.is_empty() {
@@ -663,6 +710,7 @@ pub fn parse(
                     cvs: false,
                     word_split: false,
                     sign: None,
+                    flags: RuleFlags::default(),
                 }));
                 if count > 0 {
                     let matcher = Glob::new("**/.rsync-filter")?.compile_matcher();
@@ -817,6 +865,7 @@ pub fn parse(
                         cvs: true,
                         word_split: false,
                         sign: None,
+                        flags: RuleFlags::default(),
                     }));
                     continue;
                 } else {
@@ -844,6 +893,22 @@ pub fn parse(
                 cvs: m.contains('C'),
                 word_split: m.contains('w'),
                 sign,
+                flags: {
+                    let mut f = RuleFlags::default();
+                    if m.contains('s') {
+                        f.sender = true;
+                    }
+                    if m.contains('r') {
+                        f.receiver = true;
+                    }
+                    if m.contains('p') {
+                        f.perishable = true;
+                    }
+                    if m.contains('x') {
+                        f.xattr = true;
+                    }
+                    f
+                },
             }));
             if m.contains('e') {
                 let pat = format!("**/{}", fname);
@@ -892,6 +957,7 @@ pub fn parse(
                         cvs: false,
                         word_split: false,
                         sign: None,
+                        flags: RuleFlags::default(),
                     }));
                     continue;
                 }
