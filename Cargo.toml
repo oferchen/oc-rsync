@@ -45,6 +45,7 @@ transport = { path = "crates/transport" }
 filetime = "0.2"
 shell-words = "1.1"
 wait-timeout = "0.2"
+users = "0.11"
 
 [[bin]]
 name = "flag_matrix"

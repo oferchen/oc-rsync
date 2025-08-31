@@ -15,6 +15,8 @@ use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
+#[cfg(unix)]
+use users::{get_current_gid, get_current_uid};
 
 #[test]
 fn prints_version() {
@@ -357,21 +359,27 @@ fn user_and_group_ids_are_mapped() {
     std::fs::write(&file, b"ids").unwrap();
 
     let src_arg = format!("{}/", src_dir.display());
+    let uid = get_current_uid();
+    let gid = get_current_gid();
+    let mapped_uid = 1;
+    let mapped_gid = 1;
+    let usermap = format!("--usermap={uid}:{mapped_uid}");
+    let groupmap = format!("--groupmap={gid}:{mapped_gid}");
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
-            "--usermap=0:1",
-            "--groupmap=0:1",
-            &src_arg,
+            usermap.as_str(),
+            groupmap.as_str(),
+            src_arg.as_str(),
             dst_dir.to_str().unwrap(),
         ])
         .assert()
         .success();
 
     let meta = std::fs::metadata(dst_dir.join("id.txt")).unwrap();
-    assert_eq!(meta.uid(), 1);
-    assert_eq!(meta.gid(), 1);
+    assert_eq!(meta.uid(), mapped_uid);
+    assert_eq!(meta.gid(), mapped_gid);
 }
 
 #[test]
