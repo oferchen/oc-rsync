@@ -23,7 +23,9 @@ oc-rsync is a modular reimplementation of the classic `rsync` utility in Rust. I
 ## Compatibility
 Platform support status is tracked in the [compatibility matrix](docs/compat_matrix.md).
 An overview of tested operating systems and interoperability notes lives in
-[docs/compatibility.md](docs/compatibility.md).
+[docs/compatibility.md](docs/compatibility.md). Known gaps are documented in
+[docs/gaps.md](docs/gaps.md), and a detailed feature breakdown is available in
+[docs/feature_matrix.md](docs/feature_matrix.md).
 
 ## Specifications
 The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.x are bundled in [docs/spec](docs/spec) and serve as the project's authoritative specification. See [docs/spec/rsync.1](docs/spec/rsync.1) and [docs/spec/rsyncd.conf.5](docs/spec/rsyncd.conf.5).
