@@ -1527,6 +1527,8 @@ pub fn sync(
     let mut state = String::new();
     while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
+        #[cfg(unix)]
+        let (devs, inodes) = (walker.devs().to_vec(), walker.inodes().to_vec());
         for entry in batch {
             let path = entry.apply(&mut state);
             let file_type = entry.file_type;
@@ -1565,8 +1567,7 @@ pub fn sync(
                     }
                     #[cfg(unix)]
                     if opts.hard_links {
-                        use std::os::unix::fs::MetadataExt;
-                        let key = (src_meta.dev(), src_meta.ino());
+                        let key = (devs[entry.dev], inodes[entry.inode]);
                         if let Some(existing) = hard_links.get(&key) {
                             fs::hard_link(existing, &dest_path)
                                 .map_err(|e| io_context(&dest_path, e))?;

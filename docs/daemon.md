@@ -36,6 +36,14 @@ By default `oc-rsync` maps user and group names when transferring ownership meta
 oc-rsync --daemon --numeric-ids --module 'data=/srv/export'
 ```
 
+### Ownership and permissions
+
+Setting file ownership or groups requires elevated privileges. The daemon must
+run as `root` or possess the `CAP_CHOWN` capability in order to honor the
+`--owner`, `--group`, or `--chown` flags from clients. Without these
+capabilities the daemon will silently retain its current UID and GID when
+creating files, and ownership requests from clients will be ignored.
+
 ## Chroot and privilege drop
 
 Before serving files the daemon confines itself to the module root. On Unix platforms it performs a `chroot` to the module path, changes its working directory to `/`, and drops privileges to the nobody user and group (UID/GID 65534).
