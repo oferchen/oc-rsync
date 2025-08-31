@@ -65,6 +65,28 @@ fn parse_size(s: &str) -> std::result::Result<usize, String> {
     s.parse::<usize>().map_err(|e| e.to_string())
 }
 
+fn parse_file_size(s: &str) -> std::result::Result<u64, String> {
+    let s = s.trim();
+    if s == "0" {
+        return Ok(0);
+    }
+    if let Some(last) = s.chars().last() {
+        if last.is_ascii_alphabetic() {
+            let num = s[..s.len() - 1].parse::<u64>().map_err(|e| e.to_string())?;
+            let mult = match last.to_ascii_lowercase() {
+                'k' => 1u64 << 10,
+                'm' => 1u64 << 20,
+                'g' => 1u64 << 30,
+                _ => return Err(format!("invalid size suffix: {last}")),
+            };
+            return num
+                .checked_mul(mult)
+                .ok_or_else(|| "size overflow".to_string());
+        }
+    }
+    s.parse::<u64>().map_err(|e| e.to_string())
+}
+
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum ModernCompressArg {
     Auto,
@@ -145,6 +167,10 @@ struct ClientOpts {
     max_delete: Option<usize>,
     #[arg(long = "max-alloc", value_name = "SIZE", value_parser = parse_size, help_heading = "Misc")]
     max_alloc: Option<usize>,
+    #[arg(long = "max-size", value_name = "SIZE", value_parser = parse_file_size, help_heading = "Misc")]
+    max_size: Option<u64>,
+    #[arg(long = "min-size", value_name = "SIZE", value_parser = parse_file_size, help_heading = "Misc")]
+    min_size: Option<u64>,
     #[arg(short = 'b', long, help_heading = "Backup")]
     backup: bool,
     #[arg(long = "backup-dir", value_name = "DIR", help_heading = "Backup")]
@@ -1090,6 +1116,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         delete_missing_args: false,
         max_delete: opts.max_delete,
         max_alloc: opts.max_alloc.unwrap_or(1usize << 30),
+        max_size: opts.max_size,
+        min_size: opts.min_size,
         checksum: opts.checksum,
         compress,
         modern_compress,
