@@ -256,7 +256,8 @@ impl Metadata {
                     }
                 }
             }
-            mode_val = normalize_mode(mode_val);
+            let mode_val = normalize_mode(mode_val);
+            debug_assert_eq!(mode_val & !0o7777, 0);
             let mode_t: libc::mode_t = mode_val as libc::mode_t;
             let mode = Mode::from_bits_truncate(mode_t);
             if let Err(err) = stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink) {
