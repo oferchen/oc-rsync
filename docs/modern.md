@@ -1,8 +1,8 @@
 # Modern Mode
 
-Protocol 73 extends the classic rsync protocol with optional features that are
-negotiated when both peers invoke `oc-rsync` with the `--modern` flag or one of
-its sub-flags.
+oc-rsync implements the upstream rsync protocol version 31 and adds a private
+protocol 73 extension for optional features. Protocol 73 is negotiated when both
+peers invoke `oc-rsync` with the `--modern` flag or one of its sub-flags.
 
 ## Stronger checksums
 
