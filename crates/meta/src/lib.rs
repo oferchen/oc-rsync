@@ -45,7 +45,9 @@ impl Options {
 #[cfg(unix)]
 use filetime::set_symlink_file_times;
 use filetime::{set_file_times, FileTime};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+#[cfg(all(unix, feature = "xattr"))]
+use std::collections::HashSet;
 #[cfg(all(unix, feature = "xattr"))]
 use std::ffi::OsString;
 use std::fs;
