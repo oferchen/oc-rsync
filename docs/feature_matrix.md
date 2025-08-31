@@ -70,7 +70,7 @@ negotiates version 73.
 | `--from0` | `-0` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--fsync` | — | ❌ | — | — |  | ≤3.2 |
 | `--fuzzy` | `-y` | ❌ | — | — |  | ≤3.2 |
-| `--group` | `-g` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
+| `--group` | `-g` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | requires root or CAP_CHOWN | ≤3.2 |
 | `--groupmap` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | numeric gid mapping only; requires root or CAP_CHOWN | ≤3.2 |
 | `--hard-links` | `-H` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--help` | `-h (*)` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
@@ -122,7 +122,7 @@ negotiates version 73.
 | `--open-noatime` | — | ❌ | — | — |  | ≤3.2 |
 | `--out-format` | — | ❌ | — | — |  | ≤3.2 |
 | `--outbuf` | — | ❌ | — | — |  | ≤3.2 |
-| `--owner` | `-o` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
+| `--owner` | `-o` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires root or CAP_CHOWN | ≤3.2 |
 | `--partial` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/resume.rs](../crates/engine/tests/resume.rs) |  | ≤3.2 |
 | `--partial-dir` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--password-file` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |

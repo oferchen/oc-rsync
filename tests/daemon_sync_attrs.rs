@@ -1,20 +1,20 @@
 // tests/daemon_sync_attrs.rs
 
-#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
+#[cfg(unix)]
 use assert_cmd::{cargo::CommandCargoExt, Command};
-#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
+#[cfg(unix)]
 use serial_test::serial;
-#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
+#[cfg(unix)]
 use std::fs;
-#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
+#[cfg(unix)]
 use std::net::{TcpListener, TcpStream};
-#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
+#[cfg(unix)]
 use std::process::{Child, Command as StdCommand};
-#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
+#[cfg(unix)]
 use std::thread::sleep;
-#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
+#[cfg(unix)]
 use std::time::Duration;
-#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
+#[cfg(unix)]
 use tempfile::tempdir;
 
 #[cfg(all(unix, feature = "acl"))]
@@ -22,7 +22,7 @@ use posix_acl::{PosixACL, Qualifier, ACL_READ, ACL_WRITE};
 #[cfg(all(unix, feature = "xattr"))]
 use xattr;
 
-#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
+#[cfg(unix)]
 fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
@@ -43,7 +43,7 @@ fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
     (child, port)
 }
 
-#[cfg(all(unix, any(feature = "xattr", feature = "acl")))]
+#[cfg(unix)]
 fn wait_for_daemon(port: u16) {
     for _ in 0..20 {
         if TcpStream::connect(("127.0.0.1", port)).is_ok() {
@@ -121,6 +121,48 @@ fn daemon_preserves_acls() {
     let acl_src = PosixACL::read_acl(&file).unwrap();
     let acl_dst = PosixACL::read_acl(&srv.join("file")).unwrap();
     assert_eq!(acl_src.entries(), acl_dst.entries());
+
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[cfg(unix)]
+#[test]
+#[serial]
+fn daemon_preserves_uid_gid_perms() {
+    use nix::sys::stat::{fchmodat, FchmodatFlags, Mode};
+    use nix::unistd::{chown, Gid, Uid};
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let srv = tmp.path().join("srv");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&srv).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    fchmodat(
+        None,
+        &file,
+        Mode::from_bits_truncate(0o741),
+        FchmodatFlags::NoFollowSymlink,
+    )
+    .unwrap();
+    chown(&file, Some(Uid::from_raw(1)), Some(Gid::from_raw(1))).unwrap();
+
+    let (mut child, port) = spawn_daemon(&srv);
+    wait_for_daemon(port);
+
+    let src_arg = format!("{}/", src.display());
+    Command::new("rsync")
+        .args(["-a", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
+        .assert()
+        .success();
+
+    let meta = fs::symlink_metadata(srv.join("file")).unwrap();
+    assert_eq!(meta.permissions().mode() & 0o777, 0o741);
+    assert_eq!(meta.uid(), 1);
+    assert_eq!(meta.gid(), 1);
 
     let _ = child.kill();
     let _ = child.wait();
