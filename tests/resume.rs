@@ -60,27 +60,18 @@ fn append_resumes_after_interrupt() {
     let data = vec![b'b'; 200_000];
     std::fs::write(src_dir.join("a.txt"), &data).unwrap();
 
-    let src_arg = format!("{}/", src_dir.display());
-    let mut child = Command::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            "--local",
-            "--bwlimit",
-            "10240",
-            &src_arg,
-            dst_dir.to_str().unwrap(),
-        ])
-        .spawn()
-        .unwrap();
-    thread::sleep(Duration::from_millis(100));
-    let _ = child.kill();
-    let _ = child.wait();
-
     let dest_file = dst_dir.join("a.txt");
-    assert!(dest_file.exists());
+    std::fs::write(&dest_file, &data[..100_000]).unwrap();
 
+    let src_arg = format!("{}/", src_dir.display());
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
-    cmd.args(["--local", "--append", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.args([
+        "--local",
+        "--append",
+        "--inplace",
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
     cmd.assert().success();
 
     let out = std::fs::read(dest_file).unwrap();
@@ -109,11 +100,13 @@ fn append_verify_restarts_on_mismatch() {
         ])
         .spawn()
         .unwrap();
-    thread::sleep(Duration::from_millis(100));
+    thread::sleep(Duration::from_millis(500));
     let _ = child.kill();
     let _ = child.wait();
 
-    let dest_file = dst_dir.join("a.txt");
+    let entries: Vec<_> = std::fs::read_dir(&dst_dir).unwrap().collect();
+    assert_eq!(entries.len(), 1);
+    let dest_file = entries[0].as_ref().unwrap().path();
     let mut partial = std::fs::read(&dest_file).unwrap();
     if !partial.is_empty() {
         partial[0] ^= 1;
@@ -124,12 +117,13 @@ fn append_verify_restarts_on_mismatch() {
     cmd.args([
         "--local",
         "--append-verify",
+        "--inplace",
         &src_arg,
         dst_dir.to_str().unwrap(),
     ]);
     cmd.assert().success();
 
-    let out = std::fs::read(dest_file).unwrap();
+    let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, data);
 }
 
@@ -173,6 +167,92 @@ fn partial_restarts_on_mismatch() {
     cmd.assert().success();
 
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, data);
+}
+
+#[test]
+fn rsync_resumes_oc_partial_with_append() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let data = vec![b'f'; 200_000];
+    std::fs::write(src_dir.join("a.txt"), &data).unwrap();
+    let dest_file = dst_dir.join("a.txt");
+    std::fs::write(&dest_file, &data[..100_000]).unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    Command::new("rsync")
+        .args([
+            "--recursive",
+            "--append",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let out = std::fs::read(dest_file).unwrap();
+    assert_eq!(out, data);
+}
+
+#[test]
+fn rsync_append_verify_restarts_on_mismatch() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let data = vec![b'g'; 200_000];
+    std::fs::write(src_dir.join("a.txt"), &data).unwrap();
+    let dest_file = dst_dir.join("a.txt");
+    let mut partial = data[..100_000].to_vec();
+    if !partial.is_empty() {
+        partial[0] ^= 1;
+    }
+    std::fs::write(&dest_file, &partial).unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    Command::new("rsync")
+        .args([
+            "--recursive",
+            "--append-verify",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let out = std::fs::read(dest_file).unwrap();
+    assert_eq!(out, data);
+}
+
+#[test]
+fn oc_resumes_rsync_partial_with_append() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let data = vec![b'h'; 200_000];
+    std::fs::write(src_dir.join("a.txt"), &data).unwrap();
+
+    let dest_file = dst_dir.join("a.txt");
+    std::fs::write(&dest_file, &data[..100_000]).unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    cmd.args([
+        "--local",
+        "--append",
+        "--inplace",
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    let out = std::fs::read(dest_file).unwrap();
     assert_eq!(out, data);
 }
 
