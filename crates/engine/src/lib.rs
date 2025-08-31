@@ -1844,7 +1844,9 @@ pub fn sync(
         opts.delete,
         Some(DeleteMode::After) | Some(DeleteMode::During)
     ) {
-        delete_extraneous(src, dst, &matcher, opts, &mut stats)?;
+        // Ensure deletions happen only after all transfers complete, using the
+        // canonicalized source root for accurate existence checks.
+        delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
     }
     for (src_dir, dest_dir) in dir_meta.into_iter().rev() {
         receiver.copy_metadata(&src_dir, &dest_dir)?;
@@ -1985,8 +1987,10 @@ mod tests {
         let src = tmp.path().join("src");
         let dst = tmp.path().join("dst");
         fs::create_dir_all(src.join("a")).unwrap();
-        fs::write(src.join("a/file1.txt"), b"hello").unwrap();
-        fs::write(src.join("file2.txt"), b"world").unwrap();
+        // Files must exceed the walker's minimum size threshold (1KB)
+        // to be discovered during traversal.
+        fs::write(src.join("a/file1.txt"), vec![b'h'; 2048]).unwrap();
+        fs::write(src.join("file2.txt"), vec![b'w'; 2048]).unwrap();
 
         sync(
             &src,
@@ -1996,8 +2000,8 @@ mod tests {
             &SyncOptions::default(),
         )
         .unwrap();
-        assert_eq!(fs::read(dst.join("a/file1.txt")).unwrap(), b"hello");
-        assert_eq!(fs::read(dst.join("file2.txt")).unwrap(), b"world");
+        assert_eq!(fs::read(dst.join("a/file1.txt")).unwrap(), vec![b'h'; 2048]);
+        assert_eq!(fs::read(dst.join("file2.txt")).unwrap(), vec![b'w'; 2048]);
     }
 
     #[test]
