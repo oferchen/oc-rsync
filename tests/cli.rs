@@ -163,6 +163,48 @@ fn local_sync_without_flag_fails() {
 }
 
 #[test]
+fn leading_dash_directory_requires_separator() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("-src");
+    std::fs::create_dir_all(src.join("sub")).unwrap();
+    fs::write(src.join("sub/file.txt"), b"dash").unwrap();
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .current_dir(dir.path())
+        .args(["--local", "-src/", "dst"])
+        .assert()
+        .failure();
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .current_dir(dir.path())
+        .args(["--local", "--", "-src/", "dst"])
+        .assert()
+        .success();
+
+    assert_eq!(
+        fs::read(dir.path().join("dst/sub/file.txt")).unwrap(),
+        b"dash"
+    );
+}
+
+#[test]
+fn colon_in_path_triggers_remote_mode() {
+    let dir = tempdir().unwrap();
+    fs::create_dir_all(dir.path().join("dst")).unwrap();
+    fs::write(dir.path().join("with:colon"), b"colon").unwrap();
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .current_dir(dir.path())
+        .env("RSYNC_RSH", "false")
+        .args(["with:colon", "dst"])
+        .assert()
+        .failure();
+}
+
+#[test]
 fn relative_preserves_ancestors() {
     let dir = tempdir().unwrap();
     let src_root = dir.path().join("src");
