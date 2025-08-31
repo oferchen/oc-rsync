@@ -27,6 +27,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let src_dir = dir.path().join("src");
         let dst_dir = dir.path().join("dst");
+        fs::create_dir_all(&dst_dir).unwrap();
         fs::create_dir_all(&src_dir).unwrap();
         fs::File::create(src_dir.join("file.txt"))
             .unwrap()
