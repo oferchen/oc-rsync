@@ -58,6 +58,7 @@ mod tests {
             .unwrap()
             .write_all(b"hello world")
             .unwrap();
+        fs::create_dir_all(&dst_dir).unwrap();
         assert!(dst_dir.exists());
         synchronize(&src_dir, &dst_dir).unwrap();
         assert!(dst_dir.exists());
