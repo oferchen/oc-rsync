@@ -13,6 +13,7 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Duration;
 
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 pub use checksums::{ModernHash, StrongHash};
@@ -33,6 +34,8 @@ pub mod flist;
 pub enum EngineError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("max-alloc limit exceeded")]
+    MaxAlloc,
     #[error("{0}")]
     Other(String),
 }
@@ -61,7 +64,7 @@ fn io_context(path: &Path, err: std::io::Error) -> EngineError {
 
 fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
     if opts.max_alloc != 0 && len > opts.max_alloc as u64 {
-        Err(EngineError::Other("max-alloc limit exceeded".into()))
+        Err(EngineError::MaxAlloc)
     } else {
         Ok(())
     }
@@ -229,7 +232,7 @@ fn files_identical(a: &Path, b: &Path) -> bool {
                     if ra == 0 {
                         break;
                     }
-                    if &ba[..ra] != &bb[..rb] {
+                    if ba[..ra] != bb[..rb] {
                         return false;
                     }
                 }
@@ -262,11 +265,7 @@ fn last_good_block(
     let mut offset = 0u64;
     let mut src_buf = vec![0u8; block_size];
     let mut dst_buf = vec![0u8; block_size];
-    loop {
-        let rs = match src.read(&mut src_buf) {
-            Ok(n) => n,
-            Err(_) => break,
-        };
+    while let Ok(rs) = src.read(&mut src_buf) {
         let rd = match dst.read(&mut dst_buf) {
             Ok(n) => n,
             Err(_) => break,
@@ -677,7 +676,12 @@ impl Sender {
         if let (Ok(src_meta), Ok(dst_meta)) = (fs::metadata(path), fs::metadata(dest)) {
             if src_meta.len() == dst_meta.len() {
                 if let (Ok(sm), Ok(dm)) = (src_meta.modified(), dst_meta.modified()) {
-                    return sm == dm;
+                    let diff = if sm > dm {
+                        sm.duration_since(dm).unwrap_or(Duration::ZERO)
+                    } else {
+                        dm.duration_since(sm).unwrap_or(Duration::ZERO)
+                    };
+                    return diff <= self.opts.modify_window;
                 }
             }
         }
@@ -1030,6 +1034,7 @@ impl Receiver {
                 .read(true)
                 .write(true)
                 .create(true)
+                .truncate(true)
                 .open(&tmp_dest)
                 .map_err(|e| io_context(&tmp_dest, e))?
         } else {
@@ -1071,7 +1076,7 @@ impl Receiver {
         });
         apply_delta(&mut basis, ops, &mut out, &self.opts, 0)?;
         if !self.opts.write_devices {
-            let len = out.seek(SeekFrom::Current(0))?;
+            let len = out.stream_position()?;
             out.set_len(len)?;
         }
         drop(out);
@@ -1091,6 +1096,15 @@ impl Receiver {
                             let _ = fs::remove_dir(tmp_parent);
                         }
                     }
+            atomic_rename(&tmp_dest, dest)?;
+            if let Some(tmp_parent) = tmp_dest.parent() {
+                if dest.parent() != Some(tmp_parent)
+                    && tmp_parent
+                        .read_dir()
+                        .map(|mut i| i.next().is_none())
+                        .unwrap_or(false)
+                {
+                    let _ = fs::remove_dir(tmp_parent);
                 }
                 #[cfg(unix)]
                 if let Some((uid, gid)) = self.opts.copy_as {
@@ -1141,8 +1155,8 @@ impl Receiver {
         }
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         {
-            let chown_uid = self.opts.chown.map(|(u, _)| u).flatten();
-            let chown_gid = self.opts.chown.map(|(_, g)| g).flatten();
+            let chown_uid = self.opts.chown.and_then(|(u, _)| u);
+            let chown_gid = self.opts.chown.and_then(|(_, g)| g);
 
             let uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> =
                 if let Some(ref map) = self.opts.uid_map {
@@ -1312,6 +1326,7 @@ pub struct SyncOptions {
     pub links: bool,
     pub copy_links: bool,
     pub copy_dirlinks: bool,
+    pub keep_dirlinks: bool,
     pub copy_unsafe_links: bool,
     pub safe_links: bool,
     pub hard_links: bool,
@@ -1340,6 +1355,7 @@ pub struct SyncOptions {
     pub numeric_ids: bool,
     pub inplace: bool,
     pub delay_updates: bool,
+    pub modify_window: Duration,
     pub bwlimit: Option<u64>,
     pub block_size: usize,
     pub link_dest: Option<PathBuf>,
@@ -1396,6 +1412,7 @@ impl Default for SyncOptions {
             links: false,
             copy_links: false,
             copy_dirlinks: false,
+            keep_dirlinks: false,
             copy_unsafe_links: false,
             safe_links: false,
             hard_links: false,
@@ -1430,6 +1447,7 @@ impl Default for SyncOptions {
             numeric_ids: false,
             inplace: false,
             delay_updates: false,
+            modify_window: Duration::ZERO,
             bwlimit: None,
             block_size: 1024,
             link_dest: None,
@@ -1530,11 +1548,11 @@ fn delete_extraneous(
     opts: &SyncOptions,
     stats: &mut Stats,
 ) -> Result<()> {
-    let mut walker = walk(dst, 1024);
+    let walker = walk(dst, 1024);
     let mut state = String::new();
 
     let mut first_err: Option<EngineError> = None;
-    while let Some(batch) = walker.next() {
+    for batch in walker {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
             let path = entry.apply(&mut state);
@@ -1664,9 +1682,9 @@ pub fn sync(
     }
     if opts.list_only {
         let matcher = matcher.clone().with_root(src_root.clone());
-        let mut walker = walk(&src_root, 1024);
+        let walker = walk(&src_root, 1024);
         let mut state = String::new();
-        while let Some(batch) = walker.next() {
+        for batch in walker {
             let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
             for entry in batch {
                 let path = entry.apply(&mut state);
@@ -1780,7 +1798,13 @@ pub fn sync(
                                 (src_meta.modified(), dst_meta.modified())
                             {
                                 if dst_mtime > src_mtime {
-                                    continue;
+                                    if dst_mtime
+                                        .duration_since(src_mtime)
+                                        .unwrap_or(Duration::ZERO)
+                                        > opts.modify_window
+                                    {
+                                        continue;
+                                    }
                                 }
                             }
                         }
@@ -1925,8 +1949,24 @@ pub fn sync(
                     matcher
                         .preload_dir(&path)
                         .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
-                    let created = !dest_path.exists();
-                    fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
+                    let dest_meta = fs::symlink_metadata(&dest_path).ok();
+                    let dest_is_symlink = dest_meta
+                        .as_ref()
+                        .map(|m| m.file_type().is_symlink())
+                        .unwrap_or(false);
+                    let mut created = dest_meta.is_none();
+                    if dest_is_symlink {
+                        if opts.keep_dirlinks {
+                            created = false;
+                        } else {
+                            remove_file_opts(&dest_path, opts)?;
+                            fs::create_dir_all(&dest_path)
+                                .map_err(|e| io_context(&dest_path, e))?;
+                            created = true;
+                        }
+                    } else {
+                        fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
+                    }
                     if created {
                         #[cfg(unix)]
                         if let Some((uid, gid)) = opts.copy_as {
@@ -1938,7 +1978,9 @@ pub fn sync(
                             println!("cd+++++++++ {}/", rel.display());
                         }
                     }
-                    dir_meta.push((path.clone(), dest_path.clone()));
+                    if !(dest_is_symlink && opts.keep_dirlinks) {
+                        dir_meta.push((path.clone(), dest_path.clone()));
+                    }
                 } else if file_type.is_symlink() {
                     let created = fs::symlink_metadata(&dest_path).is_err();
                     let target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
@@ -1970,18 +2012,18 @@ pub fn sync(
                                 stats.files_transferred += sub.files_transferred;
                                 stats.files_deleted += sub.files_deleted;
                                 stats.bytes_transferred += sub.bytes_transferred;
-                            } else if meta.is_file() {
-                                if sender.process_file(
+                            } else if meta.is_file()
+                                && sender.process_file(
                                     &target_path,
                                     &dest_path,
                                     rel,
                                     &mut receiver,
-                                )? {
-                                    stats.files_transferred += 1;
-                                    stats.bytes_transferred += meta.len();
-                                    if let Some(f) = batch_file.as_mut() {
-                                        let _ = writeln!(f, "{}", rel.display());
-                                    }
+                                )?
+                            {
+                                stats.files_transferred += 1;
+                                stats.bytes_transferred += meta.len();
+                                if let Some(f) = batch_file.as_mut() {
+                                    let _ = writeln!(f, "{}", rel.display());
                                 }
                             }
                             if opts.remove_source_files {

@@ -19,8 +19,6 @@ use tempfile::tempdir;
 
 #[cfg(all(unix, feature = "acl"))]
 use posix_acl::{PosixACL, Qualifier, ACL_READ, ACL_WRITE};
-#[cfg(all(unix, feature = "xattr"))]
-use xattr;
 
 #[cfg(unix)]
 fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
@@ -118,7 +116,7 @@ fn daemon_preserves_acls() {
         .success();
 
     let acl_src = PosixACL::read_acl(&file).unwrap();
-    let acl_dst = PosixACL::read_acl(&srv.join("file")).unwrap();
+    let acl_dst = PosixACL::read_acl(srv.join("file")).unwrap();
     assert_eq!(acl_src.entries(), acl_dst.entries());
 
     let _ = child.kill();

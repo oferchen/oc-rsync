@@ -71,7 +71,7 @@
 | --ipv4 | Supported |  |
 | --ipv6 | Supported |  |
 | --itemize-changes | Supported |  |
-| --keep-dirlinks | Ignored |  |
+| --keep-dirlinks | Supported |  |
 | --link-dest | Supported |  |
 | --links | Supported |  |
 | --list-only | Supported |  |

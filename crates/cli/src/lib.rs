@@ -21,7 +21,7 @@ use engine::{
     sync, DeleteMode, EngineError, IdMapper, ModernCdc, Result, Stats, StrongHash, SyncOptions,
 };
 use filters::{default_cvs_rules, parse, Matcher, Rule};
-use logging::human_bytes;
+use logging::{human_bytes, DebugFlag, InfoFlag};
 use meta::{parse_chmod, parse_chown, parse_id_map};
 #[cfg(unix)]
 use nix::unistd::{Uid, User};
@@ -44,7 +44,7 @@ fn parse_duration(s: &str) -> std::result::Result<Duration, std::num::ParseIntEr
 fn parse_size(s: &str) -> std::result::Result<usize, String> {
     let s = s.trim();
     if s == "0" {
-        return Ok(usize::MAX);
+        return Ok(0);
     }
     if let Some(last) = s.chars().last() {
         if last.is_ascii_alphabetic() {
@@ -140,6 +140,22 @@ struct ClientOpts {
     verbose: u8,
     #[arg(long = "log-format", help_heading = "Output", value_parser = ["text", "json"])]
     log_format: Option<String>,
+    #[arg(
+        long,
+        value_name = "FLAGS",
+        value_delimiter = ',',
+        value_enum,
+        help_heading = "Output"
+    )]
+    info: Vec<InfoFlag>,
+    #[arg(
+        long,
+        value_name = "FLAGS",
+        value_delimiter = ',',
+        value_enum,
+        help_heading = "Output"
+    )]
+    debug: Vec<DebugFlag>,
     #[arg(long = "human-readable", help_heading = "Output")]
     human_readable: bool,
     #[arg(short, long, help_heading = "Output")]
@@ -258,6 +274,8 @@ struct ClientOpts {
     copy_links: bool,
     #[arg(short = 'k', long, help_heading = "Attributes")]
     copy_dirlinks: bool,
+    #[arg(short = 'K', long, help_heading = "Attributes")]
+    keep_dirlinks: bool,
     #[arg(long, help_heading = "Attributes")]
     copy_unsafe_links: bool,
     #[arg(long, help_heading = "Attributes")]
@@ -349,6 +367,8 @@ struct ClientOpts {
     timeout: Option<Duration>,
     #[arg(long = "contimeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     contimeout: Option<Duration>,
+    #[arg(long = "modify-window", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
+    modify_window: Option<Duration>,
     #[arg(
         long = "protocol",
         value_name = "VER",
@@ -611,8 +631,7 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
 pub fn cli_command() -> clap::Command {
     let cmd = ClientOpts::command();
     let cmd = DaemonOpts::augment_args(cmd);
-    let cmd = ProbeOpts::augment_args(cmd);
-    cmd
+    ProbeOpts::augment_args(cmd)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -733,6 +752,7 @@ where
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn spawn_daemon_session(
     host: &str,
     module: &str,
@@ -755,7 +775,7 @@ pub fn spawn_daemon_session(
     };
     let mut t = TcpTransport::connect(host, port, contimeout, family)
         .map_err(|e| EngineError::Other(e.to_string()))?;
-    let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(|e| EngineError::Other(e))?;
+    let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(EngineError::Other)?;
     t.apply_sockopts(&parsed).map_err(EngineError::from)?;
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
     if let Some(p) = early_input {
@@ -788,7 +808,7 @@ pub fn spawn_daemon_session(
                 break;
             }
             if !no_motd {
-                if let Some(s) = String::from_utf8(line.clone()).ok() {
+                if let Ok(s) = String::from_utf8(line.clone()) {
                     if let Some(msg) = s.strip_prefix("@RSYNCD: ") {
                         print!("{msg}");
                     } else {
@@ -821,7 +841,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         None
     };
 
-    parse_sockopts(&opts.sockopts).map_err(|e| EngineError::Other(e))?;
+    parse_sockopts(&opts.sockopts).map_err(EngineError::Other)?;
 
     if let Some(pf) = &opts.password_file {
         #[cfg(unix)]
@@ -1061,7 +1081,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         false
     } else {
         opts.compress
-            || opts.compress_level.map_or(false, |l| l > 0)
+            || opts.compress_level.is_some_and(|l| l > 0)
             || compress_choice.is_some()
             || modern_compress.is_some()
     };
@@ -1080,15 +1100,15 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let block_size = opts.block_size.unwrap_or(1024);
     let mut chmod_rules = Vec::new();
     for spec in &opts.chmod {
-        chmod_rules.extend(parse_chmod(spec).map_err(|e| EngineError::Other(e))?);
+        chmod_rules.extend(parse_chmod(spec).map_err(EngineError::Other)?);
     }
     let chown_ids = if let Some(ref spec) = opts.chown {
-        Some(parse_chown(spec).map_err(|e| EngineError::Other(e))?)
+        Some(parse_chown(spec).map_err(EngineError::Other)?)
     } else {
         None
     };
     let copy_as = if let Some(ref spec) = opts.copy_as {
-        let (uid_opt, gid_opt) = parse_chown(spec).map_err(|e| EngineError::Other(e))?;
+        let (uid_opt, gid_opt) = parse_chown(spec).map_err(EngineError::Other)?;
         let uid = uid_opt.ok_or_else(|| EngineError::Other("--copy-as requires a user".into()))?;
         let gid = if let Some(g) = gid_opt {
             Some(g)
@@ -1111,17 +1131,13 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     };
     let uid_map = if !opts.usermap.is_empty() {
         let spec = opts.usermap.join(",");
-        Some(IdMapper(
-            parse_id_map(&spec).map_err(|e| EngineError::Other(e))?,
-        ))
+        Some(IdMapper(parse_id_map(&spec).map_err(EngineError::Other)?))
     } else {
         None
     };
     let gid_map = if !opts.groupmap.is_empty() {
         let spec = opts.groupmap.join(",");
-        Some(IdMapper(
-            parse_id_map(&spec).map_err(|e| EngineError::Other(e))?,
-        ))
+        Some(IdMapper(parse_id_map(&spec).map_err(EngineError::Other)?))
     } else {
         None
     };
@@ -1160,15 +1176,16 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         omit_link_times: opts.omit_link_times,
         owner: opts.owner
             || opts.archive
-            || chown_ids.map_or(false, |(u, _)| u.is_some())
+            || chown_ids.is_some_and(|(u, _)| u.is_some())
             || uid_map.is_some(),
         group: opts.group
             || opts.archive
-            || chown_ids.map_or(false, |(_, g)| g.is_some())
+            || chown_ids.is_some_and(|(_, g)| g.is_some())
             || gid_map.is_some(),
         links: opts.links || opts.archive,
         copy_links: opts.copy_links,
         copy_dirlinks: opts.copy_dirlinks,
+        keep_dirlinks: opts.keep_dirlinks,
         copy_unsafe_links: opts.copy_unsafe_links,
         safe_links: opts.safe_links,
         hard_links: opts.hard_links,
@@ -1200,6 +1217,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         numeric_ids: opts.numeric_ids,
         inplace: opts.inplace || opts.write_devices,
         delay_updates: opts.delay_updates,
+        modify_window: opts.modify_window.unwrap_or(Duration::ZERO),
         bwlimit: opts.bwlimit,
         block_size,
         link_dest: opts.link_dest.clone(),
@@ -1889,7 +1907,6 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     .map_err(|e| EngineError::Other(e.to_string()))
 }
 
-#[allow(dead_code)]
 #[allow(dead_code)]
 fn run_probe(opts: ProbeOpts) -> Result<()> {
     if let Some(addr) = opts.addr {

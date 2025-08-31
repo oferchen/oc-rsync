@@ -110,7 +110,7 @@ fn host_matches(ip: &IpAddr, pat: &str) -> bool {
     if pat == "*" {
         return true;
     }
-    pat.parse::<IpAddr>().map_or(false, |p| &p == ip)
+    pat.parse::<IpAddr>().is_ok_and(|p| &p == ip)
 }
 
 fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {

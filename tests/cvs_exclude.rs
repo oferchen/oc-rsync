@@ -19,7 +19,7 @@ fn cvs_exclude_parity() {
                 .and_then(|v| v.split('.').next())
                 .and_then(|v| v.parse::<u32>().ok())
         });
-    if rsync_version.map_or(true, |v| v < 3) {
+    if rsync_version.is_none_or(|v| v < 3) {
         eprintln!("skipping cvs_exclude_parity test; rsync >=3 required");
         return;
     }

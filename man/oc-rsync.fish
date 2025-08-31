@@ -93,6 +93,7 @@ complete -c oc-rsync -l group
 complete -c oc-rsync -l links
 complete -c oc-rsync -s L -l copy-links
 complete -c oc-rsync -s k -l copy-dirlinks
+complete -c oc-rsync -s K -l keep-dirlinks
 complete -c oc-rsync -l copy-unsafe-links
 complete -c oc-rsync -l safe-links
 complete -c oc-rsync -l hard-links

@@ -356,7 +356,7 @@
   },
   {
     "flag": "--keep-dirlinks",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {
