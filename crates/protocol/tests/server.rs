@@ -43,7 +43,7 @@ fn server_negotiates_version() {
 
 #[test]
 fn server_accepts_legacy_version() {
-    let legacy = LATEST_VERSION - 1;
+    let legacy = V32;
     let payload = encode_codecs(&available_codecs(None));
     let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
     let mut codecs_buf = Vec::new();

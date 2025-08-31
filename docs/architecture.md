@@ -41,7 +41,7 @@ writers to ensure bounded I/O when communicating with remote peers.
 
 Every session begins with a handshake where both peers advertise the highest
 protocol version they support along with a bitmask of optional capabilities.
-oc-rsync implements the upstream rsync protocol version 31 and defines a
+oc-rsync implements the upstream rsync protocol version 32 and defines a
 private protocol 73 extension for oc-rsync-to-oc-rsync enhancements. The
 `protocol` crate compares the peer's version with its own range of
 [`MIN_VERSION`](../crates/protocol/src/lib.rs) through

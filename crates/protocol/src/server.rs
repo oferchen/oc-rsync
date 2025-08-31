@@ -4,8 +4,10 @@ use std::time::Duration;
 
 #[cfg(feature = "blake3")]
 use crate::CAP_BLAKE3;
-use crate::{negotiate_version, Demux, Frame, Message, Mux, CAP_CODECS, CAP_LZ4, CAP_ZSTD};
-#[cfg(feature = "blake3")]
+use crate::{
+    negotiate_version, Demux, Frame, Message, Mux, CAP_BLAKE2, CAP_CDC, CAP_CODECS, CAP_LZ4,
+    CAP_ZSTD,
+};
 use checksums::StrongHash;
 use compress::{decode_codecs, encode_codecs, negotiate_codec, Codec};
 
@@ -90,6 +92,14 @@ impl<R: Read, W: Write> Server<R, W> {
         if self.caps & CAP_BLAKE3 != 0 {
             self.mux.strong_hash = StrongHash::Blake3;
             self.demux.strong_hash = StrongHash::Blake3;
+        } else if self.caps & CAP_BLAKE2 != 0 {
+            self.mux.strong_hash = StrongHash::Blake2b;
+            self.demux.strong_hash = StrongHash::Blake2b;
+        }
+        #[cfg(not(feature = "blake3"))]
+        if self.caps & CAP_BLAKE2 != 0 {
+            self.mux.strong_hash = StrongHash::Blake2b;
+            self.demux.strong_hash = StrongHash::Blake2b;
         }
 
         let mut selected = Codec::Zlib;
@@ -108,6 +118,8 @@ impl<R: Read, W: Write> Server<R, W> {
         }
         self.mux.compressor = selected;
         self.demux.compressor = selected;
+        self.mux.cdc = self.caps & CAP_CDC != 0;
+        self.demux.cdc = self.caps & CAP_CDC != 0;
 
         Ok((self.caps, peer_codecs))
     }

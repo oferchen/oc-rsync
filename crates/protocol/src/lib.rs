@@ -14,14 +14,17 @@ pub use server::Server;
 
 pub const V32: u32 = 32;
 pub const V31: u32 = 31;
-pub const LATEST_VERSION: u32 = V32;
+pub const V73: u32 = 73;
+pub const LATEST_VERSION: u32 = V73;
 pub const MIN_VERSION: u32 = V31;
 
 pub const CAP_CODECS: u32 = 1 << 0;
 pub const CAP_BLAKE3: u32 = 1 << 1;
 pub const CAP_ZSTD: u32 = 1 << 2;
 pub const CAP_LZ4: u32 = 1 << 3;
-pub const SUPPORTED_CAPS: u32 = CAP_CODECS | CAP_BLAKE3 | CAP_ZSTD | CAP_LZ4;
+pub const CAP_BLAKE2: u32 = 1 << 4;
+pub const CAP_CDC: u32 = 1 << 5;
+pub const SUPPORTED_CAPS: u32 = CAP_CODECS | CAP_BLAKE3 | CAP_ZSTD | CAP_LZ4 | CAP_BLAKE2 | CAP_CDC;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VersionError(pub u32);
@@ -41,7 +44,9 @@ impl From<VersionError> for io::Error {
 }
 
 pub fn negotiate_version(local: u32, peer: u32) -> Result<u32, VersionError> {
-    if local >= V32 && peer >= V32 {
+    if local >= V73 && peer >= V73 {
+        Ok(V73)
+    } else if local >= V32 && peer >= V32 {
         Ok(V32)
     } else if local >= V31 && peer >= V31 {
         Ok(V31)
