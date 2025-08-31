@@ -33,3 +33,6 @@ cargo llvm-cov --all-features --workspace --doctests \
 
 The command above enforces a 95% threshold for both line and function coverage,
 matching the CI gate.
+
+See [coverage_exclusions.md](coverage_exclusions.md) for modules or lines that
+are intentionally omitted from these coverage targets.
