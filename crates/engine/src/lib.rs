@@ -732,6 +732,17 @@ impl Receiver {
         if let Some(parent) = tmp_dest.parent() {
             fs::create_dir_all(parent)?;
         }
+        #[cfg(unix)]
+        if !self.opts.write_devices {
+            if let Ok(meta) = fs::symlink_metadata(&tmp_dest) {
+                let ft = meta.file_type();
+                if ft.is_block_device() || ft.is_char_device() {
+                    return Err(EngineError::Other(
+                        "refusing to write to device; use --write-devices".into(),
+                    ));
+                }
+            }
+        }
         let cfg = ChecksumConfigBuilder::new()
             .strong(self.opts.strong)
             .seed(self.opts.checksum_seed)
@@ -754,11 +765,15 @@ impl Receiver {
             || self.opts.append
             || self.opts.append_verify
         {
-            OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(&tmp_dest)?
+            if self.opts.write_devices {
+                OpenOptions::new().write(true).open(&tmp_dest)?
+            } else {
+                OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(&tmp_dest)?
+            }
         } else {
             File::create(&tmp_dest)?
         };
@@ -979,6 +994,10 @@ pub struct SyncOptions {
     pub eight_bit_output: bool,
     pub blocking_io: bool,
     pub early_input: Option<PathBuf>,
+    pub secluded_args: bool,
+    pub sockopts: Vec<String>,
+    pub write_batch: Option<PathBuf>,
+    pub write_devices: bool,
 }
 
 impl Default for SyncOptions {
@@ -1049,6 +1068,10 @@ impl Default for SyncOptions {
             eight_bit_output: false,
             blocking_io: false,
             early_input: None,
+            secluded_args: false,
+            sockopts: Vec::new(),
+            write_batch: None,
+            write_devices: false,
         }
     }
 }
@@ -1470,6 +1493,15 @@ pub fn sync(
     }
     if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
         manifest.save()?;
+    }
+    if let Some(batch) = &opts.write_batch {
+        if let Ok(mut f) = File::create(batch) {
+            let _ = writeln!(
+                f,
+                "files_transferred={} bytes_transferred={}",
+                stats.files_transferred, stats.bytes_transferred
+            );
+        }
     }
     Ok(stats)
 }

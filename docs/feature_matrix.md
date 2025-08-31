@@ -136,17 +136,17 @@ negotiates version 73.
 | `--read-batch` | — | ❌ | — | — |  | ≤3.2 |
 | `--recursive` | `-r` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--relative` | `-R` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--remote-option` | `-M` | ❌ | — | — |  | ≤3.2 |
+| `--remote-option` | `-M` | ✅ | ❌ | [tests/remote_option.rs](../tests/remote_option.rs) |  | ≤3.2 |
 | `--remove-source-files` | — | ❌ | — | — |  | ≤3.2 |
 | `--rsh` | `-e` | ✅ | ✅ | [tests/rsh.rs](../tests/rsh.rs) | supports quoting, env vars, and `RSYNC_RSH` | ≤3.2 |
 | `--rsync-path` | — | ✅ | ✅ | [tests/rsh.rs](../tests/rsh.rs)<br>[tests/rsync_path.rs](../tests/rsync_path.rs) | accepts remote commands with env vars | ≤3.2 |
 | `--safe-links` | — | ✅ | ❌ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) |  | ≤3.2 |
-| `--secluded-args` | `-s` | ❌ | — | — |  | ≤3.2 |
+| `--secluded-args` | `-s` | ✅ | ❌ | [tests/secluded_args.rs](../tests/secluded_args.rs) |  | ≤3.2 |
 | `--secrets-file` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--server` | — | ✅ | ❌ | [tests/server.rs](../tests/server.rs) | negotiates protocol version and codecs | ≤3.2 |
 | `--size-only` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--skip-compress` | — | ✅ | ✅ | [tests/skip_compress.rs](../tests/skip_compress.rs) | comma-separated list of file suffixes to avoid compressing | ≤3.2 |
-| `--sockopts` | — | ❌ | — | — |  | ≤3.2 |
+| `--sockopts` | — | ✅ | ❌ | [tests/sockopts.rs](../tests/sockopts.rs) |  | ≤3.2 |
 | `--sparse` | `-S` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | creates holes for long zero runs | ≤3.2 |
 | `--specials` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--stats` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
@@ -164,6 +164,6 @@ negotiates version 73.
 | `--verbose` | `-v` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--version` | `-V` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--whole-file` | `-W` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--write-batch` | — | ❌ | — | — |  | ≤3.2 |
-| `--write-devices` | — | ❌ | — | — |  | ≤3.2 |
+| `--write-batch` | — | ✅ | ✅ | [tests/write_batch.rs](../tests/write_batch.rs) |  | ≤3.2 |
+| `--write-devices` | — | ✅ | ✅ | [tests/write_devices.rs](../tests/write_devices.rs) |  | ≤3.2 |
 | `--xattrs` | `-X` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `xattr` feature | ≤3.2 |

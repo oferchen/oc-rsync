@@ -311,6 +311,20 @@ struct ClientOpts {
         allow_hyphen_values = true
     )]
     remote_option: Vec<String>,
+    #[arg(short = 's', long = "secluded-args", help_heading = "Misc")]
+    secluded_args: bool,
+    #[arg(
+        long = "sockopts",
+        value_name = "OPTIONS",
+        value_delimiter = ',',
+        allow_hyphen_values = true,
+        help_heading = "Misc"
+    )]
+    sockopts: Vec<String>,
+    #[arg(long = "write-batch", value_name = "FILE", help_heading = "Misc")]
+    write_batch: Option<PathBuf>,
+    #[arg(long = "write-devices", help_heading = "Misc")]
+    write_devices: bool,
     #[arg(long, hide = true)]
     server: bool,
     #[arg(long, hide = true)]
@@ -987,7 +1001,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         append: opts.append,
         append_verify: opts.append_verify,
         numeric_ids: opts.numeric_ids,
-        inplace: opts.inplace,
+        inplace: opts.inplace || opts.write_devices,
         bwlimit: opts.bwlimit,
         block_size,
         link_dest: opts.link_dest.clone(),
@@ -1004,6 +1018,10 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         eight_bit_output: opts.eight_bit_output,
         blocking_io: opts.blocking_io,
         early_input: opts.early_input.clone(),
+        secluded_args: opts.secluded_args,
+        sockopts: opts.sockopts.clone(),
+        write_batch: opts.write_batch.clone(),
+        write_devices: opts.write_devices,
     };
     let stats = if opts.local {
         match (src, dst) {
