@@ -118,6 +118,7 @@ fn daemon_remote_option_forwarded() {
         None,
         None,
         None,
+        &[],
         &[format!("--log-file={}", log.display())],
         protocol::LATEST_VERSION,
         None,

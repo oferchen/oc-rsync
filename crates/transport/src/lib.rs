@@ -126,3 +126,42 @@ impl<T: Transport> Transport for TimeoutTransport<T> {
 pub trait SshTransport: Transport {}
 
 pub trait DaemonTransport: Transport {}
+
+#[derive(Debug, Clone, Copy)]
+pub enum SockOpt {
+    KeepAlive(bool),
+    SendBuf(usize),
+    RecvBuf(usize),
+}
+
+pub fn parse_sockopts(opts: &[String]) -> Result<Vec<SockOpt>, String> {
+    opts.iter().map(|s| parse_sockopt(s)).collect()
+}
+
+fn parse_sockopt(s: &str) -> Result<SockOpt, String> {
+    let (name, value) = match s.split_once('=') {
+        Some((n, v)) => (n.trim(), Some(v.trim())),
+        None => (s.trim(), None),
+    };
+    match name {
+        "SO_KEEPALIVE" => {
+            let enabled = value.map(|v| v != "0").unwrap_or(true);
+            Ok(SockOpt::KeepAlive(enabled))
+        }
+        "SO_SNDBUF" => {
+            let v = value.ok_or_else(|| "SO_SNDBUF requires a value".to_string())?;
+            let size = v
+                .parse::<usize>()
+                .map_err(|_| "invalid SO_SNDBUF value".to_string())?;
+            Ok(SockOpt::SendBuf(size))
+        }
+        "SO_RCVBUF" => {
+            let v = value.ok_or_else(|| "SO_RCVBUF requires a value".to_string())?;
+            let size = v
+                .parse::<usize>()
+                .map_err(|_| "invalid SO_RCVBUF value".to_string())?;
+            Ok(SockOpt::RecvBuf(size))
+        }
+        _ => Err(format!("unknown socket option: {name}")),
+    }
+}

@@ -24,7 +24,15 @@ use filters::{default_cvs_rules, parse, Matcher, Rule};
 use meta::{parse_chmod, parse_chown};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
-use transport::{AddressFamily, RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
+use transport::{
+    parse_sockopts,
+    AddressFamily,
+    RateLimitedTransport,
+    SshStdioTransport,
+    TcpTransport,
+    Transport,
+    SockOpt,
+};
 
 fn parse_filters(s: &str) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
@@ -669,6 +677,7 @@ pub fn spawn_daemon_session(
     timeout: Option<Duration>,
     contimeout: Option<Duration>,
     family: Option<AddressFamily>,
+    sockopts: &[String],
     remote_opts: &[String],
     version: u32,
     early_input: Option<&Path>,
@@ -681,6 +690,9 @@ pub fn spawn_daemon_session(
     };
     let mut t = TcpTransport::connect(host, port, contimeout, family)
         .map_err(|e| EngineError::Other(e.to_string()))?;
+    let parsed: Vec<SockOpt> = parse_sockopts(sockopts)
+        .map_err(|e| EngineError::Other(e))?;
+    t.apply_sockopts(&parsed).map_err(EngineError::from)?;
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
     if let Some(p) = early_input {
         if let Ok(data) = fs::read(p) {
@@ -1106,6 +1118,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
+                    &opts.sockopts,
                     &opts.remote_option,
                     opts.protocol
                         .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
@@ -1169,6 +1182,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
+                    &opts.sockopts,
                     &opts.remote_option,
                     opts.protocol
                         .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
@@ -1314,6 +1328,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
+                            &opts.sockopts,
                             &opts.remote_option,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
@@ -1328,6 +1343,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
+                            &opts.sockopts,
                             &opts.remote_option,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
@@ -1368,6 +1384,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
+                            &opts.sockopts,
                             &opts.remote_option,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
@@ -1406,6 +1423,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
+                            &opts.sockopts,
                             &opts.remote_option,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
@@ -2102,6 +2120,7 @@ mod tests {
             None,
             None,
             &[],
+            &[],
             30,
             None,
         )
@@ -2158,6 +2177,7 @@ mod tests {
             None,
             None,
             None,
+            &[],
             &[],
             30,
             Some(&path),
