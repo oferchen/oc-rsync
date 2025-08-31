@@ -452,6 +452,81 @@ fn remote_to_remote_failure_and_reconnect() {
 }
 
 #[test]
+fn remote_multi_hop_destination_error_propagates() {
+    let dir = tempdir().unwrap();
+    let src_file = dir.path().join("src.txt");
+    // Large input to ensure the failure propagates before the write completes
+    let data = vec![0x42u8; 1024 * 1024];
+    fs::write(&src_file, &data).unwrap();
+
+    // source generates data
+    let src_session =
+        SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
+    // middle simply forwards stdin to stdout
+    let mid_session = SshStdioTransport::spawn("sh", ["-c", "cat"]).unwrap();
+    // destination immediately closes its stdin after printing a line
+    let dst_session = SshStdioTransport::spawn("sh", ["-c", "exec 0<&-; echo ready"]).unwrap();
+
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (mut mid_reader, mut mid_writer) = mid_session.into_inner().expect("into_inner");
+    let (mut dst_reader, mut dst_writer) = dst_session.into_inner().expect("into_inner");
+
+    let mut ready = [0u8; 6];
+    dst_reader.read_exact(&mut ready).unwrap();
+    assert_eq!(&ready, b"ready\n");
+
+    // forward data from middle to destination in a separate thread
+    let forward = std::thread::spawn(move || std::io::copy(&mut mid_reader, &mut dst_writer));
+
+    // writing to the middle should eventually fail once destination closes
+    let err = std::io::copy(&mut src_reader, &mut mid_writer).unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::BrokenPipe);
+
+    // the forwarding thread should also observe the broken pipe
+    let forward_err = forward.join().unwrap().unwrap_err();
+    assert_eq!(forward_err.kind(), io::ErrorKind::BrokenPipe);
+}
+
+#[test]
+fn remote_multi_hop_middle_error_propagates() {
+    let dir = tempdir().unwrap();
+    let src_file = dir.path().join("src.txt");
+    let dst_file = dir.path().join("dst.txt");
+    // More data than the pipe buffer so that the writer observes EPIPE
+    let data = vec![0x5Au8; 1024 * 1024];
+    fs::write(&src_file, &data).unwrap();
+
+    let src_session =
+        SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
+    // middle reads a couple bytes then exits with error
+    let mid_session = SshStdioTransport::spawn("sh", ["-c", "head -c 2; exit 1"]).unwrap();
+    let dst_session =
+        SshStdioTransport::spawn("sh", ["-c", &format!("cat > {}", dst_file.display())]).unwrap();
+
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (mut mid_reader, mut mid_writer) = mid_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
+
+    // forward from middle to destination
+    let forward = std::thread::spawn(move || std::io::copy(&mut mid_reader, &mut dst_writer));
+
+    // copying into the middle should error once it exits
+    let err = std::io::copy(&mut src_reader, &mut mid_writer).unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::BrokenPipe);
+
+    // ensure only partial data made it to the destination
+    let transferred = forward.join().unwrap().unwrap();
+    assert!(transferred < data.len() as u64);
+    wait_for(|| {
+        fs::metadata(&dst_file)
+            .map(|m| m.len() == transferred)
+            .unwrap_or(false)
+    });
+    let out_len = fs::metadata(&dst_file).unwrap().len();
+    assert_eq!(out_len, transferred);
+}
+
+#[test]
 #[ignore]
 fn remote_remote_via_rsh_matches_rsync() {
     let dir = tempdir().unwrap();
