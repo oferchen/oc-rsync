@@ -511,6 +511,11 @@ impl Matcher {
                         buf.push_str("!\n");
                         continue;
                     }
+                    let (prefix, pat) = match line.chars().next() {
+                        Some(c @ ('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R')) => {
+                            (Some(c), line[1..].trim_start())
+                        }
+                        _ => (None, line),
                     let rest = if matches!(
                         line.chars().next(),
                         Some('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R')
@@ -529,6 +534,7 @@ impl Matcher {
                     } else {
                         pat.to_string()
                     };
+                    buf.push(prefix.unwrap_or(ch));
                     buf.push(ch);
                     buf.push_str(mods);
                     buf.push(' ');
