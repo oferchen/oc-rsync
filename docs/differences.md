@@ -1,6 +1,6 @@
 # Differences from rsync
 
-oc-rsync implements the standard rsync protocol version 31 and also defines a
+oc-rsync implements the standard rsync protocol version 32 and also defines a
 private protocol 73 extension used only when both peers are oc-rsync.
 
 See [gaps.md](gaps.md) and [feature_matrix.md](feature_matrix.md) for any remaining parity notes.
