@@ -165,5 +165,5 @@ negotiates version 73.
 | `--version` | `-V` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--whole-file` | `-W` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--write-batch` | — | ✅ | ✅ | [tests/write_batch.rs](../tests/write_batch.rs) |  | ≤3.2 |
-| `--write-devices` | — | ✅ | ✅ | [tests/write_devices.rs](../tests/write_devices.rs) |  | ≤3.2 |
+| `--write-devices` | — | ✅ | ✅ | [tests/write_devices.rs](../tests/write_devices.rs) | writes to existing devices | ≤3.2 |
 | `--xattrs` | `-X` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `xattr` feature | ≤3.2 |

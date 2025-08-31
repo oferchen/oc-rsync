@@ -108,7 +108,6 @@ impl Iterator for Walk {
                         continue;
                     }
 
-
                     if let Some(max) = self.max_file_size {
                         if meta.is_file() && meta.len() > max {
                             continue;

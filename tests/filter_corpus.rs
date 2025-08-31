@@ -249,21 +249,21 @@ fn perdir_sign_parity() {
         ours_output = ours_output.replace("recursive mode enabled\n", "");
         assert_eq!(rsync_output, ours_output);
 
-    let diff = StdCommand::new("diff")
-        .arg("-r")
-        .arg(&rsync_dst)
-        .arg(&ours_dst)
-        .output()
-        .unwrap();
-    assert!(diff.status.success(), "directory trees differ");
+        let diff = StdCommand::new("diff")
+            .arg("-r")
+            .arg(&rsync_dst)
+            .arg(&ours_dst)
+            .output()
+            .unwrap();
+        assert!(diff.status.success(), "directory trees differ");
 
-    assert!(ours_dst.join("sub/keep.tmp").exists());
-    assert!(!ours_dst.join("sub/other.tmp").exists());
-    assert!(ours_dst.join("sub/nested/keep.tmp").exists());
-    assert!(!ours_dst.join("sub/nested/other.tmp").exists());
-    assert!(!ours_dst.join(".rsync-filter").exists());
-    assert!(!ours_dst.join("sub/.rsync-filter").exists());
-    assert!(!ours_dst.join("sub/nested/.rsync-filter").exists());
+        assert!(ours_dst.join("sub/keep.tmp").exists());
+        assert!(!ours_dst.join("sub/other.tmp").exists());
+        assert!(ours_dst.join("sub/nested/keep.tmp").exists());
+        assert!(!ours_dst.join("sub/nested/other.tmp").exists());
+        assert!(!ours_dst.join(".rsync-filter").exists());
+        assert!(!ours_dst.join("sub/.rsync-filter").exists());
+        assert!(!ours_dst.join("sub/nested/.rsync-filter").exists());
         let diff = StdCommand::new("diff")
             .arg("-r")
             .arg(&rsync_dst)

@@ -140,7 +140,7 @@
 | --version | Error |  |
 | --whole-file | Supported |  |
 | --write-batch | Error |  |
-| --write-devices | Error |  |
+| --write-devices | Supported |  |
 | --xattrs | Error |  |
 | -0 | Error | alias for --from0 |
 | -4 | Alias | alias for --ipv4 |
