@@ -60,6 +60,7 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
 #[derive(Debug, Default, Clone)]
 pub struct DaemonConfig {
     pub address: Option<IpAddr>,
+    pub address6: Option<IpAddr>,
     pub port: Option<u16>,
     pub hosts_allow: Vec<String>,
     pub hosts_deny: Vec<String>,
@@ -102,10 +103,30 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             .to_string();
         match (current.is_some(), key.as_str()) {
             (false, "address") => {
-                cfg.address = Some(
-                    val.parse::<IpAddr>()
-                        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
-                );
+                let addr = val
+                    .parse::<IpAddr>()
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                if addr.is_ipv4() {
+                    cfg.address = Some(addr);
+                } else {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "expected IPv4 address",
+                    ));
+                }
+            }
+            (false, "address6") => {
+                let addr = val
+                    .parse::<IpAddr>()
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                if addr.is_ipv6() {
+                    cfg.address6 = Some(addr);
+                } else {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "expected IPv6 address",
+                    ));
+                }
             }
             (false, "port") => {
                 let port = val
@@ -388,6 +409,20 @@ mod tests {
     fn parse_config_allows_zero_port() {
         let cfg = parse_config("port=0").unwrap();
         assert_eq!(cfg.port, Some(0));
+    }
+
+    #[test]
+    fn parse_config_accepts_ipv4_address() {
+        let cfg = parse_config("address=127.0.0.1").unwrap();
+        assert_eq!(cfg.address, Some("127.0.0.1".parse().unwrap()));
+        assert!(cfg.address6.is_none());
+    }
+
+    #[test]
+    fn parse_config_accepts_ipv6_address() {
+        let cfg = parse_config("address6=::1").unwrap();
+        assert_eq!(cfg.address6, Some("::1".parse().unwrap()));
+        assert!(cfg.address.is_none());
     }
 
     #[cfg(unix)]
