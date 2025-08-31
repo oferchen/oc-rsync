@@ -126,5 +126,44 @@ impl GidTable {
         &self.table
     }
 }
+
+/// Table mapping user IDs to compact indexes.
+///
+/// This helps build the `uid` table used by the file list so that
+/// repeated user IDs are transmitted only once. Calling [`push`]
+/// returns the index for the provided `uid`, inserting it into the
+/// table if it wasn't already present.
+#[derive(Debug, Default, Clone)]
+pub struct UidTable {
+    map: HashMap<u32, usize>,
+    table: Vec<u32>,
+}
+
+impl UidTable {
+    /// Create a new, empty table.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Insert `uid` into the table if it is not present, returning the
+    /// index associated with it.
+    pub fn push(&mut self, uid: u32) -> usize {
+        *self.map.entry(uid).or_insert_with(|| {
+            self.table.push(uid);
+            self.table.len() - 1
+        })
+    }
+
+    /// Returns the user ID stored at `idx`, if any.
+    pub fn uid(&self, idx: usize) -> Option<u32> {
+        self.table.get(idx).copied()
+    }
+
+    /// Exposes the underlying slice of user IDs in insertion order.
+    pub fn as_slice(&self) -> &[u32] {
+        &self.table
+    }
+}
+
 #[cfg(feature = "acl")]
 pub use posix_acl::{ACLEntry, PosixACL, Qualifier, ACL_EXECUTE, ACL_READ, ACL_RWX, ACL_WRITE};
