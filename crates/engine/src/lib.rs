@@ -592,12 +592,15 @@ impl Sender {
                 Err(_) => Box::new(Cursor::new(Vec::new())),
             }
         };
-        let mut buf: Vec<u8> = Vec::new();
         let delta: Box<dyn Iterator<Item = Result<Op>> + '_> = if self.opts.whole_file {
-            let len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
-            ensure_max_alloc(len, &self.opts)?;
-            src_reader.read_to_end(&mut buf)?;
-            Box::new(std::iter::once(Ok(Op::Data(buf))))
+            let mut buf = vec![0u8; self.block_size.max(8192)];
+            Box::new(std::iter::from_fn(move || {
+                match src_reader.read(&mut buf) {
+                    Ok(0) => None,
+                    Ok(n) => Some(Ok(Op::Data(buf[..n].to_vec()))),
+                    Err(e) => Some(Err(e.into())),
+                }
+            }))
         } else {
             Box::new(compute_delta(
                 &self.cfg,
@@ -730,7 +733,7 @@ impl Receiver {
         } else {
             dest.to_path_buf()
         };
-        let tmp_dest = if self.opts.inplace {
+        let mut tmp_dest = if self.opts.inplace {
             dest.to_path_buf()
         } else if let Some(dir) = &self.opts.temp_dir {
             dir.join(file_name).with_extension("tmp")
@@ -739,6 +742,16 @@ impl Receiver {
         } else {
             dest.to_path_buf()
         };
+        let auto_tmp = !self.opts.inplace
+            && !self.opts.partial
+            && self.opts.temp_dir.is_none()
+            && basis_path == dest
+            && !self.opts.write_devices;
+        if auto_tmp {
+            tmp_dest = dest.with_extension("tmp");
+        }
+        let needs_rename =
+            !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some() || auto_tmp);
         let cfg = ChecksumConfigBuilder::new()
             .strong(self.opts.strong)
             .seed(self.opts.checksum_seed)
@@ -757,12 +770,10 @@ impl Receiver {
             resume = src_len;
         }
         let mut basis: Box<dyn ReadSeek> = match File::open(&basis_path) {
-            Ok(mut f) => {
+            Ok(f) => {
                 let len = f.metadata().map(|m| m.len()).unwrap_or(0);
                 ensure_max_alloc(len, &self.opts)?;
-                let mut buf = Vec::with_capacity(len as usize);
-                f.read_to_end(&mut buf)?;
-                Box::new(Cursor::new(buf))
+                Box::new(BufReader::new(f))
             }
             Err(_) => Box::new(Cursor::new(Vec::new())),
         };
@@ -771,11 +782,12 @@ impl Receiver {
         }
         #[cfg(unix)]
         if !self.opts.write_devices {
-            if let Ok(meta) = fs::symlink_metadata(&tmp_dest) {
+            let check_path = if auto_tmp { dest } else { &tmp_dest };
+            if let Ok(meta) = fs::symlink_metadata(check_path) {
                 let ft = meta.file_type();
                 if ft.is_block_device() || ft.is_char_device() {
                     if self.opts.copy_devices {
-                        fs::remove_file(&tmp_dest)?;
+                        fs::remove_file(check_path)?;
                     } else {
                         return Err(EngineError::Other(
                             "refusing to write to device; use --write-devices".into(),
@@ -836,7 +848,7 @@ impl Receiver {
             let len = out.seek(SeekFrom::Current(0))?;
             out.set_len(len)?;
         }
-        if !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some()) {
+        if needs_rename {
             fs::rename(&tmp_dest, dest)?;
         }
         self.copy_metadata(src, dest)?;
