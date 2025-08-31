@@ -1,7 +1,7 @@
 // crates/walk/tests/walk.rs
 use std::fs;
 use tempfile::tempdir;
-use walk::walk;
+use walk::{walk, walk_with_max_size};
 
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
@@ -74,4 +74,26 @@ fn walk_preserves_order_and_bounds_batches() {
         root.join("dir/sub/big2"),
     ];
     assert_eq!(paths, expected);
+}
+
+#[test]
+fn walk_skips_files_over_threshold() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path();
+    fs::write(root.join("small.txt"), b"ok").unwrap();
+    fs::write(root.join("big.txt"), vec![0u8; 2048]).unwrap();
+
+    let mut paths = Vec::new();
+    let mut state = String::new();
+    for batch in walk_with_max_size(root, 10, 1024) {
+        let batch = batch.unwrap();
+        for e in batch {
+            let path = e.apply(&mut state);
+            paths.push(path);
+        }
+    }
+
+    assert!(paths.contains(&root.to_path_buf()));
+    assert!(paths.contains(&root.join("small.txt")));
+    assert!(!paths.contains(&root.join("big.txt")));
 }

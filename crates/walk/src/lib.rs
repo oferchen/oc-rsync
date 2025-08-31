@@ -31,6 +31,7 @@ pub struct Walk {
     iter: walkdir::IntoIter,
     prev_path: String,
     batch_size: usize,
+    max_file_size: Option<u64>,
     uid_map: HashMap<u32, usize>,
     uid_table: Vec<u32>,
     gid_map: HashMap<u32, usize>,
@@ -42,13 +43,14 @@ pub struct Walk {
 }
 
 impl Walk {
-    fn new(root: PathBuf, batch_size: usize) -> Self {
+    fn new(root: PathBuf, batch_size: usize, max_file_size: Option<u64>) -> Self {
         Walk {
             iter: WalkDir::new(root)
                 .sort_by(|a, b| a.file_name().cmp(b.file_name()))
                 .into_iter(),
             prev_path: String::new(),
             batch_size,
+            max_file_size,
             uid_map: HashMap::new(),
             uid_table: Vec::new(),
             gid_map: HashMap::new(),
@@ -78,7 +80,11 @@ impl Walk {
 }
 
 pub fn walk(root: impl AsRef<Path>, batch_size: usize) -> Walk {
-    Walk::new(root.as_ref().to_path_buf(), batch_size)
+    Walk::new(root.as_ref().to_path_buf(), batch_size, None)
+}
+
+pub fn walk_with_max_size(root: impl AsRef<Path>, batch_size: usize, max_file_size: u64) -> Walk {
+    Walk::new(root.as_ref().to_path_buf(), batch_size, Some(max_file_size))
 }
 
 impl Iterator for Walk {
@@ -101,6 +107,14 @@ impl Iterator for Walk {
                     if entry.file_type().is_file() && len < MIN_FILE_SIZE {
                         continue;
                     }
+
+
+                    if let Some(max) = self.max_file_size {
+                        if meta.is_file() && meta.len() > max {
+                            continue;
+                        }
+                    }
+
                     #[cfg(unix)]
                     let (uid, gid, dev, ino) = (meta.uid(), meta.gid(), meta.dev(), meta.ino());
                     #[cfg(not(unix))]
