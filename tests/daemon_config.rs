@@ -80,7 +80,7 @@ fn daemon_config_authentication() {
     t.set_read_timeout(Some(Duration::from_millis(200)))
         .unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
-    assert!(n == 0 || !String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR"));
+    assert_eq!(n, 0);
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -182,7 +182,7 @@ fn daemon_config_module_secrets_file() {
     t.set_read_timeout(Some(Duration::from_millis(200)))
         .unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
-    assert!(n == 0 || !String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR"));
+    assert_eq!(n, 0);
     let _ = child.kill();
     let _ = child.wait();
 }
