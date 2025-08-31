@@ -36,10 +36,8 @@ jobs:
             target: x86_64-unknown-freebsd
             use-cross: true
           - os: macos-latest
-            target: x86_64-apple-darwin
             use-cross: false
           - os: windows-latest
-            target: x86_64-pc-windows-msvc
             use-cross: false
     steps:
       - uses: actions/checkout@v3
@@ -49,12 +47,19 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
           override: true
+        if: matrix.use-cross == true
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+        if: matrix.use-cross == false
       - run: rustup component add rustfmt clippy
       - name: Install cross
         if: matrix.use-cross == true
         run: cargo install cross --locked
       - name: Install cargo-fuzz
-        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
+        if: matrix.os != 'windows-latest' && matrix.use-cross == false
         run: |
           cargo install cargo-fuzz --locked
           rustup toolchain install nightly
@@ -71,7 +76,7 @@ jobs:
           bash scripts/generate-manpages.sh
           git diff --exit-code man
       - name: Verify comments
-        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
+        if: matrix.use-cross == false
         run: make verify-comments
       - name: Format
         run: cargo fmt --all --check
@@ -87,7 +92,7 @@ jobs:
           if [ "${{ matrix.use-cross }}" = "true" ]; then
             cross test --all --features blake3 --target ${{ matrix.target }}
           else
-            cargo test --all --features blake3 --target ${{ matrix.target }}
+            cargo test --all --features blake3
           fi
       - name: Golden parity tests
         if: matrix.use-cross == false && matrix.os != 'windows-latest'
@@ -96,7 +101,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: bash scripts/interop.sh
       - name: Fuzz smoke test
-        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
+        if: matrix.os != 'windows-latest' && matrix.use-cross == false
         run: |
           timeout 60s cargo +nightly fuzz run protocol_frame_decode_fuzz -- -max_total_time=30
           timeout 60s cargo +nightly fuzz run filter_parser -- -max_total_time=30
