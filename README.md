@@ -4,12 +4,12 @@ oc-rsync is a modular reimplementation of the classic `rsync` utility in Rust. I
 
 ## Summary
 
-**Mission**: Implement a pure-Rust rsync replacement compatible with stock rsync v31 over SSH and `rsync://`.
+**Mission**: Implement a pure-Rust rsync replacement compatible with stock rsync v32 over SSH and `rsync://`, with optional support for modern mode 73.
 
 **Non‑negotiable constraints**: correctness with full metadata fidelity, security, robust I/O with resumable transfers, cross‑platform support, and open‑source dual licensing.
 
 ## Mission
-- Implement a pure-Rust rsync replacement compatible with stock rsync v31 over SSH and `rsync://`.
+- Implement a pure-Rust rsync replacement compatible with stock rsync v32 over SSH and `rsync://`, supporting modern mode 73.
 - Deliver fast, reliable file synchronization.
 - Provide a welcoming platform for contributors building the next generation of sync tooling.
 
@@ -93,7 +93,7 @@ cargo run -p oc-rsync-bin -- <args>
 ## Milestone Roadmap
 1. **M1—Bootstrap** – repository builds; `walk` and `checksums` crates generate file signatures.
 2. **M2—Delta Engine** – `engine` drives local delta transfers with metadata preservation.
-3. **M3—Remote Protocol** – rsync protocol v31 over SSH and `rsync://` implemented.
+3. **M3—Remote Protocol** – rsync protocol v32 over SSH and `rsync://` implemented with modern mode 73 support.
 4. **M4—Metadata Fidelity** – permissions, symlinks, hard links, sparse files, and xattrs/ACLs handled.
 5. **M5—Filters & Compression** – include/exclude rules and compression negotiation wired through engine and CLI.
 6. **M6—Robust Transfers** – resume partials, verify checksums, and harden I/O against interruptions.

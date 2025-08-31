@@ -1,14 +1,14 @@
 # AGENTS.MD
 
 ## Purpose
-This document describes the agents, their responsibilities, and how they collaborate to achieve a full-featured, production-grade, pure-Rust reimplementation of **rsync** (protocol v31), maintaining full interoperability with upstream rsync while offering optional “modern mode” enhancements. Each agent operates as a dedicated unit of functionality, designed to isolate complexity, maximize maintainability, and enforce clean code principles. The orchestration of these agents ensures both **feature parity** with upstream `rsync` and forward-looking extensibility.
+This document describes the agents, their responsibilities, and how they collaborate to achieve a full-featured, production-grade, pure-Rust reimplementation of **rsync** (protocol v32), maintaining full interoperability with upstream rsync while offering optional enhancements, including support for modern mode 73. Each agent operates as a dedicated unit of functionality, designed to isolate complexity, maximize maintainability, and enforce clean code principles. The orchestration of these agents ensures both **feature parity** with upstream `rsync` and forward-looking extensibility.
 
 ---
 
 ## Agent Overview
 
 ### 1. **ProtocolAgent**
-- **Role**: Implements the rsync v31 protocol, including message framing, multiplexing, negotiation, keep-alives, error propagation, and exit codes.
+- **Role**: Implements the rsync v32 protocol with support for modern mode 73, including message framing, multiplexing, negotiation, keep-alives, error propagation, and exit codes.
 - **Responsibilities**:
   - Encode/decode frames (control, file list, data, checksums).
   - Manage sender/receiver protocol phases as a finite state machine.
