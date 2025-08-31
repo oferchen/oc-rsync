@@ -105,6 +105,8 @@ struct ClientOpts {
     #[arg(short = 'u', long, help_heading = "Misc")]
     update: bool,
     #[arg(long, help_heading = "Misc")]
+    existing: bool,
+    #[arg(long, help_heading = "Misc")]
     ignore_existing: bool,
     #[arg(long = "size-only", help_heading = "Misc")]
     size_only: bool,
@@ -1098,6 +1100,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         dirs: opts.dirs,
         list_only: opts.list_only,
         update: opts.update,
+        existing: opts.existing,
         ignore_existing: opts.ignore_existing,
         size_only: opts.size_only,
         ignore_times: opts.ignore_times,
@@ -2159,12 +2162,14 @@ mod tests {
         let opts = ClientOpts::parse_from([
             "prog",
             "--ignore-existing",
+            "--existing",
             "--size-only",
             "--ignore-times",
             "src",
             "dst",
         ]);
         assert!(opts.ignore_existing);
+        assert!(opts.existing);
         assert!(opts.size_only);
         assert!(opts.ignore_times);
     }
