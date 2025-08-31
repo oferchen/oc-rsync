@@ -19,7 +19,7 @@ use std::ffi::OsString;
 
 #[cfg(all(test, feature = "xattr"))]
 mod xattr {
-    pub use real_xattr::{get, set};
+    pub use real_xattr::{get, remove, set};
     use std::ffi::OsString;
     use std::path::Path;
     use xattr as real_xattr;
@@ -60,6 +60,7 @@ pub struct Chmod {
 pub struct Options {
     pub xattrs: bool,
     pub acl: bool,
+    pub fake_super: bool,
     pub chmod: Option<Vec<Chmod>>,
     pub owner: bool,
     pub group: bool,
@@ -79,6 +80,7 @@ impl std::fmt::Debug for Options {
         f.debug_struct("Options")
             .field("xattrs", &self.xattrs)
             .field("acl", &self.acl)
+            .field("fake_super", &self.fake_super)
             .field("chmod", &self.chmod)
             .field("owner", &self.owner)
             .field("group", &self.group)
@@ -112,9 +114,9 @@ pub struct Metadata {
 impl Metadata {
     pub fn from_path(path: &Path, opts: Options) -> io::Result<Self> {
         let st = stat::lstat(path).map_err(nix_to_io)?;
-        let uid = st.st_uid;
-        let gid = st.st_gid;
-        let mode = normalize_mode(st.st_mode as u32);
+        let mut uid = st.st_uid;
+        let mut gid = st.st_gid;
+        let mut mode = normalize_mode(st.st_mode as u32);
         let mtime = FileTime::from_unix_time(st.st_mtime, st.st_mtime_nsec as u32);
 
         let atime = if opts.atimes {
@@ -132,7 +134,32 @@ impl Metadata {
         };
 
         #[cfg(feature = "xattr")]
-        let xattrs = if opts.xattrs {
+        if opts.fake_super {
+            if let Ok(Some(val)) = xattr::get(path, "user.rsync.uid") {
+                if let Ok(s) = std::str::from_utf8(&val) {
+                    if let Ok(v) = s.parse::<u32>() {
+                        uid = v;
+                    }
+                }
+            }
+            if let Ok(Some(val)) = xattr::get(path, "user.rsync.gid") {
+                if let Ok(s) = std::str::from_utf8(&val) {
+                    if let Ok(v) = s.parse::<u32>() {
+                        gid = v;
+                    }
+                }
+            }
+            if let Ok(Some(val)) = xattr::get(path, "user.rsync.mode") {
+                if let Ok(s) = std::str::from_utf8(&val) {
+                    if let Ok(v) = s.parse::<u32>() {
+                        mode = normalize_mode(v);
+                    }
+                }
+            }
+        }
+
+        #[cfg(feature = "xattr")]
+        let xattrs = if opts.xattrs || opts.fake_super {
             let mut attrs = Vec::new();
             for attr in xattr::list(path)? {
                 if let Some(value) = xattr::get(path, &attr)? {
@@ -317,6 +344,13 @@ impl Metadata {
 
         Ok(())
     }
+}
+
+#[cfg(feature = "xattr")]
+pub fn store_fake_super(path: &Path, uid: u32, gid: u32, mode: u32) {
+    let _ = xattr::set(path, "user.rsync.uid", uid.to_string().as_bytes());
+    let _ = xattr::set(path, "user.rsync.gid", gid.to_string().as_bytes());
+    let _ = xattr::set(path, "user.rsync.mode", mode.to_string().as_bytes());
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]

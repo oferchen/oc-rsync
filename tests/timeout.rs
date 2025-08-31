@@ -1,4 +1,5 @@
 // tests/timeout.rs
+#![allow(clippy::err_expect)]
 
 use std::io::{self, Cursor};
 use std::net::TcpListener;

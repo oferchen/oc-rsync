@@ -36,6 +36,7 @@ impl Options {
             || self.crtimes
             || self.uid_map.is_some()
             || self.gid_map.is_some()
+            || self.fake_super
     }
 }
 

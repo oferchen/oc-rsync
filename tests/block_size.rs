@@ -1,4 +1,5 @@
 // tests/block_size.rs
+#![allow(clippy::needless_range_loop)]
 
 use assert_cmd::Command;
 use checksums::ChecksumConfigBuilder;

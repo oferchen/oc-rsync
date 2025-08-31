@@ -292,6 +292,8 @@ struct ClientOpts {
     #[cfg(feature = "acl")]
     #[arg(long, help_heading = "Attributes")]
     acls: bool,
+    #[arg(long = "fake-super", help_heading = "Attributes")]
+    fake_super: bool,
     #[arg(short = 'z', long, help_heading = "Compression")]
     compress: bool,
     #[arg(
@@ -1190,7 +1192,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         devices: opts.devices || opts.archive,
         specials: opts.specials || opts.archive,
         #[cfg(feature = "xattr")]
-        xattrs: opts.xattrs,
+        xattrs: opts.xattrs || opts.fake_super,
         #[cfg(feature = "acl")]
         acls: opts.acls,
         sparse: opts.sparse,
@@ -1240,6 +1242,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         write_batch: opts.write_batch.clone(),
         copy_devices: opts.copy_devices,
         write_devices: opts.write_devices,
+        fake_super: opts.fake_super,
     };
     let stats = if opts.local {
         match (src, dst) {
