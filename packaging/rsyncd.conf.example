@@ -1,10 +1,39 @@
 # Sample oc-rsync daemon configuration
 # Installed at /etc/oc-rsyncd/rsyncd.conf
 
+# PID file location
 pid file = /run/oc-rsyncd.pid
+
+# Log file location
 log file = /var/log/oc-rsyncd.log
 
+# Hosts permitted to connect
+hosts allow = 192.0.2.0/24 198.51.100.23
+
+# Deny all other hosts
+hosts deny = *
+
+# Credentials file for authenticated modules
+secrets file = /etc/oc-rsyncd/rsyncd.secrets
+
+# Enable chroot jail for modules
+use chroot = yes
+
+# Data module (read/write)
 [data]
+    # Directory served to clients
     path = /srv/oc-rsync/data
+    # Description shown to clients
     comment = Exported data
+    # Allow clients to write
     read only = false
+
+# Backup module (read-only)
+[backup]
+    # Directory served to clients
+    path = /srv/oc-rsync/backup
+    # Description shown to clients
+    comment = Backup area
+    # Make module read-only
+    read only = true
+
