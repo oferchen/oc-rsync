@@ -136,7 +136,7 @@ negotiates version 73.
 | `--read-batch` | — | ❌ | — | — |  | ≤3.2 |
 | `--recursive` | `-r` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--relative` | `-R` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--remote-option` | `-M` | ✅ | ❌ | [tests/remote_option.rs](../tests/remote_option.rs) |  | ≤3.2 |
+| `--remote-option` | `-M` | ✅ | ❌ | [tests/interop/remote_option.rs](../tests/interop/remote_option.rs) |  | ≤3.2 |
 | `--remove-source-files` | — | ❌ | — | — |  | ≤3.2 |
 | `--rsh` | `-e` | ✅ | ✅ | [tests/rsh.rs](../tests/rsh.rs) | supports quoting, env vars, and `RSYNC_RSH` | ≤3.2 |
 | `--rsync-path` | — | ✅ | ✅ | [tests/rsh.rs](../tests/rsh.rs)<br>[tests/rsync_path.rs](../tests/rsync_path.rs) | accepts remote commands with env vars | ≤3.2 |

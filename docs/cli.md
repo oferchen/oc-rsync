@@ -211,7 +211,7 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--read-batch` | off |  | [matrix](feature_matrix.md#--read-batch) |
 | `-r` | `--recursive` | off |  | [matrix](feature_matrix.md#--recursive) |
 | `-R` | `--relative` | off |  | [matrix](feature_matrix.md#--relative) |
-| `-M` | `--remote-option` | off |  | [matrix](feature_matrix.md#--remote-option) |
+| `-M` | `--remote-option` | off | forward option to remote side only; repeat for multiple | [matrix](feature_matrix.md#--remote-option) |
 |  | `--remove-source-files` | off |  | [matrix](feature_matrix.md#--remove-source-files) |
 | `-e` | `--rsh` | ssh | negotiation incomplete; lacks full command parsing and environment handshake | [matrix](feature_matrix.md#--rsh) |
 |  | `--rsync-path` | — | requires `--rsh`; remote path negotiation incomplete | [matrix](feature_matrix.md#--rsync-path) |

@@ -27,6 +27,28 @@ fn prints_version() {
 }
 
 #[test]
+fn remote_option_flag_accepts_multiple() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--remote-option=--log-file=/tmp/foo",
+            "--remote-option=--fake-flag",
+            "--version",
+        ])
+        .assert()
+        .success();
+}
+
+#[test]
+fn remote_option_short_flag_is_accepted() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["-M", "--log-file=/tmp/foo", "--version"])
+        .assert()
+        .success();
+}
+
+#[test]
 fn client_local_sync() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
