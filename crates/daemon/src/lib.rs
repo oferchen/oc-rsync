@@ -7,6 +7,7 @@ use std::env;
 use std::fs;
 use std::io::{self};
 use std::path::{Path, PathBuf};
+use std::net::IpAddr;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -60,6 +61,7 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
 
 #[derive(Debug, Default, Clone)]
 pub struct DaemonConfig {
+    pub address: Option<IpAddr>,
     pub port: Option<u16>,
     pub hosts_allow: Vec<String>,
     pub hosts_deny: Vec<String>,
@@ -101,6 +103,12 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             .trim()
             .to_string();
         match (current.is_some(), key.as_str()) {
+            (false, "address") => {
+                cfg.address = Some(
+                    val.parse::<IpAddr>()
+                        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
+                );
+            }
             (false, "port") => {
                 cfg.port = Some(
                     val.parse::<u16>()

@@ -1761,6 +1761,7 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
     let timeout = opts.timeout;
     let bwlimit = opts.bwlimit;
     let mut port = opts.port;
+    let mut address = opts.address;
 
     if let Some(cfg_path) = &opts.config {
         let cfg = parse_config_file(cfg_path).map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1778,6 +1779,9 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
         }
         if let Some(s) = cfg.secrets_file {
             secrets = Some(s);
+        }
+        if let Some(a) = cfg.address {
+            address = Some(a);
         }
         if !cfg.hosts_allow.is_empty() {
             hosts_allow = cfg.hosts_allow;
@@ -1798,7 +1802,7 @@ fn run_daemon(opts: DaemonOpts) -> Result<()> {
         None
     };
 
-    let (listener, real_port) = TcpTransport::listen(opts.address, port, addr_family)?;
+    let (listener, real_port) = TcpTransport::listen(address, port, addr_family)?;
 
     if port == 0 {
         println!("{}", real_port);
