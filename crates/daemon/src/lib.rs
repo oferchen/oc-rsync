@@ -41,14 +41,13 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
         .ok_or_else(|| "missing module path".to_string())?;
     let raw = PathBuf::from(path);
     let abs = if raw.is_absolute() {
-        raw.clone()
+        raw
     } else {
-        env::current_dir().map_err(|e| e.to_string())?.join(&raw)
+        env::current_dir()
+            .map_err(|e| e.to_string())?
+            .join(raw)
     };
-    let canonical = fs::canonicalize(&abs).map_err(|e| e.to_string())?;
-    if !canonical.starts_with(&abs) {
-        return Err("module path escapes module root".to_string());
-    }
+    let canonical = fs::canonicalize(abs).map_err(|e| e.to_string())?;
     Ok(Module {
         name,
         path: canonical,
@@ -294,7 +293,7 @@ mod tests {
     use transport::LocalPipeTransport;
 
     #[cfg(unix)]
-    use std::os::unix::fs::PermissionsExt;
+    use std::os::unix::fs::{symlink, PermissionsExt};
 
     struct ChunkReader {
         data: Vec<u8>,
@@ -360,5 +359,15 @@ mod tests {
         let cfg = "port=not-a-number";
         let res = parse_config(cfg);
         assert!(res.is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn parse_module_accepts_symlinked_dir() {
+        let dir = tempdir().unwrap();
+        let link = dir.path().parent().unwrap().join("symlinked");
+        symlink(dir.path(), &link).unwrap();
+        let module = parse_module(&format!("data={}", link.display())).unwrap();
+        assert_eq!(module.path, fs::canonicalize(&link).unwrap());
     }
 }
