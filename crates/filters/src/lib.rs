@@ -183,8 +183,22 @@ impl Matcher {
                 }
             }
 
-            for (depth, d) in dirs.iter().enumerate() {
-                let depth = depth + 1;
+            let fname = path.file_name().map(|f| f.to_string_lossy().to_string());
+            for (depth_idx, d) in dirs.iter().enumerate() {
+                let depth = depth_idx + 1;
+                if depth_idx == dirs.len() - 1 {
+                    if let Some(ref f) = fname {
+                        let mut is_merge = self.per_dir.iter().any(|(_, pd)| pd.file == *f);
+                        if !is_merge {
+                            if let Some(extra) = self.extra_per_dir.borrow().get(d) {
+                                is_merge = extra.iter().any(|(_, pd)| pd.file == *f);
+                            }
+                        }
+                        if is_merge {
+                            continue;
+                        }
+                    }
+                }
                 for (idx, rule) in self.dir_rules_at(d, for_delete, xattr)? {
                     active.push((idx, depth, seq, rule));
                     seq += 1;
@@ -430,7 +444,7 @@ impl Matcher {
             Err(_) => return Ok((Vec::new(), Vec::new())),
         };
 
-        let mut adjusted = if cvs || path.file_name().map_or(false, |f| f == ".cvsignore") {
+        let adjusted = if cvs || path.file_name().map_or(false, |f| f == ".cvsignore") {
             let rel_str = rel.map(|p| p.to_string_lossy().to_string());
             let mut buf = String::new();
             for token in content.split_whitespace() {
@@ -462,7 +476,42 @@ impl Matcher {
                 }
                 content = buf;
             }
-            if let Some(rel) = rel {
+            if let Some(ch) = sign {
+                let rel_str = rel.map(|p| p.to_string_lossy().to_string());
+                let mut buf = String::new();
+                for raw_line in content.lines() {
+                    let line = raw_line.trim();
+                    if line.is_empty() || line.starts_with('#') {
+                        continue;
+                    }
+                    if line == "!" {
+                        buf.push_str("!\n");
+                        continue;
+                    }
+                    let pat = if matches!(
+                        line.chars().next(),
+                        Some('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R')
+                    ) {
+                        line[1..].trim_start()
+                    } else {
+                        line
+                    };
+                    let new_pat = if let Some(rel_str) = &rel_str {
+                        if pat.starts_with('/') {
+                            format!("/{}/{}", rel_str, pat.trim_start_matches('/'))
+                        } else {
+                            format!("{}/{}", rel_str, pat)
+                        }
+                    } else {
+                        pat.to_string()
+                    };
+                    buf.push(ch);
+                    buf.push(' ');
+                    buf.push_str(&new_pat);
+                    buf.push('\n');
+                }
+                buf
+            } else if let Some(rel) = rel {
                 let rel_str = rel.to_string_lossy();
                 let mut buf = String::new();
                 for raw_line in content.lines() {
@@ -502,23 +551,6 @@ impl Matcher {
                 content
             }
         };
-
-        if !cvs {
-            if let Some(ch) = sign {
-                let mut buf = String::new();
-                for raw in adjusted.lines() {
-                    let line = raw.trim();
-                    if line.is_empty() || line.starts_with('#') {
-                        continue;
-                    }
-                    buf.push(ch);
-                    buf.push(' ');
-                    buf.push_str(line);
-                    buf.push('\n');
-                }
-                adjusted = buf;
-            }
-        }
 
         let mut rules = Vec::new();
         let mut merges = Vec::new();
