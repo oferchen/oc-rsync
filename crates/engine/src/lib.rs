@@ -750,6 +750,7 @@ impl Sender {
         recv.apply(path, dest, rel, ops)?;
         drop(atime_guard);
         recv.copy_metadata(path, dest)?;
+        recv.progress(dest)?;
         Ok(true)
     }
 }
@@ -946,6 +947,11 @@ impl Receiver {
                 }
             }
         }
+        self.state = ReceiverState::Finished;
+        Ok(())
+    }
+
+    fn progress(&self, dest: &Path) -> Result<()> {
         if self.opts.progress {
             let len = fs::metadata(dest).map_err(|e| io_context(dest, e))?.len();
             if self.opts.human_readable {
@@ -954,7 +960,6 @@ impl Receiver {
                 eprintln!("{}: {} bytes", dest.display(), len);
             }
         }
-        self.state = ReceiverState::Finished;
         Ok(())
     }
 }
