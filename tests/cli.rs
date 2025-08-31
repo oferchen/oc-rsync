@@ -631,6 +631,35 @@ fn chmod_masks_file_type_bits() {
     assert_eq!(mode & 0o7777, 0o644);
 }
 
+#[cfg(unix)]
+#[test]
+fn numeric_chmod_leaves_directories_executable() {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(src_dir.join("sub")).unwrap();
+    fs::write(src_dir.join("sub/file"), b"hi").unwrap();
+
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--local",
+        "--recursive",
+        "--chmod=100644",
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    let mode = fs::metadata(dst_dir.join("sub"))
+        .unwrap()
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o777, 0o755);
+}
+
 #[test]
 fn stats_are_printed() {
     let dir = tempdir().unwrap();
