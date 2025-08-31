@@ -118,9 +118,8 @@ Performance benchmarks and CPU feature detection details are documented in
 ## Manifest
 
 Content-defined chunking persists a manifest of seen chunks to
-`~/.oc-rsync/manifest`. If a legacy manifest exists at
-`~/.rsync-rs/manifest`, `oc-rsync` will automatically migrate it to the new
-location.
+`~/.oc-rsync/manifest`. If a manifest exists at the legacy location,
+`oc-rsync` will automatically migrate it to this path.
 
 ## License
 This project is dual-licensed under the terms of the [MIT](LICENSE-MIT) and [Apache-2.0](LICENSE-APACHE) licenses.

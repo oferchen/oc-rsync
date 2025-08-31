@@ -10,3 +10,9 @@ See [gaps.md](gaps.md) and [feature_matrix.md](feature_matrix.md) for any remain
 - BLAKE3 strong checksums negotiated via `--modern` or `--modern-hash`.
 - zstd and lz4 compression via `--modern` or `--modern-compress`.
 - Optional FastCDC chunking with `--modern-cdc`.
+
+## Manifest location
+
+The content-defined chunking manifest now resides at `~/.oc-rsync/manifest`.
+Previous versions stored it at `~/.rsync-rs/manifest`; `oc-rsync` automatically
+migrates existing manifests.
