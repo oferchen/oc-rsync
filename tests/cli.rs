@@ -264,6 +264,35 @@ fn resumes_from_partial_dir() {
 }
 
 #[test]
+fn resumes_from_partial_dir_with_subdirs() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    let partial_dir = dir.path().join("partial");
+    std::fs::create_dir_all(src_dir.join("sub")).unwrap();
+    std::fs::write(src_dir.join("sub/a.txt"), b"hello").unwrap();
+    std::fs::create_dir_all(partial_dir.join("sub")).unwrap();
+    std::fs::write(partial_dir.join("sub/a.partial"), b"he").unwrap();
+
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--local",
+        "--partial",
+        "--partial-dir",
+        partial_dir.to_str().unwrap(),
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    let out = std::fs::read(dst_dir.join("sub/a.txt")).unwrap();
+    assert_eq!(out, b"hello");
+    assert!(!partial_dir.join("sub/a.partial").exists());
+    assert!(!partial_dir.join("sub").exists());
+}
+
+#[test]
 fn resumes_from_partial_file() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
