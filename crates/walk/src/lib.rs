@@ -15,6 +15,7 @@ pub struct Entry {
     pub uid: usize,
     pub gid: usize,
     pub dev: usize,
+    pub inode: usize,
 }
 
 impl Entry {
@@ -35,6 +36,8 @@ pub struct Walk {
     gid_table: Vec<u32>,
     dev_map: HashMap<u64, usize>,
     dev_table: Vec<u64>,
+    inode_map: HashMap<(usize, u64), usize>,
+    inode_table: Vec<u64>,
 }
 
 impl Walk {
@@ -51,6 +54,8 @@ impl Walk {
             gid_table: Vec::new(),
             dev_map: HashMap::new(),
             dev_table: Vec::new(),
+            inode_map: HashMap::new(),
+            inode_table: Vec::new(),
         }
     }
 
@@ -64,6 +69,10 @@ impl Walk {
 
     pub fn devs(&self) -> &[u64] {
         &self.dev_table
+    }
+
+    pub fn inodes(&self) -> &[u64] {
+        &self.inode_table
     }
 }
 
@@ -89,9 +98,9 @@ impl Iterator for Walk {
                         Err(e) => return Some(Err(e)),
                     };
                     #[cfg(unix)]
-                    let (uid, gid, dev) = (meta.uid(), meta.gid(), meta.dev());
+                    let (uid, gid, dev, ino) = (meta.uid(), meta.gid(), meta.dev(), meta.ino());
                     #[cfg(not(unix))]
-                    let (uid, gid, dev) = (0u32, 0u32, 0u64);
+                    let (uid, gid, dev, ino) = (0u32, 0u32, 0u64, 0u64);
 
                     let uid_idx = *self.uid_map.entry(uid).or_insert_with(|| {
                         self.uid_table.push(uid);
@@ -105,6 +114,10 @@ impl Iterator for Walk {
                         self.dev_table.push(dev);
                         self.dev_table.len() - 1
                     });
+                    let inode_idx = *self.inode_map.entry((dev_idx, ino)).or_insert_with(|| {
+                        self.inode_table.push(ino);
+                        self.inode_table.len() - 1
+                    });
 
                     batch.push(Entry {
                         prefix_len: prefix,
@@ -113,6 +126,7 @@ impl Iterator for Walk {
                         uid: uid_idx,
                         gid: gid_idx,
                         dev: dev_idx,
+                        inode: inode_idx,
                     });
 
                     self.prev_path = path;

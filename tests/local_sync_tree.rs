@@ -6,7 +6,7 @@ use std::fs;
 #[cfg(target_os = "linux")]
 use std::os::unix::fs::FileTypeExt;
 #[cfg(unix)]
-use std::os::unix::fs::{MetadataExt, PermissionsExt};
+use std::os::unix::fs::{symlink, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 
@@ -249,7 +249,7 @@ fn sync_preserves_crtimes() {
 #[cfg(target_os = "linux")]
 #[test]
 fn sync_preserves_device_nodes() {
-    use nix::sys::stat::{makedev, major, minor, mknod, Mode, SFlag};
+    use nix::sys::stat::{major, makedev, minor, mknod, Mode, SFlag};
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -307,4 +307,56 @@ fn sync_preserves_hard_links() {
     let m1 = fs::metadata(dst.join("f1")).unwrap();
     let m2 = fs::metadata(dst.join("f2")).unwrap();
     assert_eq!(m1.ino(), m2.ino());
+}
+
+#[cfg(unix)]
+#[test]
+fn sync_preserves_symlinks() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("file"), b"hi").unwrap();
+    let _ = symlink("file", src.join("link"));
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let meta = fs::symlink_metadata(dst.join("link")).unwrap();
+    assert!(meta.file_type().is_symlink());
+    assert_eq!(
+        fs::read_link(dst.join("link")).unwrap(),
+        PathBuf::from("file")
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn sync_follows_symlinks() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("file"), b"hi").unwrap();
+    let _ = symlink("file", src.join("link"));
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--copy-links", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    assert!(dst.join("link").is_file());
+    assert_eq!(fs::read(dst.join("link")).unwrap(), b"hi");
 }
