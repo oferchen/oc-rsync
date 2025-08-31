@@ -1,12 +1,13 @@
 // bin/oc-rsync/src/main.rs
-use engine::Result;
+use engine::EngineError;
 use logging::LogFormat;
 use oc_rsync_cli::cli_command;
+use protocol::ExitCode;
 
-fn main() -> Result<()> {
+fn main() {
     if std::env::args().any(|a| a == "--version" || a == "-V") {
         println!("oc-rsync {}", env!("CARGO_PKG_VERSION"));
-        return Ok(());
+        return;
     }
     let matches = cli_command().get_matches();
     let verbose = matches.get_count("verbose") as u8;
@@ -23,5 +24,11 @@ fn main() -> Result<()> {
         })
         .unwrap_or(LogFormat::Text);
     logging::init(log_format, verbose, info, debug);
-    oc_rsync_cli::run(&matches)
+    if let Err(e) = oc_rsync_cli::run(&matches) {
+        let code = match e {
+            EngineError::MaxAlloc => ExitCode::Malloc,
+            _ => ExitCode::Protocol,
+        };
+        std::process::exit(u8::from(code) as i32);
+    }
 }

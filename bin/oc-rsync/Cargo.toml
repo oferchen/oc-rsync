@@ -11,6 +11,7 @@ path = "src/main.rs"
 oc-rsync-cli = { path = "../../crates/cli" }
 engine = { path = "../../crates/engine" }
 logging = { path = "../../crates/logging" }
+protocol = { path = "../../crates/protocol" }
 
 [features]
 default = []

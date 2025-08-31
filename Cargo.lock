@@ -986,6 +986,7 @@ dependencies = [
  "engine",
  "logging",
  "oc-rsync-cli",
+ "protocol",
 ]
 
 [[package]]
