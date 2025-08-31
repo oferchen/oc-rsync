@@ -2,9 +2,9 @@
 #[cfg(feature = "blake3")]
 use blake3::Hasher as Blake3;
 use md4::Md4;
+use md5::Digest;
 use md5::Md5;
 use sha1::Sha1;
-use md5::Digest;
 
 cpufeatures::new!(sse42, "sse4.2");
 cpufeatures::new!(avx2, "avx2");
@@ -223,10 +223,7 @@ mod tests {
     #[test]
     fn strong_digests() {
         let digest_md5 = strong_digest(b"hello world", StrongHash::Md5, 0);
-        assert_eq!(
-            hex::encode(digest_md5),
-            "be4b47980f89d075f8f7e7a9fab84e29",
-        );
+        assert_eq!(hex::encode(digest_md5), "be4b47980f89d075f8f7e7a9fab84e29",);
 
         let digest_sha1 = strong_digest(b"hello world", StrongHash::Sha1, 0);
         assert_eq!(
@@ -235,10 +232,7 @@ mod tests {
         );
 
         let digest_md4 = strong_digest(b"hello world", StrongHash::Md4, 0);
-        assert_eq!(
-            hex::encode(digest_md4),
-            "ea91f391e02b5e19f432b43bd87a531d",
-        );
+        assert_eq!(hex::encode(digest_md4), "ea91f391e02b5e19f432b43bd87a531d",);
 
         #[cfg(feature = "blake3")]
         {

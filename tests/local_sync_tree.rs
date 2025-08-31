@@ -222,7 +222,7 @@ fn sync_preserves_crtimes() {
     let src_meta = fs::metadata(&file).unwrap();
     let src_crtime = match FileTime::from_creation_time(&src_meta) {
         Some(t) => t,
-        None => return, 
+        None => return,
     };
 
     let src_arg = format!("{}/", src.display());
@@ -238,7 +238,6 @@ fn sync_preserves_crtimes() {
     match FileTime::from_creation_time(&dst_meta) {
         Some(t) => {
             if cfg!(target_os = "linux") && t != src_crtime {
-                
                 return;
             }
             assert_eq!(src_crtime, t)

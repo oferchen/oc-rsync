@@ -7,9 +7,6 @@ use tempfile::tempdir;
 
 #[test]
 fn cvs_exclude_parity() {
-    
-    
-    
     let rsync_version = StdCommand::new("rsync")
         .arg("--version")
         .output()

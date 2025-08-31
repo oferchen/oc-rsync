@@ -50,6 +50,14 @@ pub fn human_bytes(bytes: u64) -> String {
     }
 }
 
+fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
+    if len > opts.max_alloc as u64 {
+        Err(EngineError::Other("max-alloc limit exceeded".into()))
+    } else {
+        Ok(())
+    }
+}
+
 fn files_identical(a: &Path, b: &Path) -> bool {
     if let (Ok(ma), Ok(mb)) = (fs::metadata(a), fs::metadata(b)) {
         if ma.len() != mb.len() {
@@ -536,6 +544,8 @@ impl Sender {
             return Ok(false);
         }
 
+        let src_len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+        ensure_max_alloc(src_len, &self.opts)?;
         let src = File::open(path)?;
         let mut src_reader = BufReader::new(src);
         let file_codec = if should_compress(path, &self.opts.skip_compress) {
@@ -567,7 +577,6 @@ impl Sender {
         } else {
             0
         };
-        let src_len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
         if resume > src_len {
             resume = src_len;
         }
@@ -575,12 +584,18 @@ impl Sender {
             Box::new(Cursor::new(Vec::new()))
         } else {
             match File::open(&basis_path) {
-                Ok(f) => Box::new(BufReader::new(f)),
+                Ok(f) => {
+                    let len = f.metadata().map(|m| m.len()).unwrap_or(0);
+                    ensure_max_alloc(len, &self.opts)?;
+                    Box::new(BufReader::new(f))
+                }
                 Err(_) => Box::new(Cursor::new(Vec::new())),
             }
         };
         let mut buf: Vec<u8> = Vec::new();
         let delta: Box<dyn Iterator<Item = Result<Op>> + '_> = if self.opts.whole_file {
+            let len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+            ensure_max_alloc(len, &self.opts)?;
             src_reader.read_to_end(&mut buf)?;
             Box::new(std::iter::once(Ok(Op::Data(buf))))
         } else {
@@ -726,7 +741,9 @@ impl Receiver {
         };
         let mut basis: Box<dyn ReadSeek> = match File::open(&basis_path) {
             Ok(mut f) => {
-                let mut buf = Vec::new();
+                let len = f.metadata().map(|m| m.len()).unwrap_or(0);
+                ensure_max_alloc(len, &self.opts)?;
+                let mut buf = Vec::with_capacity(len as usize);
                 f.read_to_end(&mut buf)?;
                 Box::new(Cursor::new(buf))
             }
@@ -933,6 +950,8 @@ pub enum ModernCdc {
 pub struct SyncOptions {
     pub delete: Option<DeleteMode>,
     pub delete_excluded: bool,
+    pub max_delete: Option<usize>,
+    pub max_alloc: usize,
     pub checksum: bool,
     pub compress: bool,
     pub modern_compress: Option<ModernCompress>,
@@ -1008,6 +1027,8 @@ impl Default for SyncOptions {
         Self {
             delete: None,
             delete_excluded: false,
+            max_delete: None,
+            max_alloc: 1 << 30,
             checksum: false,
             compress: false,
             modern_compress: None,
@@ -1167,6 +1188,11 @@ fn delete_extraneous(
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
                 let src_exists = src.join(rel).exists();
                 if (included && !src_exists) || (!included && opts.delete_excluded) {
+                    if let Some(max) = opts.max_delete {
+                        if stats.files_deleted >= max {
+                            return Err(EngineError::Other("max-delete limit exceeded".into()));
+                        }
+                    }
                     if opts.backup {
                         let backup_path = if let Some(ref dir) = opts.backup_dir {
                             dir.join(rel)
