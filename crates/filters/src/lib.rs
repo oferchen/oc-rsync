@@ -511,18 +511,9 @@ impl Matcher {
                         buf.push_str("!\n");
                         continue;
                     }
-                    let (prefix, pat) = match line.chars().next() {
-                        Some(c @ ('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R')) => {
-                            (Some(c), line[1..].trim_start())
-                        }
+                    let (prefix, rest) = match line.chars().next() {
+                        Some(c @ ('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R')) => (Some(c), &line[1..]),
                         _ => (None, line),
-                    let rest = if matches!(
-                        line.chars().next(),
-                        Some('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R')
-                    ) {
-                        &line[1..]
-                    } else {
-                        line
                     };
                     let (mods, pat) = split_mods(rest);
                     let new_pat = if let Some(rel_str) = &rel_str {
