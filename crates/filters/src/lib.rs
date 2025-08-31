@@ -359,7 +359,7 @@ impl Matcher {
                 dir.join(&pd.file)
             };
 
-            let rel = if pd.anchored {
+            let rel = if pd.root_only {
                 None
             } else {
                 self.root
@@ -626,7 +626,7 @@ impl Matcher {
                     if !visited.insert(nested.clone()) {
                         return Err(ParseError::RecursiveInclude(nested));
                     }
-                    let rel2 = if pd.anchored {
+                    let rel2 = if pd.root_only {
                         None
                     } else {
                         let mut base = rel.map(|p| p.to_path_buf()).unwrap_or_else(PathBuf::new);
@@ -758,7 +758,7 @@ pub fn parse(
             if count == rest.len() {
                 rules.push(Rule::DirMerge(PerDir {
                     file: ".rsync-filter".to_string(),
-                    anchored: false,
+                    anchored: true,
                     root_only: false,
                     inherit: true,
                     cvs: false,

@@ -110,6 +110,50 @@ fn filter_corpus_parity() {
 }
 
 #[test]
+fn perdir_rules_excludes_filter_files() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let rsync_dst = tmp.path().join("rsync");
+    let ours_dst = tmp.path().join("ours");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&rsync_dst).unwrap();
+    fs::create_dir_all(&ours_dst).unwrap();
+    setup_perdir(&src);
+
+    let rules_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/filter_corpus/perdir.rules");
+    let rules_line = fs::read_to_string(rules_path).unwrap();
+    let args = split(rules_line.trim()).unwrap();
+    let src_arg = format!("{}/", src.display());
+
+    let mut rsync_cmd = StdCommand::new("rsync");
+    rsync_cmd.args(["-r", "--quiet"]);
+    rsync_cmd.args(&args);
+    rsync_cmd.arg(&src_arg);
+    rsync_cmd.arg(&rsync_dst);
+    let rsync_out = rsync_cmd.output().unwrap();
+    assert!(rsync_out.status.success());
+
+    let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
+    ours_cmd.args(["--local", "--recursive"]);
+    ours_cmd.args(&args);
+    ours_cmd.arg(&src_arg);
+    ours_cmd.arg(&ours_dst);
+    let ours_out = ours_cmd.output().unwrap();
+    assert!(ours_out.status.success());
+
+    let diff = StdCommand::new("diff")
+        .arg("-r")
+        .arg(&rsync_dst)
+        .arg(&ours_dst)
+        .output()
+        .unwrap();
+    assert!(diff.status.success(), "directory trees differ");
+
+    assert!(!ours_dst.join(".rsync-filter").exists());
+    assert!(!ours_dst.join("sub/.rsync-filter").exists());
+}
+
+#[test]
 fn ignores_parent_rsync_filter_with_ff() {
     let tmp = tempdir().unwrap();
     let parent = tmp.path();
@@ -172,7 +216,7 @@ fn perdir_sign_parity() {
         vec!["--filter=:+ .rsync-filter", "--filter=- .rsync-filter"],
         vec!["--filter=:+,r .rsync-filter", "--filter=- .rsync-filter"],
     ];
-    for args in cases { 
+    for args in cases {
         let tmp = tempdir().unwrap();
         let src = tmp.path().join("src");
         let rsync_dst = tmp.path().join("rsync");
