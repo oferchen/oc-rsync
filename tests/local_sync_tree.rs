@@ -249,7 +249,7 @@ fn sync_preserves_crtimes() {
 #[cfg(target_os = "linux")]
 #[test]
 fn sync_preserves_device_nodes() {
-    use nix::sys::stat::{makedev, mknod, Mode, SFlag};
+    use nix::sys::stat::{makedev, major, minor, mknod, Mode, SFlag};
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -276,7 +276,10 @@ fn sync_preserves_device_nodes() {
 
     let meta = fs::symlink_metadata(dst.join("null")).unwrap();
     assert!(meta.file_type().is_char_device());
-    assert_eq!(meta.rdev(), makedev(1, 3));
+    let rdev = meta.rdev();
+    assert_eq!(rdev, makedev(1, 3));
+    assert_eq!(major(rdev), 1);
+    assert_eq!(minor(rdev), 3);
 }
 
 #[cfg(unix)]
