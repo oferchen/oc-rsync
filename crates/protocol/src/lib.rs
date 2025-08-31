@@ -11,8 +11,10 @@ pub use demux::Demux;
 pub use mux::Mux;
 pub use server::Server;
 
-pub const LATEST_VERSION: u32 = 73;
-pub const MIN_VERSION: u32 = 27;
+pub const V32: u32 = 32;
+pub const V31: u32 = 31;
+pub const LATEST_VERSION: u32 = V32;
+pub const MIN_VERSION: u32 = V31;
 
 pub const CAP_CODECS: u32 = 1 << 0;
 pub const CAP_BLAKE3: u32 = 1 << 1;
@@ -38,15 +40,12 @@ impl From<VersionError> for io::Error {
 }
 
 pub fn negotiate_version(local: u32, peer: u32) -> Result<u32, VersionError> {
-    if local >= LATEST_VERSION && peer >= LATEST_VERSION {
-        Ok(LATEST_VERSION)
+    if local >= V32 && peer >= V32 {
+        Ok(V32)
+    } else if local >= V31 && peer >= V31 {
+        Ok(V31)
     } else {
-        let v = local.min(peer);
-        if v >= MIN_VERSION {
-            Ok(v)
-        } else {
-            Err(VersionError(v))
-        }
+        Err(VersionError(local.min(peer)))
     }
 }
 
@@ -441,14 +440,11 @@ mod tests {
 
     #[test]
     fn version_negotiation() {
-        assert_eq!(negotiate_version(73, 80), Ok(73));
-        assert_eq!(negotiate_version(73, 73), Ok(73));
-        assert_eq!(negotiate_version(73, 40), Ok(40));
-        assert_eq!(negotiate_version(40, 73), Ok(40));
-        for v in 27..=40 {
-            assert_eq!(negotiate_version(73, v), Ok(v));
-        }
-        assert!(negotiate_version(27, 26).is_err());
+        assert_eq!(negotiate_version(V32, V32), Ok(V32));
+        assert_eq!(negotiate_version(V32, V31), Ok(V31));
+        assert_eq!(negotiate_version(V31, V32), Ok(V31));
+        assert_eq!(negotiate_version(V31, V31), Ok(V31));
+        assert!(negotiate_version(V32, 30).is_err());
     }
 
     #[test]

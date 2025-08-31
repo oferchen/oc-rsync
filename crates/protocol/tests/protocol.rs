@@ -1,5 +1,5 @@
 // crates/protocol/tests/protocol.rs
-use protocol::{negotiate_version, Frame, Message, Msg, Tag};
+use protocol::{negotiate_version, Frame, Message, Msg, Tag, V31, V32};
 
 #[test]
 fn frame_roundtrip() {
@@ -38,13 +38,11 @@ fn keepalive_roundtrip() {
 
 #[test]
 fn version_negotiation() {
-    assert_eq!(negotiate_version(73, 73), Ok(73));
-    assert_eq!(negotiate_version(73, 40), Ok(40));
-    assert_eq!(negotiate_version(40, 73), Ok(40));
-    for v in 27..=40 {
-        assert_eq!(negotiate_version(73, v), Ok(v));
-    }
-    assert!(negotiate_version(27, 26).is_err());
+    assert_eq!(negotiate_version(V32, V32), Ok(V32));
+    assert_eq!(negotiate_version(V32, V31), Ok(V31));
+    assert_eq!(negotiate_version(V31, V32), Ok(V31));
+    assert_eq!(negotiate_version(V31, V31), Ok(V31));
+    assert!(negotiate_version(V32, 30).is_err());
 }
 
 #[test]
