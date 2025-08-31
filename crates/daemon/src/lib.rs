@@ -4,10 +4,10 @@
 //! invalid, such as when the `port` value cannot be parsed.
 
 use std::env;
-use std::fs;
-use std::io::{self};
-use std::path::{Path, PathBuf};
+use std::fs::{self, OpenOptions};
+use std::io::{self, Write};
 use std::net::IpAddr;
+use std::path::{Path, PathBuf};
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -44,9 +44,7 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
     let abs = if raw.is_absolute() {
         raw
     } else {
-        env::current_dir()
-            .map_err(|e| e.to_string())?
-            .join(raw)
+        env::current_dir().map_err(|e| e.to_string())?.join(raw)
     };
     let canonical = fs::canonicalize(abs).map_err(|e| e.to_string())?;
     Ok(Module {
@@ -275,6 +273,33 @@ pub fn authenticate<T: Transport>(
         };
         Ok((token_opt, Vec::new(), no_motd))
     }
+}
+
+/// After a client has been authorized to access a module, this helper
+/// performs final setup before the transfer occurs.  It optionally logs the
+/// connection, then `chroot`s into the module directory and drops privileges
+/// to the supplied user and group.
+pub fn serve_module<T: Transport>(
+    _t: &mut T,
+    module: &Module,
+    peer: &str,
+    log_file: Option<&Path>,
+    log_format: Option<&str>,
+    uid: u32,
+    gid: u32,
+) -> io::Result<()> {
+    if let Some(path) = log_file {
+        let fmt = log_format.unwrap_or("%h %m");
+        let line = fmt.replace("%h", peer).replace("%m", &module.name);
+        let mut f = OpenOptions::new().create(true).append(true).open(path)?;
+        writeln!(f, "{}", line)?;
+        f.flush()?;
+    }
+    #[cfg(unix)]
+    {
+        chroot_and_drop_privileges(&module.path, uid, gid)?;
+    }
+    Ok(())
 }
 
 #[cfg(unix)]
