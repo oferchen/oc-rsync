@@ -579,6 +579,8 @@ struct DaemonOpts {
     module: Vec<Module>,
     #[arg(long)]
     address: Option<IpAddr>,
+    #[arg(long, value_name = "PORT")]
+    port: Option<u16>,
     #[arg(long = "secrets-file", value_name = "FILE")]
     secrets_file: Option<PathBuf>,
     #[arg(long = "hosts-allow", value_delimiter = ',', value_name = "LIST")]
@@ -1842,7 +1844,7 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut motd = opts.motd.clone();
     let lock_file = opts.lock_file.clone();
     let state_dir = opts.state_dir.clone();
-    let mut port = matches.get_one::<u16>("port").copied().unwrap_or(873);
+    let mut port = opts.port.unwrap_or(873);
     let mut address = opts.address;
     let timeout = matches.get_one::<Duration>("timeout").copied();
     let bwlimit = matches.get_one::<u64>("bwlimit").copied();
@@ -1907,7 +1909,7 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
         65534,
         handler,
     )
-    .map_err(|e| EngineError::Other(e.to_string()))
+    .map_err(|e| EngineError::Other(format!("daemon failed to bind to port {port}: {e}")))
 }
 
 #[allow(dead_code)]
