@@ -6,10 +6,10 @@ pub use unix::*;
 // Re-export device number helpers so consumers can construct and
 // deconstruct `dev_t` values without depending on `nix` directly.
 #[cfg(target_os = "linux")]
-pub use nix::sys::stat::{makedev, major, minor};
+pub use nix::sys::stat::{major, makedev, minor};
 
 #[cfg(target_os = "macos")]
-pub use libc::{makedev, major, minor};
+pub use libc::{major, makedev, minor};
 
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
 mod stub;
@@ -39,6 +39,7 @@ impl Options {
 #[cfg(unix)]
 use filetime::set_symlink_file_times;
 use filetime::{set_file_times, FileTime};
+use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -85,6 +86,44 @@ impl AccessTime {
 impl Drop for AccessTime {
     fn drop(&mut self) {
         let _ = self.restore();
+    }
+}
+
+/// Table mapping group IDs to compact indexes.
+///
+/// This helps build the `gid` table used by the file list so that
+/// repeated group IDs are transmitted only once. Calling [`push`]
+/// returns the index for the provided `gid`, inserting it into the
+/// table if it wasn't already present.
+#[derive(Debug, Default, Clone)]
+pub struct GidTable {
+    map: HashMap<u32, usize>,
+    table: Vec<u32>,
+}
+
+impl GidTable {
+    /// Create a new, empty table.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Insert `gid` into the table if it is not present, returning the
+    /// index associated with it.
+    pub fn push(&mut self, gid: u32) -> usize {
+        *self.map.entry(gid).or_insert_with(|| {
+            self.table.push(gid);
+            self.table.len() - 1
+        })
+    }
+
+    /// Returns the group ID stored at `idx`, if any.
+    pub fn gid(&self, idx: usize) -> Option<u32> {
+        self.table.get(idx).copied()
+    }
+
+    /// Exposes the underlying slice of group IDs in insertion order.
+    pub fn as_slice(&self) -> &[u32] {
+        &self.table
     }
 }
 #[cfg(feature = "acl")]
