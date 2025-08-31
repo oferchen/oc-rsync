@@ -160,7 +160,7 @@
 | -k | --copy-dirlinks | transform symlink to dir into referent dir | no |  | no |
 | -L | --copy-links | transform symlink into referent file/dir | no |  | no |
 |  | --copy-unsafe-links | only "unsafe" symlinks are transformed | no |  | no |
-|  | --delay-updates | put all updated files into place at end | no |  | no |
+|  | --delay-updates | put all updated files into place at end | yes |  | yes |
 | -d | --dirs | transfer directories without recursing | no |  | no |
 |  | --existing | skip creating new files on receiver | yes |  | no |
 | -y | --fuzzy | find similar file for basis if no dest file | no |  | no |

@@ -873,10 +873,10 @@ impl Sender {
             }
             Ok(op)
         });
-        recv.apply(path, dest, rel, ops)?;
+        let write_path = recv.apply(path, dest, rel, ops)?;
         drop(atime_guard);
         recv.copy_metadata(path, dest)?;
-        recv.progress(dest)?;
+        recv.progress(&write_path)?;
         Ok(true)
     }
 }
@@ -885,6 +885,7 @@ pub struct Receiver {
     state: ReceiverState,
     codec: Option<Codec>,
     opts: SyncOptions,
+    delayed: Vec<(PathBuf, PathBuf, PathBuf)>,
 }
 
 impl Default for Receiver {
@@ -899,10 +900,11 @@ impl Receiver {
             state: ReceiverState::Idle,
             codec,
             opts,
+            delayed: Vec::new(),
         }
     }
 
-    fn apply<I>(&mut self, src: &Path, dest: &Path, rel: &Path, delta: I) -> Result<()>
+    pub fn apply<I>(&mut self, src: &Path, dest: &Path, rel: &Path, delta: I) -> Result<PathBuf>
     where
         I: IntoIterator<Item = Result<Op>>,
     {
@@ -936,8 +938,14 @@ impl Receiver {
         if auto_tmp {
             tmp_dest = dest.with_extension("tmp");
         }
-        let needs_rename =
+        let mut needs_rename =
             !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some() || auto_tmp);
+        if self.opts.delay_updates && !self.opts.inplace && !self.opts.write_devices {
+            if tmp_dest == dest {
+                tmp_dest = dest.with_extension("tmp");
+            }
+            needs_rename = true;
+        }
         let cfg = ChecksumConfigBuilder::new()
             .strong(self.opts.strong)
             .seed(self.opts.checksum_seed)
@@ -1073,6 +1081,21 @@ impl Receiver {
         }
         drop(out);
         if needs_rename {
+            if self.opts.delay_updates {
+                self.delayed
+                    .push((src.to_path_buf(), tmp_dest.clone(), dest.to_path_buf()));
+            } else {
+                atomic_rename(&tmp_dest, dest)?;
+                if let Some(tmp_parent) = tmp_dest.parent() {
+                    if dest.parent().map_or(true, |p| p != tmp_parent) {
+                        if tmp_parent
+                            .read_dir()
+                            .map(|mut i| i.next().is_none())
+                            .unwrap_or(false)
+                        {
+                            let _ = fs::remove_dir(tmp_parent);
+                        }
+                    }
             atomic_rename(&tmp_dest, dest)?;
             if let Some(tmp_parent) = tmp_dest.parent() {
                 if dest.parent() != Some(tmp_parent)
@@ -1083,19 +1106,30 @@ impl Receiver {
                 {
                     let _ = fs::remove_dir(tmp_parent);
                 }
+                #[cfg(unix)]
+                if let Some((uid, gid)) = self.opts.copy_as {
+                    let gid = gid.map(Gid::from_raw);
+                    chown(dest, Some(Uid::from_raw(uid)), gid)
+                        .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
+                }
+            }
+        } else {
+            #[cfg(unix)]
+            if let Some((uid, gid)) = self.opts.copy_as {
+                let gid = gid.map(Gid::from_raw);
+                chown(dest, Some(Uid::from_raw(uid)), gid)
+                    .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
             }
         }
-        #[cfg(unix)]
-        if let Some((uid, gid)) = self.opts.copy_as {
-            let gid = gid.map(Gid::from_raw);
-            chown(dest, Some(Uid::from_raw(uid)), gid)
-                .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
-        }
         self.state = ReceiverState::Finished;
-        Ok(())
+        Ok(if self.opts.delay_updates && needs_rename {
+            tmp_dest
+        } else {
+            dest.to_path_buf()
+        })
     }
 
-    fn progress(&self, dest: &Path) -> Result<()> {
+    pub fn progress(&self, dest: &Path) -> Result<()> {
         if self.opts.progress {
             let len = fs::metadata(dest).map_err(|e| io_context(dest, e))?.len();
             if self.opts.human_readable {
@@ -1109,7 +1143,7 @@ impl Receiver {
 }
 
 impl Receiver {
-    fn copy_metadata(&self, src: &Path, dest: &Path) -> Result<()> {
+    fn copy_metadata_now(&self, src: &Path, dest: &Path) -> Result<()> {
         #[cfg(unix)]
         if self.opts.write_devices {
             if let Ok(meta) = fs::symlink_metadata(dest) {
@@ -1206,6 +1240,38 @@ impl Receiver {
         let _ = (src, dest);
         Ok(())
     }
+
+    pub fn copy_metadata(&mut self, src: &Path, dest: &Path) -> Result<()> {
+        if self.opts.delay_updates && self.delayed.iter().any(|(_, _, d)| d == dest) {
+            return Ok(());
+        }
+        self.copy_metadata_now(src, dest)
+    }
+
+    pub fn finalize(&mut self) -> Result<()> {
+        for (src, tmp, dest) in std::mem::take(&mut self.delayed) {
+            atomic_rename(&tmp, &dest)?;
+            if let Some(tmp_parent) = tmp.parent() {
+                if dest.parent().map_or(true, |p| p != tmp_parent) {
+                    if tmp_parent
+                        .read_dir()
+                        .map(|mut i| i.next().is_none())
+                        .unwrap_or(false)
+                    {
+                        let _ = fs::remove_dir(tmp_parent);
+                    }
+                }
+            }
+            #[cfg(unix)]
+            if let Some((uid, gid)) = self.opts.copy_as {
+                let gid = gid.map(Gid::from_raw);
+                chown(&dest, Some(Uid::from_raw(uid)), gid)
+                    .map_err(|e| io_context(&dest, std::io::Error::from(e)))?;
+            }
+            self.copy_metadata_now(&src, &dest)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1288,6 +1354,7 @@ pub struct SyncOptions {
     pub append_verify: bool,
     pub numeric_ids: bool,
     pub inplace: bool,
+    pub delay_updates: bool,
     pub modify_window: Duration,
     pub bwlimit: Option<u64>,
     pub block_size: usize,
@@ -1379,6 +1446,7 @@ impl Default for SyncOptions {
             append_verify: false,
             numeric_ids: false,
             inplace: false,
+            delay_updates: false,
             modify_window: Duration::ZERO,
             bwlimit: None,
             block_size: 1024,
@@ -2034,6 +2102,7 @@ pub fn sync(
         }
     }
     sender.finish();
+    receiver.finalize()?;
     if matches!(
         opts.delete,
         Some(DeleteMode::After) | Some(DeleteMode::During)
