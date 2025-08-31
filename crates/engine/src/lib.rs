@@ -1389,6 +1389,11 @@ pub fn sync(
                     {
                         continue;
                     }
+                    if entry.file_type.is_dir() {
+                        matcher
+                            .preload_dir(&path)
+                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+                    }
                     if opts.dirs && !entry.file_type.is_dir() {
                         continue;
                     }
@@ -1586,6 +1591,9 @@ pub fn sync(
                         fs::remove_file(&path)?;
                     }
                 } else if file_type.is_dir() {
+                    matcher
+                        .preload_dir(&path)
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
                     let created = !dest_path.exists();
                     fs::create_dir_all(&dest_path)?;
                     if created && opts.itemize_changes {

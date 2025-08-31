@@ -151,6 +151,11 @@ impl Matcher {
         self.check(name.as_ref(), true, true)
     }
 
+    pub fn preload_dir<P: AsRef<Path>>(&self, dir: P) -> Result<(), ParseError> {
+        let _ = self.dir_rules_at(dir.as_ref(), false, false)?;
+        Ok(())
+    }
+
     fn check(&self, path: &Path, for_delete: bool, xattr: bool) -> Result<bool, ParseError> {
         let path = path;
         if self.existing {
@@ -222,7 +227,7 @@ impl Matcher {
         }
 
         let mut decision: Option<bool> = None;
-        for rule in &ordered {
+        for rule in ordered.iter().rev() {
             match rule {
                 Rule::Protect(data) => {
                     if !data.flags.applies(for_delete, xattr) {
