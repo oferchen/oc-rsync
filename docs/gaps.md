@@ -1,66 +1,67 @@
-# Project Gaps
+# Gap Analysis
 
-This document tracks outstanding gaps in `oc-rsync` compared to the reference `rsync` implementation. Update this file as features are implemented. For a per-option overview see [feature_matrix.md](feature_matrix.md) and for high-level parity notes see [differences.md](differences.md).
+This page enumerates known gaps between **oc-rsync** and upstream
+`rsync`. Each item links to the relevant source code and test
+coverage so progress can be tracked as features land.
 
-## Recently addressed gaps
-- Partial transfer resumption now reuses `.partial` files and retransfers only missing blocks.
+## Protocol
+- `--block-size` — behavior differs from upstream. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/block_size.rs](../tests/block_size.rs)
+- `--bwlimit` — rate limiting semantics differ. [transport/src/rate.rs](../crates/transport/src/rate.rs) · [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs)
+- `--contimeout` — connection timeout handling incomplete. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/timeout.rs](../tests/timeout.rs)
+- `--server` — handshake lacks full parity. [protocol/src/server.rs](../crates/protocol/src/server.rs) · [tests/server.rs](../tests/server.rs)
+- `--timeout` — timeout semantics differ. [transport/src/lib.rs](../crates/transport/src/lib.rs) · [tests/timeout.rs](../tests/timeout.rs)
 
-## Protocol gaps
-- `--block-size` — behavior differs from upstream. [tests/block_size.rs](../tests/block_size.rs) [feature_matrix](feature_matrix.md#L17)
-- `--bwlimit` — rate limiting semantics differ. [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) [feature_matrix](feature_matrix.md#L19)
- - `--contimeout` — connection timeout handling incomplete. [tests/timeout.rs](../tests/timeout.rs) [feature_matrix](feature_matrix.md#L32)
- - `--server` — handshake lacks full parity. [tests/server.rs](../tests/server.rs) [feature_matrix](feature_matrix.md#L134)
-- `--timeout` — timeout semantics differ. [tests/timeout.rs](../tests/timeout.rs) [feature_matrix](feature_matrix.md#L147)
+## Metadata
+- `--acls` — ACL support requires optional feature and lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs)
+- `--atimes` — access time preservation incomplete. [meta/src/lib.rs](../crates/meta/src/lib.rs) · [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs)
+- `--devices` — device file handling lacks parity. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)
+- `--groupmap` — numeric gid mapping only; group names unsupported. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/cli.rs](../tests/cli.rs)
+- `--hard-links` — hard link tracking incomplete. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)
+- `--keep-dirlinks` — not implemented. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) *(needs dedicated test)*
+- `--links` — symlink handling lacks parity. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
+- `--owner` — ownership restoration lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/cli.rs](../tests/cli.rs)
+- `--perms` — permission preservation incomplete. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
+- `--usermap` — numeric uid mapping only; user names unsupported. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/cli.rs](../tests/cli.rs)
+- `--xattrs` — extended attribute support requires optional feature and lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs)
 
-## Metadata gaps
-- `--acls` — ACL support requires optional feature and lacks parity. [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) [feature_matrix](feature_matrix.md#L9)
-- `--atimes` — access time preservation incomplete. [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) [feature_matrix](feature_matrix.md#L14)
- - `--devices` — device file handling lacks parity. [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) [feature_matrix](feature_matrix.md#L52)
- - `--groupmap` — numeric gid mapping only; group names unsupported and requires root or CAP_CHOWN. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L74)
- - `--hard-links` — hard link tracking incomplete. [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) [feature_matrix](feature_matrix.md#L69)
- - `--keep-dirlinks` — not implemented. [feature_matrix](feature_matrix.md#L84) ([TODO](#testing-gaps))
- - `--links` — symlink handling lacks parity. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L86)
- - `--owner` — ownership restoration lacks parity. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L113)
- - `--perms` — permission preservation incomplete. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L117)
- - `--usermap` — numeric uid mapping only; user names unsupported and requires root or CAP_CHOWN. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L163)
- - `--xattrs` — extended attribute support requires optional feature and lacks parity. [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) [feature_matrix](feature_matrix.md#L157)
+## Filters
+- `--exclude` — filter syntax coverage incomplete. [filters/src/lib.rs](../crates/filters/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
+- `--exclude-from` — partial support for external lists. [filters/src/lib.rs](../crates/filters/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
+- `--files-from` — partial support for list files. [filters/src/lib.rs](../crates/filters/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
+- `--from0` — null-separated list handling incomplete. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
+- `--include` — filter syntax coverage incomplete. [filters/src/lib.rs](../crates/filters/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
+- `--include-from` — partial support for external lists. [filters/src/lib.rs](../crates/filters/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
 
-## Filter gaps
-- `--exclude` — filter syntax coverage incomplete. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L56)
-- `--exclude-from` — partial support for external lists. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L57)
-- `--files-from` — partial support for list files. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L61)
-- `--from0` — null-separated list handling incomplete. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L64)
-- `--include` — filter syntax coverage incomplete. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L77)
-- `--include-from` — partial support for external lists. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L78)
+## Daemon
+- `--address` — binding to specific address lacks parity. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
+- `--daemon` — daemon mode incomplete. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
+- `--no-motd` — MOTD suppression lacks parity. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
+- `--password-file` — authentication semantics differ. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
+- `--port` — custom port handling incomplete. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
+- `--ipv4`/`--ipv6` — protocol selection lacks parity. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
+- `--secrets-file` — module authentication incomplete. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
+- `--timeout` — connection timeout semantics differ. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
 
-## Daemon gaps
-- `--address` — binding to specific address lacks parity. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L10)
-- `--daemon` — daemon mode incomplete. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L41)
-- `--no-motd` — MOTD suppression lacks parity. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L101)
-- `--password-file` — authentication semantics differ. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L116)
-- `--port` — custom port handling incomplete. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L118)
-- `--ipv4`/`--ipv6` — protocol selection lacks parity. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L81) [feature_matrix](feature_matrix.md#L82)
-- `--secrets-file` — module authentication incomplete. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L133)
-- `--timeout` — connection timeout semantics differ. [tests/daemon.rs](../tests/daemon.rs) [feature_matrix](feature_matrix.md#L147)
+## Resume/Partials
+- `--append` / `--append-verify` — remote resume semantics untested. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/resume.rs](../tests/resume.rs)
+- `--partial-dir` — remote partial directory handling lacks parity. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*
 
-## Resume/partials gaps
-- `--append`/`--append-verify` — remote resume semantics untested. [tests/resume.rs](../tests/resume.rs) [feature_matrix](feature_matrix.md#L11) [feature_matrix](feature_matrix.md#L12) ([TODO](#testing-gaps))
-- `--partial-dir` — remote partial directory handling lacks parity. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L118) ([TODO](#testing-gaps))
+## Progress & Exit Codes
+- `--progress` — progress output differs from upstream. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
+- Exit code propagation across transports lacks coverage. [protocol/src/lib.rs](../crates/protocol/src/lib.rs) · [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs)
 
-## Progress & exit code gaps
-- `--progress` — progress output differs from upstream. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L123)
-- Exit code propagation across transports lacks coverage. [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs) [tests/partial_transfer_resume.sh](../tests/partial_transfer_resume.sh) ([TODO](#testing-gaps))
+## Error Propagation
+- Forwarding errors between remote endpoints is under-tested. [protocol/src/demux.rs](../crates/protocol/src/demux.rs) · [tests/remote_remote.rs](../tests/remote_remote.rs)
 
-## Error propagation gaps
-- Error forwarding between remote endpoints not thoroughly tested. [tests/server.rs](../tests/server.rs) [tests/remote_remote.rs](../tests/remote_remote.rs) ([TODO](#testing-gaps))
+## Performance Knobs
+- `--max-alloc` — not implemented. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/perf_limits.rs](../tests/perf_limits.rs)
+- `--temp-dir` — cross-filesystem behavior differs. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
 
-## Performance knob gaps
-- `--max-alloc` — not implemented. [feature_matrix](feature_matrix.md#L90) ([TODO](#testing-gaps))
-- `--temp-dir` — cross-filesystem behavior differs. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L149)
+## CI
+- CI runs only on Linux; other platforms are cross-compiled without tests. [compatibility.md](compatibility.md) · [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh)
+- Interop matrix lacks scenarios for resume and progress flags. [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh)
 
-## CI gaps
-- CI covers only Linux builds; other platforms are cross-compiled without tests. [compatibility.md](compatibility.md#L11) [compatibility.md](compatibility.md#L13) ([TODO](#testing-gaps))
-- Interop matrix lacks scenarios for resume and progress flags. [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) ([TODO](#testing-gaps))
+## Testing
+Many options above lack dedicated coverage; expand tests under
+[tests/](../tests) to close remaining gaps.
 
-## Testing gaps
-Many options above lack automated tests. Options marked with `[TODO](#testing-gaps)` need dedicated coverage in `tests/` before gaps can be closed.
