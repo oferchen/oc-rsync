@@ -72,8 +72,11 @@ fn daemon_config_authentication() {
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
-    t.authenticate(Some("secret")).unwrap();
+    t.authenticate(Some("secret"), false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
     t.send(b"data\n").unwrap();
+    t.send(b"\n").unwrap();
     t.set_read_timeout(Some(Duration::from_millis(200)))
         .unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
@@ -171,8 +174,11 @@ fn daemon_config_module_secrets_file() {
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
-    t.authenticate(Some("secret")).unwrap();
+    t.authenticate(Some("secret"), false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
     t.send(b"data\n").unwrap();
+    t.send(b"\n").unwrap();
     t.set_read_timeout(Some(Duration::from_millis(200)))
         .unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
