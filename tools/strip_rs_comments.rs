@@ -50,10 +50,9 @@ fn process_file(path: &Path, check: bool) -> Result<bool, Box<dyn std::error::Er
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = env::args().skip(1);
     let mut check = false;
     let mut paths = Vec::new();
-    while let Some(arg) = args.next() {
+    for arg in env::args().skip(1) {
         if arg == "--check" {
             check = true;
         } else {
