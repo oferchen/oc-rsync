@@ -120,7 +120,7 @@ fn custom_rsh_negotiates_codecs() {
         .filter(|(k, _)| k.starts_with("RSYNC_"))
         .collect();
     let remote_env: Vec<(String, String)> = Vec::new();
-    let (session, codecs) = SshStdioTransport::connect_with_rsh(
+    let (session, codecs, _caps) = SshStdioTransport::connect_with_rsh(
         "ignored",
         Path::new("."),
         &rsh_cmd,

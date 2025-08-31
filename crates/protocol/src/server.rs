@@ -2,7 +2,7 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
-use crate::{negotiate_version, Demux, Frame, Message, Mux, CAP_CODECS, SUPPORTED_CAPS};
+use crate::{negotiate_version, Demux, Frame, Message, Mux, CAP_CODECS};
 use compress::{decode_codecs, encode_codecs, Codec};
 
 pub struct Server<R: Read, W: Write> {
@@ -11,6 +11,7 @@ pub struct Server<R: Read, W: Write> {
     pub mux: Mux,
     pub demux: Demux,
     pub version: u32,
+    pub caps: u32,
 }
 
 impl<R: Read, W: Write> Server<R, W> {
@@ -21,10 +22,16 @@ impl<R: Read, W: Write> Server<R, W> {
             mux: Mux::new(timeout),
             demux: Demux::new(timeout),
             version: 0,
+            caps: 0,
         }
     }
 
-    pub fn handshake(&mut self, codecs: &[Codec]) -> io::Result<Vec<Codec>> {
+    pub fn handshake(
+        &mut self,
+        version: u32,
+        caps: u32,
+        codecs: &[Codec],
+    ) -> io::Result<(u32, Vec<Codec>)> {
         let mut b = [0u8; 1];
         let mut cur = Vec::new();
         loop {
@@ -42,7 +49,7 @@ impl<R: Read, W: Write> Server<R, W> {
         let mut buf = [0u8; 4];
         self.reader.read_exact(&mut buf)?;
         let peer = u32::from_be_bytes(buf);
-        let ver = negotiate_version(peer)?;
+        let ver = negotiate_version(version, peer)?;
         self.writer.write_all(&ver.to_be_bytes())?;
         self.writer.flush()?;
         self.version = ver;
@@ -50,12 +57,13 @@ impl<R: Read, W: Write> Server<R, W> {
         self.reader.read_exact(&mut buf)?;
         let peer_caps = u32::from_be_bytes(buf);
 
-        let caps = peer_caps & SUPPORTED_CAPS;
-        self.writer.write_all(&SUPPORTED_CAPS.to_be_bytes())?;
+        let negotiated = peer_caps & caps;
+        self.caps = negotiated;
+        self.writer.write_all(&caps.to_be_bytes())?;
         self.writer.flush()?;
 
         let mut peer_codecs = vec![Codec::Zlib];
-        if caps & CAP_CODECS != 0 {
+        if self.caps & CAP_CODECS != 0 {
             match Frame::decode(&mut self.reader) {
                 Ok(frame) => {
                     let msg = Message::from_frame(frame.clone())?;
@@ -74,7 +82,7 @@ impl<R: Read, W: Write> Server<R, W> {
             }
         }
 
-        Ok(peer_codecs)
+        Ok((self.caps, peer_codecs))
     }
 
     pub fn pump(&mut self) -> io::Result<()> {

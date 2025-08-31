@@ -10,7 +10,7 @@ fn rsync_client_falls_back_to_zlib() {
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
-    negotiate_version(u32::from_be_bytes(buf)).unwrap();
+    negotiate_version(LATEST_VERSION, u32::from_be_bytes(buf)).unwrap();
 
     t.send(&CAP_CODECS.to_be_bytes()).unwrap();
     t.receive(&mut buf).unwrap();
