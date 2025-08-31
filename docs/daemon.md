@@ -64,6 +64,18 @@ oc-rsync --daemon \
 Clients whose address does not satisfy these rules are disconnected before any
 authentication takes place.
 
+Per-module allow and deny lists may also be specified in a configuration file:
+
+```
+[data]
+path = /srv/data
+hosts allow = 192.0.2.10
+hosts deny = 192.0.2.20
+```
+
+These rules are evaluated after the global lists. Module entries allow fine
+grained control when different exports require distinct access policies.
+
 ## Logging
 
 Supply `--log-file` to record daemon activity. The optional

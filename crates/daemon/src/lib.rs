@@ -3,20 +3,23 @@
 //! `parse_config` returns an [`io::Error`] when configuration entries are
 //! invalid, such as when the `port` value cannot be parsed.
 
+use std::collections::HashMap;
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use transport::Transport;
+use protocol::{negotiate_version, LATEST_VERSION};
+use transport::{AddressFamily, RateLimitedTransport, TcpTransport, Transport};
 
 fn parse_list(val: &str) -> Vec<String> {
-    val.split(|c| c == ' ' || c == ',')
+    val.split([' ', ','])
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
         .collect()
@@ -212,7 +215,7 @@ pub fn parse_config_file(path: &Path) -> io::Result<DaemonConfig> {
 
 pub fn parse_auth_token(token: &str, contents: &str) -> Option<Vec<String>> {
     for raw in contents.lines() {
-        let line = raw.split(|c| c == '#' || c == ';').next().unwrap().trim();
+        let line = raw.split(['#', ';']).next().unwrap().trim();
         if line.is_empty() {
             continue;
         }
@@ -346,16 +349,214 @@ pub fn serve_module<T: Transport>(
 #[cfg(unix)]
 pub fn chroot_and_drop_privileges(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     use nix::unistd::{chdir, chroot, setgid, setuid, Gid, Uid};
-    chroot(path).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-    chdir("/").map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-    setgid(Gid::from_raw(gid)).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-    setuid(Uid::from_raw(uid)).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+    chroot(path).map_err(io::Error::other)?;
+    chdir("/").map_err(io::Error::other)?;
+    setgid(Gid::from_raw(gid)).map_err(io::Error::other)?;
+    setuid(Uid::from_raw(uid)).map_err(io::Error::other)?;
     Ok(())
 }
 
 #[cfg(not(unix))]
 pub fn chroot_and_drop_privileges(_path: &Path, _uid: u32, _gid: u32) -> io::Result<()> {
     Ok(())
+}
+
+/// A connection handler invoked after a module has been fully negotiated.
+pub type Handler = dyn Fn(&mut dyn Transport) -> io::Result<()> + Send + Sync;
+
+fn host_matches(ip: &IpAddr, pat: &str) -> bool {
+    if pat == "*" {
+        return true;
+    }
+    pat.parse::<IpAddr>().is_ok_and(|p| &p == ip)
+}
+
+/// Determine if `ip` is permitted given allow/deny lists.
+pub fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
+    if !allow.is_empty() && !allow.iter().any(|p| host_matches(ip, p)) {
+        return false;
+    }
+    if deny.iter().any(|p| host_matches(ip, p)) {
+        return false;
+    }
+    true
+}
+
+/// Handle a single rsync daemon connection on `transport`.
+///
+/// Authentication, MOTD display, module selection and logging are
+/// performed here.  After the module has been accepted and privileges
+/// dropped, the provided `handler` is invoked to service the request.
+#[allow(clippy::too_many_arguments)]
+pub fn handle_connection<T: Transport>(
+    transport: &mut T,
+    modules: &HashMap<String, Module>,
+    secrets: Option<&Path>,
+    log_file: Option<&Path>,
+    log_format: Option<&str>,
+    motd: Option<&Path>,
+    peer: &str,
+    uid: u32,
+    gid: u32,
+    handler: &Arc<Handler>,
+) -> io::Result<()> {
+    let mut log_file = log_file.map(|p| p.to_path_buf());
+    let mut log_format = log_format.map(|s| s.to_string());
+    let mut buf = [0u8; 4];
+    let n = transport.receive(&mut buf)?;
+    if n == 0 {
+        return Ok(());
+    }
+    let peer_ver = u32::from_be_bytes(buf);
+    transport.send(&LATEST_VERSION.to_be_bytes())?;
+    negotiate_version(LATEST_VERSION, peer_ver).map_err(|e| io::Error::other(e.to_string()))?;
+
+    let (token, global_allowed, no_motd) = authenticate(transport, secrets)?;
+
+    if !no_motd {
+        if let Some(mpath) = motd {
+            if let Ok(content) = fs::read_to_string(mpath) {
+                for line in content.lines() {
+                    let msg = format!("@RSYNCD: {line}\n");
+                    transport.send(msg.as_bytes())?;
+                }
+            }
+        }
+    }
+    transport.send(b"@RSYNCD: OK\n")?;
+
+    let mut name_buf = [0u8; 256];
+    let n = transport.receive(&mut name_buf)?;
+    let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
+    let mut opt_buf = [0u8; 256];
+    loop {
+        let n = transport.receive(&mut opt_buf)?;
+        let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
+        if opt.is_empty() {
+            break;
+        }
+        if let Some(v) = opt.strip_prefix("--log-file=") {
+            log_file = Some(PathBuf::from(v));
+        } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
+            log_format = Some(v.to_string());
+        }
+    }
+    if let Some(module) = modules.get(&name) {
+        if let Ok(ip) = peer.parse::<IpAddr>() {
+            if !host_allowed(&ip, &module.hosts_allow, &module.hosts_deny) {
+                let _ = transport.send(b"@ERROR: access denied");
+                return Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "host denied",
+                ));
+            }
+        }
+        let allowed = if let Some(path) = module.secrets_file.as_deref() {
+            match token.as_deref() {
+                Some(tok) => authenticate_token(tok, path)?,
+                None => {
+                    let _ = transport.send(b"@ERROR: access denied");
+                    return Err(io::Error::new(
+                        io::ErrorKind::PermissionDenied,
+                        "missing token",
+                    ));
+                }
+            }
+        } else {
+            global_allowed.clone()
+        };
+        if !allowed.is_empty() && !allowed.iter().any(|m| m == &name) {
+            let _ = transport.send(b"@ERROR: access denied");
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "unauthorized module",
+            ));
+        }
+        serve_module(
+            transport,
+            module,
+            peer,
+            log_file.as_deref(),
+            log_format.as_deref(),
+            uid,
+            gid,
+        )?;
+        handler(transport)
+    } else {
+        let _ = transport.send(b"@ERROR: unknown module");
+        Err(io::Error::new(io::ErrorKind::NotFound, "unknown module"))
+    }
+}
+
+/// Start a TCP rsync daemon using the provided configuration.
+#[allow(clippy::too_many_arguments)]
+pub fn run_daemon(
+    modules: HashMap<String, Module>,
+    secrets: Option<PathBuf>,
+    hosts_allow: Vec<String>,
+    hosts_deny: Vec<String>,
+    log_file: Option<PathBuf>,
+    log_format: Option<String>,
+    motd: Option<PathBuf>,
+    timeout: Option<Duration>,
+    bwlimit: Option<u64>,
+    port: u16,
+    address: Option<IpAddr>,
+    family: Option<AddressFamily>,
+    uid: u32,
+    gid: u32,
+    handler: Arc<Handler>,
+) -> io::Result<()> {
+    let (listener, real_port) = TcpTransport::listen(address, port, family)?;
+    if port == 0 {
+        println!("{}", real_port);
+        io::stdout().flush()?;
+    }
+    loop {
+        let (stream, addr) = TcpTransport::accept(&listener, &hosts_allow, &hosts_deny)?;
+        let peer = addr.ip().to_string();
+        let modules = modules.clone();
+        let secrets = secrets.clone();
+        let log_file = log_file.clone();
+        let log_format = log_format.clone();
+        let motd = motd.clone();
+        let handler = handler.clone();
+        std::thread::spawn(move || {
+            let mut transport = TcpTransport::from_stream(stream);
+            let _ = transport.set_read_timeout(timeout);
+            let res = if let Some(limit) = bwlimit {
+                let mut t = RateLimitedTransport::new(transport, limit);
+                handle_connection(
+                    &mut t,
+                    &modules,
+                    secrets.as_deref(),
+                    log_file.as_deref(),
+                    log_format.as_deref(),
+                    motd.as_deref(),
+                    &peer,
+                    uid,
+                    gid,
+                    &handler,
+                )
+            } else {
+                handle_connection(
+                    &mut transport,
+                    &modules,
+                    secrets.as_deref(),
+                    log_file.as_deref(),
+                    log_format.as_deref(),
+                    motd.as_deref(),
+                    &peer,
+                    uid,
+                    gid,
+                    &handler,
+                )
+            };
+            if let Err(e) = res {
+                eprintln!("connection error: {}", e);
+            }
+        });
+    }
 }
 
 #[cfg(test)]

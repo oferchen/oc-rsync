@@ -850,6 +850,74 @@ fn daemon_respects_host_allow_and_deny_lists() {
 
 #[test]
 #[serial]
+fn daemon_respects_module_host_lists() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = dir.path().join("rsyncd.conf");
+
+    // allow list
+    fs::write(&cfg, "[data]\npath=/tmp\nhosts allow=127.0.0.1\n").unwrap();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let mut child = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--config",
+            cfg.to_str().unwrap(),
+            "--port",
+            &port.to_string(),
+        ])
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    wait_for_daemon(port);
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    stream.read_exact(&mut buf).unwrap();
+    let _ = child.kill();
+    let _ = child.wait();
+
+    // deny list
+    fs::write(&cfg, "[data]\npath=/tmp\nhosts deny=127.0.0.1\n").unwrap();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let mut child = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--config",
+            cfg.to_str().unwrap(),
+            "--port",
+            &port.to_string(),
+        ])
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    wait_for_daemon(port);
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_millis(200)))
+        .unwrap();
+    stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let res = stream.read(&mut buf);
+    assert!(res.is_err() || res.unwrap() == 0);
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
 fn daemon_displays_motd() {
     if require_network().is_err() {
         eprintln!("skipping daemon test: network access required");
