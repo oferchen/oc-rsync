@@ -1,6 +1,8 @@
 // crates/engine/src/lib.rs
 #[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
 use nix::fcntl::{fallocate, FallocateFlags};
+#[cfg(unix)]
+use nix::unistd::{chown, Gid, Uid};
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File, OpenOptions};
@@ -926,7 +928,16 @@ impl Receiver {
             }
         };
         if let Some(parent) = tmp_dest.parent() {
+            let created = !parent.exists();
             fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
+            #[cfg(unix)]
+            if created {
+                if let Some((uid, gid)) = self.opts.copy_as {
+                    let gid = gid.map(Gid::from_raw);
+                    chown(parent, Some(Uid::from_raw(uid)), gid)
+                        .map_err(|e| io_context(parent, std::io::Error::from(e)))?;
+                }
+            }
         }
         #[cfg(unix)]
         if !self.opts.write_devices {
@@ -1017,6 +1028,12 @@ impl Receiver {
                     }
                 }
             }
+        }
+        #[cfg(unix)]
+        if let Some((uid, gid)) = self.opts.copy_as {
+            let gid = gid.map(Gid::from_raw);
+            chown(dest, Some(Uid::from_raw(uid)), gid)
+                .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
         }
         self.state = ReceiverState::Finished;
         Ok(())
@@ -1223,6 +1240,7 @@ pub struct SyncOptions {
     pub backup_dir: Option<PathBuf>,
     pub chmod: Option<Vec<meta::Chmod>>,
     pub chown: Option<(Option<u32>, Option<u32>)>,
+    pub copy_as: Option<(u32, Option<u32>)>,
     pub eight_bit_output: bool,
     pub blocking_io: bool,
     pub early_input: Option<PathBuf>,
@@ -1311,6 +1329,7 @@ impl Default for SyncOptions {
             backup_dir: None,
             chmod: None,
             chown: None,
+            copy_as: None,
             eight_bit_output: false,
             blocking_io: false,
             early_input: None,
@@ -1587,6 +1606,12 @@ pub fn sync(
                 ),
             )
         })?;
+        #[cfg(unix)]
+        if let Some((uid, gid)) = opts.copy_as {
+            let gid = gid.map(Gid::from_raw);
+            chown(dst, Some(Uid::from_raw(uid)), gid)
+                .map_err(|e| io_context(dst, std::io::Error::from(e)))?;
+        }
     }
 
     let codec = select_codec(remote, opts);
@@ -1788,8 +1813,16 @@ pub fn sync(
                         .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
                     let created = !dest_path.exists();
                     fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
-                    if created && opts.itemize_changes {
-                        println!("cd+++++++++ {}/", rel.display());
+                    if created {
+                        #[cfg(unix)]
+                        if let Some((uid, gid)) = opts.copy_as {
+                            let gid = gid.map(Gid::from_raw);
+                            chown(&dest_path, Some(Uid::from_raw(uid)), gid)
+                                .map_err(|e| io_context(&dest_path, std::io::Error::from(e)))?;
+                        }
+                        if opts.itemize_changes {
+                            println!("cd+++++++++ {}/", rel.display());
+                        }
                     }
                     dir_meta.push((path.clone(), dest_path.clone()));
                 } else if file_type.is_symlink() {
