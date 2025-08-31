@@ -43,6 +43,10 @@ pub enum Rule {
     Protect(RuleData),
     Clear,
     DirMerge(PerDir),
+    Existing,
+    NoExisting,
+    PruneEmptyDirs,
+    NoPruneEmptyDirs,
 }
 
 #[derive(Clone, Hash, PartialEq, Eq)]
@@ -69,15 +73,23 @@ pub struct Matcher {
     per_dir: Vec<(usize, PerDir)>,
     extra_per_dir: RefCell<HashMap<PathBuf, Vec<(usize, PerDir)>>>,
     cached: RefCell<HashMap<(PathBuf, Option<char>, bool), Cached>>,
+    existing: bool,
+    prune_empty_dirs: bool,
 }
 
 impl Matcher {
     pub fn new(rules: Vec<Rule>) -> Self {
         let mut per_dir = Vec::new();
         let mut global = Vec::new();
+        let mut existing = false;
+        let mut prune_empty_dirs = false;
         for (idx, r) in rules.into_iter().enumerate() {
             match r {
                 Rule::DirMerge(p) => per_dir.push((idx, p)),
+                Rule::Existing => existing = true,
+                Rule::NoExisting => existing = false,
+                Rule::PruneEmptyDirs => prune_empty_dirs = true,
+                Rule::NoPruneEmptyDirs => prune_empty_dirs = false,
                 other => global.push((idx, other)),
             }
         }
@@ -87,11 +99,23 @@ impl Matcher {
             per_dir,
             extra_per_dir: RefCell::new(HashMap::new()),
             cached: RefCell::new(HashMap::new()),
+            existing,
+            prune_empty_dirs,
         }
     }
 
     pub fn with_root(mut self, root: impl Into<PathBuf>) -> Self {
         self.root = Some(root.into());
+        self
+    }
+
+    pub fn with_existing(mut self) -> Self {
+        self.existing = true;
+        self
+    }
+
+    pub fn with_prune_empty_dirs(mut self) -> Self {
+        self.prune_empty_dirs = true;
         self
     }
 
@@ -105,6 +129,14 @@ impl Matcher {
 
     fn check(&self, path: &Path, for_delete: bool) -> Result<bool, ParseError> {
         let path = path;
+        if self.existing {
+            if let Some(root) = &self.root {
+                if !root.join(path).exists() {
+                    return Ok(false);
+                }
+            }
+        }
+
         let mut seq = 0usize;
         let mut active: Vec<(usize, usize, usize, Rule)> = Vec::new();
 
@@ -151,6 +183,7 @@ impl Matcher {
             }
         }
 
+        let mut decision: Option<bool> = None;
         for rule in &ordered {
             match rule {
                 Rule::Protect(data) => {
@@ -162,7 +195,8 @@ impl Matcher {
                     }
                     let matched = data.matcher.is_match(path);
                     if (data.invert && !matched) || (!data.invert && matched) {
-                        return Ok(true);
+                        decision = Some(true);
+                        break;
                     }
                 }
                 Rule::Include(data) => {
@@ -174,7 +208,8 @@ impl Matcher {
                     }
                     let matched = data.matcher.is_match(path);
                     if (data.invert && !matched) || (!data.invert && matched) {
-                        return Ok(true);
+                        decision = Some(true);
+                        break;
                     }
                 }
                 Rule::Exclude(data) => {
@@ -186,13 +221,39 @@ impl Matcher {
                     }
                     let matched = data.matcher.is_match(path);
                     if (data.invert && !matched) || (!data.invert && matched) {
-                        return Ok(false);
+                        decision = Some(false);
+                        break;
                     }
                 }
-                Rule::DirMerge(_) | Rule::Clear => {}
+                Rule::DirMerge(_)
+                | Rule::Clear
+                | Rule::Existing
+                | Rule::NoExisting
+                | Rule::PruneEmptyDirs
+                | Rule::NoPruneEmptyDirs => {}
             }
         }
-        Ok(true)
+        let mut included = decision.unwrap_or(true);
+        if included && self.prune_empty_dirs {
+            if let Some(root) = &self.root {
+                let full = root.join(path);
+                if full.is_dir() {
+                    let mut has_child = false;
+                    for entry in fs::read_dir(&full)? {
+                        let entry = entry?;
+                        let rel = path.join(entry.file_name());
+                        if self.check(&rel, for_delete)? {
+                            has_child = true;
+                            break;
+                        }
+                    }
+                    if !has_child {
+                        included = false;
+                    }
+                }
+            }
+        }
+        Ok(included)
     }
 
     pub fn merge(&mut self, more: Vec<Rule>) {
@@ -207,6 +268,10 @@ impl Matcher {
             max_idx += 1;
             match r {
                 Rule::DirMerge(p) => self.per_dir.push((max_idx, p)),
+                Rule::Existing => self.existing = true,
+                Rule::NoExisting => self.existing = false,
+                Rule::PruneEmptyDirs => self.prune_empty_dirs = true,
+                Rule::NoPruneEmptyDirs => self.prune_empty_dirs = false,
                 other => self.rules.push((max_idx, other)),
             }
         }
@@ -428,7 +493,11 @@ impl Matcher {
                             state = Some(false);
                         }
                     }
-                    Rule::DirMerge(_) => {}
+                    Rule::DirMerge(_)
+                    | Rule::Existing
+                    | Rule::NoExisting
+                    | Rule::PruneEmptyDirs
+                    | Rule::NoPruneEmptyDirs => {}
                 }
             }
             matches!(state, Some(false))
@@ -503,11 +572,18 @@ pub enum ParseError {
     Glob(globset::Error),
     RecursiveInclude(PathBuf),
     RecursionLimit,
+    Io(std::io::Error),
 }
 
 impl From<globset::Error> for ParseError {
     fn from(e: globset::Error) -> Self {
         Self::Glob(e)
+    }
+}
+
+impl From<std::io::Error> for ParseError {
+    fn from(e: std::io::Error) -> Self {
+        Self::Io(e)
     }
 }
 
@@ -557,6 +633,22 @@ pub fn parse(
 
         if line == "!" {
             rules.push(Rule::Clear);
+            continue;
+        }
+        if line == "existing" {
+            rules.push(Rule::Existing);
+            continue;
+        }
+        if line == "no-existing" {
+            rules.push(Rule::NoExisting);
+            continue;
+        }
+        if line == "prune-empty-dirs" {
+            rules.push(Rule::PruneEmptyDirs);
+            continue;
+        }
+        if line == "no-prune-empty-dirs" {
+            rules.push(Rule::NoPruneEmptyDirs);
             continue;
         }
 
