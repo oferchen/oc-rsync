@@ -10,3 +10,6 @@ pub use stub::*;
 
 mod parse;
 pub use parse::*;
+
+#[cfg(feature = "acl")]
+pub use posix_acl::{ACLEntry, PosixACL, Qualifier, ACL_EXECUTE, ACL_READ, ACL_RWX, ACL_WRITE};
