@@ -14,6 +14,7 @@ through 32 and negotiates version 73 when both peers enable modern mode.
 | Operating system | Notes |
 |------------------|-------|
 | Linux | primary development and CI platform |
+| Linux (arm64) | native CI runner |
 | Linux (armv7) | cross-compiled in CI |
 | FreeBSD | cross-compiled in CI |
 | macOS | builds and basic local sync verified |
