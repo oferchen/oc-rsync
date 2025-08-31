@@ -7,6 +7,14 @@ The default listener binds to all IPv4 interfaces on port 873. Supply
 listener to IPv4 or IPv6 addresses respectively. These can be combined with
 `--address` to bind a specific interface.
 
+## Example packaging
+
+Sample files for running the daemon are provided under `packaging/` and are
+included in release artifacts:
+
+- `packaging/rsyncd.conf.example` – example configuration file
+- `packaging/systemd/oc-rsyncd.service` – systemd service unit
+
 ## Module setup
 
 Modules map a name to a directory on disk. Each module is supplied on the command line:
