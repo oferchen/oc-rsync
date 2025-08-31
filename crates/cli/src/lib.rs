@@ -1604,6 +1604,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     Ok(())
 }
 
+/// Build a [`Matcher`] from the user's CLI filter flags.
+///
+/// This interprets options like `--exclude`, `--include`, `--files-from`,
+/// and their variants, preserving the order in which the flags were
+/// provided so that rule precedence matches rsync's semantics.
 fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
         if from0 {
