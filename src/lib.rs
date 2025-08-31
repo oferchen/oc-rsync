@@ -30,6 +30,12 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<()> {
             copy_recursive(&entry.path(), &dst_path)?;
         } else if file_type.is_file() {
             fs::copy(entry.path(), dst_path)?;
+        } else if file_type.is_symlink() {
+            #[cfg(unix)]
+            {
+                let target = fs::read_link(entry.path())?;
+                std::os::unix::fs::symlink(&target, &dst_path)?;
+            }
         }
     }
     Ok(())
@@ -47,7 +53,6 @@ mod tests {
         let dir = tempdir().unwrap();
         let src_dir = dir.path().join("src");
         let dst_dir = dir.path().join("dst");
-        fs::create_dir_all(&dst_dir).unwrap();
         fs::create_dir_all(&src_dir).unwrap();
         fs::File::create(src_dir.join("file.txt"))
             .unwrap()
@@ -76,5 +81,26 @@ mod tests {
         // destination directory and file should now exist
         assert!(dst_dir.exists());
         assert_eq!(fs::read(dst_dir.join("file.txt")).unwrap(), b"data");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sync_preserves_symlinks() {
+        use std::path::Path;
+
+        let dir = tempdir().unwrap();
+        let src_dir = dir.path().join("src");
+        let dst_dir = dir.path().join("dst");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::write(src_dir.join("file.txt"), b"hello").unwrap();
+        std::os::unix::fs::symlink("file.txt", src_dir.join("link")).unwrap();
+
+        synchronize(&src_dir, &dst_dir).unwrap();
+
+        let meta = fs::symlink_metadata(dst_dir.join("link")).unwrap();
+        assert!(meta.file_type().is_symlink());
+        let target = fs::read_link(dst_dir.join("link")).unwrap();
+        assert_eq!(target, Path::new("file.txt"));
+        assert_eq!(fs::read(dst_dir.join("file.txt")).unwrap(), b"hello");
     }
 }
