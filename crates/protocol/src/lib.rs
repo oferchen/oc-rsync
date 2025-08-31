@@ -12,13 +12,13 @@ pub use mux::Mux;
 pub use server::Server;
 
 pub const LATEST_VERSION: u32 = 73;
-pub const LEGACY_VERSION: u32 = 32;
 pub const MIN_VERSION: u32 = 29;
 
 pub const CAP_CODECS: u32 = 1 << 0;
 pub const CAP_BLAKE3: u32 = 1 << 1;
 pub const CAP_ZSTD: u32 = 1 << 2;
-pub const SUPPORTED_CAPS: u32 = CAP_CODECS | CAP_BLAKE3 | CAP_ZSTD;
+pub const CAP_LZ4: u32 = 1 << 3;
+pub const SUPPORTED_CAPS: u32 = CAP_CODECS | CAP_BLAKE3 | CAP_ZSTD | CAP_LZ4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VersionError(pub u32);
@@ -37,17 +37,16 @@ impl From<VersionError> for io::Error {
     }
 }
 
-pub fn negotiate_version(peer: u32) -> Result<u32, VersionError> {
-    if peer >= LATEST_VERSION {
+pub fn negotiate_version(local: u32, peer: u32) -> Result<u32, VersionError> {
+    if local >= LATEST_VERSION && peer >= LATEST_VERSION {
         Ok(LATEST_VERSION)
-    } else if peer >= LEGACY_VERSION {
-        Ok(LEGACY_VERSION)
-    } else if peer >= 31 {
-        Ok(31)
-    } else if peer >= MIN_VERSION {
-        Ok(peer)
     } else {
-        Err(VersionError(peer))
+        let v = local.min(peer).min(31);
+        if v >= MIN_VERSION {
+            Ok(v)
+        } else {
+            Err(VersionError(v))
+        }
     }
 }
 
@@ -442,13 +441,12 @@ mod tests {
 
     #[test]
     fn version_negotiation() {
-        assert_eq!(negotiate_version(80), Ok(73));
-        assert_eq!(negotiate_version(73), Ok(73));
-        assert_eq!(negotiate_version(40), Ok(32));
-        assert_eq!(negotiate_version(32), Ok(32));
-        assert_eq!(negotiate_version(31), Ok(31));
-        assert_eq!(negotiate_version(30), Ok(30));
-        assert!(negotiate_version(28).is_err());
+        assert_eq!(negotiate_version(73, 80), Ok(73));
+        assert_eq!(negotiate_version(73, 73), Ok(73));
+        assert_eq!(negotiate_version(73, 40), Ok(31));
+        assert_eq!(negotiate_version(31, 40), Ok(31));
+        assert_eq!(negotiate_version(29, 40), Ok(29));
+        assert!(negotiate_version(29, 28).is_err());
     }
 
     #[test]
