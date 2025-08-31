@@ -3,7 +3,7 @@ use compress::available_codecs;
 use engine::{EngineError, Result, SyncOptions};
 use filetime::{set_file_times, set_symlink_file_times, FileTime};
 use filters::Matcher;
-use logging::{subscriber, LogFormat};
+use logging::{subscriber, DebugFlag, InfoFlag, LogFormat};
 #[cfg(unix)]
 use nix::{
     sys::stat::{dev_t, mknod, Mode, SFlag},
@@ -21,8 +21,8 @@ use tracing::subscriber::with_default;
 pub struct SyncConfig {
     pub log_format: LogFormat,
     pub verbose: u8,
-    pub info: bool,
-    pub debug: bool,
+    pub info: Vec<InfoFlag>,
+    pub debug: Vec<DebugFlag>,
 }
 
 impl Default for SyncConfig {
@@ -30,14 +30,14 @@ impl Default for SyncConfig {
         Self {
             log_format: LogFormat::Text,
             verbose: 0,
-            info: false,
-            debug: false,
+            info: Vec::new(),
+            debug: Vec::new(),
         }
     }
 }
 
 pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Result<()> {
-    let sub = subscriber(cfg.log_format, cfg.verbose, cfg.info, cfg.debug);
+    let sub = subscriber(cfg.log_format, cfg.verbose, &cfg.info, &cfg.debug);
     with_default(sub, || -> Result<()> {
         if !dst.exists() {
             fs::create_dir_all(dst)?;
