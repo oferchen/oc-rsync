@@ -39,5 +39,5 @@ line.  When no corpus is provided libFuzzer will start from an empty one.
 Seed corpora can be supplied by adding paths after the target name:
 
 ```bash
-cargo run -p fuzz --bin protocol_frame_decode_fuzz corpus_dir -- -max_total_time=60
+cargo run -p fuzz --bin protocol_frame_decode_fuzz "corpus_dir" -- -max_total_time=60
 ```

@@ -87,7 +87,7 @@ The CLI entry point resides in the `bin/oc-rsync` crate. Build or run it with Ca
 ```
 cargo build -p oc-rsync-bin --bin oc-rsync
 # or
-cargo run -p oc-rsync-bin -- <args>
+cargo run -p oc-rsync-bin -- "<SRC>" "<DEST>"
 ```
 
 ## Milestone Roadmap

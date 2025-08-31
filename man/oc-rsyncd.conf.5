@@ -36,7 +36,7 @@ Each module is supplied on the command line:
 .IP
 .nf
 \f[C]
-oc-rsync --daemon --module data=/srv/export
+oc-rsync --daemon --module \[aq]data=/srv/export\[aq]
 \f[R]
 .fi
 .PP
@@ -71,7 +71,7 @@ This flag applies equally in daemon mode and when invoking a client:
 .IP
 .nf
 \f[C]
-oc-rsync --daemon --numeric-ids --module data=/srv/export
+oc-rsync --daemon --numeric-ids --module \[aq]data=/srv/export\[aq]
 \f[R]
 .fi
 .SS Chroot and privilege drop
@@ -91,7 +91,7 @@ deny list:
 .nf
 \f[C]
 oc-rsync --daemon \[rs]
-    --module logs=/srv/logs \[rs]
+    --module \[aq]logs=/srv/logs\[aq] \[rs]
     --hosts-allow=127.0.0.1 \[rs]
     --hosts-deny=*
 \f[R]
@@ -108,7 +108,7 @@ requested module:
 .IP
 .nf
 \f[C]
-oc-rsync --daemon --module data=/srv/export \[rs]
+oc-rsync --daemon --module \[aq]data=/srv/export\[aq] \[rs]
     --log-file=/var/log/rsyncd.log \[rs]
     --log-file-format=\[dq]%h %m\[dq]
 \f[R]
@@ -123,6 +123,6 @@ Clients can suppress this output with the \f[V]--no-motd\f[R] flag:
 .IP
 .nf
 \f[C]
-oc-rsync --no-motd rsync://host/module dest/
+oc-rsync --no-motd \[dq]rsync://host/module\[dq] \[dq]dest/\[dq]
 \f[R]
 .fi
