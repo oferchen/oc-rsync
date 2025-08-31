@@ -1385,6 +1385,7 @@ pub fn sync(
                     if created && opts.itemize_changes {
                         println!("cd+++++++++ {}/", rel.display());
                     }
+                    receiver.copy_metadata(&path, &dest_path)?;
                 } else if file_type.is_symlink() {
                     let created = !dest_path.exists();
                     let target = fs::read_link(&path)?;
@@ -1441,6 +1442,7 @@ pub fn sync(
                                 std::os::windows::fs::symlink_file(&target, &dest_path)?;
                             }
                         }
+                        receiver.copy_metadata(&path, &dest_path)?;
                         if created {
                             stats.files_transferred += 1;
                             if opts.itemize_changes {
@@ -1471,11 +1473,13 @@ pub fn sync(
 
                             mknod(&dest_path, kind, perm, rdev)
                                 .map_err(|e| EngineError::Other(e.to_string()))?;
+                            receiver.copy_metadata(&path, &dest_path)?;
                         } else if file_type.is_fifo() && opts.specials {
                             use nix::sys::stat::Mode;
                             use nix::unistd::mkfifo;
                             mkfifo(&dest_path, Mode::from_bits_truncate(0o644))
                                 .map_err(|e| EngineError::Other(e.to_string()))?;
+                            receiver.copy_metadata(&path, &dest_path)?;
                         }
                     }
                 }

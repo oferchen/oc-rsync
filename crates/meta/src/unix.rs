@@ -6,7 +6,7 @@ use std::path::Path;
 use filetime::{self, FileTime};
 use nix::errno::Errno;
 use nix::sys::stat::{self, FchmodatFlags, Mode};
-use nix::unistd::{self, Gid, Uid};
+use nix::unistd::{self, FchownatFlags, Gid, Uid};
 use std::os::unix::fs::PermissionsExt;
 use std::sync::Arc;
 
@@ -125,13 +125,17 @@ pub struct Metadata {
 
 impl Metadata {
     pub fn from_path(path: &Path, opts: Options) -> io::Result<Self> {
-        let st = stat::stat(path).map_err(nix_to_io)?;
+        // Use lstat so we capture metadata for symlinks themselves rather
+        // than the file they point to.
+        let st = stat::lstat(path).map_err(nix_to_io)?;
         let uid = st.st_uid;
         let gid = st.st_gid;
         let mode = (st.st_mode as u32) & 0o7777;
         let mtime = FileTime::from_unix_time(st.st_mtime, st.st_mtime_nsec as u32);
 
-        let std_meta = fs::metadata(path)?;
+        // Mirror the lstat call above by avoiding symlink traversal when
+        // collecting standard metadata.
+        let std_meta = fs::symlink_metadata(path)?;
         let atime = if opts.atimes {
             Some(FileTime::from_last_access_time(&std_meta))
         } else {
@@ -179,6 +183,13 @@ impl Metadata {
     }
 
     pub fn apply(&self, path: &Path, opts: Options) -> io::Result<()> {
+        // Obtain metadata without following symlinks so we know the type of
+        // `path` itself.
+        let meta = fs::symlink_metadata(path)?;
+        let ft = meta.file_type();
+        let is_symlink = ft.is_symlink();
+        let is_dir = ft.is_dir();
+
         if opts.owner || opts.group {
             let uid = if let Some(ref map) = opts.uid_map {
                 map(self.uid)
@@ -190,20 +201,38 @@ impl Metadata {
             } else {
                 self.gid
             };
-            if let Err(err) = unistd::chown(
-                path,
-                if opts.owner {
-                    Some(Uid::from_raw(uid))
-                } else {
-                    None
-                },
-                if opts.group {
-                    Some(Gid::from_raw(gid))
-                } else {
-                    None
-                },
-            ) {
-                // Best effort: ignore permission or unsupported errors
+            let res = if is_symlink {
+                unistd::fchownat(
+                    None,
+                    path,
+                    if opts.owner {
+                        Some(Uid::from_raw(uid))
+                    } else {
+                        None
+                    },
+                    if opts.group {
+                        Some(Gid::from_raw(gid))
+                    } else {
+                        None
+                    },
+                    FchownatFlags::NoFollowSymlink,
+                )
+            } else {
+                unistd::chown(
+                    path,
+                    if opts.owner {
+                        Some(Uid::from_raw(uid))
+                    } else {
+                        None
+                    },
+                    if opts.group {
+                        Some(Gid::from_raw(gid))
+                    } else {
+                        None
+                    },
+                )
+            };
+            if let Err(err) = res {
                 match err {
                     Errno::EPERM | Errno::EACCES | Errno::ENOSYS | Errno::EINVAL => {}
                     _ => return Err(nix_to_io(err)),
@@ -211,9 +240,7 @@ impl Metadata {
             }
         }
 
-        if opts.perms || opts.chmod.is_some() || opts.executability {
-            let meta = fs::metadata(path)?;
-            let is_dir = meta.is_dir();
+        if (opts.perms || opts.chmod.is_some() || opts.executability) && !is_symlink {
             let mut mode_val = if opts.perms {
                 self.mode
             } else {
@@ -254,21 +281,35 @@ impl Metadata {
         }
 
         if opts.atimes || opts.times {
-            let ft = fs::symlink_metadata(path)?.file_type();
             let skip_mtime =
-                (ft.is_dir() && opts.omit_dir_times) || (ft.is_symlink() && opts.omit_link_times);
-            if opts.atimes {
-                if let Some(atime) = self.atime {
-                    if skip_mtime {
-                        filetime::set_file_atime(path, atime)?;
-                    } else {
-                        filetime::set_file_times(path, atime, self.mtime)?;
+                (is_dir && opts.omit_dir_times) || (is_symlink && opts.omit_link_times);
+            if is_symlink {
+                let cur_mtime = FileTime::from_last_modification_time(&meta);
+                let cur_atime = FileTime::from_last_access_time(&meta);
+                if opts.atimes {
+                    if let Some(atime) = self.atime {
+                        let mtime = if skip_mtime { cur_mtime } else { self.mtime };
+                        filetime::set_symlink_file_times(path, atime, mtime)?;
+                    } else if opts.times && !skip_mtime {
+                        filetime::set_symlink_file_times(path, cur_atime, self.mtime)?;
+                    }
+                } else if opts.times && !skip_mtime {
+                    filetime::set_symlink_file_times(path, cur_atime, self.mtime)?;
+                }
+            } else {
+                if opts.atimes {
+                    if let Some(atime) = self.atime {
+                        if skip_mtime {
+                            filetime::set_file_atime(path, atime)?;
+                        } else {
+                            filetime::set_file_times(path, atime, self.mtime)?;
+                        }
+                    } else if opts.times && !skip_mtime {
+                        filetime::set_file_mtime(path, self.mtime)?;
                     }
                 } else if opts.times && !skip_mtime {
                     filetime::set_file_mtime(path, self.mtime)?;
                 }
-            } else if opts.times && !skip_mtime {
-                filetime::set_file_mtime(path, self.mtime)?;
             }
         }
 
