@@ -11,6 +11,8 @@ use nix::{
 };
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
+#[cfg(windows)]
+use std::os::windows::fs::{symlink_dir, symlink_file};
 use std::{fs, io, path::Path};
 use tracing::subscriber::with_default;
 
@@ -79,6 +81,14 @@ fn io_context(path: &Path, err: io::Error) -> EngineError {
     ))
 }
 
+fn apply_metadata(dst: &Path, meta: &fs::Metadata) -> Result<()> {
+    let atime = FileTime::from_last_access_time(meta);
+    let mtime = FileTime::from_last_modification_time(meta);
+    set_file_times(dst, atime, mtime).map_err(|e| io_context(dst, e))?;
+    fs::set_permissions(dst, meta.permissions()).map_err(|e| io_context(dst, e))?;
+    Ok(())
+}
+
 fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
     let mut copied = 0;
     for entry in fs::read_dir(src).map_err(|e| io_context(src, e))? {
@@ -91,70 +101,73 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
         if file_type.is_dir() {
             fs::create_dir_all(&dst_path).map_err(|e| io_context(&dst_path, e))?;
             copied += copy_recursive(&src_path, &dst_path)?;
-        } else if file_type.is_file() {
+            apply_metadata(&dst_path, &meta)?;
+            continue;
+        }
+
+        if file_type.is_file() {
             if !dst_path.exists() {
                 fs::copy(&src_path, &dst_path).map_err(|e| io_context(&src_path, e))?;
                 copied += 1;
             }
-        } else if file_type.is_symlink() {
-            if !dst_path.exists() {
-                #[cfg(unix)]
-                {
+            apply_metadata(&dst_path, &meta)?;
+            continue;
+        }
+
+        #[cfg(unix)]
+        {
+            if file_type.is_symlink() {
+                if !dst_path.exists() {
                     let target = fs::read_link(&src_path).map_err(|e| io_context(&src_path, e))?;
                     std::os::unix::fs::symlink(&target, &dst_path)
-                        .map_err(|e| io_context(&dst_path, e))?;
+                        .map_err(|e| io_context(&dst_path, e))?; // symlink(2)
                     let atime = FileTime::from_last_access_time(&meta);
                     let mtime = FileTime::from_last_modification_time(&meta);
                     set_symlink_file_times(&dst_path, atime, mtime)
-                        .map_err(|e| io_context(&dst_path, e))?;
+                        .map_err(|e| io_context(&dst_path, e))?; // utimensat(2)
+                    copied += 1;
                 }
-                #[cfg(windows)]
-                {
-                    use std::os::windows::fs::{symlink_dir, symlink_file};
-                    let target = fs::read_link(&src_path).map_err(|e| io_context(&src_path, e))?;
-                    match fs::metadata(&src_path) {
-                        Ok(m) if m.is_dir() => {
-                            symlink_dir(&target, &dst_path).map_err(|e| io_context(&dst_path, e))?
-                        }
-                        _ => symlink_file(&target, &dst_path)
-                            .map_err(|e| io_context(&dst_path, e))?,
-                    };
-                }
-                copied += 1;
-            }
-            continue;
-        } else {
-            #[cfg(unix)]
-            {
-                let mode = Mode::from_bits_truncate(meta.permissions().mode());
-                use std::io as stdio;
-                if file_type.is_fifo() {
-                    mkfifo(&dst_path, mode)
-                        .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
-                        .map_err(|e| io_context(&dst_path, e))?;
-                } else if file_type.is_char_device() {
-                    mknod(&dst_path, SFlag::S_IFCHR, mode, meta.rdev() as u64)
-                        .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
-                        .map_err(|e| io_context(&dst_path, e))?;
-                } else if file_type.is_block_device() {
-                    mknod(&dst_path, SFlag::S_IFBLK, mode, meta.rdev() as u64)
-                        .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
-                        .map_err(|e| io_context(&dst_path, e))?;
-                } else {
-                    continue;
-                }
-                copied += 1;
-            }
-            #[cfg(not(unix))]
-            {
                 continue;
             }
+
+            let mode = Mode::from_bits_truncate(meta.permissions().mode());
+            use std::io as stdio;
+            if file_type.is_fifo() {
+                mkfifo(&dst_path, mode)
+                    .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
+                    .map_err(|e| io_context(&dst_path, e))?; // nix::unistd::mkfifo
+            } else if file_type.is_char_device() {
+                mknod(&dst_path, SFlag::S_IFCHR, mode, meta.rdev() as u64)
+                    .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
+                    .map_err(|e| io_context(&dst_path, e))?; // nix::sys::stat::mknod (S_IFCHR)
+            } else if file_type.is_block_device() {
+                mknod(&dst_path, SFlag::S_IFBLK, mode, meta.rdev() as u64)
+                    .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
+                    .map_err(|e| io_context(&dst_path, e))?; // nix::sys::stat::mknod (S_IFBLK)
+            } else {
+                continue;
+            }
+            copied += 1;
+            apply_metadata(&dst_path, &meta)?;
+            continue;
         }
 
-        let atime = FileTime::from_last_access_time(&meta);
-        let mtime = FileTime::from_last_modification_time(&meta);
-        set_file_times(&dst_path, atime, mtime).map_err(|e| io_context(&dst_path, e))?;
-        fs::set_permissions(&dst_path, meta.permissions()).map_err(|e| io_context(&dst_path, e))?;
+        #[cfg(windows)]
+        {
+            if file_type.is_symlink() {
+                if !dst_path.exists() {
+                    let target = fs::read_link(&src_path).map_err(|e| io_context(&src_path, e))?;
+                    match fs::metadata(&src_path) {
+                        Ok(m) if m.is_dir() => symlink_dir(&target, &dst_path),
+                        _ => symlink_file(&target, &dst_path),
+                    }
+                    .map_err(|e| io_context(&dst_path, e))?; // CreateSymbolicLinkW
+                    copied += 1;
+                }
+                continue;
+            }
+            continue;
+        }
     }
     Ok(copied)
 }
