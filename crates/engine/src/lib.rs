@@ -867,6 +867,15 @@ impl Receiver {
 
 impl Receiver {
     fn copy_metadata(&self, src: &Path, dest: &Path) -> Result<()> {
+        #[cfg(unix)]
+        if self.opts.write_devices {
+            if let Ok(meta) = fs::symlink_metadata(dest) {
+                let ft = meta.file_type();
+                if ft.is_char_device() || ft.is_block_device() {
+                    return Ok(());
+                }
+            }
+        }
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         {
             let chown_uid = self.opts.chown.map(|(u, _)| u).flatten();
