@@ -516,6 +516,7 @@ impl Matcher {
                             (Some(c), line[1..].trim_start())
                         }
                         _ => (None, line),
+                    };
                     let rest = if matches!(
                         line.chars().next(),
                         Some('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R')
