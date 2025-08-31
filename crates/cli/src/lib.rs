@@ -1569,7 +1569,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     if s.is_empty() {
                         return None;
                     }
-                    let p = String::from_utf8_lossy(s).trim().to_string();
+                    let p = String::from_utf8_lossy(s).to_string();
                     if p.is_empty() {
                         None
                     } else {
@@ -1581,8 +1581,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             let content = fs::read_to_string(path)?;
             Ok(content
                 .lines()
-                .map(|l| l.trim().to_string())
-                .filter(|s| !s.is_empty())
+                .map(|l| l.trim())
+                .filter(|s| !s.is_empty() && !s.starts_with('#'))
+                .map(|s| s.to_string())
                 .collect())
         }
     }
