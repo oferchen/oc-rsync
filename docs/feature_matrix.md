@@ -9,7 +9,7 @@ negotiates version 73.
 
 | Option | Short | Supported | Parity scope | Tests link | Notes | Version introduced |
 | --- | --- | --- | --- | --- | --- | --- |
-| `--8-bit-output` | `-8` | ✅ | ❌ | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  | ≤3.2 |
+| `--8-bit-output` | `-8` | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--acls` | `-A` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `acl` feature | ≤3.2 |
 | `--address` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--append` | — | ✅ | ❌ | [tests/resume.rs](../tests/resume.rs) |  | ≤3.2 |
@@ -19,7 +19,7 @@ negotiates version 73.
 | `--backup` | `-b` | ✅ | ✅ | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | uses `~` suffix without `--backup-dir` | ≤3.2 |
 | `--backup-dir` | — | ✅ | ✅ | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | implies `--backup` | ≤3.2 |
 | `--block-size` | `-B` | ✅ | ❌ | [tests/block_size.rs](../tests/block_size.rs) | controls delta block size | ≤3.2 |
-| `--blocking-io` | — | ✅ | ❌ | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  | ≤3.2 |
+| `--blocking-io` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--bwlimit` | — | ✅ | ❌ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) |  | ≤3.2 |
 | `--cc` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | alias for `--checksum-choice` | ≤3.2 |
 | `--checksum` | `-c` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, BLAKE3 | ≤3.2 |
@@ -58,7 +58,7 @@ negotiates version 73.
 | `--dirs` | `-d` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--dparam` | `-M` | ❌ | — | — |  | ≤3.2 |
 | `--dry-run` | `-n` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--early-input` | — | ✅ | ❌ | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  | ≤3.2 |
+| `--early-input` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--exclude` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--exclude-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--executability` | `-E` | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
@@ -130,7 +130,7 @@ negotiates version 73.
 | `--port` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | overrides default port | ≤3.2 |
 | `--preallocate` | — | ❌ | — | — |  | ≤3.2 |
 | `--progress` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--protocol` | — | ✅ | ❌ | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  | ≤3.2 |
+| `--protocol` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--prune-empty-dirs` | `-m` | ❌ | — | — |  | ≤3.2 |
 | `--quiet` | `-q` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--read-batch` | — | ❌ | — | — |  | ≤3.2 |
