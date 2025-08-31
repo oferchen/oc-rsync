@@ -175,6 +175,33 @@ fn spawn_daemon_with_address(addr: &str) -> io::Result<(Child, u16, tempfile::Te
     Ok((child, port, dir))
 }
 
+fn spawn_daemon_with_config_address(addr: &str) -> io::Result<(Child, u16, tempfile::TempDir)> {
+    let dir = tempfile::tempdir().unwrap();
+    let data = dir.path().join("data");
+    fs::create_dir(&data).unwrap();
+    let cfg = format!(
+        "port = 0\naddress = {addr}\n[data]\n    path = {}\n",
+        data.display()
+    );
+    let cfg_path = dir.path().join("rsyncd.conf");
+    fs::write(&cfg_path, cfg).unwrap();
+    let mut child = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let port = match read_port(&mut child) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(e);
+        }
+    };
+    Ok((child, port, dir))
+}
+
 fn spawn_daemon_ipv4() -> io::Result<(Child, u16, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
@@ -284,6 +311,27 @@ fn daemon_binds_to_specified_address() {
         return;
     }
     let (mut child, port, _dir) = match spawn_daemon_with_address("127.0.0.1") {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
+    wait_for_daemon(port);
+    TcpStream::connect(("127.0.0.1", port)).unwrap();
+    assert!(TcpStream::connect(("127.0.0.2", port)).is_err());
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_config_binds_to_specified_address() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let (mut child, port, _dir) = match spawn_daemon_with_config_address("127.0.0.1") {
         Ok(v) => v,
         Err(e) => {
             eprintln!("skipping daemon test: {e}");
