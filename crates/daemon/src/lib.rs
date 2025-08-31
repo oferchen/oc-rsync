@@ -259,7 +259,6 @@ pub fn authenticate<T: Transport>(
         if let Some(allowed) = parse_auth_token(&token_str, &contents) {
             Ok((Some(token_str), allowed, no_motd))
         } else {
-            let _ = t.send(b"@ERROR: access denied");
             Err(io::Error::new(
                 io::ErrorKind::PermissionDenied,
                 "unauthorized",

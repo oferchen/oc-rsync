@@ -509,7 +509,7 @@ fn daemon_allows_module_access() {
     t.send(b"data\n").unwrap();
     t.send(b"\n").unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
-    assert!(n == 0 || !String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR"));
+    assert_eq!(n, 0);
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -556,7 +556,7 @@ fn daemon_rejects_invalid_token() {
 
     t.authenticate(Some("bad"), false).unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
-    assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).starts_with("@ERR"));
+    assert_eq!(n, 0);
     let _ = child.kill();
     let _ = child.wait();
 }
