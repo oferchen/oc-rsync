@@ -19,6 +19,7 @@ pub struct Mux {
     next: usize,
     pub strong_hash: StrongHash,
     pub compressor: Codec,
+    pub cdc: bool,
 }
 
 impl Mux {
@@ -29,6 +30,7 @@ impl Mux {
             next: 0,
             strong_hash: StrongHash::Md5,
             compressor: Codec::Zlib,
+            cdc: false,
         }
     }
 

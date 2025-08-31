@@ -39,11 +39,14 @@ fn keepalive_roundtrip() {
 
 #[test]
 fn version_negotiation() {
+    assert_eq!(negotiate_version(V73, V73), Ok(V73));
+    assert_eq!(negotiate_version(V73, V32), Ok(V32));
+    assert_eq!(negotiate_version(V73, V31), Ok(V31));
     assert_eq!(negotiate_version(V32, V32), Ok(V32));
     assert_eq!(negotiate_version(V32, V31), Ok(V31));
     assert_eq!(negotiate_version(V31, V32), Ok(V31));
     assert_eq!(negotiate_version(V31, V31), Ok(V31));
-    assert!(negotiate_version(V32, 30).is_err());
+    assert!(negotiate_version(V73, 30).is_err());
 }
 
 #[test]

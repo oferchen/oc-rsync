@@ -33,7 +33,7 @@ and end-to-end scenarios like
 When `--modern` is negotiated between two `oc-rsync` peers (protocol 73), the
 following features become available:
 
-- BLAKE3 strong checksums via `--modern` or `--modern-hash`.
+- BLAKE2/BLAKE3 strong checksums via `--modern` or `--modern-hash`.
 - zstd or lz4 compression via `--modern` or `--modern-compress`.
 - Optional FastCDC chunking via `--modern-cdc`.
 
