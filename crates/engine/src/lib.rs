@@ -5,11 +5,10 @@ use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
+#[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
+use std::os::fd::AsRawFd;
 #[cfg(unix)]
-use std::os::unix::{
-    fs::{FileTypeExt, MetadataExt},
-    io::AsRawFd,
-};
+use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
