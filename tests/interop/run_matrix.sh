@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run a matrix of rsync 3.2.x client/server combinations over SSH and rsync://
+# Run a matrix of rsync client/server combinations over SSH and rsync://
 # connections. Golden directory trees are stored under tests/interop/golden
 # using the layout:
 #   golden/<client>_<server>_<transport>
@@ -9,8 +9,8 @@ set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
 GOLDEN="$ROOT/tests/interop/golden"
-CLIENT_VERSIONS=("3.2.0" "3.2.7")
-SERVER_VERSIONS=("3.2.0" "3.2.7")
+CLIENT_VERSIONS=("3.1.3" "3.2.7" "3.3.0" "3.4.0" "oc-rsync")
+SERVER_VERSIONS=("3.1.3" "3.2.7" "3.3.0" "3.4.0" "oc-rsync")
 TRANSPORTS=("ssh" "rsync")
 
 # Additional scenarios to exercise. Each entry is "name extra_flags" where
@@ -26,6 +26,9 @@ SCENARIOS=(
   "drop_connection"
   "vanished"
   "remote_remote"
+  "append --append"
+  "append_verify --append-verify"
+  "progress --progress"
 )
 
 # Options used for all transfers. -a implies -rtgoD, we add -A and -X for ACLs
@@ -173,13 +176,28 @@ compare_trees() {
 
 # Ensure rsync versions are available
 for v in "${CLIENT_VERSIONS[@]}" "${SERVER_VERSIONS[@]}"; do
-  fetch_rsync "$v" >/dev/null
+  if [[ "$v" == "oc-rsync" ]]; then
+    if [[ ! -x "$ROOT/target/debug/oc-rsync" ]]; then
+      echo "Building oc-rsync" >&2
+      cargo build --quiet -p oc-rsync-bin --bin oc-rsync
+    fi
+  else
+    fetch_rsync "$v" >/dev/null
+  fi
 done
 
 for c in "${CLIENT_VERSIONS[@]}"; do
-  client_bin="$ROOT/rsync-$c/rsync"
+  if [[ "$c" == "oc-rsync" ]]; then
+    client_bin="$ROOT/target/debug/oc-rsync"
+  else
+    client_bin="$ROOT/rsync-$c/rsync"
+  fi
   for s in "${SERVER_VERSIONS[@]}"; do
-    server_bin="$ROOT/rsync-$s/rsync"
+    if [[ "$s" == "oc-rsync" ]]; then
+      server_bin="$ROOT/target/debug/oc-rsync"
+    else
+      server_bin="$ROOT/rsync-$s/rsync"
+    fi
     for t in "${TRANSPORTS[@]}"; do
       for scenario in "${SCENARIOS[@]}"; do
         IFS=' ' read -r name flag <<< "$scenario"
