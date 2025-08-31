@@ -440,6 +440,41 @@ fn temp_files_created_in_temp_dir() {
 }
 
 #[test]
+fn destination_is_replaced_atomically() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let src_file = src_dir.join("a.txt");
+    let dst_file = dst_dir.join("a.txt");
+    std::fs::write(&src_file, vec![b'x'; 50_000]).unwrap();
+    std::fs::write(&dst_file, b"old").unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    let mut child = std::process::Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--bwlimit",
+            "20000",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+
+    thread::sleep(Duration::from_millis(500));
+    let out = std::fs::read(&dst_file).unwrap();
+    assert_eq!(out, b"old");
+    assert!(dst_dir.join("a.tmp").exists());
+
+    child.wait().unwrap();
+    let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out.len(), 50_000);
+}
+
+#[test]
 fn numeric_ids_are_preserved() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
