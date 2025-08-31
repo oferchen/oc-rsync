@@ -165,12 +165,12 @@ impl SshStdioTransport {
         })
     }
 
-    fn handshake<T: Transport>(
+    pub fn handshake<T: Transport>(
         transport: &mut T,
         env: &[(String, String)],
         modern: Option<ModernCompress>,
         version: u32,
-    ) -> io::Result<Vec<Codec>> {
+    ) -> io::Result<(Vec<Codec>, u32)> {
         for (k, v) in env {
             let mut buf = Vec::new();
             buf.extend_from_slice(k.as_bytes());
@@ -192,7 +192,7 @@ impl SshStdioTransport {
             read += n;
         }
         let peer = u32::from_be_bytes(ver_buf);
-        negotiate_version(peer).map_err(|e| io::Error::other(e.to_string()))?;
+        negotiate_version(version, peer).map_err(|e| io::Error::other(e.to_string()))?;
 
         // If a modern compression algorithm is requested, advertise support for all
         // capabilities (including modern compression). Otherwise, only advertise
@@ -207,7 +207,14 @@ impl SshStdioTransport {
         transport.send(&local_caps.to_be_bytes())?;
 
         let mut cap_buf = [0u8; 4];
-        transport.receive(&mut cap_buf)?;
+        let mut read = 0;
+        while read < cap_buf.len() {
+            let n = transport.receive(&mut cap_buf[read..])?;
+            if n == 0 {
+                return Err(io::Error::other("failed to read capabilities"));
+            }
+            read += n;
+        }
         let server_caps = u32::from_be_bytes(cap_buf);
         let caps = server_caps & local_caps;
 
@@ -259,7 +266,7 @@ impl SshStdioTransport {
             }
         }
 
-        Ok(peer_codecs)
+        Ok((peer_codecs, caps))
     }
 
     pub fn spawn_with_rsh(
@@ -360,7 +367,7 @@ impl SshStdioTransport {
         family: Option<AddressFamily>,
         modern: Option<ModernCompress>,
         version: u32,
-    ) -> io::Result<(Self, Vec<Codec>)> {
+    ) -> io::Result<(Self, Vec<Codec>, u32)> {
         let mut t = Self::spawn_with_rsh(
             host,
             path,
@@ -374,8 +381,8 @@ impl SshStdioTransport {
             connect_timeout,
             family,
         )?;
-        let codecs = Self::handshake(&mut t, rsync_env, modern, version)?;
-        Ok((t, codecs))
+        let (codecs, caps) = Self::handshake(&mut t, rsync_env, modern, version)?;
+        Ok((t, codecs, caps))
     }
 
     pub fn stderr(&self) -> (Vec<u8>, bool) {

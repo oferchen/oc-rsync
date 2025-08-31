@@ -45,7 +45,7 @@ fn server_handshake_succeeds() {
 
     let mut ver_buf = [0u8; 4];
     stdout.read_exact(&mut ver_buf).unwrap();
-    assert_eq!(u32::from_be_bytes(ver_buf), LATEST_VERSION);
+    assert_eq!(u32::from_be_bytes(ver_buf), 31);
 
     stdin.write_all(&CAP_CODECS.to_be_bytes()).unwrap();
     let mut cap_buf = [0u8; 4];

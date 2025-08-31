@@ -23,7 +23,7 @@ use engine::{
 use engine::ModernHash;
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use meta::{parse_chmod, parse_chown};
-use protocol::{negotiate_version, LATEST_VERSION, LEGACY_VERSION};
+use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
 use transport::{AddressFamily, RateLimitedTransport, SshStdioTransport, TcpTransport, Transport};
 
@@ -622,7 +622,7 @@ fn spawn_daemon_session(
     let mut buf = [0u8; 4];
     t.receive(&mut buf).map_err(EngineError::from)?;
     let peer = u32::from_be_bytes(buf);
-    negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
+    negotiate_version(version, peer).map_err(|e| EngineError::Other(e.to_string()))?;
 
     let token = password_file
         .and_then(|p| fs::read_to_string(p).ok())
@@ -1021,7 +1021,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.protocol.unwrap_or(if opts.modern {
                         LATEST_VERSION
                     } else {
-                        LEGACY_VERSION
+                        31
                     }),
                     opts.early_input.as_deref(),
                 )?;
@@ -1041,7 +1041,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 },
                 RemoteSpec::Local(dst),
             ) => {
-                let (session, codecs) = SshStdioTransport::connect_with_rsh(
+                let (session, codecs, _caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &src.path,
                     &rsh_cmd.cmd,
@@ -1058,7 +1058,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.protocol.unwrap_or(if opts.modern {
                         LATEST_VERSION
                     } else {
-                        LEGACY_VERSION
+                        31
                     }),
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1088,7 +1088,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.protocol.unwrap_or(if opts.modern {
                         LATEST_VERSION
                     } else {
-                        LEGACY_VERSION
+                        31
                     }),
                     opts.early_input.as_deref(),
 
@@ -1109,7 +1109,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     module: None,
                 },
             ) => {
-                let (session, codecs) = SshStdioTransport::connect_with_rsh(
+                let (session, codecs, _caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &dst.path,
                     &rsh_cmd.cmd,
@@ -1126,7 +1126,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.protocol.unwrap_or(if opts.modern {
                         LATEST_VERSION
                     } else {
-                        LEGACY_VERSION
+                        31
                     }),
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1236,7 +1236,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.protocol.unwrap_or(if opts.modern {
                                 LATEST_VERSION
                             } else {
-                                LEGACY_VERSION
+                                31
                             }),
                             opts.early_input.as_deref(),
                         )?;
@@ -1252,7 +1252,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.protocol.unwrap_or(if opts.modern {
                                 LATEST_VERSION
                             } else {
-                                LEGACY_VERSION
+                                31
                             }),
                             opts.early_input.as_deref(),
                         )?;
@@ -1293,7 +1293,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.protocol.unwrap_or(if opts.modern {
                                 LATEST_VERSION
                             } else {
-                                LEGACY_VERSION
+                                31
                             }),
                             opts.early_input.as_deref(),
                         )?;
@@ -1333,7 +1333,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.protocol.unwrap_or(if opts.modern {
                                 LATEST_VERSION
                             } else {
-                                LEGACY_VERSION
+                                31
                             }),
                             opts.early_input.as_deref(),
                         )?;
@@ -1663,7 +1663,8 @@ fn handle_connection<T: Transport>(
     }
     let peer_ver = u32::from_be_bytes(buf);
     transport.send(&LATEST_VERSION.to_be_bytes())?;
-    negotiate_version(peer_ver).map_err(|e| EngineError::Other(e.to_string()))?;
+    negotiate_version(LATEST_VERSION, peer_ver)
+        .map_err(|e| EngineError::Other(e.to_string()))?;
 
     let mut tok_buf = [0u8; 256];
     let tn = transport.receive(&mut tok_buf)?;
@@ -1780,19 +1781,20 @@ fn run_probe(opts: ProbeOpts) -> Result<()> {
         let mut buf = [0u8; 4];
         stream.read_exact(&mut buf)?;
         let peer = u32::from_be_bytes(buf);
-        let ver = negotiate_version(peer).map_err(|e| EngineError::Other(e.to_string()))?;
+        let ver =
+            negotiate_version(LATEST_VERSION, peer).map_err(|e| EngineError::Other(e.to_string()))?;
         println!("negotiated version {}", ver);
         Ok(())
     } else {
-        let ver =
-            negotiate_version(opts.peer_version).map_err(|e| EngineError::Other(e.to_string()))?;
+        let ver = negotiate_version(LATEST_VERSION, opts.peer_version)
+            .map_err(|e| EngineError::Other(e.to_string()))?;
         println!("negotiated version {}", ver);
         Ok(())
     }
 }
 
 fn run_server() -> Result<()> {
-    use protocol::Server;
+    use protocol::{Server, CAP_CODECS, SUPPORTED_CAPS, LATEST_VERSION};
     let stdin = io::stdin();
     let stdout = io::stdout();
     let timeout = env::var("RSYNC_TIMEOUT")
@@ -1808,8 +1810,10 @@ fn run_server() -> Result<()> {
     };
     let codecs = available_codecs(mc);
     let mut srv = Server::new(stdin.lock(), stdout.lock(), timeout);
+    let version = if modern { LATEST_VERSION } else { 31 };
+    let caps = if modern { SUPPORTED_CAPS } else { CAP_CODECS };
     let _ = srv
-        .handshake(&codecs)
+        .handshake(version, caps, &codecs)
         .map_err(|e| EngineError::Other(e.to_string()))?;
     Ok(())
 }
