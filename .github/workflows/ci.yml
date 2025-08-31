@@ -28,9 +28,9 @@ jobs:
             target: x86_64-unknown-linux-gnu
             use-cross: false
           - os: ubuntu-latest
-            runner: ubuntu-latest
+            runner: [ubuntu-latest, ARM64]
             target: aarch64-unknown-linux-gnu
-            use-cross: true
+            use-cross: false
           - os: ubuntu-latest
             runner: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
@@ -46,9 +46,6 @@ jobs:
           - os: windows-latest
             runner: windows-latest
             target: x86_64-pc-windows-msvc
-            use-cross: false
-          - os: ubuntu-latest
-            runner: [ubuntu-latest, ARM64]
             use-cross: false
     steps:
       - uses: actions/checkout@v3
@@ -70,7 +67,7 @@ jobs:
         if: matrix.use-cross == true
         run: cargo install cross --locked
       - name: Install cargo-fuzz
-        if: matrix.os != 'windows-latest' && matrix.use-cross == false
+        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: |
           cargo install cargo-fuzz --locked
           rustup toolchain install nightly
@@ -106,13 +103,13 @@ jobs:
             cargo test --all --features blake3
           fi
       - name: Golden parity tests
-        if: matrix.use-cross == false && matrix.os != 'windows-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: make test-golden
       - name: Interop tests
         if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: bash scripts/interop.sh
       - name: Fuzz smoke test
-        if: matrix.os != 'windows-latest' && matrix.use-cross == false
+        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: |
           timeout 60s cargo +nightly fuzz run protocol_frame_decode_fuzz -- -max_total_time=30
           timeout 60s cargo +nightly fuzz run filter_parser -- -max_total_time=30
@@ -130,11 +127,11 @@ jobs:
         run: bash tests/daemon_auth.sh
 
       - name: Advanced filter tests
-        if: matrix.use-cross == false && matrix.os != 'windows-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: bash tests/filter_rule_precedence.sh
 
       - name: Remote-to-remote tests
-        if: matrix.use-cross == false && matrix.os != 'windows-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.use-cross == false
         run: cargo test --test remote_remote --features blake3
 
   release:
