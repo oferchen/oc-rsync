@@ -23,7 +23,7 @@ edition = "2021"
 [dependencies]
 protocol = { path = "crates/protocol" }
 checksums = { path = "crates/checksums" }
-cli = { path = "crates/cli" }
+oc-rsync-cli = { path = "crates/cli" }
 engine = { path = "crates/engine" }
 filters = { path = "crates/filters" }
 compress = { path = "crates/compress" }
@@ -61,6 +61,6 @@ path = "tools/strip_rs_comments.rs"
 [features]
 default = []
 lz4 = ["engine/lz4"]
-xattr = ["engine/xattr", "cli/xattr"]
-acl = ["engine/acl", "cli/acl"]
-blake3 = ["checksums/blake3", "engine/blake3", "cli/blake3"]
+xattr = ["engine/xattr", "oc-rsync-cli/xattr"]
+acl = ["engine/acl", "oc-rsync-cli/acl"]
+blake3 = ["checksums/blake3", "engine/blake3", "oc-rsync-cli/blake3"]
