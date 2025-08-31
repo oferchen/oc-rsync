@@ -86,25 +86,7 @@ fn read_port(child: &mut Child) -> io::Result<u16> {
     }
 }
 
-fn spawn_daemon() -> io::Result<(Child, u16)> {
-    let mut child = StdCommand::cargo_bin("oc-rsync")
-        .unwrap()
-        .args(["--daemon", "--module", "data=/tmp", "--port", "0"])
-        .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let port = match read_port(&mut child) {
-        Ok(p) => p,
-        Err(e) => {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(e);
-        }
-    };
-    Ok((child, port))
-}
-
-fn spawn_temp_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
+fn spawn_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
@@ -127,6 +109,10 @@ fn spawn_temp_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
         }
     };
     Ok((child, port, dir))
+}
+
+fn spawn_temp_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
+    spawn_daemon()
 }
 
 #[test]
@@ -162,13 +148,14 @@ fn daemon_blocks_path_traversal() {
     let _ = child.wait();
 }
 
-fn spawn_daemon_with_address(addr: &str) -> io::Result<(Child, u16)> {
+fn spawn_daemon_with_address(addr: &str) -> io::Result<(Child, u16, tempfile::TempDir)> {
+    let dir = tempfile::tempdir().unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
             "--module",
-            "data=/tmp",
+            &format!("data={}", dir.path().display()),
             "--port",
             "0",
             "--address",
@@ -185,13 +172,21 @@ fn spawn_daemon_with_address(addr: &str) -> io::Result<(Child, u16)> {
             return Err(e);
         }
     };
-    Ok((child, port))
+    Ok((child, port, dir))
 }
 
-fn spawn_daemon_ipv4() -> io::Result<(Child, u16)> {
+fn spawn_daemon_ipv4() -> io::Result<(Child, u16, tempfile::TempDir)> {
+    let dir = tempfile::tempdir().unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--daemon", "--module", "data=/tmp", "--port", "0", "-4"])
+        .args([
+            "--daemon",
+            "--module",
+            &format!("data={}", dir.path().display()),
+            "--port",
+            "0",
+            "-4",
+        ])
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
@@ -203,13 +198,21 @@ fn spawn_daemon_ipv4() -> io::Result<(Child, u16)> {
             return Err(e);
         }
     };
-    Ok((child, port))
+    Ok((child, port, dir))
 }
 
-fn spawn_daemon_ipv6() -> io::Result<(Child, u16)> {
+fn spawn_daemon_ipv6() -> io::Result<(Child, u16, tempfile::TempDir)> {
+    let dir = tempfile::tempdir().unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--daemon", "--module", "data=/tmp", "--port", "0", "-6"])
+        .args([
+            "--daemon",
+            "--module",
+            &format!("data={}", dir.path().display()),
+            "--port",
+            "0",
+            "-6",
+        ])
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
@@ -221,7 +224,7 @@ fn spawn_daemon_ipv6() -> io::Result<(Child, u16)> {
             return Err(e);
         }
     };
-    Ok((child, port))
+    Ok((child, port, dir))
 }
 
 fn supports_ipv6() -> bool {
@@ -255,7 +258,7 @@ fn daemon_negotiates_version_with_client() {
         eprintln!("skipping daemon test: network access required");
         return;
     }
-    let (mut child, port) = match spawn_daemon() {
+    let (mut child, port, _dir) = match spawn_daemon() {
         Ok(v) => v,
         Err(e) => {
             eprintln!("skipping daemon test: {e}");
@@ -280,7 +283,7 @@ fn daemon_binds_to_specified_address() {
         eprintln!("skipping daemon test: network access required");
         return;
     }
-    let (mut child, port) = match spawn_daemon_with_address("127.0.0.1") {
+    let (mut child, port, _dir) = match spawn_daemon_with_address("127.0.0.1") {
         Ok(v) => v,
         Err(e) => {
             eprintln!("skipping daemon test: {e}");
@@ -301,7 +304,7 @@ fn daemon_binds_with_ipv4_flag() {
         eprintln!("skipping daemon test: network access required");
         return;
     }
-    let (mut child, port) = match spawn_daemon_ipv4() {
+    let (mut child, port, _dir) = match spawn_daemon_ipv4() {
         Ok(v) => v,
         Err(e) => {
             eprintln!("skipping daemon test: {e}");
@@ -326,7 +329,7 @@ fn daemon_binds_with_ipv6_flag() {
         eprintln!("IPv6 unsupported; skipping test");
         return;
     }
-    let (mut child, port) = match spawn_daemon_ipv6() {
+    let (mut child, port, _dir) = match spawn_daemon_ipv6() {
         Ok(v) => v,
         Err(e) => {
             eprintln!("skipping daemon test: {e}");
@@ -346,7 +349,7 @@ fn probe_connects_to_daemon() {
         eprintln!("skipping daemon test: network access required");
         return;
     }
-    let (mut child, port) = match spawn_daemon() {
+    let (mut child, port, _dir) = match spawn_daemon() {
         Ok(v) => v,
         Err(e) => {
             eprintln!("skipping daemon test: {e}");
