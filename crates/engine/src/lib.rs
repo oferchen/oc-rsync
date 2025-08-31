@@ -1612,6 +1612,7 @@ pub fn sync(
                                             fs::copy(&existing, &dest_path)
                                                 .map_err(|e| io_context(&dest_path, e))?;
                                             stats.files_transferred += 1;
+                                            receiver.copy_metadata(&path, &dest_path)?;
                                             if let Some(f) = batch_file.as_mut() {
                                                 let _ = writeln!(f, "{}", rel.display());
                                             }
@@ -1640,6 +1641,7 @@ pub fn sync(
                                 }
                                 fs::hard_link(&link_path, &dest_path)
                                     .map_err(|e| io_context(&dest_path, e))?;
+                                receiver.copy_metadata(&path, &dest_path)?;
                                 if opts.remove_source_files {
                                     fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
                                 }
@@ -1655,6 +1657,7 @@ pub fn sync(
                                 }
                                 fs::copy(&copy_path, &dest_path)
                                     .map_err(|e| io_context(&dest_path, e))?;
+                                receiver.copy_metadata(&path, &dest_path)?;
                                 if opts.remove_source_files {
                                     fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
                                 }
