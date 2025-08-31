@@ -257,7 +257,11 @@ fn daemon_allows_module_access() {
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
+    t.authenticate(None, false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
     t.send(b"data\n").unwrap();
+    t.send(b"\n").unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
     assert!(n == 0 || !String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR"));
     let _ = child.kill();
@@ -304,7 +308,7 @@ fn daemon_rejects_invalid_token() {
     t.receive(&mut buf).unwrap();
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
 
-    t.authenticate(Some("bad")).unwrap();
+    t.authenticate(Some("bad"), false).unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
     assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).starts_with("@ERR"));
     let _ = child.kill();
@@ -351,8 +355,11 @@ fn daemon_rejects_unauthorized_module() {
     t.receive(&mut buf).unwrap();
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
 
-    t.authenticate(Some("secret")).unwrap();
+    t.authenticate(Some("secret"), false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
     t.send(b"data\n").unwrap();
+    t.send(b"\n").unwrap();
     let n = t.receive(&mut buf).unwrap_or(0);
     assert!(n == 0 || String::from_utf8_lossy(&buf[..n]).starts_with("@ERR"));
     let _ = child.kill();
@@ -399,8 +406,11 @@ fn daemon_authenticates_valid_token() {
     t.receive(&mut buf).unwrap();
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
 
-    t.authenticate(Some("secret")).unwrap();
+    t.authenticate(Some("secret"), false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
     t.send(b"data\n").unwrap();
+    t.send(b"\n").unwrap();
     let res = t.receive(&mut buf);
     match res {
         Ok(0) => {}
@@ -517,10 +527,51 @@ fn daemon_displays_motd() {
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
-    t.authenticate(None).unwrap();
+    t.authenticate(None, false).unwrap();
     let mut motd_buf = [0u8; 64];
     let n = t.receive(&mut motd_buf).unwrap();
     assert!(String::from_utf8_lossy(&motd_buf[..n]).contains("Hello world"));
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_suppresses_motd_when_requested() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let motd = dir.path().join("motd");
+    fs::write(&motd, "Hello world\n").unwrap();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let mut child = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            "data=/tmp",
+            "--port",
+            &port.to_string(),
+            "--motd",
+            motd.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    t.authenticate(None, true).unwrap();
+    let mut motd_buf = [0u8; 64];
+    let n = t.receive(&mut motd_buf).unwrap();
+    assert_eq!(String::from_utf8_lossy(&motd_buf[..n]), "@RSYNCD: OK\n");
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -620,7 +671,11 @@ fn daemon_writes_log_file() {
         t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
         let mut buf = [0u8; 4];
         t.receive(&mut buf).unwrap();
+        t.authenticate(None, false).unwrap();
+        let mut ok = [0u8; 64];
+        t.receive(&mut ok).unwrap();
         t.send(b"data\n").unwrap();
+        t.send(b"\n").unwrap();
     }
     sleep(Duration::from_millis(100));
     let contents = fs::read_to_string(&log).unwrap();
@@ -665,6 +720,7 @@ fn daemon_honors_bwlimit() {
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
+    t.authenticate(None, false).unwrap();
     let mut first = vec![0u8; 300];
     let n1 = t.receive(&mut first).unwrap();
     assert!(!String::from_utf8_lossy(&first[..n1]).contains("second"));

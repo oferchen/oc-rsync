@@ -179,22 +179,11 @@ pub fn authenticate_token(token: &str, path: &Path) -> io::Result<Vec<String>> {
     }
 }
 
-pub fn authenticate<T: Transport>(t: &mut T, path: Option<&Path>) -> io::Result<Vec<String>> {
-    let auth_path = path.unwrap_or(Path::new("auth"));
-    if !auth_path.exists() {
-        return Ok(Vec::new());
-    }
-    #[cfg(unix)]
-    {
-        let mode = fs::metadata(auth_path)?.permissions().mode();
-        if mode & 0o077 != 0 {
-            return Err(io::Error::new(
-                io::ErrorKind::PermissionDenied,
-                "auth file permissions are too open",
-            ));
-        }
-    }
-    let contents = fs::read_to_string(auth_path)?;
+pub fn authenticate<T: Transport>(
+    t: &mut T,
+    path: Option<&Path>,
+) -> io::Result<(Option<String>, Vec<String>, bool)> {
+    let mut no_motd = false;
     const MAX_TOKEN: usize = 256;
     let mut token = Vec::new();
     let mut buf = [0u8; 64];
@@ -213,28 +202,60 @@ pub fn authenticate<T: Transport>(t: &mut T, path: Option<&Path>) -> io::Result<
                 ));
             }
         }
-        if let Some(pos) = buf[..n].iter().position(|&b| b == b'\n') {
-            token.extend_from_slice(&buf[..pos]);
+        let mut start = 0;
+        if token.is_empty() && buf[0] == 0 {
+            no_motd = true;
+            start = 1;
+            if start >= n {
+                continue;
+            }
+        }
+        if let Some(pos) = buf[start..n].iter().position(|&b| b == b'\n') {
+            token.extend_from_slice(&buf[start..start + pos]);
             if token.len() > MAX_TOKEN {
                 return Err(io::Error::new(io::ErrorKind::InvalidData, "token too long"));
             }
             break;
         } else {
-            token.extend_from_slice(&buf[..n]);
+            token.extend_from_slice(&buf[start..n]);
             if token.len() > MAX_TOKEN {
                 return Err(io::Error::new(io::ErrorKind::InvalidData, "token too long"));
             }
         }
     }
-    let token = String::from_utf8_lossy(&token).trim().to_string();
-    if let Some(allowed) = parse_auth_token(&token, &contents) {
-        Ok(allowed)
+    let token_str = String::from_utf8_lossy(&token).trim().to_string();
+
+    if let Some(auth_path) = path {
+        if !auth_path.exists() {
+            return Err(io::Error::new(io::ErrorKind::NotFound, "auth file missing"));
+        }
+        #[cfg(unix)]
+        {
+            let mode = fs::metadata(auth_path)?.permissions().mode();
+            if mode & 0o077 != 0 {
+                return Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "auth file permissions are too open",
+                ));
+            }
+        }
+        let contents = fs::read_to_string(auth_path)?;
+        if let Some(allowed) = parse_auth_token(&token_str, &contents) {
+            Ok((Some(token_str), allowed, no_motd))
+        } else {
+            let _ = t.send(b"@ERROR: access denied");
+            Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "unauthorized",
+            ))
+        }
     } else {
-        let _ = t.send(b"@ERROR: access denied");
-        Err(io::Error::new(
-            io::ErrorKind::PermissionDenied,
-            "unauthorized",
-        ))
+        let token_opt = if token_str.is_empty() {
+            None
+        } else {
+            Some(token_str)
+        };
+        Ok((token_opt, Vec::new(), no_motd))
     }
 }
 
@@ -298,7 +319,8 @@ mod tests {
         };
         let writer = io::sink();
         let mut t = LocalPipeTransport::new(reader, writer);
-        let allowed = authenticate(&mut t, Some(&auth_path)).unwrap();
+        let (_tok, allowed, no_motd) = authenticate(&mut t, Some(&auth_path)).unwrap();
+        assert!(!no_motd);
         assert_eq!(allowed, vec!["user".to_string()]);
     }
 

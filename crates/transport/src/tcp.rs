@@ -68,7 +68,10 @@ impl TcpTransport {
         Self { stream }
     }
 
-    pub fn authenticate(&mut self, token: Option<&str>) -> io::Result<()> {
+    pub fn authenticate(&mut self, token: Option<&str>, no_motd: bool) -> io::Result<()> {
+        if no_motd {
+            self.stream.write_all(&[0])?;
+        }
         if let Some(tok) = token {
             self.stream.write_all(tok.as_bytes())?;
         }
