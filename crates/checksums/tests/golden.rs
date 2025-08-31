@@ -37,6 +37,18 @@ fn builder_strong_digests() {
         .strong(StrongHash::Sha1)
         .build();
     let cfg_md4 = ChecksumConfigBuilder::new().strong(StrongHash::Md4).build();
+    let cfg_blake2b = ChecksumConfigBuilder::new()
+        .strong(StrongHash::Blake2b)
+        .build();
+    let cfg_blake2s = ChecksumConfigBuilder::new()
+        .strong(StrongHash::Blake2s)
+        .build();
+    let cfg_xxh64 = ChecksumConfigBuilder::new()
+        .strong(StrongHash::Xxh64)
+        .build();
+    let cfg_xxh128 = ChecksumConfigBuilder::new()
+        .strong(StrongHash::Xxh128)
+        .build();
     let data = b"hello world";
 
     let cs_md5 = cfg_md5.checksum(data);
@@ -50,7 +62,7 @@ fn builder_strong_digests() {
     assert_eq!(cs_sha1.weak, rolling_checksum(data));
     assert_eq!(
         hex::encode(cs_sha1.strong),
-        "1fb6475c524899f98b088f7608bdab8f1591e078"
+        "1fb6475c524899f98b088f7608bdab8f1591e078",
     );
 
     let cs_md4 = cfg_md4.checksum(data);
@@ -58,6 +70,31 @@ fn builder_strong_digests() {
     assert_eq!(
         hex::encode(cs_md4.strong),
         "ea91f391e02b5e19f432b43bd87a531d"
+    );
+
+    let cs_blake2b = cfg_blake2b.checksum(data);
+    assert_eq!(cs_blake2b.weak, rolling_checksum(data));
+    assert_eq!(
+        hex::encode(cs_blake2b.strong),
+        "d32b7e7c9028b6e0b1ddd7e83799a8b857a0afcaa370985dfaa42dfa59e275097eb75b99e05bb7ef3ac5cf74c957c3b7cad1dfcbb5e3380d56b63780394af8bd",
+    );
+
+    let cs_blake2s = cfg_blake2s.checksum(data);
+    assert_eq!(cs_blake2s.weak, rolling_checksum(data));
+    assert_eq!(
+        hex::encode(cs_blake2s.strong),
+        "a2dc531d6048af9ab7cf85108ebcf147632fce6290fbdfcd5ea789a0b31784d0",
+    );
+
+    let cs_xxh64 = cfg_xxh64.checksum(data);
+    assert_eq!(cs_xxh64.weak, rolling_checksum(data));
+    assert_eq!(hex::encode(cs_xxh64.strong), "648e94e9d09503e7");
+
+    let cs_xxh128 = cfg_xxh128.checksum(data);
+    assert_eq!(cs_xxh128.weak, rolling_checksum(data));
+    assert_eq!(
+        hex::encode(cs_xxh128.strong),
+        "052acb3009ceb7609305f939f85080da",
     );
 
     #[cfg(feature = "blake3")]
@@ -69,7 +106,7 @@ fn builder_strong_digests() {
         assert_eq!(cs_blake3.weak, rolling_checksum(data));
         assert_eq!(
             hex::encode(cs_blake3.strong),
-            "861487254e43e2e567ef5177d0c85452f1982ec89c494e8d4a957ff01dd9b421"
+            "861487254e43e2e567ef5177d0c85452f1982ec89c494e8d4a957ff01dd9b421",
         );
     }
 }
