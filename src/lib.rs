@@ -69,6 +69,7 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<()> {
         } else if file_type.is_file() {
             fs::copy(&src_path, &dst_path)?;
         } else if file_type.is_symlink() {
+            let target = fs::read_link(entry.path())?;
             #[cfg(unix)]
             {
                 let target = fs::read_link(&src_path)?;
@@ -103,6 +104,14 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<()> {
             #[cfg(not(unix))]
             {
                 continue;
+            }
+            #[cfg(windows)]
+            {
+                use std::os::windows::fs::{symlink_dir, symlink_file};
+                match fs::metadata(entry.path()) {
+                    Ok(m) if m.is_dir() => symlink_dir(&target, &dst_path)?,
+                    _ => symlink_file(&target, &dst_path)?,
+                };
             }
         }
 
@@ -157,7 +166,7 @@ mod tests {
         assert_eq!(fs::read(dst_dir.join("file.txt")).unwrap(), b"data");
     }
 
-    #[cfg(unix)]
+    #[cfg(any(unix, windows))]
     #[test]
     fn sync_preserves_symlinks() {
         use std::path::Path;
@@ -167,7 +176,10 @@ mod tests {
         let dst_dir = dir.path().join("dst");
         fs::create_dir_all(&src_dir).unwrap();
         fs::write(src_dir.join("file.txt"), b"hello").unwrap();
+        #[cfg(unix)]
         std::os::unix::fs::symlink("file.txt", src_dir.join("link")).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_file("file.txt", src_dir.join("link")).unwrap();
 
         synchronize(&src_dir, &dst_dir).unwrap();
 
