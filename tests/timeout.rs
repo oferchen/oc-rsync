@@ -1,12 +1,31 @@
 // tests/timeout.rs
 
-use std::io;
+use std::io::{self, Cursor};
 use std::net::TcpListener;
 use std::thread;
 use std::time::Duration;
 
 use protocol::Demux;
-use transport::{ssh::SshStdioTransport, TcpTransport, Transport};
+use transport::{
+    ssh::SshStdioTransport,
+    LocalPipeTransport,
+    TcpTransport,
+    TimeoutTransport,
+    Transport,
+};
+
+#[test]
+fn connection_inactivity_timeout() {
+    let reader = Cursor::new(Vec::new());
+    let writer = Cursor::new(Vec::new());
+    let mut t = TimeoutTransport::new(
+        LocalPipeTransport::new(reader, writer),
+        Duration::from_millis(100),
+    );
+    thread::sleep(Duration::from_millis(200));
+    let err = t.send(b"ping").err().expect("error");
+    assert_eq!(err.kind(), io::ErrorKind::TimedOut);
+}
 
 #[test]
 fn tcp_read_timeout() {
