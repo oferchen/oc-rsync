@@ -511,8 +511,10 @@ impl Matcher {
                         buf.push_str("!\n");
                         continue;
                     }
-                    let (prefix, rest) = match line.chars().next() {
-                        Some(c @ ('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R')) => (Some(c), &line[1..]),
+                    let (prefix, _rest) = match line.chars().next() {
+                        Some(c @ ('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R')) => {
+                            (Some(c), &line[1..])
+                        }
                         _ => (None, line),
                     };
                     let rest = if matches!(
