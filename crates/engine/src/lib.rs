@@ -4,9 +4,11 @@ use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
 #[cfg(unix)]
-use std::os::unix::fs::{FileTypeExt, MetadataExt};
+use std::os::unix::{fs::{FileTypeExt, MetadataExt}, io::AsRawFd};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+#[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
+use nix::fcntl::{fallocate, FallocateFlags};
 
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 pub use checksums::{ModernHash, StrongHash};
@@ -284,19 +286,29 @@ fn write_sparse(file: &mut File, data: &[u8]) -> Result<()> {
     let mut i = 0;
     while i < data.len() {
         if data[i] == 0 {
-            let mut j = i + 1;
-            while j < data.len() && data[j] == 0 {
-                j += 1;
+            let start = i;
+            while i < data.len() && data[i] == 0 {
+                i += 1;
             }
-            file.seek(SeekFrom::Current((j - i) as i64))?;
-            i = j;
+            let len = i - start;
+            #[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
+            {
+                let fd = file.as_raw_fd();
+                let offset = file.stream_position()?;
+                let _ = fallocate(
+                    fd,
+                    FallocateFlags::FALLOC_FL_PUNCH_HOLE | FallocateFlags::FALLOC_FL_KEEP_SIZE,
+                    offset as i64,
+                    len as i64,
+                );
+            }
+            file.seek(SeekFrom::Current(len as i64))?;
         } else {
-            let mut j = i + 1;
-            while j < data.len() && data[j] != 0 {
-                j += 1;
+            let start = i;
+            while i < data.len() && data[i] != 0 {
+                i += 1;
             }
-            file.write_all(&data[i..j])?;
-            i = j;
+            file.write_all(&data[start..i])?;
         }
     }
     Ok(())
