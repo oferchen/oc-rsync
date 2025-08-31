@@ -41,7 +41,7 @@ pub fn negotiate_version(local: u32, peer: u32) -> Result<u32, VersionError> {
     if local >= LATEST_VERSION && peer >= LATEST_VERSION {
         Ok(LATEST_VERSION)
     } else {
-        let v = local.min(peer).min(32);
+        let v = local.min(peer);
         if v >= MIN_VERSION {
             Ok(v)
         } else {
@@ -443,9 +443,9 @@ mod tests {
     fn version_negotiation() {
         assert_eq!(negotiate_version(73, 80), Ok(73));
         assert_eq!(negotiate_version(73, 73), Ok(73));
-        assert_eq!(negotiate_version(73, 40), Ok(32));
-        assert_eq!(negotiate_version(32, 40), Ok(32));
-        for v in 27..=32 {
+        assert_eq!(negotiate_version(73, 40), Ok(40));
+        assert_eq!(negotiate_version(40, 73), Ok(40));
+        for v in 27..=40 {
             assert_eq!(negotiate_version(73, v), Ok(v));
         }
         assert!(negotiate_version(27, 26).is_err());
