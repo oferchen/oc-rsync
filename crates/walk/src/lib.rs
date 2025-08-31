@@ -7,6 +7,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+const MIN_FILE_SIZE: u64 = 1024;
 #[derive(Debug, Clone)]
 pub struct Entry {
     pub prefix_len: usize,
@@ -92,11 +93,14 @@ impl Iterator for Walk {
                     let prefix = common_prefix_len(&self.prev_path, &path);
                     let suffix = path[prefix..].to_string();
 
-                    #[cfg(unix)]
                     let meta = match std::fs::symlink_metadata(entry.path()) {
                         Ok(m) => m,
                         Err(e) => return Some(Err(e)),
                     };
+                    let len = meta.len();
+                    if entry.file_type().is_file() && len < MIN_FILE_SIZE {
+                        continue;
+                    }
                     #[cfg(unix)]
                     let (uid, gid, dev, ino) = (meta.uid(), meta.gid(), meta.dev(), meta.ino());
                     #[cfg(not(unix))]
