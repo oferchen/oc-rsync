@@ -9,6 +9,8 @@ sha1 = "0.10"
 md4 = "0.10"
 blake3 = { version = "1", optional = true }
 cpufeatures = "0.2"
+blake2 = "0.10"
+xxhash-rust = { version = "0.8", features = ["xxh3", "xxh64"] }
 
 [features]
 default = []

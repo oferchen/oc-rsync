@@ -940,6 +940,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             "md5" => StrongHash::Md5,
             "sha1" => StrongHash::Sha1,
             "md4" => StrongHash::Md4,
+            "blake2" => StrongHash::Blake2b,
+            "xxh64" => StrongHash::Xxh64,
+            "xxh128" => StrongHash::Xxh128,
             #[cfg(feature = "blake3")]
             "blake3" => StrongHash::Blake3,
             other => {
@@ -970,6 +973,18 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 }
                 "md4" => {
                     chosen = StrongHash::Md4;
+                    break;
+                }
+                "blake2" => {
+                    chosen = StrongHash::Blake2b;
+                    break;
+                }
+                "xxh64" => {
+                    chosen = StrongHash::Xxh64;
+                    break;
+                }
+                "xxh128" => {
+                    chosen = StrongHash::Xxh128;
                     break;
                 }
                 _ => {}
@@ -2172,6 +2187,12 @@ mod tests {
         assert_eq!(opts.checksum_choice.as_deref(), Some("sha1"));
         let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "md4", "src", "dst"]);
         assert_eq!(opts.checksum_choice.as_deref(), Some("md4"));
+        let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "blake2", "src", "dst"]);
+        assert_eq!(opts.checksum_choice.as_deref(), Some("blake2"));
+        let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "xxh64", "src", "dst"]);
+        assert_eq!(opts.checksum_choice.as_deref(), Some("xxh64"));
+        let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "xxh128", "src", "dst"]);
+        assert_eq!(opts.checksum_choice.as_deref(), Some("xxh128"));
         let opts = ClientOpts::parse_from(["prog", "--cc", "md5", "src", "dst"]);
         assert_eq!(opts.checksum_choice.as_deref(), Some("md5"));
     }
