@@ -14,8 +14,8 @@ use daemon::{
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
 use clap::parser::ValueSource;
+use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
 use compress::{available_codecs, Codec, ModernCompress};
 use engine::human_bytes;
 #[cfg(feature = "blake3")]
@@ -28,13 +28,8 @@ use meta::{parse_chmod, parse_chown, parse_id_map};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
 use transport::{
-    parse_sockopts,
-    AddressFamily,
-    RateLimitedTransport,
-    SshStdioTransport,
-    TcpTransport,
+    parse_sockopts, AddressFamily, RateLimitedTransport, SockOpt, SshStdioTransport, TcpTransport,
     Transport,
-    SockOpt,
 };
 
 fn parse_filters(s: &str) -> std::result::Result<Vec<Rule>, filters::ParseError> {
@@ -177,9 +172,19 @@ struct ClientOpts {
     chmod: Vec<String>,
     #[arg(long = "chown", value_name = "USER:GROUP", help_heading = "Attributes")]
     chown: Option<String>,
-    #[arg(long = "usermap", value_name = "FROM:TO", value_delimiter = ',', help_heading = "Attributes")]
+    #[arg(
+        long = "usermap",
+        value_name = "FROM:TO",
+        value_delimiter = ',',
+        help_heading = "Attributes"
+    )]
     usermap: Vec<String>,
-    #[arg(long = "groupmap", value_name = "FROM:TO", value_delimiter = ',', help_heading = "Attributes")]
+    #[arg(
+        long = "groupmap",
+        value_name = "FROM:TO",
+        value_delimiter = ',',
+        help_heading = "Attributes"
+    )]
     groupmap: Vec<String>,
     #[arg(long, help_heading = "Attributes")]
     times: bool,
@@ -745,8 +750,7 @@ pub fn spawn_daemon_session(
     };
     let mut t = TcpTransport::connect(host, port, contimeout, family)
         .map_err(|e| EngineError::Other(e.to_string()))?;
-    let parsed: Vec<SockOpt> = parse_sockopts(sockopts)
-        .map_err(|e| EngineError::Other(e))?;
+    let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(|e| EngineError::Other(e))?;
     t.apply_sockopts(&parsed).map_err(EngineError::from)?;
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
     if let Some(p) = early_input {
@@ -1063,13 +1067,17 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     };
     let uid_map = if !opts.usermap.is_empty() {
         let spec = opts.usermap.join(",");
-        Some(IdMapper(parse_id_map(&spec).map_err(|e| EngineError::Other(e))?))
+        Some(IdMapper(
+            parse_id_map(&spec).map_err(|e| EngineError::Other(e))?,
+        ))
     } else {
         None
     };
     let gid_map = if !opts.groupmap.is_empty() {
         let spec = opts.groupmap.join(",");
-        Some(IdMapper(parse_id_map(&spec).map_err(|e| EngineError::Other(e))?))
+        Some(IdMapper(
+            parse_id_map(&spec).map_err(|e| EngineError::Other(e))?,
+        ))
     } else {
         None
     };
@@ -1581,8 +1589,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             let content = fs::read_to_string(path)?;
             Ok(content
                 .lines()
+                .map(|l| l.trim_end_matches('\r'))
                 .map(|l| l.trim())
-                .filter(|s| !s.is_empty() && !s.starts_with('#'))
+                .filter(|s| !s.is_empty() && !s.trim_start().starts_with('#'))
                 .map(|s| s.to_string())
                 .collect())
         }
