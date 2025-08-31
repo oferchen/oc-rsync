@@ -276,6 +276,7 @@ impl SshStdioTransport {
         rsh_env: &[(String, String)],
         remote_bin: Option<&[String]>,
         remote_bin_env: &[(String, String)],
+        remote_opts: &[String],
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
         port: Option<u16>,
@@ -324,6 +325,7 @@ impl SshStdioTransport {
             } else {
                 cmd.arg("rsync");
             }
+            cmd.args(remote_opts);
             cmd.arg("--server");
             cmd.arg(path.as_os_str());
             Self::spawn_from_command(cmd)
@@ -343,6 +345,7 @@ impl SshStdioTransport {
             } else {
                 args.push("rsync".to_string());
             }
+            args.extend_from_slice(remote_opts);
             args.push("--server".to_string());
             args.push(path.to_string_lossy().into_owned());
             let mut cmd = Command::new(program);
@@ -360,6 +363,7 @@ impl SshStdioTransport {
         rsync_env: &[(String, String)],
         remote_bin: Option<&[String]>,
         remote_bin_env: &[(String, String)],
+        remote_opts: &[String],
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
         port: Option<u16>,
@@ -375,6 +379,7 @@ impl SshStdioTransport {
             rsh_env,
             remote_bin,
             remote_bin_env,
+            remote_opts,
             known_hosts,
             strict_host_key_checking,
             port,

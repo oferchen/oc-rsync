@@ -16,11 +16,9 @@ use std::time::Duration;
 use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser};
 use compress::{available_codecs, Codec, ModernCompress};
 use engine::human_bytes;
-use engine::{
-    sync, DeleteMode, EngineError, ModernCdc, Result, Stats, StrongHash, SyncOptions,
-};
 #[cfg(feature = "blake3")]
 use engine::ModernHash;
+use engine::{sync, DeleteMode, EngineError, ModernCdc, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use meta::{parse_chmod, parse_chown};
 use protocol::{negotiate_version, LATEST_VERSION};
@@ -302,6 +300,13 @@ struct ClientOpts {
     early_input: Option<PathBuf>,
     #[arg(short = 'e', long, value_name = "COMMAND")]
     rsh: Option<String>,
+    #[arg(
+        short = 'M',
+        long = "remote-option",
+        value_name = "OPT",
+        allow_hyphen_values = true
+    )]
+    remote_option: Vec<String>,
     #[arg(long, hide = true)]
     server: bool,
     #[arg(long, hide = true)]
@@ -592,7 +597,7 @@ where
     Ok(())
 }
 
-fn spawn_daemon_session(
+pub fn spawn_daemon_session(
     host: &str,
     module: &str,
     port: Option<u16>,
@@ -601,6 +606,7 @@ fn spawn_daemon_session(
     timeout: Option<Duration>,
     contimeout: Option<Duration>,
     family: Option<AddressFamily>,
+    remote_opts: &[String],
     version: u32,
     early_input: Option<&Path>,
 ) -> Result<TcpTransport> {
@@ -658,6 +664,11 @@ fn spawn_daemon_session(
 
     let line = format!("{module}\n");
     t.send(line.as_bytes()).map_err(EngineError::from)?;
+    for opt in remote_opts {
+        let o = format!("{opt}\n");
+        t.send(o.as_bytes()).map_err(EngineError::from)?;
+    }
+    t.send(b"\n").map_err(EngineError::from)?;
     Ok(t)
 }
 
@@ -1018,11 +1029,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
-                    opts.protocol.unwrap_or(if opts.modern {
-                        LATEST_VERSION
-                    } else {
-                        31
-                    }),
+                    &opts.remote_option,
+                    opts.protocol
+                        .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                     opts.early_input.as_deref(),
                 )?;
                 sync(
@@ -1049,17 +1058,15 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &rsync_env,
                     remote_bin_vec.as_deref(),
                     remote_env_vec.as_deref().unwrap_or(&[]),
+                    &opts.remote_option,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                     opts.port,
                     opts.contimeout,
                     addr_family,
                     modern_compress,
-                    opts.protocol.unwrap_or(if opts.modern {
-                        LATEST_VERSION
-                    } else {
-                        31
-                    }),
+                    opts.protocol
+                        .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
                 let (err, _) = session.stderr();
@@ -1085,13 +1092,10 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
-                    opts.protocol.unwrap_or(if opts.modern {
-                        LATEST_VERSION
-                    } else {
-                        31
-                    }),
+                    &opts.remote_option,
+                    opts.protocol
+                        .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                     opts.early_input.as_deref(),
-
                 )?;
                 sync(
                     &src.path,
@@ -1117,17 +1121,15 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &rsync_env,
                     remote_bin_vec.as_deref(),
                     remote_env_vec.as_deref().unwrap_or(&[]),
+                    &opts.remote_option,
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                     opts.port,
                     opts.contimeout,
                     addr_family,
                     modern_compress,
-                    opts.protocol.unwrap_or(if opts.modern {
-                        LATEST_VERSION
-                    } else {
-                        31
-                    }),
+                    opts.protocol
+                        .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                 )
                 .map_err(|e| EngineError::Other(e.to_string()))?;
                 let (err, _) = session.stderr();
@@ -1166,6 +1168,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &rsh_cmd.env,
                             remote_bin_vec.as_deref(),
                             remote_env_vec.as_deref().unwrap_or(&[]),
+                            &opts.remote_option,
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1180,6 +1183,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &rsh_cmd.env,
                             remote_bin_vec.as_deref(),
                             remote_env_vec.as_deref().unwrap_or(&[]),
+                            &opts.remote_option,
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1233,11 +1237,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            opts.protocol.unwrap_or(if opts.modern {
-                                LATEST_VERSION
-                            } else {
-                                31
-                            }),
+                            &opts.remote_option,
+                            opts.protocol
+                                .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
                         )?;
                         let mut src_session = spawn_daemon_session(
@@ -1249,11 +1251,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            opts.protocol.unwrap_or(if opts.modern {
-                                LATEST_VERSION
-                            } else {
-                                31
-                            }),
+                            &opts.remote_option,
+                            opts.protocol
+                                .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
@@ -1274,6 +1274,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &rsh_cmd.env,
                             remote_bin_vec.as_deref(),
                             remote_env_vec.as_deref().unwrap_or(&[]),
+                            &opts.remote_option,
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1290,11 +1291,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            opts.protocol.unwrap_or(if opts.modern {
-                                LATEST_VERSION
-                            } else {
-                                31
-                            }),
+                            &opts.remote_option,
+                            opts.protocol
+                                .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
@@ -1330,11 +1329,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            opts.protocol.unwrap_or(if opts.modern {
-                                LATEST_VERSION
-                            } else {
-                                31
-                            }),
+                            &opts.remote_option,
+                            opts.protocol
+                                .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
                         )?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
@@ -1344,6 +1341,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &rsh_cmd.env,
                             remote_bin_vec.as_deref(),
                             remote_env_vec.as_deref().unwrap_or(&[]),
+                            &opts.remote_option,
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
@@ -1656,6 +1654,8 @@ fn handle_connection<T: Transport>(
     motd: Option<&Path>,
     peer: &str,
 ) -> Result<()> {
+    let mut log_file = log_file.map(|p| p.to_path_buf());
+    let mut log_format = log_format.map(|s| s.to_string());
     let mut buf = [0u8; 4];
     let n = transport.receive(&mut buf)?;
     if n == 0 {
@@ -1663,8 +1663,7 @@ fn handle_connection<T: Transport>(
     }
     let peer_ver = u32::from_be_bytes(buf);
     transport.send(&LATEST_VERSION.to_be_bytes())?;
-    negotiate_version(LATEST_VERSION, peer_ver)
-        .map_err(|e| EngineError::Other(e.to_string()))?;
+    negotiate_version(LATEST_VERSION, peer_ver).map_err(|e| EngineError::Other(e.to_string()))?;
 
     let mut tok_buf = [0u8; 256];
     let tn = transport.receive(&mut tok_buf)?;
@@ -1687,6 +1686,19 @@ fn handle_connection<T: Transport>(
     let mut name_buf = [0u8; 256];
     let n = transport.receive(&mut name_buf)?;
     let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
+    let mut opt_buf = [0u8; 256];
+    loop {
+        let n = transport.receive(&mut opt_buf)?;
+        let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
+        if opt.is_empty() {
+            break;
+        }
+        if let Some(v) = opt.strip_prefix("--log-file=") {
+            log_file = Some(PathBuf::from(v));
+        } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
+            log_format = Some(v.to_string());
+        }
+    }
     if let Some(module) = modules.get(&name) {
         if let Ok(ip) = peer.parse::<IpAddr>() {
             if !host_allowed(&ip, &module.hosts_allow, &module.hosts_deny) {
@@ -1716,8 +1728,8 @@ fn handle_connection<T: Transport>(
             let _ = transport.send(b"@ERROR: access denied");
             return Err(EngineError::Other("unauthorized module".into()));
         }
-        if let Some(path) = log_file {
-            let fmt = log_format.unwrap_or("%h %m");
+        if let Some(path) = log_file.as_deref() {
+            let fmt = log_format.as_deref().unwrap_or("%h %m");
             let line = fmt.replace("%h", peer).replace("%m", &name);
             let mut f = OpenOptions::new().create(true).append(true).open(path)?;
             writeln!(f, "{}", line)?;
@@ -1781,8 +1793,8 @@ fn run_probe(opts: ProbeOpts) -> Result<()> {
         let mut buf = [0u8; 4];
         stream.read_exact(&mut buf)?;
         let peer = u32::from_be_bytes(buf);
-        let ver =
-            negotiate_version(LATEST_VERSION, peer).map_err(|e| EngineError::Other(e.to_string()))?;
+        let ver = negotiate_version(LATEST_VERSION, peer)
+            .map_err(|e| EngineError::Other(e.to_string()))?;
         println!("negotiated version {}", ver);
         Ok(())
     } else {
@@ -1794,7 +1806,7 @@ fn run_probe(opts: ProbeOpts) -> Result<()> {
 }
 
 fn run_server() -> Result<()> {
-    use protocol::{Server, CAP_CODECS, SUPPORTED_CAPS, LATEST_VERSION};
+    use protocol::{Server, CAP_CODECS, LATEST_VERSION, SUPPORTED_CAPS};
     let stdin = io::stdin();
     let stdout = io::stdout();
     let timeout = env::var("RSYNC_TIMEOUT")
@@ -2022,6 +2034,7 @@ mod tests {
             None,
             None,
             None,
+            &[],
             30,
             None,
         )
@@ -2078,6 +2091,7 @@ mod tests {
             None,
             None,
             None,
+            &[],
             30,
             Some(&path),
         )
