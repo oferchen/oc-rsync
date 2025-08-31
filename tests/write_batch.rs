@@ -23,4 +23,7 @@ fn creates_batch_file() {
         .assert()
         .success();
     assert!(batch.exists());
+    let log = fs::read_to_string(batch).unwrap();
+    assert!(log.contains("files_transferred=1"));
+    assert!(log.contains("bytes_transferred=4"));
 }
