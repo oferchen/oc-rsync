@@ -42,6 +42,19 @@ impl Manifest {
     pub fn load() -> Self {
         let home = std::env::var("HOME").unwrap_or_else(|_| String::from("."));
         let path = Path::new(&home).join(".oc-rsync/manifest");
+        if !path.exists() {
+            let legacy = Path::new(&home).join(".rsync-rs/manifest");
+            if legacy.exists() {
+                if let Some(parent) = path.parent() {
+                    let _ = fs::create_dir_all(parent);
+                }
+                if fs::rename(&legacy, &path).is_err() {
+                    if fs::copy(&legacy, &path).is_ok() {
+                        let _ = fs::remove_file(&legacy);
+                    }
+                }
+            }
+        }
         let mut entries = HashMap::new();
         if let Ok(contents) = fs::read_to_string(&path) {
             for line in contents.lines() {
@@ -75,5 +88,33 @@ impl Manifest {
     pub fn insert(&mut self, hash: &Hash, path: &Path) {
         self.entries
             .insert(hash.to_hex().to_string(), path.to_path_buf());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn migrates_legacy_manifest() {
+        let home = tempdir().unwrap();
+        std::env::set_var("HOME", home.path());
+
+        let legacy_dir = home.path().join(".rsync-rs");
+        fs::create_dir_all(&legacy_dir).unwrap();
+        let legacy_manifest = legacy_dir.join("manifest");
+
+        let hash = blake3::hash(b"hello");
+        fs::write(
+            &legacy_manifest,
+            format!("{} {}\n", hash.to_hex(), "/some/path"),
+        )
+        .unwrap();
+
+        let manifest = Manifest::load();
+
+        assert_eq!(manifest.lookup(&hash), Some(PathBuf::from("/some/path")));
+        assert!(home.path().join(".oc-rsync/manifest").exists());
     }
 }
