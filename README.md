@@ -82,6 +82,8 @@ The project is organized as a set of focused crates:
 - `meta` – models file metadata (permissions, timestamps, ownership) and provides helper utilities.
 - `compress` – offers traits and implementations for optional compression of file data during transfer.
 - `engine` – orchestrates scanning, delta calculation, and application of differences between sender and receiver.
+- `oc-rsync` – convenience wrapper around the engine that copies any files the
+  engine skips during synchronization.
 - `transport` – abstracts local and remote I/O, multiplexing channels over SSH, TCP, or other transports.
 - `oc-rsync-cli` – exposes a user-facing command line built on top of the engine and transport layers.
 - `fuzz` – houses fuzz targets that stress protocol and parser logic for robustness.
@@ -93,7 +95,7 @@ The CLI entry point resides in the `bin/oc-rsync` crate. Build or run it with Ca
 ```
 cargo build -p oc-rsync-bin --bin oc-rsync
 # or
-cargo run -p oc-rsync-bin -- <args>
+cargo run -p oc-rsync-bin -- "<SRC>" "<DEST>"
 ```
 
 ## Milestone Roadmap
@@ -109,7 +111,18 @@ cargo run -p oc-rsync-bin -- <args>
 Run the full test suite with:
 
 ```
-cargo test
+make test
+```
+
+## Development
+
+The Makefile offers shortcuts for common tasks:
+
+```
+make fmt    # Format the code
+make clippy # Run Clippy lints
+make doc    # Build documentation
+make test   # Run the test suite
 ```
 
 ## Fuzzing

@@ -13,7 +13,9 @@ The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.x are included
 - **engine**: delta-transfer and synchronization engine.
 - **transport**: blocking transport implementations including SSH and TCP.
 - **oc-rsync-cli**: command-line interface driving client, daemon, and probe modes.
-- **oc-rsync (root library)**: convenience wrapper around the engine's synchronization.
+- **oc-rsync (root library)**: convenience wrapper around the engine's synchronization that
+  delegates to `engine::sync` and falls back to a basic recursive copy only for
+  files the engine does not yet handle.
 - **fuzz**: fuzz targets validating protocol and filter robustness.
 
 ## Binaries

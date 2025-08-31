@@ -1,10 +1,22 @@
-.PHONY: verify-comments lint coverage interop test-golden
+.PHONY: verify-comments lint coverage interop test-golden fmt clippy doc test
 
 verify-comments:
 	bash scripts/check-comments.sh
 
 lint:
-	cargo fmt --all --check
+        cargo fmt --all --check
+
+fmt:
+	cargo fmt --all
+
+clippy:
+	cargo clippy --all-targets --all-features -- -D warnings
+
+doc:
+	cargo doc --no-deps --all-features
+
+test:
+	cargo test --all-features
 
 coverage:
        cargo llvm-cov --workspace --features blake3 --doctests \

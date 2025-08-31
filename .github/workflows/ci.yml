@@ -41,9 +41,11 @@ jobs:
             use-cross: true
           - os: macos-latest
             runner: macos-latest
+            target: x86_64-apple-darwin
             use-cross: false
           - os: windows-latest
             runner: windows-latest
+            target: x86_64-pc-windows-msvc
             use-cross: false
           - os: ubuntu-latest
             runner: [ubuntu-latest, ARM64]
@@ -156,6 +158,9 @@ jobs:
             use-cross: true
           - os: macos-latest
             target: x86_64-apple-darwin
+            use-cross: false
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
             use-cross: false
     steps:
       - uses: actions/checkout@v3

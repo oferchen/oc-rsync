@@ -20,7 +20,7 @@ fn cdc_skips_renamed_file() {
     fs::create_dir_all(&dst).unwrap();
 
     let file_a = src.join("a.txt");
-    fs::write(&file_a, b"hello world").unwrap();
+    fs::write(&file_a, vec![0u8; 4096]).unwrap();
 
     let opts = SyncOptions {
         modern_cdc: ModernCdc::Fastcdc,
@@ -47,7 +47,7 @@ fn cdc_skips_renamed_file() {
     )
     .unwrap();
     assert_eq!(stats.bytes_transferred, 0);
-    assert_eq!(fs::read(dst.join("b.txt")).unwrap(), b"hello world");
+    assert_eq!(fs::read(dst.join("b.txt")).unwrap(), vec![0u8; 4096]);
 }
 
 #[test]
