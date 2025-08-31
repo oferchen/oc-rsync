@@ -1,17 +1,17 @@
 [
   {
     "flag": "--8-bit-output",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--acls",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--address",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -51,7 +51,7 @@
   },
   {
     "flag": "--blocking-io",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -111,7 +111,7 @@
   },
   {
     "flag": "--copy-as",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -121,7 +121,7 @@
   },
   {
     "flag": "--copy-devices",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -151,17 +151,12 @@
   },
   {
     "flag": "--debug",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
-    "flag": "--del",
-    "status": "Error",
-    "notes": "an alias for --delete-during"
-  },
-  {
     "flag": "--delay-updates",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
@@ -187,7 +182,7 @@
   {
     "flag": "--delete-during",
     "status": "Supported",
-    "notes": ""
+    "notes": "an alias for --delete-during"
   },
   {
     "flag": "--delete-excluded",
@@ -196,7 +191,7 @@
   },
   {
     "flag": "--delete-missing-args",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -216,7 +211,7 @@
   },
   {
     "flag": "--early-input",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -241,7 +236,7 @@
   },
   {
     "flag": "--fake-super",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
@@ -256,7 +251,7 @@
   },
   {
     "flag": "--force",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
@@ -266,12 +261,12 @@
   },
   {
     "flag": "--fsync",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--fuzzy",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
@@ -281,7 +276,7 @@
   },
   {
     "flag": "--groupmap",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -301,12 +296,12 @@
   },
   {
     "flag": "--iconv",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--ignore-errors",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -316,7 +311,7 @@
   },
   {
     "flag": "--ignore-missing-args",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -336,7 +331,7 @@
   },
   {
     "flag": "--info",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
@@ -361,7 +356,7 @@
   },
   {
     "flag": "--keep-dirlinks",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
@@ -381,57 +376,57 @@
   },
   {
     "flag": "--log-file",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--log-file-format",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--max-alloc",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--max-delete",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--max-size",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--min-size",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--mkpath",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--modify-window",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--munge-links",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--no-OPTION",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--no-implied-dirs",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
@@ -446,17 +441,12 @@
   },
   {
     "flag": "--old-args",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
-    "flag": "--old-d",
-    "status": "Error",
-    "notes": "alias for --old-dirs"
-  },
-  {
     "flag": "--old-dirs",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
@@ -471,27 +461,27 @@
   },
   {
     "flag": "--one-file-system",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--only-write-batch",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--open-noatime",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--out-format",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--outbuf",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
@@ -551,7 +541,7 @@
   },
   {
     "flag": "--read-batch",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
@@ -566,12 +556,12 @@
   },
   {
     "flag": "--remote-option",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--remove-source-files",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -591,7 +581,7 @@
   },
   {
     "flag": "--secluded-args",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -606,7 +596,7 @@
   },
   {
     "flag": "--sockopts",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -626,27 +616,27 @@
   },
   {
     "flag": "--stderr",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--stop-after",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--stop-at",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--suffix",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
     "flag": "--super",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
@@ -666,7 +656,7 @@
   },
   {
     "flag": "--trust-sender",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
   },
   {
@@ -676,17 +666,17 @@
   },
   {
     "flag": "--usermap",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--verbose",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--version",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -696,7 +686,7 @@
   },
   {
     "flag": "--write-batch",
-    "status": "Error",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -706,262 +696,7 @@
   },
   {
     "flag": "--xattrs",
-    "status": "Error",
+    "status": "Ignored",
     "notes": ""
-  },
-  {
-    "flag": "-0",
-    "status": "Error",
-    "notes": "alias for --from0"
-  },
-  {
-    "flag": "-4",
-    "status": "Alias",
-    "notes": "alias for --ipv4"
-  },
-  {
-    "flag": "-6",
-    "status": "Alias",
-    "notes": "alias for --ipv6"
-  },
-  {
-    "flag": "-8",
-    "status": "Error",
-    "notes": "alias for --8-bit-output"
-  },
-  {
-    "flag": "-@",
-    "status": "Error",
-    "notes": "alias for --modify-window"
-  },
-  {
-    "flag": "-A",
-    "status": "Error",
-    "notes": "alias for --acls"
-  },
-  {
-    "flag": "-B",
-    "status": "Alias",
-    "notes": "alias for --block-size"
-  },
-  {
-    "flag": "-C",
-    "status": "Alias",
-    "notes": "alias for --cvs-exclude"
-  },
-  {
-    "flag": "-D",
-    "status": "Error",
-    "notes": "same as --devices --specials"
-  },
-  {
-    "flag": "-E",
-    "status": "Alias",
-    "notes": "alias for --executability"
-  },
-  {
-    "flag": "-F",
-    "status": "Error",
-    "notes": "same as --filter='dir-merge /.rsync-filter'"
-  },
-  {
-    "flag": "-H",
-    "status": "Error",
-    "notes": "alias for --hard-links"
-  },
-  {
-    "flag": "-I",
-    "status": "Alias",
-    "notes": "alias for --ignore-times"
-  },
-  {
-    "flag": "-J",
-    "status": "Alias",
-    "notes": "alias for --omit-link-times"
-  },
-  {
-    "flag": "-K",
-    "status": "Error",
-    "notes": "alias for --keep-dirlinks"
-  },
-  {
-    "flag": "-L",
-    "status": "Alias",
-    "notes": "alias for --copy-links"
-  },
-  {
-    "flag": "-M",
-    "status": "Error",
-    "notes": "alias for --remote-option"
-  },
-  {
-    "flag": "-N",
-    "status": "Alias",
-    "notes": "alias for --crtimes"
-  },
-  {
-    "flag": "-O",
-    "status": "Alias",
-    "notes": "alias for --omit-dir-times"
-  },
-  {
-    "flag": "-P",
-    "status": "Supported",
-    "notes": "same as --partial --progress"
-  },
-  {
-    "flag": "-R",
-    "status": "Alias",
-    "notes": "alias for --relative"
-  },
-  {
-    "flag": "-S",
-    "status": "Alias",
-    "notes": "alias for --sparse"
-  },
-  {
-    "flag": "-T",
-    "status": "Alias",
-    "notes": "alias for --temp-dir"
-  },
-  {
-    "flag": "-U",
-    "status": "Alias",
-    "notes": "alias for --atimes"
-  },
-  {
-    "flag": "-V",
-    "status": "Error",
-    "notes": "alias for --version"
-  },
-  {
-    "flag": "-W",
-    "status": "Alias",
-    "notes": "alias for --whole-file"
-  },
-  {
-    "flag": "-X",
-    "status": "Error",
-    "notes": "alias for --xattrs"
-  },
-  {
-    "flag": "-a",
-    "status": "Alias",
-    "notes": "alias for --archive"
-  },
-  {
-    "flag": "-b",
-    "status": "Alias",
-    "notes": "alias for --backup"
-  },
-  {
-    "flag": "-c",
-    "status": "Alias",
-    "notes": "alias for --checksum"
-  },
-  {
-    "flag": "-d",
-    "status": "Alias",
-    "notes": "alias for --dirs"
-  },
-  {
-    "flag": "-e",
-    "status": "Alias",
-    "notes": "alias for --rsh"
-  },
-  {
-    "flag": "-f",
-    "status": "Alias",
-    "notes": "alias for --filter"
-  },
-  {
-    "flag": "-g",
-    "status": "Error",
-    "notes": "alias for --group"
-  },
-  {
-    "flag": "-h",
-    "status": "Alias",
-    "notes": "alias for --help"
-  },
-  {
-    "flag": "-i",
-    "status": "Alias",
-    "notes": "alias for --itemize-changes"
-  },
-  {
-    "flag": "-k",
-    "status": "Alias",
-    "notes": "alias for --copy-dirlinks"
-  },
-  {
-    "flag": "-l",
-    "status": "Error",
-    "notes": "alias for --links"
-  },
-  {
-    "flag": "-m",
-    "status": "Alias",
-    "notes": "alias for --prune-empty-dirs"
-  },
-  {
-    "flag": "-n",
-    "status": "Alias",
-    "notes": "alias for --dry-run"
-  },
-  {
-    "flag": "-o",
-    "status": "Error",
-    "notes": "alias for --owner"
-  },
-  {
-    "flag": "-p",
-    "status": "Error",
-    "notes": "alias for --perms"
-  },
-  {
-    "flag": "-q",
-    "status": "Alias",
-    "notes": "alias for --quiet"
-  },
-  {
-    "flag": "-r",
-    "status": "Alias",
-    "notes": "alias for --recursive"
-  },
-  {
-    "flag": "-s",
-    "status": "Error",
-    "notes": "alias for --secluded-args"
-  },
-  {
-    "flag": "-t",
-    "status": "Error",
-    "notes": "alias for --times"
-  },
-  {
-    "flag": "-u",
-    "status": "Alias",
-    "notes": "alias for --update"
-  },
-  {
-    "flag": "-v",
-    "status": "Alias",
-    "notes": "alias for --verbose"
-  },
-  {
-    "flag": "-x",
-    "status": "Error",
-    "notes": "alias for --one-file-system"
-  },
-  {
-    "flag": "-y",
-    "status": "Error",
-    "notes": "alias for --fuzzy"
-  },
-  {
-    "flag": "-z",
-    "status": "Alias",
-    "notes": "alias for --compress"
   }
 ]

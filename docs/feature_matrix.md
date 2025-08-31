@@ -78,8 +78,8 @@ negotiates version 73.
 | `--iconv` | — | ❌ | — | — |  | ≤3.2 |
 | `--ignore-errors` | — | ✅ | ❌ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--ignore-existing` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--ignore-missing-args` | — | ❌ | — | — |  | ≤3.2 |
-| `--ignore-times` | `-I` | ❌ | — | — |  | ≤3.2 |
+| `--ignore-missing-args` | — | ✅ | ❌ | [tests/ignore_missing_args.rs](../tests/ignore_missing_args.rs) |  | ≤3.2 |
+| `--ignore-times` | `-I` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--include` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--include-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--info` | — | ❌ | — | — |  | ≤3.2 |

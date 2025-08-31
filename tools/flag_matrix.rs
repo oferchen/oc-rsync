@@ -15,6 +15,7 @@ struct Entry {
 fn clean_flag(token: &str) -> String {
     let token = token.split_whitespace().next().unwrap_or("");
     let token = token.split('=').next().unwrap_or(token);
+    let token = token.trim_end_matches('.');
     token.to_string()
 }
 
@@ -46,22 +47,67 @@ fn parse_help(
             continue;
         }
         let tokens: Vec<String> = raw_tokens.iter().map(|t| clean_flag(t)).collect();
-        let canonical_index = tokens.iter().position(|t| t.starts_with("--")).unwrap_or(0);
-        let canonical = tokens[canonical_index].clone();
+        let mut canonical = tokens
+            .iter()
+            .filter(|t| t.starts_with("--"))
+            .max_by_key(|t| t.len())
+            .cloned();
+        if desc.contains("alias for") {
+            if let Some(idx) = desc.find("--") {
+                canonical = Some(clean_flag(&desc[idx..]));
+            }
+        }
+        let Some(canonical) = canonical else {
+            continue;
+        };
         flags.insert(canonical.clone());
         if desc.contains("alias for") || desc.contains("same as") {
             alias_desc.insert(canonical.clone(), desc.to_string());
         }
-        for (i, alias) in tokens.iter().enumerate() {
-            if i == canonical_index {
+        for alias in tokens {
+            if alias == canonical {
                 continue;
             }
-            flags.insert(alias.clone());
-            aliases.insert(alias.clone(), canonical.clone());
+            aliases.insert(alias, canonical.clone());
         }
     }
 
     (flags, aliases, alias_desc)
+}
+
+fn parse_feature_matrix() -> BTreeSet<String> {
+    let text = fs::read_to_string("docs/feature_matrix.md").unwrap_or_default();
+    let mut ignored = BTreeSet::new();
+    for line in text.lines() {
+        if !line.trim_start().starts_with('|') {
+            continue;
+        }
+        let mut parts = line.split('|');
+        let _ = parts.next();
+        let option = match parts.next() {
+            Some(s) => s.trim().trim_matches('`').to_string(),
+            None => continue,
+        };
+        let _short = parts.next();
+        let supported = match parts.next() {
+            Some(s) => s.trim(),
+            None => continue,
+        };
+        let _parity = parts.next();
+        let _tests = parts.next();
+        let notes = match parts.next() {
+            Some(s) => s.trim().to_string(),
+            None => String::new(),
+        };
+        if supported != "✅"
+            || notes.contains("requires `acl` feature")
+            || notes.contains("requires `xattr` feature")
+            || notes.contains("requires `blake3` feature")
+        {
+            ignored.insert(option);
+        }
+    }
+    ignored
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -73,19 +119,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .args(["run", "--quiet", "--bin", "oc-rsync", "--", "--help"])
         .output()?;
     let oc_rsync_help_str = String::from_utf8(oc_rsync_help.stdout)?;
-    let (oc_rsync_flags, oc_rsync_aliases, _oc_rsync_alias_desc) = parse_help(&oc_rsync_help_str);
+    let (mut oc_rsync_flags, oc_rsync_aliases, _oc_rsync_alias_desc) =
+        parse_help(&oc_rsync_help_str);
+    if Command::new("cargo")
+        .args(["run", "--quiet", "--bin", "oc-rsync", "--", "--version"])
+        .output()?
+        .status
+        .success()
+    {
+        oc_rsync_flags.insert("--version".to_string());
+    }
 
     let error_notes: HashMap<&str, &str> = [].into_iter().collect();
-
-    let ignored_flags: BTreeSet<&str> = BTreeSet::new();
+    let ignored_flags = parse_feature_matrix();
 
     let mut entries = Vec::new();
     for flag in rsync_flags.iter() {
         let mut status = if oc_rsync_flags.contains(flag) {
             if error_notes.contains_key(flag.as_str()) {
                 "Error"
-            } else if ignored_flags.contains(flag.as_str()) {
-                "Ignored"
             } else if oc_rsync_aliases.contains_key(flag) {
                 "Alias"
             } else {
@@ -94,6 +146,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         } else {
             "Error"
         };
+        if ignored_flags.contains(flag) {
+            status = "Ignored";
+        }
         let mut notes = String::new();
         if let Some(desc) = rsync_alias_desc.get(flag) {
             notes.push_str(desc);
@@ -124,6 +179,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         md.push_str(&format!("| {} | {} | {} |\n", e.flag, e.status, e.notes));
     }
     fs::write("tools/flag_matrix.md", md)?;
+
+    if let Some(missing) = entries
+        .iter()
+        .filter(|e| e.status == "Error")
+        .map(|e| e.flag.clone())
+        .reduce(|mut acc, f| {
+            acc.push_str(", ");
+            acc.push_str(&f);
+            acc
+        })
+    {
+        eprintln!("missing flags: {}", missing);
+        std::process::exit(1);
+    }
 
     Ok(())
 }
