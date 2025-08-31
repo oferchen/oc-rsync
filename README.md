@@ -111,6 +111,10 @@ The project includes fuzz targets under `fuzz`.
 See [docs/fuzzing.md](docs/fuzzing.md) for instructions on installing the
 tooling and running the fuzzers.
 
+## Performance
+Performance benchmarks and CPU feature detection details are documented in
+[docs/perf.md](docs/perf.md).
+
 ## Manifest
 
 Content-defined chunking persists a manifest of seen chunks to
