@@ -418,7 +418,11 @@ struct ClientOpts {
     write_batch: Option<PathBuf>,
     #[arg(long = "copy-devices", help_heading = "Misc")]
     copy_devices: bool,
-    #[arg(long = "write-devices", help_heading = "Misc")]
+    #[arg(
+        long = "write-devices",
+        help = "write to devices as files (implies --inplace)",
+        help_heading = "Misc"
+    )]
     write_devices: bool,
     #[arg(long, hide = true)]
     server: bool,

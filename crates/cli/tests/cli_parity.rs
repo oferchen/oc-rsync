@@ -14,7 +14,9 @@ fn archive_flag_matches_upstream() {
 
     // upstream short flag
     let status = Command::new("rsync")
-        .args(["-a", "-n"]).arg(src_path).arg(dst_path)
+        .args(["-a", "-n"])
+        .arg(src_path)
+        .arg(dst_path)
         .status()
         .expect("rsync not installed");
     assert!(status.success());
@@ -22,7 +24,9 @@ fn archive_flag_matches_upstream() {
     // our parser short flag
     let matches = cli_command()
         .try_get_matches_from([
-            "oc-rsync", "-a", "-n",
+            "oc-rsync",
+            "-a",
+            "-n",
             src_path.to_str().unwrap(),
             dst_path.to_str().unwrap(),
         ])
@@ -31,7 +35,9 @@ fn archive_flag_matches_upstream() {
 
     // upstream long flag
     let status = Command::new("rsync")
-        .args(["--archive", "-n"]).arg(src_path).arg(dst_path)
+        .args(["--archive", "-n"])
+        .arg(src_path)
+        .arg(dst_path)
         .status()
         .expect("rsync not installed");
     assert!(status.success());
@@ -39,7 +45,9 @@ fn archive_flag_matches_upstream() {
     // our parser long flag
     let matches = cli_command()
         .try_get_matches_from([
-            "oc-rsync", "--archive", "-n",
+            "oc-rsync",
+            "--archive",
+            "-n",
             src_path.to_str().unwrap(),
             dst_path.to_str().unwrap(),
         ])
@@ -56,7 +64,9 @@ fn combined_flags_match_upstream() {
 
     // upstream combined flags
     let status = Command::new("rsync")
-        .args(["-avz", "-n"]).arg(src_path).arg(dst_path)
+        .args(["-avz", "-n"])
+        .arg(src_path)
+        .arg(dst_path)
         .status()
         .expect("rsync not installed");
     assert!(status.success());
@@ -64,7 +74,9 @@ fn combined_flags_match_upstream() {
     // our parser combined flags
     let matches = cli_command()
         .try_get_matches_from([
-            "oc-rsync", "-avz", "-n",
+            "oc-rsync",
+            "-avz",
+            "-n",
             src_path.to_str().unwrap(),
             dst_path.to_str().unwrap(),
         ])
@@ -75,7 +87,9 @@ fn combined_flags_match_upstream() {
 
     // upstream separate flags
     let status = Command::new("rsync")
-        .args(["-a", "-v", "-z", "-n"]).arg(src_path).arg(dst_path)
+        .args(["-a", "-v", "-z", "-n"])
+        .arg(src_path)
+        .arg(dst_path)
         .status()
         .expect("rsync not installed");
     assert!(status.success());
@@ -83,7 +97,11 @@ fn combined_flags_match_upstream() {
     // our parser separate flags
     let matches = cli_command()
         .try_get_matches_from([
-            "oc-rsync", "-a", "-v", "-z", "-n",
+            "oc-rsync",
+            "-a",
+            "-v",
+            "-z",
+            "-n",
             src_path.to_str().unwrap(),
             dst_path.to_str().unwrap(),
         ])
@@ -102,7 +120,9 @@ fn partial_progress_alias_matches_upstream() {
 
     // upstream short alias -P
     let status = Command::new("rsync")
-        .args(["-P", "-n"]).arg(src_path).arg(dst_path)
+        .args(["-P", "-n"])
+        .arg(src_path)
+        .arg(dst_path)
         .status()
         .expect("rsync not installed");
     assert!(status.success());
@@ -110,7 +130,9 @@ fn partial_progress_alias_matches_upstream() {
     // our parser for -P
     let matches = cli_command()
         .try_get_matches_from([
-            "oc-rsync", "-P", "-n",
+            "oc-rsync",
+            "-P",
+            "-n",
             src_path.to_str().unwrap(),
             dst_path.to_str().unwrap(),
         ])
@@ -119,7 +141,9 @@ fn partial_progress_alias_matches_upstream() {
 
     // upstream long form --partial --progress
     let status = Command::new("rsync")
-        .args(["--partial", "--progress", "-n"]).arg(src_path).arg(dst_path)
+        .args(["--partial", "--progress", "-n"])
+        .arg(src_path)
+        .arg(dst_path)
         .status()
         .expect("rsync not installed");
     assert!(status.success());
@@ -127,7 +151,10 @@ fn partial_progress_alias_matches_upstream() {
     // our parser long form
     let matches = cli_command()
         .try_get_matches_from([
-            "oc-rsync", "--partial", "--progress", "-n",
+            "oc-rsync",
+            "--partial",
+            "--progress",
+            "-n",
             src_path.to_str().unwrap(),
             dst_path.to_str().unwrap(),
         ])

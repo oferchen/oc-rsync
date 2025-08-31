@@ -25,7 +25,7 @@
 |  | --super | receiver attempts super-user activities | no |  | no |
 |  | --times | preserve modification times | yes |  | no |
 |  | --usermap=STRING | custom username mapping | no |  | no |
-|  | --write-devices | write to devices as files (implies --inplace) | no |  | no |
+|  | --write-devices | write to devices as files (implies --inplace) | yes |  | no |
 | -X | --xattrs | preserve extended attributes | yes | requires `xattr` feature | no |
 
 ## Compression

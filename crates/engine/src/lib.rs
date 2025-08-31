@@ -829,7 +829,7 @@ impl Receiver {
         if resume > src_len {
             resume = src_len;
         }
-        let mut basis: Box<dyn ReadSeek> = if self.opts.copy_devices {
+        let mut basis: Box<dyn ReadSeek> = if self.opts.copy_devices || self.opts.write_devices {
             if let Ok(meta) = fs::symlink_metadata(&basis_path) {
                 let ft = meta.file_type();
                 if ft.is_block_device() || ft.is_char_device() {

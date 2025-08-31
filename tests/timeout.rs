@@ -7,11 +7,7 @@ use std::time::Duration;
 
 use protocol::Demux;
 use transport::{
-    ssh::SshStdioTransport,
-    LocalPipeTransport,
-    TcpTransport,
-    TimeoutTransport,
-    Transport,
+    ssh::SshStdioTransport, LocalPipeTransport, TcpTransport, TimeoutTransport, Transport,
 };
 
 #[test]
@@ -36,7 +32,8 @@ fn tcp_read_timeout() {
         thread::sleep(Duration::from_secs(5));
     });
     let mut t = TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None).unwrap();
-    t.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(100)))
+        .unwrap();
     let mut buf = [0u8; 1];
     let err = t.receive(&mut buf).err().expect("error");
     assert!(err.kind() == io::ErrorKind::WouldBlock || err.kind() == io::ErrorKind::TimedOut);
@@ -45,7 +42,8 @@ fn tcp_read_timeout() {
 #[test]
 fn ssh_read_timeout() {
     let mut t = SshStdioTransport::spawn("sh", ["-c", "sleep 5"]).unwrap();
-    t.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(100)))
+        .unwrap();
     let mut buf = [0u8; 1];
     let err = t.receive(&mut buf).err().expect("error");
     assert_eq!(err.kind(), io::ErrorKind::TimedOut);

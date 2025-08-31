@@ -66,7 +66,12 @@ fn rsync_protect_args_env_enables_secluded() {
     )
     .unwrap();
     fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
-    let rsync_path = format!("{} {} {}", wrapper.display(), log.display(), remote_bin.display());
+    let rsync_path = format!(
+        "{} {} {}",
+        wrapper.display(),
+        log.display(),
+        remote_bin.display()
+    );
 
     let rsh = dir.path().join("fake_rsh.sh");
     fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
