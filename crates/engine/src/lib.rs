@@ -1401,6 +1401,7 @@ pub fn sync(
     } else {
         Manifest::default()
     };
+    let mut dir_meta: Vec<(PathBuf, PathBuf)> = Vec::new();
     if matches!(opts.delete, Some(DeleteMode::Before)) {
         delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
     }
@@ -1559,7 +1560,7 @@ pub fn sync(
                     if created && opts.itemize_changes {
                         println!("cd+++++++++ {}/", rel.display());
                     }
-                    receiver.copy_metadata(&path, &dest_path)?;
+                    dir_meta.push((path.clone(), dest_path.clone()));
                 } else if file_type.is_symlink() {
                     let created = fs::symlink_metadata(&dest_path).is_err();
                     let target = fs::read_link(&path)?;
@@ -1679,6 +1680,9 @@ pub fn sync(
         Some(DeleteMode::After) | Some(DeleteMode::During)
     ) {
         delete_extraneous(src, dst, &matcher, opts, &mut stats)?;
+    }
+    for (src_dir, dest_dir) in dir_meta.into_iter().rev() {
+        receiver.copy_metadata(&src_dir, &dest_dir)?;
     }
     if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
         manifest.save()?;
