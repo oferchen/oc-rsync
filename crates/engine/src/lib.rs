@@ -867,6 +867,15 @@ impl Receiver {
 
 impl Receiver {
     fn copy_metadata(&self, src: &Path, dest: &Path) -> Result<()> {
+        #[cfg(unix)]
+        if self.opts.write_devices {
+            if let Ok(meta) = fs::symlink_metadata(dest) {
+                let ft = meta.file_type();
+                if ft.is_char_device() || ft.is_block_device() {
+                    return Ok(());
+                }
+            }
+        }
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         {
             let chown_uid = self.opts.chown.map(|(u, _)| u).flatten();
@@ -1248,6 +1257,10 @@ pub fn sync(
     remote: &[Codec],
     opts: &SyncOptions,
 ) -> Result<Stats> {
+    let mut batch_file = opts
+        .write_batch
+        .as_ref()
+        .and_then(|p| OpenOptions::new().create(true).append(true).open(p).ok());
     if opts.list_only {
         let matcher = matcher.clone().with_root(src.to_path_buf());
         let mut walker = walk(src, 1024);
@@ -1374,6 +1387,9 @@ pub fn sync(
                                             }
                                             fs::copy(&existing, &dest_path)?;
                                             stats.files_transferred += 1;
+                                            if let Some(f) = batch_file.as_mut() {
+                                                let _ = writeln!(f, "{}", rel.display());
+                                            }
                                             if opts.itemize_changes {
                                                 println!(">f+++++++++ {}", rel.display());
                                             }
@@ -1416,6 +1432,9 @@ pub fn sync(
                     if sender.process_file(&path, &dest_path, rel, &mut receiver)? {
                         stats.files_transferred += 1;
                         stats.bytes_transferred += fs::metadata(&path)?.len();
+                        if let Some(f) = batch_file.as_mut() {
+                            let _ = writeln!(f, "{}", rel.display());
+                        }
                         if opts.itemize_changes {
                             println!(">f+++++++++ {}", rel.display());
                         }
@@ -1478,6 +1497,9 @@ pub fn sync(
                                 )? {
                                     stats.files_transferred += 1;
                                     stats.bytes_transferred += meta.len();
+                                    if let Some(f) = batch_file.as_mut() {
+                                        let _ = writeln!(f, "{}", rel.display());
+                                    }
                                 }
                             }
                         }
@@ -1552,14 +1574,12 @@ pub fn sync(
     if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
         manifest.save()?;
     }
-    if let Some(batch) = &opts.write_batch {
-        if let Ok(mut f) = File::create(batch) {
-            let _ = writeln!(
-                f,
-                "files_transferred={} bytes_transferred={}",
-                stats.files_transferred, stats.bytes_transferred
-            );
-        }
+    if let Some(mut f) = batch_file {
+        let _ = writeln!(
+            f,
+            "files_transferred={} bytes_transferred={}",
+            stats.files_transferred, stats.bytes_transferred
+        );
     }
     Ok(stats)
 }

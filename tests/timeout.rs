@@ -1,12 +1,31 @@
 // tests/timeout.rs
 
-use std::io;
+use std::io::{self, Cursor};
 use std::net::TcpListener;
 use std::thread;
 use std::time::Duration;
 
 use protocol::Demux;
-use transport::{ssh::SshStdioTransport, TcpTransport, Transport};
+use transport::{
+    ssh::SshStdioTransport,
+    LocalPipeTransport,
+    TcpTransport,
+    TimeoutTransport,
+    Transport,
+};
+
+#[test]
+fn connection_inactivity_timeout() {
+    let reader = Cursor::new(Vec::new());
+    let writer = Cursor::new(Vec::new());
+    let mut t = TimeoutTransport::new(
+        LocalPipeTransport::new(reader, writer),
+        Duration::from_millis(100),
+    );
+    thread::sleep(Duration::from_millis(200));
+    let err = t.send(b"ping").err().expect("error");
+    assert_eq!(err.kind(), io::ErrorKind::TimedOut);
+}
 
 #[test]
 fn tcp_read_timeout() {
@@ -16,13 +35,8 @@ fn tcp_read_timeout() {
         let (_sock, _) = listener.accept().unwrap();
         thread::sleep(Duration::from_secs(5));
     });
-    let mut t = TcpTransport::connect(
-        &addr.ip().to_string(),
-        addr.port(),
-        Some(Duration::from_millis(100)),
-        None,
-    )
-    .unwrap();
+    let mut t = TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
     let mut buf = [0u8; 1];
     let err = t.receive(&mut buf).err().expect("error");
     assert!(err.kind() == io::ErrorKind::WouldBlock || err.kind() == io::ErrorKind::TimedOut);
@@ -31,7 +45,7 @@ fn tcp_read_timeout() {
 #[test]
 fn ssh_read_timeout() {
     let mut t = SshStdioTransport::spawn("sh", ["-c", "sleep 5"]).unwrap();
-    t.set_read_timeout(Some(Duration::from_millis(100)));
+    t.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
     let mut buf = [0u8; 1];
     let err = t.receive(&mut buf).err().expect("error");
     assert_eq!(err.kind(), io::ErrorKind::TimedOut);
