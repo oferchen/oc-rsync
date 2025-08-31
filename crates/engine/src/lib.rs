@@ -544,8 +544,10 @@ impl Sender {
             return Ok(false);
         }
 
-        let src_len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+        let meta = fs::metadata(path)?;
+        let src_len = meta.len();
         ensure_max_alloc(src_len, &self.opts)?;
+        let file_type = meta.file_type();
         let atime_guard = if self.opts.atimes {
             meta::AccessTime::new(path).ok()
         } else {
@@ -597,7 +599,12 @@ impl Sender {
                 Err(_) => Box::new(Cursor::new(Vec::new())),
             }
         };
-        let delta: Box<dyn Iterator<Item = Result<Op>> + '_> = if self.opts.whole_file {
+        let delta: Box<dyn Iterator<Item = Result<Op>> + '_> = if self.opts.copy_devices
+            && (file_type.is_block_device() || file_type.is_char_device())
+            && src_len == 0
+        {
+            Box::new(std::iter::empty())
+        } else if self.opts.whole_file {
             let mut buf = vec![0u8; self.block_size.max(8192)];
             Box::new(std::iter::from_fn(move || {
                 match src_reader.read(&mut buf) {
@@ -776,13 +783,33 @@ impl Receiver {
         if resume > src_len {
             resume = src_len;
         }
-        let mut basis: Box<dyn ReadSeek> = match File::open(&basis_path) {
-            Ok(f) => {
-                let len = f.metadata().map(|m| m.len()).unwrap_or(0);
-                ensure_max_alloc(len, &self.opts)?;
-                Box::new(BufReader::new(f))
+        let mut basis: Box<dyn ReadSeek> = if self.opts.copy_devices {
+            if let Ok(meta) = fs::symlink_metadata(&basis_path) {
+                let ft = meta.file_type();
+                if ft.is_block_device() || ft.is_char_device() {
+                    Box::new(Cursor::new(Vec::new()))
+                } else {
+                    match File::open(&basis_path) {
+                        Ok(f) => {
+                            let len = f.metadata().map(|m| m.len()).unwrap_or(0);
+                            ensure_max_alloc(len, &self.opts)?;
+                            Box::new(BufReader::new(f))
+                        }
+                        Err(_) => Box::new(Cursor::new(Vec::new())),
+                    }
+                }
+            } else {
+                Box::new(Cursor::new(Vec::new()))
             }
-            Err(_) => Box::new(Cursor::new(Vec::new())),
+        } else {
+            match File::open(&basis_path) {
+                Ok(f) => {
+                    let len = f.metadata().map(|m| m.len()).unwrap_or(0);
+                    ensure_max_alloc(len, &self.opts)?;
+                    Box::new(BufReader::new(f))
+                }
+                Err(_) => Box::new(Cursor::new(Vec::new())),
+            }
         };
         if let Some(parent) = tmp_dest.parent() {
             fs::create_dir_all(parent)?;
