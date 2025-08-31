@@ -13,6 +13,7 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Duration;
 
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 pub use checksums::{ModernHash, StrongHash};
@@ -675,7 +676,12 @@ impl Sender {
         if let (Ok(src_meta), Ok(dst_meta)) = (fs::metadata(path), fs::metadata(dest)) {
             if src_meta.len() == dst_meta.len() {
                 if let (Ok(sm), Ok(dm)) = (src_meta.modified(), dst_meta.modified()) {
-                    return sm == dm;
+                    let diff = if sm > dm {
+                        sm.duration_since(dm).unwrap_or(Duration::ZERO)
+                    } else {
+                        dm.duration_since(sm).unwrap_or(Duration::ZERO)
+                    };
+                    return diff <= self.opts.modify_window;
                 }
             }
         }
@@ -1282,6 +1288,7 @@ pub struct SyncOptions {
     pub append_verify: bool,
     pub numeric_ids: bool,
     pub inplace: bool,
+    pub modify_window: Duration,
     pub bwlimit: Option<u64>,
     pub block_size: usize,
     pub link_dest: Option<PathBuf>,
@@ -1372,6 +1379,7 @@ impl Default for SyncOptions {
             append_verify: false,
             numeric_ids: false,
             inplace: false,
+            modify_window: Duration::ZERO,
             bwlimit: None,
             block_size: 1024,
             link_dest: None,
@@ -1722,7 +1730,13 @@ pub fn sync(
                                 (src_meta.modified(), dst_meta.modified())
                             {
                                 if dst_mtime > src_mtime {
-                                    continue;
+                                    if dst_mtime
+                                        .duration_since(src_mtime)
+                                        .unwrap_or(Duration::ZERO)
+                                        > opts.modify_window
+                                    {
+                                        continue;
+                                    }
                                 }
                             }
                         }

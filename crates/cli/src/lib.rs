@@ -365,6 +365,8 @@ struct ClientOpts {
     timeout: Option<Duration>,
     #[arg(long = "contimeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     contimeout: Option<Duration>,
+    #[arg(long = "modify-window", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
+    modify_window: Option<Duration>,
     #[arg(
         long = "protocol",
         value_name = "VER",
@@ -1212,6 +1214,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         append_verify: opts.append_verify,
         numeric_ids: opts.numeric_ids,
         inplace: opts.inplace || opts.write_devices,
+        modify_window: opts.modify_window.unwrap_or(Duration::ZERO),
         bwlimit: opts.bwlimit,
         block_size,
         link_dest: opts.link_dest.clone(),
