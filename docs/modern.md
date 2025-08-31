@@ -13,8 +13,11 @@ remaining fast.
 ## Enhanced compression
 
 Modern mode prefers zstd compression and also supports lz4 through the
-`--modern-compress` option.  When both peers support the algorithm the most
-efficient codec is selected automatically.
+`--modern-compress` option. `--modern-compress=auto` inspects the CPU at
+runtime: zstd is chosen only when AVX2 or AVX-512 are available on x86, or when
+NEON or SVE are present on aarch64. Without those SIMD features the code falls
+back to lz4 if enabled, otherwise compression is disabled. When both peers
+support the algorithm the most efficient codec is selected automatically.
 
 ## Content-defined chunking
 
