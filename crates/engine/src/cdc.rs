@@ -5,56 +5,31 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use blake3::Hash;
-use checksums::Rolling;
-
-const WINDOW: usize = 64;
-const MIN_CHUNK: usize = 2 * 1024;
-const AVG_CHUNK: usize = 8 * 1024;
-const MASK: u32 = (AVG_CHUNK as u32) - 1;
+use fastcdc::v2020::FastCDC;
 
 #[derive(Debug, Clone)]
 pub struct Chunk {
     pub hash: Hash,
 }
 
-pub fn chunk_file(path: &Path) -> io::Result<Vec<Chunk>> {
+pub fn chunk_file(path: &Path, min: usize, avg: usize, max: usize) -> io::Result<Vec<Chunk>> {
     let data = fs::read(path)?;
-    Ok(chunk_bytes(&data))
+    Ok(chunk_bytes(&data, min, avg, max))
 }
 
-pub fn chunk_bytes(data: &[u8]) -> Vec<Chunk> {
-    let mut chunks = Vec::new();
+pub fn chunk_bytes(data: &[u8], min: usize, avg: usize, max: usize) -> Vec<Chunk> {
     if data.is_empty() {
-        return chunks;
+        return Vec::new();
     }
-    if data.len() <= WINDOW {
-        chunks.push(Chunk {
-            hash: blake3::hash(data),
-        });
-        return chunks;
-    }
-    let mut start = 0usize;
-    let mut roll = Rolling::new(&data[..WINDOW]);
-    for i in WINDOW..data.len() {
-        let out = data[i - WINDOW];
-        let inp = data[i];
-        roll.roll(out, inp);
-        let size = i + 1 - start;
-        if size >= MIN_CHUNK && (roll.digest() & MASK) == 0 {
-            let chunk = &data[start..=i];
-            chunks.push(Chunk {
+    FastCDC::new(data, min as u32, avg as u32, max as u32)
+        .into_iter()
+        .map(|e| {
+            let chunk = &data[e.offset..e.offset + e.length];
+            Chunk {
                 hash: blake3::hash(chunk),
-            });
-            start = i + 1;
-        }
-    }
-    if start < data.len() {
-        let chunk = &data[start..];
-        chunks.push(Chunk {
-            hash: blake3::hash(chunk),
-        });
-    }
-    chunks
+            }
+        })
+        .collect()
 }
 
 #[derive(Default)]
@@ -66,28 +41,15 @@ pub struct Manifest {
 impl Manifest {
     pub fn load() -> Self {
         let home = std::env::var("HOME").unwrap_or_else(|_| String::from("."));
-        let new_path = Path::new(&home).join(".oc-rsync/manifest");
-        let old_path = Path::new(&home).join(".rsync-rs/manifest");
+        let path = Path::new(&home).join(".oc-rsync/manifest");
         let mut entries = HashMap::new();
-        let path = new_path.clone();
-        if let Ok(contents) = fs::read_to_string(&new_path) {
+        if let Ok(contents) = fs::read_to_string(&path) {
             for line in contents.lines() {
                 let mut parts = line.splitn(2, ' ');
                 if let (Some(hash), Some(p)) = (parts.next(), parts.next()) {
                     entries.insert(hash.to_string(), PathBuf::from(p));
                 }
             }
-        } else if let Ok(contents) = fs::read_to_string(&old_path) {
-            for line in contents.lines() {
-                let mut parts = line.splitn(2, ' ');
-                if let (Some(hash), Some(p)) = (parts.next(), parts.next()) {
-                    entries.insert(hash.to_string(), PathBuf::from(p));
-                }
-            }
-            if let Some(parent) = new_path.parent() {
-                let _ = fs::create_dir_all(parent);
-            }
-            let _ = fs::rename(&old_path, &new_path);
         }
         Manifest { entries, path }
     }

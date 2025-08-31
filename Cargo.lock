@@ -434,6 +434,7 @@ dependencies = [
  "checksums",
  "compress",
  "criterion",
+ "fastcdc",
  "filetime",
  "filters",
  "meta",
@@ -460,6 +461,12 @@ dependencies = [
  "libc",
  "windows-sys 0.60.2",
 ]
+
+[[package]]
+name = "fastcdc"
+version = "3.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf51ceb43e96afbfe4dd5c6f6082af5dfd60e220820b8123792d61963f2ce6bc"
 
 [[package]]
 name = "fastrand"

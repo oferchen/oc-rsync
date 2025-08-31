@@ -205,6 +205,10 @@ struct ClientOpts {
     modern_hash: Option<ModernHashArg>,
     #[arg(long = "modern-cdc", value_enum, help_heading = "Compression")]
     modern_cdc: Option<ModernCdcArg>,
+    #[arg(long = "modern-cdc-min", value_name = "BYTES", help_heading = "Compression")]
+    modern_cdc_min: Option<usize>,
+    #[arg(long = "modern-cdc-max", value_name = "BYTES", help_heading = "Compression")]
+    modern_cdc_max: Option<usize>,
     #[arg(long, help_heading = "Misc")]
     partial: bool,
     #[arg(long = "partial-dir", value_name = "DIR", help_heading = "Misc")]
@@ -762,13 +766,13 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     };
     #[cfg(not(feature = "blake3"))]
     let modern_hash = None;
-    let modern_cdc_arg = opts.modern_cdc.unwrap_or_else(|| {
-        if opts.modern {
-            ModernCdcArg::Fastcdc
-        } else {
-            ModernCdcArg::Off
-        }
-    });
+    let modern_cdc_arg = if let Some(arg) = opts.modern_cdc {
+        arg
+    } else if opts.modern || opts.modern_cdc_min.is_some() || opts.modern_cdc_max.is_some() {
+        ModernCdcArg::Fastcdc
+    } else {
+        ModernCdcArg::Off
+    };
     let modern_cdc = match modern_cdc_arg {
         ModernCdcArg::Fastcdc => ModernCdc::Fastcdc,
         ModernCdcArg::Off => ModernCdc::Off,
@@ -929,6 +933,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         modern_compress,
         modern_hash,
         modern_cdc,
+        modern_cdc_min: opts.modern_cdc_min.unwrap_or(2 * 1024),
+        modern_cdc_max: opts.modern_cdc_max.unwrap_or(16 * 1024),
         dirs: opts.dirs,
         list_only: opts.list_only,
         update: opts.update,

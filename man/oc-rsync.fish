@@ -12,6 +12,8 @@ lz4\t''"
 complete -c oc-rsync -l modern-hash -r -f -a ""
 complete -c oc-rsync -l modern-cdc -r -f -a "fastcdc\t''
 off\t''"
+complete -c oc-rsync -l modern-cdc-min -r -f
+complete -c oc-rsync -l modern-cdc-max -r -f
 complete -c oc-rsync -l partial-dir -r -F
 complete -c oc-rsync -s T -l temp-dir -r -F
 complete -c oc-rsync -l bwlimit -r

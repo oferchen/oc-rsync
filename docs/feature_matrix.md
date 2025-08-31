@@ -102,6 +102,8 @@ negotiates version 73.
 | `--modern-compress` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; choose `auto`, `zstd`, or `lz4` compression | — |
 | `--modern-hash` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; select BLAKE3 hash (requires `blake3` feature) | — |
 | `--modern-cdc` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; enable `fastcdc` chunking | — |
+| `--modern-cdc-min` | — | ✅ | ✅ | [tests/cdc.rs](../tests/cdc.rs) | oc-rsync only; set FastCDC minimum chunk size | — |
+| `--modern-cdc-max` | — | ✅ | ✅ | [tests/cdc.rs](../tests/cdc.rs) | oc-rsync only; set FastCDC maximum chunk size | — |
 | `--modify-window` | `-@` | ❌ | — | — |  | ≤3.2 |
 | `--munge-links` | — | ❌ | — | — |  | ≤3.2 |
 | `--no-detach` | — | ❌ | — | — |  | ≤3.2 |

@@ -920,6 +920,8 @@ pub struct SyncOptions {
     pub modern_compress: Option<ModernCompress>,
     pub modern_hash: Option<ModernHash>,
     pub modern_cdc: ModernCdc,
+    pub modern_cdc_min: usize,
+    pub modern_cdc_max: usize,
     pub dirs: bool,
     pub list_only: bool,
     pub update: bool,
@@ -989,6 +991,8 @@ impl Default for SyncOptions {
             modern_compress: None,
             modern_hash: None,
             modern_cdc: ModernCdc::Off,
+            modern_cdc_min: 2 * 1024,
+            modern_cdc_max: 16 * 1024,
             perms: false,
             executability: false,
             times: false,
@@ -1277,7 +1281,12 @@ pub fn sync(
                     };
                     if !dest_path.exists() && !partial_exists {
                         if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
-                            if let Ok(chunks) = chunk_file(&path) {
+                            if let Ok(chunks) = chunk_file(
+                                &path,
+                                opts.modern_cdc_min,
+                                (opts.modern_cdc_min + opts.modern_cdc_max) / 2,
+                                opts.modern_cdc_max,
+                            ) {
                                 if !chunks.is_empty() {
                                     if let Some(existing) = manifest.lookup(&chunks[0].hash) {
                                         let all = chunks
@@ -1335,7 +1344,12 @@ pub fn sync(
                             println!(">f+++++++++ {}", rel.display());
                         }
                         if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
-                            if let Ok(chunks) = chunk_file(&dest_path) {
+                            if let Ok(chunks) = chunk_file(
+                                &dest_path,
+                                opts.modern_cdc_min,
+                                (opts.modern_cdc_min + opts.modern_cdc_max) / 2,
+                                opts.modern_cdc_max,
+                            ) {
                                 for c in &chunks {
                                     manifest.insert(&c.hash, &dest_path);
                                 }

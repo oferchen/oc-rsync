@@ -158,6 +158,8 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--modern-compress` | auto | oc-rsync only; select `auto`, `zstd`, or `lz4` compression | [matrix](feature_matrix.md#--modern-compress) |
 |  | `--modern-hash` | off | oc-rsync only; choose `blake3` strong hash | [matrix](feature_matrix.md#--modern-hash) |
 |  | `--modern-cdc` | off | oc-rsync only; enable `fastcdc` chunking | [matrix](feature_matrix.md#--modern-cdc) |
+|  | `--modern-cdc-min` | 2048 | oc-rsync only; set FastCDC minimum chunk size | [matrix](feature_matrix.md#--modern-cdc-min) |
+|  | `--modern-cdc-max` | 16384 | oc-rsync only; set FastCDC maximum chunk size | [matrix](feature_matrix.md#--modern-cdc-max) |
 | `-@` | `--modify-window` | off |  | [matrix](feature_matrix.md#--modify-window) |
 |  | `--munge-links` | off |  | [matrix](feature_matrix.md#--munge-links) |
 |  | `--no-D` | off | alias for `--no-devices --no-specials` | [matrix](feature_matrix.md#--no-d) |

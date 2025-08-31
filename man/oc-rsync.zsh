@@ -29,6 +29,8 @@ _oc-rsync() {
 '--modern-compress=[]:MODERN_COMPRESS:(auto zstd lz4)' \
 '--modern-hash=[]:MODERN_HASH:()' \
 '--modern-cdc=[]:MODERN_CDC:(fastcdc off)' \
+'--modern-cdc-min=[]:SIZE:_default' \
+'--modern-cdc-max=[]:SIZE:_default' \
 '--partial-dir=[]:DIR:_files' \
 '-T+[]:DIR:_files' \
 '--temp-dir=[]:DIR:_files' \
