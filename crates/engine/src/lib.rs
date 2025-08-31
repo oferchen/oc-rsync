@@ -95,6 +95,34 @@ fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
     }
 }
 
+fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
+    match fs::remove_file(path) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            let e = io_context(path, e);
+            if opts.ignore_errors {
+                Ok(())
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
+fn remove_dir_all_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
+    match fs::remove_dir_all(path) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            let e = io_context(path, e);
+            if opts.ignore_errors {
+                Ok(())
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
 fn files_identical(a: &Path, b: &Path) -> bool {
     if let (Ok(ma), Ok(mb)) = (fs::metadata(a), fs::metadata(b)) {
         if ma.len() != mb.len() {
@@ -1084,6 +1112,7 @@ pub struct SyncOptions {
     pub ignore_missing_args: bool,
     pub delete_missing_args: bool,
     pub remove_source_files: bool,
+    pub ignore_errors: bool,
     pub max_delete: Option<usize>,
     pub max_alloc: usize,
     pub max_size: Option<u64>,
@@ -1171,6 +1200,7 @@ impl Default for SyncOptions {
             ignore_missing_args: false,
             delete_missing_args: false,
             remove_source_files: false,
+            ignore_errors: false,
             max_delete: None,
             max_alloc: 1 << 30,
             max_size: None,
@@ -1367,13 +1397,9 @@ fn delete_extraneous(
                             .and_then(|_| atomic_rename(&path, &backup_path))
                             .err()
                     } else if file_type.is_dir() {
-                        fs::remove_dir_all(&path)
-                            .map_err(|e| io_context(&path, e))
-                            .err()
+                        remove_dir_all_opts(&path, opts).err()
                     } else {
-                        fs::remove_file(&path)
-                            .map_err(|e| io_context(&path, e))
-                            .err()
+                        remove_file_opts(&path, opts).err()
                     };
                     match res {
                         None => {
@@ -1390,7 +1416,11 @@ fn delete_extraneous(
         }
     }
     if let Some(e) = first_err {
-        Err(e)
+        if opts.ignore_errors {
+            Ok(())
+        } else {
+            Err(e)
+        }
     } else {
         Ok(())
     }
@@ -1418,7 +1448,7 @@ pub fn sync(
                     }
                 }
                 let meta = fs::symlink_metadata(dst).map_err(|e| io_context(dst, e))?;
-                if opts.backup {
+                let res = if opts.backup {
                     let backup_path = if let Some(ref dir) = opts.backup_dir {
                         if let Some(name) = dst.file_name() {
                             dir.join(name)
@@ -1435,13 +1465,20 @@ pub fn sync(
                     if let Some(parent) = backup_path.parent() {
                         fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
                     }
-                    atomic_rename(dst, &backup_path)?;
+                    atomic_rename(dst, &backup_path).err()
                 } else if meta.file_type().is_dir() {
-                    fs::remove_dir_all(dst).map_err(|e| io_context(dst, e))?;
+                    remove_dir_all_opts(dst, opts).err()
                 } else {
-                    fs::remove_file(dst).map_err(|e| io_context(dst, e))?;
+                    remove_file_opts(dst, opts).err()
+                };
+                match res {
+                    None => stats.files_deleted += 1,
+                    Some(e) => {
+                        if !opts.ignore_errors {
+                            return Err(e);
+                        }
+                    }
                 }
-                stats.files_deleted += 1;
             }
             return Ok(stats);
         } else if opts.ignore_missing_args {
@@ -1624,8 +1661,7 @@ pub fn sync(
                                                 manifest.insert(&c.hash, &dest_path);
                                             }
                                             if opts.remove_source_files {
-                                                fs::remove_file(&path)
-                                                    .map_err(|e| io_context(&path, e))?;
+                                                remove_file_opts(&path, opts)?;
                                             }
                                             continue;
                                         }
@@ -1644,7 +1680,7 @@ pub fn sync(
                                     .map_err(|e| io_context(&dest_path, e))?;
                                 receiver.copy_metadata(&path, &dest_path)?;
                                 if opts.remove_source_files {
-                                    fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
+                                    remove_file_opts(&path, opts)?;
                                 }
                                 continue;
                             }
@@ -1660,7 +1696,7 @@ pub fn sync(
                                     .map_err(|e| io_context(&dest_path, e))?;
                                 receiver.copy_metadata(&path, &dest_path)?;
                                 if opts.remove_source_files {
-                                    fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
+                                    remove_file_opts(&path, opts)?;
                                 }
                                 continue;
                             }
@@ -1669,7 +1705,7 @@ pub fn sync(
                             let comp_path = compare_dir.join(rel);
                             if files_identical(&path, &comp_path) {
                                 if opts.remove_source_files {
-                                    fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
+                                    remove_file_opts(&path, opts)?;
                                 }
                                 continue;
                             }
@@ -1699,7 +1735,7 @@ pub fn sync(
                         }
                     }
                     if opts.remove_source_files {
-                        fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
+                        remove_file_opts(&path, opts)?;
                     }
                 } else if file_type.is_dir() {
                     matcher
@@ -1757,7 +1793,7 @@ pub fn sync(
                                 }
                             }
                             if opts.remove_source_files {
-                                fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
+                                remove_file_opts(&path, opts)?;
                             }
                         }
                     } else if opts.links {
@@ -1766,11 +1802,9 @@ pub fn sync(
                         }
                         if let Ok(meta) = fs::symlink_metadata(&dest_path) {
                             if meta.is_dir() {
-                                fs::remove_dir_all(&dest_path)
-                                    .map_err(|e| io_context(&dest_path, e))?;
+                                remove_dir_all_opts(&dest_path, opts)?;
                             } else {
-                                fs::remove_file(&dest_path)
-                                    .map_err(|e| io_context(&dest_path, e))?;
+                                remove_file_opts(&dest_path, opts)?;
                             }
                         }
                         #[cfg(unix)]
@@ -1794,7 +1828,7 @@ pub fn sync(
                             }
                         }
                         if opts.remove_source_files {
-                            fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
+                            remove_file_opts(&path, opts)?;
                         }
                     }
                 } else {
@@ -1832,7 +1866,7 @@ pub fn sync(
                         }
                     }
                     if opts.remove_source_files {
-                        fs::remove_file(&path).map_err(|e| io_context(&path, e))?;
+                        remove_file_opts(&path, opts)?;
                     }
                 }
             } else {

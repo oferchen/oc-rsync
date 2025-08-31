@@ -67,3 +67,94 @@ fn max_delete_allows_within_limit() {
     assert!(!dst.join("old1.txt").exists());
     assert!(!dst.join("old2.txt").exists());
 }
+
+#[test]
+fn delete_missing_args_removes_destination() {
+    let dir = tempdir().unwrap();
+    let dst = dir.path().join("orphan.txt");
+    fs::write(&dst, b"old").unwrap();
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--delete-missing-args",
+            "missing.txt",
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.exists());
+}
+
+#[test]
+fn remove_source_files_via_cli() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("file.txt"), b"hi").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--remove-source-files",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("file.txt").exists());
+    assert!(!src.join("file.txt").exists());
+    assert!(src.exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn ignore_errors_allows_deletion_failure() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(dst.join("old.txt"), b"old").unwrap();
+    fs::set_permissions(&dst, fs::Permissions::from_mode(0o555)).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--delete",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .failure();
+    assert!(dst.join("old.txt").exists());
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--delete",
+            "--ignore-errors",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert!(dst.join("old.txt").exists());
+
+    fs::set_permissions(&dst, fs::Permissions::from_mode(0o755)).unwrap();
+}

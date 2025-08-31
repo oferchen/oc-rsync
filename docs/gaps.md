@@ -50,12 +50,6 @@ This document tracks outstanding gaps in `oc-rsync` compared to the reference `r
 - `--append`/`--append-verify` — remote resume semantics untested. [tests/resume.rs](../tests/resume.rs) [feature_matrix](feature_matrix.md#L11) [feature_matrix](feature_matrix.md#L12) ([TODO](#testing-gaps))
 - `--partial-dir` — remote partial directory handling lacks parity. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L118) ([TODO](#testing-gaps))
 
-## Deletion policy gaps
-- `--delete-missing-args` — not implemented. [feature_matrix](feature_matrix.md#L51) ([TODO](#testing-gaps))
-- `--ignore-errors` — not implemented. [feature_matrix](feature_matrix.md#L73) ([TODO](#testing-gaps))
-- `--max-delete` — not implemented. [feature_matrix](feature_matrix.md#L91) ([TODO](#testing-gaps))
-- `--remove-source-files` — not implemented. [feature_matrix](feature_matrix.md#L131) ([TODO](#testing-gaps))
-
 ## Progress & exit code gaps
 - `--progress` — progress output differs from upstream. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L123)
 - Exit code propagation across transports lacks coverage. [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs) [tests/partial_transfer_resume.sh](../tests/partial_transfer_resume.sh) ([TODO](#testing-gaps))

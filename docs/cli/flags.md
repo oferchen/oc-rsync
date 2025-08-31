@@ -58,11 +58,11 @@
 |  | --delete-delay | find deletions during, delete after | no |  | no |
 |  | --delete-during | receiver deletes during the transfer | no |  | no |
 |  | --delete-excluded | also delete excluded files from dest dirs | no |  | no |
-|  | --delete-missing-args | delete missing source args from destination | no |  | no |
+|  | --delete-missing-args | delete missing source args from destination | yes |  | no |
 |  | --force | force deletion of dirs even if not empty | no |  | no |
-|  | --ignore-errors | delete even if there are I/O errors | no |  | no |
+|  | --ignore-errors | delete even if there are I/O errors | yes |  | no |
 |  | --ignore-missing-args | ignore missing source args without error | no |  | no |
-|  | --max-delete=NUM | don't delete more than NUM files | no |  | no |
+|  | --max-delete=NUM | don't delete more than NUM files | yes |  | no |
 
 ## Filter
 
@@ -187,7 +187,7 @@
 | -m | --prune-empty-dirs | prune empty directory chains from file-list | yes |  | no |
 | -r | --recursive | recurse into directories | yes |  | no |
 | -R | --relative | use relative path names | yes |  | no |
-|  | --remove-source-files | sender removes synchronized files (non-dir) | no |  | no |
+|  | --remove-source-files | sender removes synchronized files (non-dir) | yes |  | no |
 |  | --safe-links | ignore symlinks that point outside the tree | no |  | no |
 |  | --size-only | skip files that match in size | no |  | no |
 | -S | --sparse | turn sequences of nulls into sparse blocks (requires filesystem support) | yes |  | no |
