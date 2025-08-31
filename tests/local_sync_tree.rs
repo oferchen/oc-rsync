@@ -423,6 +423,43 @@ fn sync_preserves_hard_links() {
 
 #[cfg(unix)]
 #[test]
+fn sync_preserves_multiple_hard_links() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let f1 = src.join("f1");
+    fs::write(&f1, b"hi").unwrap();
+    let f2 = src.join("f2");
+    fs::hard_link(&f1, &f2).unwrap();
+    let f3 = src.join("f3");
+    fs::hard_link(&f1, &f3).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--hard-links",
+            "--delay-updates",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let m1 = fs::metadata(dst.join("f1")).unwrap().ino();
+    let m2 = fs::metadata(dst.join("f2")).unwrap().ino();
+    let m3 = fs::metadata(dst.join("f3")).unwrap().ino();
+    assert_eq!(m1, m2);
+    assert_eq!(m1, m3);
+}
+
+#[cfg(unix)]
+#[test]
 fn sync_preserves_symlinks() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
