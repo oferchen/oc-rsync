@@ -7,7 +7,8 @@ lint:
 	cargo fmt --all --check
 
 coverage:
-	cargo tarpaulin --all --features blake3
+       cargo llvm-cov --workspace --features blake3 --doctests \
+               --fail-under-lines 95 --fail-under-functions 95
 
 interop:
 	bash tests/interop/run_matrix.sh
@@ -24,5 +25,3 @@ test-golden:
 	echo "Running tests/partial_transfer_resume.sh"; \
 	bash tests/partial_transfer_resume.sh
 
-verify-comments:
-	bash scripts/check-comments.sh

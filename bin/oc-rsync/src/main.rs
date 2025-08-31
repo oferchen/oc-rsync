@@ -22,5 +22,5 @@ fn main() -> Result<()> {
         }
     }
     logging::init(LogFormat::Text, verbose, info, debug);
-    cli::run()
+    oc_rsync_cli::run()
 }

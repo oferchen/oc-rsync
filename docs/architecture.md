@@ -24,7 +24,7 @@ crate boundaries, data flow, and the key algorithms that power `oc-rsync`.
   which files participate in a transfer.
 - [`meta`](../crates/meta) – models file metadata (permissions, timestamps,
   ownership) and provides helper utilities.
-- [`cli`](../crates/cli) – exposes a user-facing command line built on top of
+- [`oc-rsync-cli`](../crates/cli) – exposes a user-facing command line built on top of
   the engine and transport layers.
 - [`fuzz`](../fuzz) – houses fuzz targets that stress protocol and parser
   logic for robustness.
