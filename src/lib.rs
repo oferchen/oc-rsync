@@ -163,27 +163,34 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
 mod tests {
     use super::*;
     use std::fs;
-    use tempfile::tempdir;
+    use std::path::Path;
+    use tempfile::{tempdir, TempDir};
 
-    #[test]
-    fn sync_local() {
+    fn setup_dirs() -> (TempDir, std::path::PathBuf, std::path::PathBuf) {
         let dir = tempdir().unwrap();
         let src_dir = dir.path().join("src");
         let dst_dir = dir.path().join("dst");
         fs::create_dir_all(&src_dir).unwrap();
+        (dir, src_dir, dst_dir)
+    }
+
+    fn assert_no_remaining_copy(src: &Path, dst: &Path) {
+        assert_eq!(copy_recursive(src, dst).unwrap(), 0);
+    }
+
+    #[test]
+    fn sync_local() {
+        let (_dir, src_dir, dst_dir) = setup_dirs();
         fs::write(src_dir.join("file.txt"), b"hello world").unwrap();
 
+        assert!(!dst_dir.exists());
         synchronize(&src_dir, &dst_dir).unwrap();
-        let out = fs::read(dst_dir.join("file.txt")).unwrap();
-        assert_eq!(out, b"hello world");
+        assert_eq!(fs::read(dst_dir.join("file.txt")).unwrap(), b"hello world");
     }
 
     #[test]
     fn sync_creates_destination() {
-        let dir = tempdir().unwrap();
-        let src_dir = dir.path().join("src");
-        let dst_dir = dir.path().join("dst");
-        fs::create_dir_all(&src_dir).unwrap();
+        let (_dir, src_dir, dst_dir) = setup_dirs();
         fs::write(src_dir.join("file.txt"), b"data").unwrap();
 
         assert!(!dst_dir.exists());
@@ -195,18 +202,14 @@ mod tests {
     #[cfg(any(unix, windows))]
     #[test]
     fn sync_preserves_symlinks() {
-        use std::path::Path;
-
-        let dir = tempdir().unwrap();
-        let src_dir = dir.path().join("src");
-        let dst_dir = dir.path().join("dst");
-        fs::create_dir_all(&src_dir).unwrap();
+        let (_dir, src_dir, dst_dir) = setup_dirs();
         fs::write(src_dir.join("file.txt"), b"hello").unwrap();
         #[cfg(unix)]
         std::os::unix::fs::symlink("file.txt", src_dir.join("link")).unwrap();
         #[cfg(windows)]
         std::os::windows::fs::symlink_file("file.txt", src_dir.join("link")).unwrap();
 
+        assert!(!dst_dir.exists());
         synchronize(&src_dir, &dst_dir).unwrap();
 
         let meta = fs::symlink_metadata(dst_dir.join("link")).unwrap();
@@ -221,10 +224,7 @@ mod tests {
     fn sync_preserves_metadata() {
         use std::os::unix::fs::PermissionsExt;
 
-        let dir = tempdir().unwrap();
-        let src_dir = dir.path().join("src");
-        let dst_dir = dir.path().join("dst");
-        fs::create_dir_all(&src_dir).unwrap();
+        let (_dir, src_dir, dst_dir) = setup_dirs();
 
         let file = src_dir.join("file.txt");
         fs::write(&file, b"hello").unwrap();
@@ -233,6 +233,7 @@ mod tests {
         let mtime = FileTime::from_unix_time(1_000_100, 0);
         set_file_times(&file, atime, mtime).unwrap();
 
+        assert!(!dst_dir.exists());
         synchronize(&src_dir, &dst_dir).unwrap();
 
         let meta = fs::metadata(dst_dir.join("file.txt")).unwrap();
@@ -250,16 +251,15 @@ mod tests {
         use nix::unistd::mkfifo;
         use std::os::unix::fs::PermissionsExt;
 
-        let dir = tempdir().unwrap();
-        let src_dir = dir.path().join("src");
-        let dst_dir = dir.path().join("dst");
-        fs::create_dir_all(&src_dir).unwrap();
+        let (_dir, src_dir, dst_dir) = setup_dirs();
         fs::write(src_dir.join("file.txt"), b"data").unwrap();
 
+        assert!(!dst_dir.exists());
         synchronize(&src_dir, &dst_dir).unwrap();
+        assert!(dst_dir.exists());
 
         // copy_recursive should have nothing left to copy
-        assert_eq!(copy_recursive(&src_dir, &dst_dir).unwrap(), 0);
+        assert_no_remaining_copy(&src_dir, &dst_dir);
 
         let fifo = src_dir.join("fifo");
         mkfifo(&fifo, Mode::from_bits_truncate(0o640)).unwrap();
