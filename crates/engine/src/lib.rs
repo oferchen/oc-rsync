@@ -16,6 +16,7 @@ use compress::{
     available_codecs, should_compress, Codec, Compressor, Decompressor, ModernCompress, Zlib, Zstd,
 };
 use filters::Matcher;
+use logging::human_bytes;
 use thiserror::Error;
 
 pub mod cdc;
@@ -43,21 +44,6 @@ impl std::fmt::Debug for IdMapper {
 
 trait ReadSeek: Read + Seek {}
 impl<T: Read + Seek> ReadSeek for T {}
-
-pub fn human_bytes(bytes: u64) -> String {
-    const UNITS: [&str; 9] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
-    let mut size = bytes as f64;
-    let mut unit = 0;
-    while size >= 1024.0 && unit < UNITS.len() - 1 {
-        size /= 1024.0;
-        unit += 1;
-    }
-    if unit == 0 {
-        format!("{}{}", bytes, UNITS[unit])
-    } else {
-        format!("{:.2}{}", size, UNITS[unit])
-    }
-}
 
 fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
     if len > opts.max_alloc as u64 {
