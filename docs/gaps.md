@@ -19,7 +19,6 @@ This document tracks outstanding gaps in `oc-rsync` compared to the reference `r
 ## Metadata gaps
 - `--acls` — ACL support requires optional feature and lacks parity. [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) [feature_matrix](feature_matrix.md#L9)
 - `--atimes` — access time preservation incomplete. [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) [feature_matrix](feature_matrix.md#L14)
- - `--chown` — not implemented. [feature_matrix](feature_matrix.md#L25) ([TODO](#testing-gaps))
  - `--copy-devices` — not implemented. [feature_matrix](feature_matrix.md#L35) ([TODO](#testing-gaps))
  - `--devices` — device file handling lacks parity. [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) [feature_matrix](feature_matrix.md#L52)
  - `--groupmap` — numeric gid mapping only; group names unsupported and requires root or CAP_CHOWN. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L74)

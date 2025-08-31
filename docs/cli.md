@@ -45,6 +45,10 @@ oc-rsync [OPTIONS] <SRC> <DEST>
   ```sh
   oc-rsync -B 65536 ./src remote:/dst
   ```
+- Change ownership during transfer (requires root):
+  ```sh
+  sudo oc-rsync --chown=0:0 ./src/ remote:/dst/
+  ```
 - Show version:
   ```sh
   oc-rsync --version
