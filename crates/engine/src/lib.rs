@@ -784,24 +784,6 @@ impl Receiver {
                 }
             }
         }
-        let mut out = if self.opts.inplace
-        let cfg = ChecksumConfigBuilder::new()
-            .strong(self.opts.strong)
-            .seed(self.opts.checksum_seed)
-            .build();
-        let mut resume = if self.opts.partial || self.opts.append || self.opts.append_verify {
-            if self.opts.append && !self.opts.append_verify {
-                fs::metadata(&tmp_dest).map(|m| m.len()).unwrap_or(0)
-            } else {
-                last_good_block(&cfg, src, &tmp_dest, self.opts.block_size)
-            }
-        } else {
-            0
-        };
-        let src_len = fs::metadata(src).map(|m| m.len()).unwrap_or(0);
-        if resume > src_len {
-            resume = src_len;
-        }
         let mut out = if self.opts.write_devices {
             OpenOptions::new().write(true).open(&tmp_dest)?
         } else if self.opts.inplace
