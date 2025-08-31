@@ -1029,6 +1029,8 @@ pub enum ModernCdc {
 pub struct SyncOptions {
     pub delete: Option<DeleteMode>,
     pub delete_excluded: bool,
+    pub ignore_missing_args: bool,
+    pub delete_missing_args: bool,
     pub max_delete: Option<usize>,
     pub max_alloc: usize,
     pub checksum: bool,
@@ -1109,6 +1111,8 @@ impl Default for SyncOptions {
         Self {
             delete: None,
             delete_excluded: false,
+            ignore_missing_args: false,
+            delete_missing_args: false,
             max_delete: None,
             max_alloc: 1 << 30,
             checksum: false,
@@ -1317,6 +1321,46 @@ pub fn sync(
         .as_ref()
         .and_then(|p| OpenOptions::new().create(true).append(true).open(p).ok());
     let src_root = fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf());
+    let mut stats = Stats::default();
+    if !src_root.exists() {
+        if opts.delete_missing_args {
+            if dst.exists() {
+                let meta = fs::symlink_metadata(dst)?;
+                if opts.backup {
+                    let backup_path = if let Some(ref dir) = opts.backup_dir {
+                        if let Some(name) = dst.file_name() {
+                            dir.join(name)
+                        } else {
+                            dir.join(dst)
+                        }
+                    } else {
+                        let name = dst
+                            .file_name()
+                            .map(|n| format!("{}~", n.to_string_lossy()))
+                            .unwrap_or_else(|| "~".to_string());
+                        dst.with_file_name(name)
+                    };
+                    if let Some(parent) = backup_path.parent() {
+                        fs::create_dir_all(parent)?;
+                    }
+                    fs::rename(dst, &backup_path)?;
+                } else if meta.file_type().is_dir() {
+                    fs::remove_dir_all(dst)?;
+                } else {
+                    fs::remove_file(dst)?;
+                }
+                stats.files_deleted += 1;
+            }
+            return Ok(stats);
+        } else if opts.ignore_missing_args {
+            return Ok(stats);
+        } else {
+            return Err(EngineError::Other(format!(
+                "source path missing: {}",
+                src.display()
+            )));
+        }
+    }
     if opts.list_only {
         let matcher = matcher.clone().with_root(src_root.clone());
         let mut walker = walk(&src_root, 1024);
@@ -1345,14 +1389,13 @@ pub fn sync(
                 }
             }
         }
-        return Ok(Stats::default());
+        return Ok(stats);
     }
 
     let codec = select_codec(remote, opts);
     let matcher = matcher.clone().with_root(src_root.clone());
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
     let mut receiver = Receiver::new(codec, opts.clone());
-    let mut stats = Stats::default();
     let mut manifest = if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
         Manifest::load()
     } else {

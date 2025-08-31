@@ -1084,6 +1084,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let sync_opts = SyncOptions {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
+        ignore_missing_args: false,
+        delete_missing_args: false,
         max_delete: opts.max_delete,
         max_alloc: opts.max_alloc.unwrap_or(1usize << 30),
         checksum: opts.checksum,
