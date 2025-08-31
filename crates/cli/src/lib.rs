@@ -1694,9 +1694,24 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
             for pat in load_patterns(file, opts.from0)? {
+                let anchored = if pat.starts_with('/') {
+                    pat.clone()
+                } else {
+                    format!("/{}", pat)
+                };
+
+                // Include the path itself
                 add_rules(
                     idx,
-                    parse_filters(&format!("+ {}", pat))
+                    parse_filters(&format!("+ {}", anchored))
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                );
+
+                // If the path refers to a directory, also include everything under it.
+                let dir_pat = format!("{}/***", anchored.trim_end_matches('/'));
+                add_rules(
+                    idx,
+                    parse_filters(&format!("+ {}", dir_pat))
                         .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
             }
