@@ -4,6 +4,8 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
 use crate::{Frame, Message};
+use checksums::StrongHash;
+use compress::Codec;
 
 struct Channel {
     sender: Sender<Message>,
@@ -13,6 +15,8 @@ struct Channel {
 pub struct Demux {
     timeout: Duration,
     channels: IndexMap<u16, Channel>,
+    pub strong_hash: StrongHash,
+    pub compressor: Codec,
 }
 
 impl Demux {
@@ -20,6 +24,8 @@ impl Demux {
         Demux {
             timeout,
             channels: IndexMap::new(),
+            strong_hash: StrongHash::Md5,
+            compressor: Codec::Zlib,
         }
     }
 

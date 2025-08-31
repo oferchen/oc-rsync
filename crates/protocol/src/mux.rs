@@ -4,6 +4,8 @@ use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::time::{Duration, Instant};
 
 use crate::{Frame, Message};
+use checksums::StrongHash;
+use compress::Codec;
 
 struct Channel {
     sender: Sender<Message>,
@@ -15,6 +17,8 @@ pub struct Mux {
     keepalive: Duration,
     channels: IndexMap<u16, Channel>,
     next: usize,
+    pub strong_hash: StrongHash,
+    pub compressor: Codec,
 }
 
 impl Mux {
@@ -23,6 +27,8 @@ impl Mux {
             keepalive,
             channels: IndexMap::new(),
             next: 0,
+            strong_hash: StrongHash::Md5,
+            compressor: Codec::Zlib,
         }
     }
 
