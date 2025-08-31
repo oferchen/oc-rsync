@@ -1306,7 +1306,10 @@ fn delete_extraneous(
 ) -> Result<()> {
     let mut walker = walk(dst, 1024);
     let mut state = String::new();
-    let mut first_err: Option<std::io::Error> = None;
+    // Track the first I/O error encountered while deleting extraneous files.
+    // Errors are stored as `EngineError` so we can preserve contextual
+    // information added by `io_context` above.
+    let mut first_err: Option<EngineError> = None;
     while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
@@ -1365,7 +1368,7 @@ fn delete_extraneous(
         }
     }
     if let Some(e) = first_err {
-        Err(e.into())
+        Err(e)
     } else {
         Ok(())
     }
