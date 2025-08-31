@@ -98,6 +98,7 @@ fn spawn_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
             "0",
         ])
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     let port = match read_port(&mut child) {
@@ -134,15 +135,15 @@ fn daemon_blocks_path_traversal() {
     let secret = parent.join("secret");
     fs::write(&secret, b"top secret").unwrap();
     let dest = tempfile::tempdir().unwrap();
-    let status = StdCommand::cargo_bin("oc-rsync")
+    let output = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             &format!("rsync://127.0.0.1:{port}/data/../secret"),
             dest.path().to_str().unwrap(),
         ])
-        .status()
+        .output()
         .unwrap();
-    assert!(!status.success());
+    assert!(!output.status.success());
     assert!(!dest.path().join("secret").exists());
     let _ = child.kill();
     let _ = child.wait();
@@ -168,15 +169,15 @@ fn daemon_drops_privileges_and_restricts_file_access() {
     #[cfg(unix)]
     fs::set_permissions(&secret, fs::Permissions::from_mode(0o600)).unwrap();
     let dest = tempfile::tempdir().unwrap();
-    let status = StdCommand::cargo_bin("oc-rsync")
+    let output = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             &format!("rsync://127.0.0.1:{port}/data/secret"),
             dest.path().to_str().unwrap(),
         ])
-        .status()
+        .output()
         .unwrap();
-    assert!(!status.success());
+    assert!(!output.status.success());
     assert!(!dest.path().join("secret").exists());
     let _ = child.kill();
     let _ = child.wait();
@@ -196,6 +197,7 @@ fn spawn_daemon_with_address(addr: &str) -> io::Result<(Child, u16, tempfile::Te
             addr,
         ])
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     let port = match read_port(&mut child) {
@@ -223,6 +225,7 @@ fn spawn_daemon_with_config_address(addr: &str) -> io::Result<(Child, u16, tempf
         .unwrap()
         .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     let port = match read_port(&mut child) {
@@ -249,6 +252,7 @@ fn spawn_daemon_ipv4() -> io::Result<(Child, u16, tempfile::TempDir)> {
             "-4",
         ])
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     let port = match read_port(&mut child) {
@@ -275,6 +279,7 @@ fn spawn_daemon_ipv6() -> io::Result<(Child, u16, tempfile::TempDir)> {
             "-6",
         ])
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     let port = match read_port(&mut child) {
@@ -543,6 +548,7 @@ fn daemon_rejects_invalid_token() {
             secrets.to_str().unwrap(),
         ])
         .current_dir(dir.path())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     wait_for_daemon(port);
@@ -590,6 +596,7 @@ fn daemon_rejects_missing_token() {
             secrets.to_str().unwrap(),
         ])
         .current_dir(dir.path())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     wait_for_daemon(port);
@@ -637,6 +644,7 @@ fn daemon_rejects_unauthorized_module() {
             secrets.to_str().unwrap(),
         ])
         .current_dir(dir.path())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     wait_for_daemon(port);
@@ -688,6 +696,7 @@ fn daemon_authenticates_valid_token() {
             secrets.to_str().unwrap(),
         ])
         .current_dir(dir.path())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     wait_for_daemon(port);
@@ -744,6 +753,7 @@ fn daemon_parses_secrets_file_with_comments() {
             secrets.to_str().unwrap(),
         ])
         .current_dir(dir.path())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     wait_for_daemon(port);
@@ -789,6 +799,7 @@ fn daemon_respects_host_allow_and_deny_lists() {
                 "--hosts-allow",
                 "127.0.0.1",
             ])
+            .stderr(Stdio::null())
             .spawn()
             .unwrap();
         (child, port)
@@ -819,6 +830,7 @@ fn daemon_respects_host_allow_and_deny_lists() {
                 "--hosts-deny",
                 "127.0.0.1",
             ])
+            .stderr(Stdio::null())
             .spawn()
             .unwrap();
         (child, port)
@@ -862,6 +874,7 @@ fn daemon_displays_motd() {
             "--motd",
             motd.to_str().unwrap(),
         ])
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     wait_for_daemon(port);
@@ -904,6 +917,7 @@ fn daemon_suppresses_motd_when_requested() {
             "--motd",
             motd.to_str().unwrap(),
         ])
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     wait_for_daemon(port);
@@ -950,6 +964,7 @@ fn client_respects_no_motd() {
             "--motd",
             motd.to_str().unwrap(),
         ])
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     wait_for_daemon(port);
@@ -1006,6 +1021,7 @@ fn daemon_writes_log_file() {
             "--log-file-format",
             "%h %m",
         ])
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     wait_for_daemon(port);
@@ -1056,6 +1072,7 @@ fn daemon_honors_bwlimit() {
             "--motd",
             motd.to_str().unwrap(),
         ])
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     wait_for_daemon(port);
