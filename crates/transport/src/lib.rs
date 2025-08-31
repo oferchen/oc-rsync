@@ -34,6 +34,14 @@ impl<R, W> LocalPipeTransport<R, W> {
     pub fn into_inner(self) -> (R, W) {
         (self.reader, self.writer)
     }
+
+    pub fn reader_mut(&mut self) -> &mut R {
+        &mut self.reader
+    }
+
+    pub fn writer_mut(&mut self) -> &mut W {
+        &mut self.writer
+    }
 }
 
 impl<R: Read, W: Write> Transport for LocalPipeTransport<R, W> {
