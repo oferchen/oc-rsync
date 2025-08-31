@@ -20,9 +20,11 @@ use compress::{available_codecs, Codec, ModernCompress};
 use engine::human_bytes;
 #[cfg(feature = "blake3")]
 use engine::ModernHash;
-use engine::{sync, DeleteMode, EngineError, ModernCdc, Result, Stats, StrongHash, SyncOptions};
+use engine::{
+    sync, DeleteMode, EngineError, IdMapper, ModernCdc, Result, Stats, StrongHash, SyncOptions,
+};
 use filters::{default_cvs_rules, parse, Matcher, Rule};
-use meta::{parse_chmod, parse_chown};
+use meta::{parse_chmod, parse_chown, parse_id_map};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
 use transport::{
@@ -175,6 +177,10 @@ struct ClientOpts {
     chmod: Vec<String>,
     #[arg(long = "chown", value_name = "USER:GROUP", help_heading = "Attributes")]
     chown: Option<String>,
+    #[arg(long = "usermap", value_name = "FROM:TO", value_delimiter = ',', help_heading = "Attributes")]
+    usermap: Vec<String>,
+    #[arg(long = "groupmap", value_name = "FROM:TO", value_delimiter = ',', help_heading = "Attributes")]
+    groupmap: Vec<String>,
     #[arg(long, help_heading = "Attributes")]
     times: bool,
     #[arg(short = 'U', long, help_heading = "Attributes")]
@@ -536,22 +542,6 @@ pub fn run() -> Result<()> {
     }
     if args.iter().any(|a| a == "--probe") {
         let opts = ProbeOpts::parse_from(&args);
-        run_probe(opts)
-    } else if args.iter().any(|a| a == "--server") {
-        run_server()
-    } else {
-        let cmd = ClientOpts::command();
-        let matches = cmd.get_matches_from(&args);
-        let mut opts = ClientOpts::from_arg_matches(&matches)
-            .map_err(|e| EngineError::Other(e.to_string()))?;
-        if matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
-            if let Ok(val) = env::var("RSYNC_PROTECT_ARGS") {
-                if val != "0" {
-                    opts.secluded_args = true;
-                }
-            }
-        }
-        run_client(opts, &matches)
         return run_probe(opts);
     }
     if args.iter().any(|a| a == "--server") {
@@ -600,6 +590,13 @@ pub fn run() -> Result<()> {
     let matches = cmd.get_matches_from(&filtered);
     let mut opts =
         ClientOpts::from_arg_matches(&matches).map_err(|e| EngineError::Other(e.to_string()))?;
+    if matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
+        if let Ok(val) = env::var("RSYNC_PROTECT_ARGS") {
+            if val != "0" {
+                opts.secluded_args = true;
+            }
+        }
+    }
     opts.remote_option.extend(remote_opts);
     run_client(opts, &matches)
 }
@@ -1064,6 +1061,18 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     } else {
         None
     };
+    let uid_map = if !opts.usermap.is_empty() {
+        let spec = opts.usermap.join(",");
+        Some(IdMapper(parse_id_map(&spec).map_err(|e| EngineError::Other(e))?))
+    } else {
+        None
+    };
+    let gid_map = if !opts.groupmap.is_empty() {
+        let spec = opts.groupmap.join(",");
+        Some(IdMapper(parse_id_map(&spec).map_err(|e| EngineError::Other(e))?))
+    } else {
+        None
+    };
     let sync_opts = SyncOptions {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
@@ -1089,8 +1098,14 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         crtimes: opts.crtimes,
         omit_dir_times: opts.omit_dir_times,
         omit_link_times: opts.omit_link_times,
-        owner: opts.owner || opts.archive || chown_ids.map_or(false, |(u, _)| u.is_some()),
-        group: opts.group || opts.archive || chown_ids.map_or(false, |(_, g)| g.is_some()),
+        owner: opts.owner
+            || opts.archive
+            || chown_ids.map_or(false, |(u, _)| u.is_some())
+            || uid_map.is_some(),
+        group: opts.group
+            || opts.archive
+            || chown_ids.map_or(false, |(_, g)| g.is_some())
+            || gid_map.is_some(),
         links: opts.links || opts.archive,
         copy_links: opts.copy_links,
         copy_dirlinks: opts.copy_dirlinks,
@@ -1137,6 +1152,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             Some(chmod_rules)
         },
         chown: chown_ids,
+        uid_map,
+        gid_map,
         eight_bit_output: opts.eight_bit_output,
         blocking_io: opts.blocking_io,
         early_input: opts.early_input.clone(),
@@ -1181,9 +1198,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
-                    &remote_opts,
                     &opts.sockopts,
-                    &opts.remote_option,
+                    &remote_opts,
                     opts.protocol
                         .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                     opts.early_input.as_deref(),
@@ -1246,9 +1262,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.timeout,
                     opts.contimeout,
                     addr_family,
-                    &remote_opts,
                     &opts.sockopts,
-                    &opts.remote_option,
+                    &remote_opts,
                     opts.protocol
                         .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                     opts.early_input.as_deref(),
@@ -1393,9 +1408,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            &remote_opts,
                             &opts.sockopts,
-                            &opts.remote_option,
+                            &remote_opts,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
@@ -1409,9 +1423,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            &remote_opts,
                             &opts.sockopts,
-                            &opts.remote_option,
+                            &remote_opts,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
@@ -1451,9 +1464,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            &remote_opts,
                             &opts.sockopts,
-                            &opts.remote_option,
+                            &remote_opts,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),
@@ -1491,9 +1503,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.timeout,
                             opts.contimeout,
                             addr_family,
-                            &remote_opts,
                             &opts.sockopts,
-                            &opts.remote_option,
+                            &remote_opts,
                             opts.protocol
                                 .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                             opts.early_input.as_deref(),

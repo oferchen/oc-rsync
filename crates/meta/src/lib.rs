@@ -14,6 +14,7 @@ mod stub;
 pub use stub::*;
 
 mod parse;
+pub use parse::{parse_chmod, parse_chmod_spec, parse_chown, parse_id_map};
 pub use parse::*;
 
 #[cfg(unix)]

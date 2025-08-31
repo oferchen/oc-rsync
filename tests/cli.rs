@@ -345,6 +345,35 @@ fn numeric_ids_are_preserved() {
     }
 }
 
+#[cfg(unix)]
+#[test]
+fn user_and_group_ids_are_mapped() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("id.txt");
+    std::fs::write(&file, b"ids").unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--usermap=0:1",
+            "--groupmap=0:1",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let meta = std::fs::metadata(dst_dir.join("id.txt")).unwrap();
+    assert_eq!(meta.uid(), 1);
+    assert_eq!(meta.gid(), 1);
+}
+
 #[test]
 fn verbose_flag_increases_logging() {
     let dir = tempdir().unwrap();
