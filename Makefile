@@ -1,4 +1,16 @@
-.PHONY: test-golden verify-comments
+.PHONY: verify-comments lint coverage interop test-golden
+
+verify-comments:
+	bash scripts/check-comments.sh
+
+lint:
+	cargo fmt --all --check
+
+coverage:
+	cargo tarpaulin --all --features blake3
+
+interop:
+	bash tests/interop/run_matrix.sh
 
 test-golden:
 	cargo build --quiet -p oc-rsync-bin --bin oc-rsync --features blake3
