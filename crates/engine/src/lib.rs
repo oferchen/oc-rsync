@@ -784,6 +784,7 @@ impl Receiver {
                 }
             }
         }
+
         let mut out = if self.opts.write_devices {
             OpenOptions::new().write(true).open(&tmp_dest)?
         } else if self.opts.inplace
