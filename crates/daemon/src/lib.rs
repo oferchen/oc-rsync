@@ -1,7 +1,4 @@
 //! Utilities for parsing rsync daemon configuration files.
-//!
-//! `parse_config` returns an [`io::Error`] when configuration entries are
-//! invalid, such as when the `port` value cannot be parsed.
 
 use std::collections::HashMap;
 use std::env;
@@ -139,8 +136,7 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
                 let port = val
                     .parse::<u16>()
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-                // A value of `0` signals that the daemon should bind to an
-                // ephemeral port chosen by the operating system.
+
                 cfg.port = Some(port);
             }
             (false, "motd file") => cfg.motd_file = Some(PathBuf::from(val)),
@@ -319,10 +315,6 @@ pub fn authenticate<T: Transport>(
     }
 }
 
-/// After a client has been authorized to access a module, this helper
-/// performs final setup before the transfer occurs.  It optionally logs the
-/// connection, then `chroot`s into the module directory and drops privileges
-/// to the supplied user and group.
 pub fn serve_module<T: Transport>(
     _t: &mut T,
     module: &Module,

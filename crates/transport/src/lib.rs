@@ -10,8 +10,6 @@ pub use rate::RateLimitedTransport;
 pub use ssh::SshStdioTransport;
 pub use tcp::TcpTransport;
 
-/// Wrap a [`Transport`] with a bandwidth limiter using rsync's
-/// token-bucket algorithm.
 pub fn rate_limited<T: Transport>(inner: T, bwlimit: u64) -> RateLimitedTransport<T> {
     RateLimitedTransport::new(inner, bwlimit)
 }
@@ -70,10 +68,6 @@ impl<R: Read, W: Write> Transport for LocalPipeTransport<R, W> {
     }
 }
 
-/// Wraps a [`Transport`] and enforces a maximum idle duration for the
-/// connection. Any call to [`Transport::send`] or [`Transport::receive`]
-/// that occurs after the timeout has elapsed will return
-/// [`io::ErrorKind::TimedOut`].
 pub struct TimeoutTransport<T> {
     inner: T,
     timeout: Duration,
@@ -81,8 +75,6 @@ pub struct TimeoutTransport<T> {
 }
 
 impl<T> TimeoutTransport<T> {
-    /// Create a new [`TimeoutTransport`] that fails if no I/O occurs within
-    /// `timeout`.
     pub fn new(inner: T, timeout: Duration) -> Self {
         Self {
             inner,
@@ -91,7 +83,6 @@ impl<T> TimeoutTransport<T> {
         }
     }
 
-    /// Consume the wrapper and return the inner transport.
     pub fn into_inner(self) -> T {
         self.inner
     }

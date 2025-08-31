@@ -1,6 +1,6 @@
 #![cfg(unix)]
 
-// tests/interop/remote_option.rs
+
 
 use assert_cmd::cargo::cargo_bin;
 use assert_cmd::prelude::*;
@@ -80,7 +80,7 @@ fn ssh_remote_option_forwarded() {
 }
 
 #[test]
-#[ignore] // requires network daemon setup
+#[ignore] 
 fn daemon_remote_option_forwarded() {
     let dir = tempdir().unwrap();
     let module_dir = dir.path().join("module");

@@ -1,12 +1,8 @@
 // On Unix platforms other than Linux and macOS we reuse the full-featured
-// implementation from `unix.rs` which relies on `nix`, `xattr`, and
-// `posix-acl` to manage extended metadata. This ensures that platforms like
-// the BSDs are treated identically without having to duplicate the logic.
+
 #[cfg(unix)]
 include!("unix.rs");
 
-// Non-Unix targets retain a minimal stub so the crate still compiles, but
-// metadata preservation is effectively disabled.
 #[cfg(not(unix))]
 mod non_unix {
     use filetime::FileTime;

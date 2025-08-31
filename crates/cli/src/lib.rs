@@ -297,7 +297,7 @@ struct ClientOpts {
         value_delimiter = ','
     )]
     skip_compress: Vec<String>,
-    /// Enable modern compression (zstd or lz4) and BLAKE3 checksums (requires `blake3` feature)
+
     #[arg(long, help_heading = "Compression")]
     modern: bool,
     #[arg(long = "modern-compress", value_enum, help_heading = "Compression")]
@@ -816,7 +816,6 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         None
     };
 
-    // Validate socket options early so parsing errors surface before any I/O
     parse_sockopts(&opts.sockopts).map_err(|e| EngineError::Other(e))?;
 
     if let Some(pf) = &opts.password_file {
@@ -1602,11 +1601,6 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     Ok(())
 }
 
-/// Build a [`Matcher`] from the user's CLI filter flags.
-///
-/// This interprets options like `--exclude`, `--include`, `--files-from`,
-/// and their variants, preserving the order in which the flags were
-/// provided so that rule precedence matches rsync's semantics.
 fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
         if from0 {
@@ -1740,14 +1734,12 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     format!("/{}", pat)
                 };
 
-                // Include the path itself
                 add_rules(
                     idx,
                     parse_filters(&format!("+ {}", anchored))
                         .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
 
-                // If the path refers to a directory, also include everything under it.
                 let dir_pat = format!("{}/***", anchored.trim_end_matches('/'));
                 add_rules(
                     idx,
@@ -2263,16 +2255,16 @@ mod tests {
             stream.read_exact(&mut buf).unwrap();
             assert_eq!(u32::from_be_bytes(buf), 30);
             stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
-            // read auth line
+
             let mut b = [0u8; 1];
             while stream.read(&mut b).unwrap() > 0 {
                 if b[0] == b'\n' {
                     break;
                 }
             }
-            // send daemon greeting
+
             stream.write_all(b"@RSYNCD: OK\n").unwrap();
-            // read module line
+
             let mut m = Vec::new();
             loop {
                 stream.read_exact(&mut b).unwrap();

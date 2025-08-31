@@ -1,10 +1,12 @@
 .PHONY: verify-comments lint coverage interop test-golden fmt clippy doc test
 
+VERIFY_COMMENT_FILES := $(shell git ls-files '*.rs')
+
 verify-comments:
-	bash scripts/check-comments.sh
+	@bash scripts/check-comments.sh $(VERIFY_COMMENT_FILES)
 
 lint:
-        cargo fmt --all --check
+	cargo fmt --all --check
 
 fmt:
 	cargo fmt --all
@@ -19,8 +21,8 @@ test:
 	cargo test --all-features
 
 coverage:
-       cargo llvm-cov --workspace --features blake3 --doctests \
-               --fail-under-lines 95 --fail-under-functions 95
+	cargo llvm-cov --workspace --features blake3 --doctests \
+	       --fail-under-lines 95 --fail-under-functions 95
 
 interop:
 	bash tests/interop/run_matrix.sh

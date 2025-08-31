@@ -4,14 +4,10 @@ use std::time::{Duration, Instant};
 
 use crate::Transport;
 
-/// A transport wrapper that throttles outgoing bytes using
-/// an rsync-style token bucket. The `bwlimit` value is measured
-/// in bytes per second.
 pub struct RateLimitedTransport<T> {
     inner: T,
     bwlimit: u64,
-    /// Amount of data that has been written but not yet
-    /// accounted for by elapsed time.
+
     backlog: u64,
     prior: Option<Instant>,
 }
@@ -33,8 +29,8 @@ impl<T> RateLimitedTransport<T> {
 
 impl<T: Transport> Transport for RateLimitedTransport<T> {
     fn send(&mut self, data: &[u8]) -> io::Result<()> {
-        const ONE_SEC: u64 = 1_000_000; // microseconds
-        const MIN_SLEEP: u64 = ONE_SEC / 10; // 100ms
+        const ONE_SEC: u64 = 1_000_000;
+        const MIN_SLEEP: u64 = ONE_SEC / 10;
 
         self.inner.send(data)?;
 

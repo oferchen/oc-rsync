@@ -227,7 +227,6 @@ fn crtimes_roundtrip() {
         Err(_) => return,
     };
 
-    // ensure different timestamps if the destination already exists
     std::thread::sleep(Duration::from_secs(1));
 
     sync(
@@ -246,15 +245,13 @@ fn crtimes_roundtrip() {
     match dst_meta.created() {
         Ok(t) => {
             if cfg!(target_os = "linux") {
-                // Linux exposes creation times but cannot modify them.
-                // Treat inequality as lack of support.
                 if t != src_crtime {
                     return;
                 }
             }
             assert_eq!(t, src_crtime);
         }
-        Err(_) => {} // no support on this platform
+        Err(_) => {}
     }
 }
 

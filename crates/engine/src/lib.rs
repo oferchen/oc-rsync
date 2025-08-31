@@ -257,7 +257,7 @@ pub enum Op {
 }
 
 const DEFAULT_BASIS_WINDOW: usize = 8 * 1024;
-const LIT_CAP: usize = 1 << 20; // 1MB
+const LIT_CAP: usize = 1 << 20;
 
 pub struct DeltaIter<'a, R: Read + Seek> {
     cfg: &'a ChecksumConfig,
@@ -1215,7 +1215,7 @@ pub struct SyncOptions {
     pub acls: bool,
     pub sparse: bool,
     pub strong: StrongHash,
-    /// Seed value mixed into rolling and strong checksums.
+
     pub checksum_seed: u32,
     pub compress_level: Option<i32>,
     pub compress_choice: Option<Vec<Codec>>,
@@ -1422,9 +1422,7 @@ fn delete_extraneous(
 ) -> Result<()> {
     let mut walker = walk(dst, 1024);
     let mut state = String::new();
-    // Track the first I/O error encountered while deleting extraneous files.
-    // Errors are stored as `EngineError` so we can preserve contextual
-    // information added by `io_context` above.
+
     let mut first_err: Option<EngineError> = None;
     while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1957,8 +1955,6 @@ pub fn sync(
         opts.delete,
         Some(DeleteMode::After) | Some(DeleteMode::During)
     ) {
-        // Ensure deletions happen only after all transfers complete, using the
-        // canonicalized source root for accurate existence checks.
         delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
     }
     for (src_dir, dest_dir) in dir_meta.into_iter().rev() {
@@ -2145,8 +2141,7 @@ mod tests {
         let src = tmp.path().join("src");
         let dst = tmp.path().join("dst");
         fs::create_dir_all(src.join("a")).unwrap();
-        // Files must exceed the walker's minimum size threshold (1KB)
-        // to be discovered during traversal.
+
         fs::write(src.join("a/file1.txt"), vec![b'h'; 2048]).unwrap();
         fs::write(src.join("file2.txt"), vec![b'w'; 2048]).unwrap();
 
