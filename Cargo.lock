@@ -919,6 +919,7 @@ dependencies = [
  "serial_test",
  "shell-words",
  "tempfile",
+ "tracing",
  "transport",
  "users",
  "wait-timeout",
@@ -949,6 +950,7 @@ dependencies = [
  "protocol",
  "shell-words",
  "tempfile",
+ "tracing",
  "transport",
 ]
 

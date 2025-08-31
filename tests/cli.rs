@@ -586,6 +586,27 @@ fn verbose_flag_increases_logging() {
 }
 
 #[test]
+fn log_format_json_outputs_structured_logs() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--local",
+        "--log-format=json",
+        "--verbose",
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success().stdout(predicates::str::contains(
+        "\"message\":\"verbose level set to 1\"",
+    ));
+}
+
+#[test]
 fn quiet_flag_suppresses_output() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");

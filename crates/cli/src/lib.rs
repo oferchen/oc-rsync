@@ -114,6 +114,8 @@ struct ClientOpts {
     ignore_times: bool,
     #[arg(short, long, action = ArgAction::Count, help_heading = "Output")]
     verbose: u8,
+    #[arg(long = "log-format", help_heading = "Output", value_parser = ["text", "json"])]
+    log_format: Option<String>,
     #[arg(long = "human-readable", help_heading = "Output")]
     human_readable: bool,
     #[arg(short, long, help_heading = "Output")]
@@ -842,7 +844,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         }
     }
     if opts.verbose > 0 && !opts.quiet {
-        println!("verbose level set to {}", opts.verbose);
+        tracing::info!("verbose level set to {}", opts.verbose);
     }
     if opts.recursive && !opts.quiet {
         println!("recursive mode enabled");
