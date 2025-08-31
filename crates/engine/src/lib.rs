@@ -150,6 +150,7 @@ pub enum Op {
 }
 
 const DEFAULT_BASIS_WINDOW: usize = 8 * 1024;
+const LIT_CAP: usize = 1 << 20; // 1MB
 
 pub struct DeltaIter<'a, R: Read + Seek> {
     cfg: &'a ChecksumConfig,
@@ -215,6 +216,9 @@ impl<'a, R: Read + Seek> Iterator for DeltaIter<'a, R> {
 
             if let Some(b) = self.window.pop_front() {
                 self.lit.push(b);
+                if self.lit.len() >= LIT_CAP {
+                    return Some(Ok(Op::Data(std::mem::take(&mut self.lit))));
+                }
             }
             if self.done && self.window.is_empty() {
                 return Some(Ok(Op::Data(std::mem::take(&mut self.lit))));
@@ -1938,5 +1942,21 @@ mod tests {
         assert_eq!(out.into_inner(), data);
         let growth = after.saturating_sub(before);
         assert!(growth < 10 * 1024, "memory grew too much: {}KB", growth);
+    }
+
+    #[test]
+    fn literal_chunks_respect_cap() {
+        let cfg = ChecksumConfigBuilder::new().build();
+        let data = vec![42u8; LIT_CAP * 3 + 123];
+        let mut basis = Cursor::new(Vec::new());
+        let mut target = Cursor::new(data.clone());
+        let ops: Vec<Op> = compute_delta(&cfg, &mut basis, &mut target, 4, usize::MAX)
+            .unwrap()
+            .collect::<Result<_>>()
+            .unwrap();
+        assert!(ops.iter().all(|op| match op {
+            Op::Data(d) => d.len() <= LIT_CAP,
+            _ => false,
+        }));
     }
 }
