@@ -11,7 +11,7 @@ use nix::sys::stat::Mode;
 use nix::sys::stat::SFlag;
 use std::collections::BTreeMap;
 use std::fs;
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 use std::os::unix::fs::FileTypeExt;
 #[cfg(unix)]
 use std::os::unix::fs::{symlink, MetadataExt, PermissionsExt};
