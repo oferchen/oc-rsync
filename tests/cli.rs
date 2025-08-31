@@ -764,6 +764,68 @@ fn include_from_file_allows_patterns() {
 }
 
 #[test]
+fn exclude_complex_pattern_skips_nested_files() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(src.join("dir/sub")).unwrap();
+    std::fs::write(src.join("dir/log1.txt"), b"1").unwrap();
+    std::fs::write(src.join("dir/sub/log2.txt"), b"2").unwrap();
+    std::fs::write(src.join("dir/sub/logx.txt"), b"x").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--exclude",
+            "dir/**/log[0-9].txt",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("dir/log1.txt").exists());
+    assert!(!dst.join("dir/sub/log2.txt").exists());
+    assert!(dst.join("dir/sub/logx.txt").exists());
+}
+
+#[test]
+fn include_complex_pattern_allows_files() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(src.join("dir")).unwrap();
+    std::fs::write(src.join("dir/keep1.txt"), b"1").unwrap();
+    std::fs::write(src.join("dir/keep2.log"), b"2").unwrap();
+    std::fs::write(src.join("dir/skip.txt"), b"s").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--include",
+            "**/keep?.txt",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("dir/keep1.txt").exists());
+    assert!(!dst.join("dir/keep2.log").exists());
+    assert!(!dst.join("dir/skip.txt").exists());
+}
+
+#[test]
 fn files_from_zero_separated_list() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
