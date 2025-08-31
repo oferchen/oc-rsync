@@ -5,6 +5,8 @@ use assert_cmd::prelude::*;
 #[cfg(unix)]
 use assert_cmd::Command;
 #[cfg(unix)]
+use oc_rsync_cli as cli;
+#[cfg(unix)]
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
