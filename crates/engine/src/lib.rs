@@ -64,6 +64,20 @@ fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
     }
 }
 
+fn outside_size_bounds(len: u64, opts: &SyncOptions) -> bool {
+    if let Some(min) = opts.min_size {
+        if len < min {
+            return true;
+        }
+    }
+    if let Some(max) = opts.max_size {
+        if len > max {
+            return true;
+        }
+    }
+    false
+}
+
 fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
     match fs::rename(src, dst) {
         Ok(_) => Ok(()),
@@ -1067,6 +1081,8 @@ pub struct SyncOptions {
     pub remove_source_files: bool,
     pub max_delete: Option<usize>,
     pub max_alloc: usize,
+    pub max_size: Option<u64>,
+    pub min_size: Option<u64>,
     pub checksum: bool,
     pub compress: bool,
     pub modern_compress: Option<ModernCompress>,
@@ -1152,6 +1168,8 @@ impl Default for SyncOptions {
             remove_source_files: false,
             max_delete: None,
             max_alloc: 1 << 30,
+            max_size: None,
+            min_size: None,
             checksum: false,
             compress: false,
             modern_compress: None,
@@ -1453,6 +1471,12 @@ pub fn sync(
                     if opts.dirs && !entry.file_type.is_dir() {
                         continue;
                     }
+                    if entry.file_type.is_file() {
+                        let len = fs::metadata(&path).map_err(|e| io_context(&path, e))?.len();
+                        if outside_size_bounds(len, opts) {
+                            continue;
+                        }
+                    }
                     if rel.as_os_str().is_empty() {
                         println!(".");
                     } else if entry.file_type.is_dir() {
@@ -1516,13 +1540,15 @@ pub fn sync(
                     || (opts.copy_devices
                         && (file_type.is_char_device() || file_type.is_block_device()))
                 {
+                    let src_meta = fs::metadata(&path).map_err(|e| io_context(&path, e))?;
+                    if outside_size_bounds(src_meta.len(), opts) {
+                        continue;
+                    }
                     if opts.ignore_existing && dest_path.exists() {
                         continue;
                     }
                     if opts.update && dest_path.exists() {
-                        if let (Ok(src_meta), Ok(dst_meta)) =
-                            (fs::metadata(&path), fs::metadata(&dest_path))
-                        {
+                        if let Ok(dst_meta) = fs::metadata(&dest_path) {
                             if let (Ok(src_mtime), Ok(dst_mtime)) =
                                 (src_meta.modified(), dst_meta.modified())
                             {
@@ -1535,8 +1561,7 @@ pub fn sync(
                     #[cfg(unix)]
                     if opts.hard_links {
                         use std::os::unix::fs::MetadataExt;
-                        let meta = fs::metadata(&path).map_err(|e| io_context(&path, e))?;
-                        let key = (meta.dev(), meta.ino());
+                        let key = (src_meta.dev(), src_meta.ino());
                         if let Some(existing) = hard_links.get(&key) {
                             fs::hard_link(existing, &dest_path)
                                 .map_err(|e| io_context(&dest_path, e))?;

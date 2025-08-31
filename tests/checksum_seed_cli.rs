@@ -12,7 +12,7 @@ fn checksum_seed_flag_transfers_files() {
     let src = dir.path().join("src");
     let dst = dir.path().join("dst");
     fs::create_dir_all(&src).unwrap();
-    fs::write(src.join("a.txt"), b"seeded").unwrap();
+    fs::write(src.join("a.txt"), vec![0u8; 2048]).unwrap();
 
     let opts = SyncOptions {
         checksum: true,
@@ -31,5 +31,5 @@ fn checksum_seed_flag_transfers_files() {
     .unwrap();
 
     let out = fs::read(dst.join("a.txt")).unwrap();
-    assert_eq!(out, b"seeded");
+    assert_eq!(out, vec![0u8; 2048]);
 }

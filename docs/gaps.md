@@ -69,8 +69,6 @@ This document tracks outstanding gaps in `oc-rsync` compared to the reference `r
 
 ## Performance knob gaps
 - `--max-alloc` — not implemented. [feature_matrix](feature_matrix.md#L90) ([TODO](#testing-gaps))
-- `--max-size` — not implemented. [feature_matrix](feature_matrix.md#L92) ([TODO](#testing-gaps))
-- `--min-size` — not implemented. [feature_matrix](feature_matrix.md#L93) ([TODO](#testing-gaps))
 - `--preallocate` — not implemented. [feature_matrix](feature_matrix.md#L122) ([TODO](#testing-gaps))
 - `--temp-dir` — cross-filesystem behavior differs. [tests/cli.rs](../tests/cli.rs) [feature_matrix](feature_matrix.md#L149)
 

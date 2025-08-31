@@ -95,8 +95,8 @@ negotiates version 73.
 | `--log-file-format` | — | ❌ | — | — |  | ≤3.2 |
 | `--max-alloc` | — | ❌ | — | — |  | ≤3.2 |
 | `--max-delete` | — | ❌ | — | — |  | ≤3.2 |
-| `--max-size` | — | ❌ | — | — |  | ≤3.2 |
-| `--min-size` | — | ❌ | — | — |  | ≤3.2 |
+| `--max-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
+| `--min-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
 | `--mkpath` | — | ❌ | — | — |  | ≤3.2 |
 | `--modern` | — | ✅ | ✅ | [tests/interop/modern.rs](../tests/interop/modern.rs) | oc-rsync only; enables zstd compression and BLAKE3 checksums (requires `blake3` feature) | — |
 | `--modern-compress` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; choose `auto`, `zstd`, or `lz4` compression | — |

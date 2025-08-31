@@ -49,3 +49,57 @@ fn max_alloc_zero_is_unlimited() {
         .assert()
         .success();
 }
+
+#[test]
+fn max_size_skips_large_files() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("small.bin"), vec![0u8; 2048]).unwrap();
+    fs::write(src.join("large.bin"), vec![0u8; 4096]).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--max-size=3k",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("small.bin").exists());
+    assert!(!dst.join("large.bin").exists());
+}
+
+#[test]
+fn min_size_skips_small_files() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("small.bin"), vec![0u8; 2048]).unwrap();
+    fs::write(src.join("large.bin"), vec![0u8; 4096]).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--min-size=3k",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("small.bin").exists());
+    assert!(dst.join("large.bin").exists());
+}
