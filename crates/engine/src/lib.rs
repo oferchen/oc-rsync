@@ -784,7 +784,6 @@ impl Receiver {
                 }
             }
         }
-        let mut out = if self.opts.inplace
         let cfg = ChecksumConfigBuilder::new()
             .strong(self.opts.strong)
             .seed(self.opts.checksum_seed)
