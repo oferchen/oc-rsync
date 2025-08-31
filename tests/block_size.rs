@@ -2,7 +2,7 @@
 
 use assert_cmd::Command;
 use checksums::ChecksumConfigBuilder;
-use engine::{compute_delta, Op};
+use engine::{cdc, compute_delta, Op};
 use std::fs;
 use std::process::Command as StdCommand;
 use tempfile::tempdir;
@@ -19,6 +19,22 @@ fn parse_literal(stats: &str) -> usize {
         }
     }
     panic!("no literal data in stats: {stats}");
+}
+
+#[test]
+fn cdc_block_size_heuristics() {
+    let cases = [
+        (100u64, 700usize),
+        (500_000, 704),
+        (1_048_576, 1024),
+        (10_000_000, 3160),
+        (100_000_000, 10_000),
+        (1_000_000_000, 31_616),
+        (1_000_000_000_000, 131_072),
+    ];
+    for (len, expected) in cases {
+        assert_eq!(cdc::block_size(len), expected, "len={len}");
+    }
 }
 
 #[test]
