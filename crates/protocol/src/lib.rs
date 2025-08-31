@@ -12,7 +12,7 @@ pub use mux::Mux;
 pub use server::Server;
 
 pub const LATEST_VERSION: u32 = 73;
-pub const MIN_VERSION: u32 = 29;
+pub const MIN_VERSION: u32 = 27;
 
 pub const CAP_CODECS: u32 = 1 << 0;
 pub const CAP_BLAKE3: u32 = 1 << 1;
@@ -41,7 +41,7 @@ pub fn negotiate_version(local: u32, peer: u32) -> Result<u32, VersionError> {
     if local >= LATEST_VERSION && peer >= LATEST_VERSION {
         Ok(LATEST_VERSION)
     } else {
-        let v = local.min(peer).min(31);
+        let v = local.min(peer).min(32);
         if v >= MIN_VERSION {
             Ok(v)
         } else {
@@ -443,10 +443,12 @@ mod tests {
     fn version_negotiation() {
         assert_eq!(negotiate_version(73, 80), Ok(73));
         assert_eq!(negotiate_version(73, 73), Ok(73));
-        assert_eq!(negotiate_version(73, 40), Ok(31));
-        assert_eq!(negotiate_version(31, 40), Ok(31));
-        assert_eq!(negotiate_version(29, 40), Ok(29));
-        assert!(negotiate_version(29, 28).is_err());
+        assert_eq!(negotiate_version(73, 40), Ok(32));
+        assert_eq!(negotiate_version(32, 40), Ok(32));
+        for v in 27..=32 {
+            assert_eq!(negotiate_version(73, v), Ok(v));
+        }
+        assert!(negotiate_version(27, 26).is_err());
     }
 
     #[test]
