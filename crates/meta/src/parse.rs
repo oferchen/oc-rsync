@@ -3,7 +3,7 @@ use std::result::Result as StdResult;
 use std::sync::Arc;
 
 pub fn parse_chmod_spec(spec: &str) -> StdResult<Chmod, String> {
-    let (target, rest) = if let Some(r) = spec.strip_prefix('D') {
+    let (mut target, rest) = if let Some(r) = spec.strip_prefix('D') {
         (ChmodTarget::Dir, r)
     } else if let Some(r) = spec.strip_prefix('F') {
         (ChmodTarget::File, r)
@@ -17,6 +17,9 @@ pub fn parse_chmod_spec(spec: &str) -> StdResult<Chmod, String> {
 
     if rest.chars().all(|c| c.is_ascii_digit()) {
         let bits = u32::from_str_radix(rest, 8).map_err(|_| "invalid octal mode")?;
+        if bits & 0o170000 != 0 {
+            target = ChmodTarget::File;
+        }
         let bits = normalize_mode(bits);
         return Ok(Chmod {
             target,
