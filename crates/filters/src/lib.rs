@@ -537,7 +537,6 @@ impl Matcher {
                         pat.to_string()
                     };
                     buf.push(prefix.unwrap_or(ch));
-                    buf.push(ch);
                     buf.push_str(mods);
                     buf.push(' ');
                     buf.push_str(&new_pat);
@@ -1186,4 +1185,82 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
     }
 
     Ok(out)
+}
+
+pub fn parse_list(input: &[u8], from0: bool) -> Vec<String> {
+    if from0 {
+        input
+            .split(|b| *b == 0)
+            .filter_map(|s| {
+                if s.is_empty() {
+                    return None;
+                }
+                let mut end = s.len();
+                while end > 0 && (s[end - 1] == b'\n' || s[end - 1] == b'\r') {
+                    end -= 1;
+                }
+                if end == 0 {
+                    return None;
+                }
+                let pat = String::from_utf8_lossy(&s[..end]).trim().to_string();
+                if pat.is_empty() || pat.starts_with('#') {
+                    None
+                } else {
+                    Some(pat)
+                }
+            })
+            .collect()
+    } else {
+        let s = String::from_utf8_lossy(input);
+        s.lines()
+            .map(|l| l.trim_end_matches('\r'))
+            .map(|l| l.trim())
+            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+            .map(|l| l.to_string())
+            .collect()
+    }
+}
+
+pub fn parse_list_file(path: &Path, from0: bool) -> Result<Vec<String>, ParseError> {
+    let data = fs::read(path)?;
+    Ok(parse_list(&data, from0))
+}
+
+pub fn parse_from_bytes(
+    input: &[u8],
+    from0: bool,
+    visited: &mut HashSet<PathBuf>,
+    depth: usize,
+) -> Result<Vec<Rule>, ParseError> {
+    if from0 {
+        let mut rules = Vec::new();
+        for part in input.split(|b| *b == 0) {
+            if part.is_empty() {
+                continue;
+            }
+            let s = String::from_utf8_lossy(part);
+            let line = s.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            let mut buf = String::new();
+            buf.push_str(line);
+            buf.push('\n');
+            rules.extend(parse(&buf, visited, depth)?);
+        }
+        Ok(rules)
+    } else {
+        let s = String::from_utf8_lossy(input);
+        parse(&s, visited, depth)
+    }
+}
+
+pub fn parse_file(
+    path: &Path,
+    from0: bool,
+    visited: &mut HashSet<PathBuf>,
+    depth: usize,
+) -> Result<Vec<Rule>, ParseError> {
+    let data = fs::read(path)?;
+    parse_from_bytes(&data, from0, visited, depth)
 }
