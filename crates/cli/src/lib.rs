@@ -1590,19 +1590,11 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     if matches.contains_id("filter_shorthand") {
         if let Some(idx) = matches.index_of("filter_shorthand") {
             let count = matches.get_count("filter_shorthand");
-            if count >= 1 {
-                add_rules(
-                    idx,
-                    parse_filters("-F").map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                );
-            }
-            if count >= 2 {
-                add_rules(
-                    idx,
-                    parse_filters("- .rsync-filter")
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                );
-            }
+            let rule_str = if count >= 2 { "-FF" } else { "-F" };
+            add_rules(
+                idx,
+                parse_filters(rule_str).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+            );
         }
     }
     if !opts.files_from.is_empty() {
