@@ -20,7 +20,9 @@ fn server_negotiates_version() {
     });
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
-    let (caps, peer_codecs) = srv.handshake(LATEST_VERSION, SUPPORTED_CAPS, &local).unwrap();
+    let (caps, peer_codecs) = srv
+        .handshake(LATEST_VERSION, SUPPORTED_CAPS, &local)
+        .unwrap();
     assert_eq!(srv.version, LATEST_VERSION);
     assert_eq!(caps, SUPPORTED_CAPS);
     assert_eq!(peer_codecs, local);
@@ -36,7 +38,7 @@ fn server_negotiates_version() {
 }
 
 #[test]
-fn server_falls_back_to_v31() {
+fn server_falls_back_to_v32() {
     let legacy = LATEST_VERSION - 1;
     let payload = encode_codecs(&available_codecs(None));
     let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
@@ -51,13 +53,14 @@ fn server_falls_back_to_v31() {
     });
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
-    let (caps, peer_codecs) =
-        srv.handshake(LATEST_VERSION, SUPPORTED_CAPS, &available_codecs(None)).unwrap();
-    assert_eq!(srv.version, 31);
+    let (caps, peer_codecs) = srv
+        .handshake(LATEST_VERSION, SUPPORTED_CAPS, &available_codecs(None))
+        .unwrap();
+    assert_eq!(srv.version, 32);
     assert_eq!(caps & CAP_CODECS, CAP_CODECS);
     assert_eq!(peer_codecs, available_codecs(None));
     let expected = {
-        let mut v = 31u32.to_be_bytes().to_vec();
+        let mut v = 32u32.to_be_bytes().to_vec();
         v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
         let mut out_frame = Vec::new();
         codecs_frame.encode(&mut out_frame).unwrap();
@@ -65,4 +68,37 @@ fn server_falls_back_to_v31() {
         v
     };
     assert_eq!(output, expected);
+}
+
+#[test]
+fn server_classic_versions() {
+    let local = available_codecs(None);
+    let payload = encode_codecs(&local);
+    let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
+    let mut codecs_buf = Vec::new();
+    codecs_frame.encode(&mut codecs_buf).unwrap();
+
+    for ver in 27u32..=32 {
+        let mut input = Cursor::new({
+            let mut v = vec![0];
+            v.extend_from_slice(&ver.to_be_bytes());
+            v.extend_from_slice(&CAP_CODECS.to_be_bytes());
+            v.extend_from_slice(&codecs_buf);
+            v
+        });
+        let mut output = Vec::new();
+        let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
+        srv.handshake(LATEST_VERSION, SUPPORTED_CAPS, &local)
+            .unwrap();
+        assert_eq!(srv.version, ver);
+        let expected = {
+            let mut v = ver.to_be_bytes().to_vec();
+            v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
+            let mut out_frame = Vec::new();
+            codecs_frame.encode(&mut out_frame).unwrap();
+            v.extend_from_slice(&out_frame);
+            v
+        };
+        assert_eq!(output, expected);
+    }
 }

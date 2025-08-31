@@ -4,6 +4,11 @@ This page summarizes the operating systems and interoperability scenarios that
 have been exercised with `oc-rsync`. For a detailed status matrix see
 [compat_matrix.md](compat_matrix.md).
 
+## Protocol versions
+
+`oc-rsync` interoperates with classic `rsync` using protocol versions 27
+through 32 and negotiates version 73 when both peers enable modern mode.
+
 ## Tested platforms
 
 | Operating system | Notes |

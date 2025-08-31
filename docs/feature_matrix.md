@@ -4,6 +4,9 @@ This table tracks the implementation status of rsync 3.4.x command-line options.
 See [differences.md](differences.md) for a summary of notable behavioral differences and [gaps.md](gaps.md) for
 outstanding parity gaps.
 
+Classic `rsync` protocol versions 27–32 are supported, while modern mode
+negotiates version 73.
+
 | Option | Short | Supported | Parity scope | Tests link | Notes | Version introduced |
 | --- | --- | --- | --- | --- | --- | --- |
 | `--8-bit-output` | `-8` | ✅ | ❌ | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  | ≤3.2 |
