@@ -1266,6 +1266,7 @@ fn delete_extraneous(
 ) -> Result<()> {
     let mut walker = walk(dst, 1024);
     let mut state = String::new();
+    let mut first_err: Option<std::io::Error> = None;
     while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
@@ -1282,7 +1283,7 @@ fn delete_extraneous(
                             return Err(EngineError::Other("max-delete limit exceeded".into()));
                         }
                     }
-                    if opts.backup {
+                    let res = if opts.backup {
                         let backup_path = if let Some(ref dir) = opts.backup_dir {
                             dir.join(rel)
                         } else {
@@ -1292,21 +1293,36 @@ fn delete_extraneous(
                                 .unwrap_or_else(|| "~".to_string());
                             path.with_file_name(name)
                         };
-                        if let Some(parent) = backup_path.parent() {
-                            fs::create_dir_all(parent)?;
-                        }
-                        fs::rename(&path, &backup_path)?;
+                        let dir_res = if let Some(parent) = backup_path.parent() {
+                            fs::create_dir_all(parent)
+                        } else {
+                            Ok(())
+                        };
+                        dir_res.and_then(|_| fs::rename(&path, &backup_path)).err()
                     } else if file_type.is_dir() {
-                        fs::remove_dir_all(&path)?;
+                        fs::remove_dir_all(&path).err()
                     } else {
-                        fs::remove_file(&path)?;
+                        fs::remove_file(&path).err()
+                    };
+                    match res {
+                        None => {
+                            stats.files_deleted += 1;
+                        }
+                        Some(e) => {
+                            if first_err.is_none() {
+                                first_err = Some(e);
+                            }
+                        }
                     }
-                    stats.files_deleted += 1;
                 }
             }
         }
     }
-    Ok(())
+    if let Some(e) = first_err {
+        Err(e.into())
+    } else {
+        Ok(())
+    }
 }
 
 pub fn sync(
