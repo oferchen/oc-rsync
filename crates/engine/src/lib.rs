@@ -886,6 +886,10 @@ pub struct Receiver {
     codec: Option<Codec>,
     opts: SyncOptions,
     delayed: Vec<(PathBuf, PathBuf, PathBuf)>,
+    #[cfg(unix)]
+    link_map: HashMap<usize, PathBuf>,
+    #[cfg(unix)]
+    pending_links: Vec<(PathBuf, PathBuf)>,
 }
 
 impl Default for Receiver {
@@ -901,6 +905,26 @@ impl Receiver {
             codec,
             opts,
             delayed: Vec::new(),
+            #[cfg(unix)]
+            link_map: HashMap::new(),
+            #[cfg(unix)]
+            pending_links: Vec::new(),
+        }
+    }
+
+    #[cfg(unix)]
+    fn register_hard_link(&mut self, inode: usize, dest: &Path) -> Result<bool> {
+        if let Some(existing) = self.link_map.get(&inode) {
+            if self.opts.delay_updates || self.delayed.iter().any(|(_, _, d)| d == existing) {
+                self.pending_links
+                    .push((existing.clone(), dest.to_path_buf()));
+            } else {
+                fs::hard_link(existing, dest).map_err(|e| io_context(dest, e))?;
+            }
+            Ok(false)
+        } else {
+            self.link_map.insert(inode, dest.to_path_buf());
+            Ok(true)
         }
     }
 
@@ -1088,13 +1112,19 @@ impl Receiver {
                 atomic_rename(&tmp_dest, dest)?;
                 if let Some(tmp_parent) = tmp_dest.parent() {
                     if dest.parent() != Some(tmp_parent)
-
                         && tmp_parent
                             .read_dir()
                             .map(|mut i| i.next().is_none())
                             .unwrap_or(false)
                     {
                         let _ = fs::remove_dir(tmp_parent);
+                    }
+                }
+                #[cfg(unix)]
+                if let Some((uid, gid)) = self.opts.copy_as {
+                    let gid = gid.map(Gid::from_raw);
+                    chown(dest, Some(Uid::from_raw(uid)), gid)
+                        .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
                     }
                     #[cfg(unix)]
                     if let Some((uid, gid)) = self.opts.copy_as {
@@ -1273,6 +1303,13 @@ impl Receiver {
                     .map_err(|e| io_context(&dest, std::io::Error::from(e)))?;
             }
             self.copy_metadata_now(&src, &dest)?;
+        }
+        #[cfg(unix)]
+        {
+            for (src, dest) in std::mem::take(&mut self.pending_links) {
+                fs::hard_link(&src, &dest).map_err(|e| io_context(&dest, e))?;
+            }
+            self.link_map.clear();
         }
         Ok(())
     }
@@ -1760,19 +1797,9 @@ pub fn sync(
         delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
     }
     sender.start();
-    #[cfg(unix)]
-    let mut hard_links: Vec<Option<std::path::PathBuf>> = Vec::new();
-    let mut walker = walk(&src_root, 1024);
     let mut state = String::new();
-    while let Some(batch) = walker.next() {
+    for batch in walk(&src_root, 1024) {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
-        #[cfg(unix)]
-        {
-            let needed = walker.inodes().len();
-            if hard_links.len() < needed {
-                hard_links.resize(needed, None);
-            }
-        }
         for entry in batch {
             let path = entry.apply(&mut state);
             let file_type = entry.file_type;
@@ -1815,14 +1842,8 @@ pub fn sync(
                         }
                     }
                     #[cfg(unix)]
-                    if opts.hard_links {
-                        if let Some(existing) = &hard_links[entry.inode] {
-                            fs::hard_link(existing, &dest_path)
-                                .map_err(|e| io_context(&dest_path, e))?;
-                            continue;
-                        } else {
-                            hard_links[entry.inode] = Some(dest_path.clone());
-                        }
+                    if opts.hard_links && !receiver.register_hard_link(entry.inode, &dest_path)? {
+                        continue;
                     }
                     let partial_exists = if opts.partial {
                         let partial_path = if let Some(ref dir) = opts.partial_dir {
