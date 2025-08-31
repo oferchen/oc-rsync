@@ -1,3 +1,8 @@
+//! Utilities for parsing rsync daemon configuration files.
+//!
+//! `parse_config` returns an [`io::Error`] when configuration entries are
+//! invalid, such as when the `port` value cannot be parsed.
+
 use std::fs;
 use std::io::{self};
 use std::path::{Path, PathBuf};
@@ -86,7 +91,12 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             .trim()
             .to_string();
         match (current.is_some(), key.as_str()) {
-            (false, "port") => cfg.port = val.parse().ok(),
+            (false, "port") => {
+                cfg.port = Some(
+                    val.parse::<u16>()
+                        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
+                );
+            }
             (false, "motd file") => cfg.motd_file = Some(PathBuf::from(val)),
             (false, "log file") => cfg.log_file = Some(PathBuf::from(val)),
             (false, "hosts allow") => {
@@ -218,4 +228,16 @@ pub fn chroot_and_drop_privileges(path: &Path, uid: u32, gid: u32) -> io::Result
 #[cfg(not(unix))]
 pub fn chroot_and_drop_privileges(_path: &Path, _uid: u32, _gid: u32) -> io::Result<()> {
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_config;
+
+    #[test]
+    fn parse_config_invalid_port() {
+        let cfg = "port=not-a-number";
+        let res = parse_config(cfg);
+        assert!(res.is_err());
+    }
 }
