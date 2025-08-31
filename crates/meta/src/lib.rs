@@ -16,5 +16,56 @@ pub use stub::*;
 mod parse;
 pub use parse::*;
 
+#[cfg(unix)]
+use filetime::set_symlink_file_times;
+use filetime::{set_file_times, FileTime};
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
+
+/// Tracks a file's access time and restores it when dropped.
+#[derive(Debug)]
+pub struct AccessTime {
+    path: PathBuf,
+    atime: FileTime,
+    mtime: FileTime,
+    is_symlink: bool,
+}
+
+impl AccessTime {
+    /// Capture the current access time of `path`.
+    pub fn new(path: &Path) -> io::Result<Self> {
+        let meta = fs::symlink_metadata(path)?;
+        Ok(Self {
+            path: path.to_path_buf(),
+            atime: FileTime::from_last_access_time(&meta),
+            mtime: FileTime::from_last_modification_time(&meta),
+            is_symlink: meta.file_type().is_symlink(),
+        })
+    }
+
+    /// Restore the previously captured access time.
+    pub fn restore(&self) -> io::Result<()> {
+        if self.is_symlink {
+            #[cfg(unix)]
+            {
+                set_symlink_file_times(&self.path, self.atime, self.mtime)?;
+            }
+            #[cfg(not(unix))]
+            {
+                set_file_times(&self.path, self.atime, self.mtime)?;
+            }
+        } else {
+            set_file_times(&self.path, self.atime, self.mtime)?;
+        }
+        Ok(())
+    }
+}
+
+impl Drop for AccessTime {
+    fn drop(&mut self) {
+        let _ = self.restore();
+    }
+}
 #[cfg(feature = "acl")]
 pub use posix_acl::{ACLEntry, PosixACL, Qualifier, ACL_EXECUTE, ACL_READ, ACL_RWX, ACL_WRITE};

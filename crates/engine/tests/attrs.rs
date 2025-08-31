@@ -205,7 +205,8 @@ fn atimes_roundtrip() {
     let dst_meta = fs::metadata(dst.join("file")).unwrap();
     let src_atime = FileTime::from_last_access_time(&src_meta);
     let dst_atime = FileTime::from_last_access_time(&dst_meta);
-    assert_eq!(dst_atime, src_atime);
+    assert_eq!(src_atime, atime);
+    assert_eq!(dst_atime, atime);
 }
 
 #[test]
