@@ -108,10 +108,12 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
                 );
             }
             (false, "port") => {
-                cfg.port = Some(
-                    val.parse::<u16>()
-                        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
-                );
+                let port = val
+                    .parse::<u16>()
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                // A value of `0` signals that the daemon should bind to an
+                // ephemeral port chosen by the operating system.
+                cfg.port = Some(port);
             }
             (false, "motd file") => cfg.motd_file = Some(PathBuf::from(val)),
             (false, "log file") => cfg.log_file = Some(PathBuf::from(val)),
@@ -380,6 +382,12 @@ mod tests {
         let cfg = "port=not-a-number";
         let res = parse_config(cfg);
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn parse_config_allows_zero_port() {
+        let cfg = parse_config("port=0").unwrap();
+        assert_eq!(cfg.port, Some(0));
     }
 
     #[cfg(unix)]
