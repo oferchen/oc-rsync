@@ -1706,10 +1706,12 @@ pub fn sync(
                                 opts.modern_cdc_max,
                             ) {
                                 if !chunks.is_empty() {
-                                    if let Some(existing) = manifest.lookup(&chunks[0].hash) {
-                                        let all = chunks
-                                            .iter()
-                                            .all(|c| manifest.lookup(&c.hash).is_some());
+                                    if let Some(existing) =
+                                        manifest.lookup(&chunks[0].hash, &dest_path)
+                                    {
+                                        let all = chunks.iter().all(|c| {
+                                            manifest.lookup(&c.hash, &dest_path).is_some()
+                                        });
                                         if all {
                                             if let Some(parent) = dest_path.parent() {
                                                 fs::create_dir_all(parent)

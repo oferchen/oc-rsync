@@ -17,6 +17,7 @@ filters = { path = "../crates/filters" }
 walk = { path = "../crates/walk" }
 oc-rsync-cli = { path = "../crates/cli" }
 tempfile = "3"
+engine = { path = "../crates/engine" }
 
 [[bin]]
 name = "protocol_frame_decode_fuzz"
@@ -63,5 +64,11 @@ doc = false
 [[bin]]
 name = "daemon_auth_token_parser"
 path = "fuzz_targets/daemon_auth_token_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "manifest_parser"
+path = "fuzz_targets/manifest_parser.rs"
 test = false
 doc = false
