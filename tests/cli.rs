@@ -55,6 +55,8 @@ fn whole_file_direct_copy() {
     std::fs::write(&src_file, b"new contents").unwrap();
     std::fs::write(&dst_file, b"old contents").unwrap();
     set_file_mtime(&dst_file, FileTime::from_unix_time(0, 0)).unwrap();
+    // create a file that doesn't exist in the destination
+    std::fs::write(src_dir.join("b.txt"), b"brand new").unwrap();
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
@@ -68,6 +70,9 @@ fn whole_file_direct_copy() {
 
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, b"new contents");
+    // new files should also be copied
+    let out_new = std::fs::read(dst_dir.join("b.txt")).unwrap();
+    assert_eq!(out_new, b"brand new");
 }
 
 #[test]
