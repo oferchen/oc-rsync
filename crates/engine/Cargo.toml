@@ -15,6 +15,7 @@ blake3 = "1"
 fastcdc = "3.2"
 logging = { path = "../logging" }
 libc = "0.2"
+memmap2 = "0.9"
 
 [dev-dependencies]
 tempfile = "3"
