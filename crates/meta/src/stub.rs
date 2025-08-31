@@ -38,6 +38,7 @@ pub struct Options {
     pub owner: bool,
     pub group: bool,
     pub perms: bool,
+    pub executability: bool,
     pub times: bool,
     pub atimes: bool,
     pub crtimes: bool,
@@ -56,6 +57,7 @@ impl std::fmt::Debug for Options {
             .field("owner", &self.owner)
             .field("group", &self.group)
             .field("perms", &self.perms)
+            .field("executability", &self.executability)
             .field("times", &self.times)
             .field("atimes", &self.atimes)
             .field("crtimes", &self.crtimes)
@@ -75,6 +77,7 @@ impl Options {
             || self.owner
             || self.group
             || self.perms
+            || self.executability
             || self.times
             || self.atimes
             || self.crtimes
