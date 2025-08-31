@@ -52,10 +52,13 @@ pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
         &available_codecs(None),
         &SyncOptions::default(),
     )?;
-    // Fall back to a simple copy for any files not handled by the engine
-    copy_recursive(src, dst)?;
+    // Copy only files that were skipped by the engine
+    let _ = copy_recursive(src, dst)?;
     Ok(())
 }
+
+fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
+    let mut copied = 0;
 
 fn io_context(path: &Path, err: io::Error) -> EngineError {
     EngineError::Io(io::Error::new(
@@ -76,6 +79,23 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<()> {
         let meta = fs::symlink_metadata(&src_path)?;
         let file_type = meta.file_type();
         if file_type.is_dir() {
+            if !dst_path.exists() {
+                fs::create_dir_all(&dst_path)?;
+            }
+            copied += copy_recursive(&entry.path(), &dst_path)?;
+        } else if file_type.is_file() {
+            if !dst_path.exists() {
+                fs::copy(entry.path(), &dst_path)?;
+                copied += 1;
+            }
+        } else if file_type.is_symlink() {
+            if !dst_path.exists() {
+                #[cfg(unix)]
+                {
+                    let target = fs::read_link(entry.path())?;
+                    std::os::unix::fs::symlink(&target, &dst_path)?;
+                    copied += 1;
+                }
             fs::create_dir_all(&dst_path).map_err(|e| io_context(&dst_path, e))?;
             copy_recursive(&path, &dst_path)?;
         } else if file_type.is_file() {
@@ -140,7 +160,7 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<()> {
         set_file_times(&dst_path, atime, mtime)?;
         fs::set_permissions(&dst_path, meta.permissions())?;
     }
-    Ok(())
+    Ok(copied)
 }
 
 #[cfg(test)]
@@ -161,6 +181,7 @@ mod tests {
             .unwrap()
             .write_all(b"hello world")
             .unwrap();
+        assert!(!dst_dir.exists());
         fs::create_dir_all(&dst_dir).unwrap();
         assert!(dst_dir.exists());
         synchronize(&src_dir, &dst_dir).unwrap();
@@ -211,6 +232,8 @@ mod tests {
         assert_eq!(fs::read(dst_dir.join("file.txt")).unwrap(), b"hello");
     }
 
+    #[test]
+    fn engine_handles_all_files() {
     #[cfg(unix)]
     fn run_copy_unprivileged(src: &Path, dst: &Path) -> (i32, String) {
         use nix::sys::wait::{waitpid, WaitStatus};
@@ -322,6 +345,12 @@ mod tests {
         let src_dir = dir.path().join("src");
         let dst_dir = dir.path().join("dst");
         fs::create_dir_all(&src_dir).unwrap();
+        fs::write(src_dir.join("file.txt"), b"data").unwrap();
+
+        synchronize(&src_dir, &dst_dir).unwrap();
+
+        // copy_recursive should have nothing left to copy
+        assert_eq!(copy_recursive(&src_dir, &dst_dir).unwrap(), 0);
 
         let fifo = src_dir.join("fifo");
         mkfifo(&fifo, Mode::from_bits_truncate(0o640)).unwrap();

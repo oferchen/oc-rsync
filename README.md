@@ -76,6 +76,8 @@ The project is organized as a set of focused crates:
 - `meta` – models file metadata (permissions, timestamps, ownership) and provides helper utilities.
 - `compress` – offers traits and implementations for optional compression of file data during transfer.
 - `engine` – orchestrates scanning, delta calculation, and application of differences between sender and receiver.
+- `oc-rsync` – convenience wrapper around the engine that copies any files the
+  engine skips during synchronization.
 - `transport` – abstracts local and remote I/O, multiplexing channels over SSH, TCP, or other transports.
 - `oc-rsync-cli` – exposes a user-facing command line built on top of the engine and transport layers.
 - `fuzz` – houses fuzz targets that stress protocol and parser logic for robustness.
