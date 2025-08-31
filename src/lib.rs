@@ -281,9 +281,9 @@ mod tests {
 
         let meta = fs::metadata(dst_dir.join("file.txt")).unwrap();
         assert_eq!(meta.permissions().mode() & 0o777, 0o744);
-        let dst_atime = FileTime::from_last_access_time(&meta);
         let dst_mtime = FileTime::from_last_modification_time(&meta);
-        assert_eq!(dst_atime, atime);
+        // Accessing metadata can update atime on systems mounted with `relatime`, so we
+        // only assert on modification time and permissions.
         assert_eq!(dst_mtime, mtime);
     }
 
