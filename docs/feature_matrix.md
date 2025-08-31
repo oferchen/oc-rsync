@@ -4,7 +4,7 @@ This table tracks the implementation status of rsync 3.4.x command-line options.
 See [differences.md](differences.md) for a summary of notable behavioral differences and [gaps.md](gaps.md) for
 outstanding parity gaps.
 
-Classic `rsync` protocol versions 27–32 are supported, while modern mode
+Classic `rsync` protocol versions 31–32 are supported, while modern mode
 negotiates version 73.
 
 ## Internal features
@@ -50,9 +50,9 @@ negotiates version 73.
 | `--crtimes` | `-N` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--cvs-exclude` | `-C` | ✅ | ✅ | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs)<br>[tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--daemon` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
-| `--debug` | — | ❌ | — | — |  | ≤3.2 |
+| `--debug` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--del` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | alias for `--delete-during` | ≤3.2 |
-| `--delay-updates` | — | ❌ | — | — |  | ≤3.2 |
+| `--delay-updates` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--delete` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | ≤3.2 |
 | `--delete-after` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | ≤3.2 |
 | `--delete-before` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | ≤3.2 |
@@ -62,72 +62,72 @@ negotiates version 73.
 | `--delete-missing-args` | — | ✅ | ✅ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--devices` | — | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--dirs` | `-d` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
-| `--dparam` | `-M` | ❌ | — | — |  | ≤3.2 |
+| `--dparam` | `-M` | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--dry-run` | `-n` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--early-input` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--exclude` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--exclude-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--executability` | `-E` | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--existing` | — | ✅ | ✅ | [tests/filter_corpus.rs](../tests/filter_corpus.rs) |  | ≤3.2 |
-| `--fake-super` | — | ❌ | — | — |  | ≤3.2 |
+| `--fake-super` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--files-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--filter` | `-f` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
-| `--force` | — | ❌ | — | — |  | ≤3.2 |
+| `--force` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--from0` | `-0` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--fsync` | — | ❌ | — | — |  | ≤3.2 |
-| `--fuzzy` | `-y` | ❌ | — | — |  | ≤3.2 |
+| `--fsync` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--fuzzy` | `-y` | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--group` | `-g` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | requires root or CAP_CHOWN | ≤3.2 |
 | `--groupmap` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | numeric gid mapping only; requires root or CAP_CHOWN | ≤3.2 |
 | `--hard-links` | `-H` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--help` | `-h (*)` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--human-readable` |  | ✅ | ✅ | [tests/golden/cli_parity/human-readable.sh](../tests/golden/cli_parity/human-readable.sh) |  | ≤3.2 |
-| `--iconv` | — | ❌ | — | — |  | ≤3.2 |
+| `--iconv` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--ignore-errors` | — | ✅ | ❌ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--ignore-existing` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--ignore-missing-args` | — | ✅ | ❌ | [tests/ignore_missing_args.rs](../tests/ignore_missing_args.rs) |  | ≤3.2 |
 | `--ignore-times` | `-I` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--include` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--include-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--info` | — | ❌ | — | — |  | ≤3.2 |
+| `--info` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--inplace` | — | ✅ | ✅ | [tests/golden/cli_parity/inplace.sh](../tests/golden/cli_parity/inplace.sh) |  | ≤3.2 |
 | `--ipv4` | `-4` | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | select IPv4 transport or listener | ≤3.2 |
 | `--ipv6` | `-6` | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | select IPv6 transport or listener | ≤3.2 |
 | `--itemize-changes` | `-i` | ✅ | ✅ | [tests/golden/cli_parity/itemize-changes.sh](../tests/golden/cli_parity/itemize-changes.sh) |  | 3.2 |
-| `--keep-dirlinks` | `-K` | ❌ | — | — |  | ≤3.2 |
+| `--keep-dirlinks` | `-K` | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--link-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
 | `--links` | `-l` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--list-only` | — | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
-| `--log-file` | — | ❌ | — | — |  | ≤3.2 |
-| `--log-file-format` | — | ❌ | — | — |  | ≤3.2 |
-| `--max-alloc` | — | ❌ | — | — |  | ≤3.2 |
+| `--log-file` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--log-file-format` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--max-alloc` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--max-delete` | — | ✅ | ✅ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--max-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
 | `--min-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
-| `--mkpath` | — | ❌ | — | — |  | ≤3.2 |
+| `--mkpath` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--modern` | — | ✅ | ✅ | [tests/interop/modern.rs](../tests/interop/modern.rs) | oc-rsync only; enables zstd compression and BLAKE3 checksums (requires `blake3` feature) | — |
 | `--modern-compress` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; choose `auto`, `zstd`, or `lz4` compression | — |
 | `--modern-hash` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; select BLAKE3 hash (requires `blake3` feature) | — |
 | `--modern-cdc` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; enable `fastcdc` chunking | — |
 | `--modern-cdc-min` | — | ✅ | ✅ | [tests/cdc.rs](../tests/cdc.rs) | oc-rsync only; set FastCDC minimum chunk size | — |
 | `--modern-cdc-max` | — | ✅ | ✅ | [tests/cdc.rs](../tests/cdc.rs) | oc-rsync only; set FastCDC maximum chunk size | — |
-| `--modify-window` | `-@` | ❌ | — | — |  | ≤3.2 |
-| `--munge-links` | — | ❌ | — | — |  | ≤3.2 |
-| `--no-detach` | — | ❌ | — | — |  | ≤3.2 |
+| `--modify-window` | `-@` | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--munge-links` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--no-detach` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--no-D` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--no-devices --no-specials` | ≤3.2 |
-| `--no-OPTION` | — | ❌ | — | — |  | ≤3.2 |
-| `--no-implied-dirs` | — | ❌ | — | — |  | ≤3.2 |
+| `--no-OPTION` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--no-implied-dirs` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--no-motd` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--numeric-ids` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--old-args` | — | ❌ | — | — |  | ≤3.2 |
+| `--old-args` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--old-d` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--old-dirs` | ≤3.2 |
-| `--old-dirs` | — | ❌ | — | — |  | ≤3.2 |
+| `--old-dirs` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--omit-dir-times` | `-O` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--omit-link-times` | `-J` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
-| `--one-file-system` | `-x` | ❌ | — | — |  | ≤3.2 |
-| `--only-write-batch` | — | ❌ | — | — |  | ≤3.2 |
-| `--open-noatime` | — | ❌ | — | — |  | ≤3.2 |
-| `--out-format` | — | ❌ | — | — |  | ≤3.2 |
-| `--outbuf` | — | ❌ | — | — |  | ≤3.2 |
+| `--one-file-system` | `-x` | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--only-write-batch` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--open-noatime` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--out-format` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--outbuf` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--owner` | `-o` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires root or CAP_CHOWN | ≤3.2 |
 | `--partial` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/resume.rs](../crates/engine/tests/resume.rs) |  | ≤3.2 |
 | `--partial-dir` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
@@ -139,7 +139,7 @@ negotiates version 73.
 | `--protocol` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--prune-empty-dirs` | `-m` | ✅ | ✅ | [tests/filter_corpus.rs](../tests/filter_corpus.rs) |  | ≤3.2 |
 | `--quiet` | `-q` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
-| `--read-batch` | — | ❌ | — | — |  | ≤3.2 |
+| `--read-batch` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--recursive` | `-r` | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--relative` | `-R` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--remote-option` | `-M` | ✅ | ❌ | [tests/interop/remote_option.rs](../tests/interop/remote_option.rs) |  | ≤3.2 |
@@ -156,15 +156,15 @@ negotiates version 73.
 | `--sparse` | `-S` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | creates holes for long zero runs | ≤3.2 |
 | `--specials` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--stats` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--stderr` | — | ❌ | — | — |  | ≤3.2 |
-| `--stop-after` | — | ❌ | — | — |  | ≤3.2 |
-| `--stop-at` | — | ❌ | — | — |  | ≤3.2 |
-| `--suffix` | — | ❌ | — | — |  | ≤3.2 |
-| `--super` | — | ❌ | — | — |  | ≤3.2 |
+| `--stderr` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--stop-after` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--stop-at` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--suffix` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--super` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--temp-dir` | `-T` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires same filesystem for atomic rename | ≤3.2 |
 | `--timeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
 | `--times` | `-t` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
-| `--trust-sender` | — | ❌ | — | — |  | ≤3.2 |
+| `--trust-sender` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--update` | `-u` | ✅ | ❌ | [crates/engine/tests/update.rs](../crates/engine/tests/update.rs) |  | ≤3.2 |
 | `--usermap` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | numeric uid mapping only; requires root or CAP_CHOWN | ≤3.2 |
 | `--verbose` | `-v` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
