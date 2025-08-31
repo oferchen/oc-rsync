@@ -44,7 +44,7 @@ fn parse_duration(s: &str) -> std::result::Result<Duration, std::num::ParseIntEr
 fn parse_size(s: &str) -> std::result::Result<usize, String> {
     let s = s.trim();
     if s == "0" {
-        return Ok(usize::MAX);
+        return Ok(0);
     }
     if let Some(last) = s.chars().last() {
         if last.is_ascii_alphabetic() {

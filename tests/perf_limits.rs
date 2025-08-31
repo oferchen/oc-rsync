@@ -1,6 +1,7 @@
 // tests/perf_limits.rs
 
 use assert_cmd::Command;
+use protocol::ExitCode;
 use std::fs;
 use tempfile::tempdir;
 
@@ -24,7 +25,8 @@ fn max_alloc_limits_large_files() {
             dst.to_str().unwrap(),
         ])
         .assert()
-        .failure();
+        .failure()
+        .code(u8::from(ExitCode::Malloc) as i32);
 }
 
 #[test]
