@@ -493,13 +493,11 @@ impl Matcher {
                         buf.push_str("!\n");
                         continue;
                     }
-                    let pat = if matches!(
-                        line.chars().next(),
-                        Some('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R')
-                    ) {
-                        line[1..].trim_start()
-                    } else {
-                        line
+                    let (prefix, pat) = match line.chars().next() {
+                        Some(c @ ('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R')) => {
+                            (Some(c), line[1..].trim_start())
+                        }
+                        _ => (None, line),
                     };
                     let new_pat = if let Some(rel_str) = &rel_str {
                         if pat.starts_with('/') {
@@ -510,7 +508,7 @@ impl Matcher {
                     } else {
                         pat.to_string()
                     };
-                    buf.push(ch);
+                    buf.push(prefix.unwrap_or(ch));
                     buf.push(' ');
                     buf.push_str(&new_pat);
                     buf.push('\n');

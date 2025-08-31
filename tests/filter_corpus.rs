@@ -211,4 +211,12 @@ fn perdir_sign_parity() {
         .output()
         .unwrap();
     assert!(diff.status.success(), "directory trees differ");
+
+    assert!(ours_dst.join("sub/keep.tmp").exists());
+    assert!(!ours_dst.join("sub/other.tmp").exists());
+    assert!(ours_dst.join("sub/nested/keep.tmp").exists());
+    assert!(!ours_dst.join("sub/nested/other.tmp").exists());
+    assert!(!ours_dst.join(".rsync-filter").exists());
+    assert!(!ours_dst.join("sub/.rsync-filter").exists());
+    assert!(!ours_dst.join("sub/nested/.rsync-filter").exists());
 }
