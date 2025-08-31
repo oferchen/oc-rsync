@@ -45,6 +45,7 @@ fn spawn_daemon(config: &str) -> (Child, u16, tempfile::TempDir) {
         .unwrap()
         .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     let port = read_port(&mut child);
@@ -202,6 +203,7 @@ fn daemon_config_custom_port() {
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
+        .stderr(Stdio::null())
         .spawn()
         .unwrap();
     wait_for_daemon(port);
