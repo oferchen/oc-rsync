@@ -1202,12 +1202,7 @@ pub fn parse_list(input: &[u8], from0: bool) -> Vec<String> {
                 if end == 0 {
                     return None;
                 }
-                let pat = String::from_utf8_lossy(&s[..end]).trim().to_string();
-                if pat.is_empty() || pat.starts_with('#') {
-                    None
-                } else {
-                    Some(pat)
-                }
+                Some(String::from_utf8_lossy(&s[..end]).to_string())
             })
             .collect()
     } else {
@@ -1215,7 +1210,7 @@ pub fn parse_list(input: &[u8], from0: bool) -> Vec<String> {
         s.lines()
             .map(|l| l.trim_end_matches('\r'))
             .map(|l| l.trim())
-            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+            .filter(|l| !l.is_empty() && !l.trim_start().starts_with('#'))
             .map(|l| l.to_string())
             .collect()
     }
@@ -1238,13 +1233,18 @@ pub fn parse_from_bytes(
             if part.is_empty() {
                 continue;
             }
-            let s = String::from_utf8_lossy(part);
-            let line = s.trim();
-            if line.is_empty() || line.starts_with('#') {
+            let mut end = part.len();
+            while end > 0 && (part[end - 1] == b'\n' || part[end - 1] == b'\r') {
+                end -= 1;
+            }
+            if end == 0 {
                 continue;
             }
-            let mut buf = String::new();
-            buf.push_str(line);
+            let line = String::from_utf8_lossy(&part[..end]).to_string();
+            if line.is_empty() {
+                continue;
+            }
+            let mut buf = line;
             buf.push('\n');
             rules.extend(parse(&buf, visited, depth)?);
         }
