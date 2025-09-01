@@ -293,12 +293,23 @@ fn progress_flag_shows_output() {
     let dst_dir = dir.path().join("dst");
     std::fs::create_dir_all(&src_dir).unwrap();
     std::fs::write(src_dir.join("a.txt"), vec![0u8; 2048]).unwrap();
-    let expected = format!("{}: 2048 bytes\n", dst_dir.join("a.txt").display());
-
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args(["--local", "--progress", &src_arg, dst_dir.to_str().unwrap()]);
-    cmd.assert().success().stderr(expected);
+    let assert = cmd
+        .args(["--local", "--progress", &src_arg, dst_dir.to_str().unwrap()])
+        .assert()
+        .success();
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
+    let mut lines = stderr.lines();
+    let path_line = lines.next().unwrap();
+    assert_eq!(path_line, dst_dir.join("a.txt").display().to_string());
+    let progress_line = lines.next().unwrap().trim_start_matches('\r');
+    let bytes = progress_line
+        .split_whitespace()
+        .next()
+        .unwrap()
+        .replace(",", "");
+    assert_eq!(bytes.parse::<u64>().unwrap(), 2048);
 }
 
 #[test]
@@ -309,18 +320,24 @@ fn progress_flag_human_readable() {
     std::fs::create_dir_all(&src_dir).unwrap();
 
     std::fs::write(src_dir.join("a.txt"), vec![0u8; 2 * 1024]).unwrap();
-    let expected = format!("{}: 2.00KiB\n", dst_dir.join("a.txt").display());
-
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args([
-        "--local",
-        "--progress",
-        "--human-readable",
-        &src_arg,
-        dst_dir.to_str().unwrap(),
-    ]);
-    cmd.assert().success().stderr(expected);
+    let assert = cmd
+        .args([
+            "--local",
+            "--progress",
+            "--human-readable",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
+    let mut lines = stderr.lines();
+    let path_line = lines.next().unwrap();
+    assert_eq!(path_line, dst_dir.join("a.txt").display().to_string());
+    let progress_line = lines.next().unwrap().trim_start_matches('\r');
+    assert!(progress_line.starts_with("2.00KiB"));
 }
 
 #[test]
