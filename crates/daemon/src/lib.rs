@@ -22,7 +22,18 @@ fn parse_list(val: &str) -> Vec<String> {
         .collect()
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+fn parse_bool(val: &str) -> io::Result<bool> {
+    match val.to_lowercase().as_str() {
+        "1" | "yes" | "true" | "on" => Ok(true),
+        "0" | "no" | "false" | "off" => Ok(false),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("invalid boolean: {val}"),
+        )),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Module {
     pub name: String,
     pub path: PathBuf,
@@ -31,6 +42,24 @@ pub struct Module {
     pub auth_users: Vec<String>,
     pub secrets_file: Option<PathBuf>,
     pub timeout: Option<Duration>,
+    pub use_chroot: bool,
+    pub numeric_ids: bool,
+}
+
+impl Default for Module {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            path: PathBuf::new(),
+            hosts_allow: Vec::new(),
+            hosts_deny: Vec::new(),
+            auth_users: Vec::new(),
+            secrets_file: None,
+            timeout: None,
+            use_chroot: true,
+            numeric_ids: false,
+        }
+    }
 }
 
 pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
@@ -57,6 +86,8 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
         auth_users: Vec::new(),
         secrets_file: None,
         timeout: None,
+        use_chroot: true,
+        numeric_ids: false,
     })
 }
 
@@ -147,6 +178,8 @@ pub struct DaemonConfig {
     pub log_file: Option<PathBuf>,
     pub secrets_file: Option<PathBuf>,
     pub timeout: Option<Duration>,
+    pub use_chroot: Option<bool>,
+    pub numeric_ids: Option<bool>,
     pub modules: Vec<Module>,
 }
 
@@ -234,6 +267,12 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
                     Some(Duration::from_secs(secs))
                 };
             }
+            (false, "use chroot") => {
+                cfg.use_chroot = Some(parse_bool(&val)?);
+            }
+            (false, "numeric ids") => {
+                cfg.numeric_ids = Some(parse_bool(&val)?);
+            }
             (true, "path") => {
                 if let Some(m) = current.as_mut() {
                     m.path = PathBuf::from(val);
@@ -269,6 +308,16 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
                     } else {
                         Some(Duration::from_secs(secs))
                     };
+                }
+            }
+            (true, "use chroot") => {
+                if let Some(m) = current.as_mut() {
+                    m.use_chroot = parse_bool(&val)?;
+                }
+            }
+            (true, "numeric ids") => {
+                if let Some(m) = current.as_mut() {
+                    m.numeric_ids = parse_bool(&val)?;
                 }
             }
             _ => {}
@@ -424,23 +473,37 @@ pub fn serve_module<T: Transport>(
     }
     #[cfg(unix)]
     {
-        chroot_and_drop_privileges(&module.path, uid, gid)?;
+        chroot_and_drop_privileges(&module.path, uid, gid, module.use_chroot)?;
     }
     Ok(())
 }
 
 #[cfg(unix)]
-pub fn chroot_and_drop_privileges(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
+pub fn chroot_and_drop_privileges(
+    path: &Path,
+    uid: u32,
+    gid: u32,
+    use_chroot: bool,
+) -> io::Result<()> {
     use nix::unistd::{chdir, chroot, setgid, setuid, Gid, Uid};
-    chroot(path).map_err(io::Error::other)?;
-    chdir("/").map_err(io::Error::other)?;
+    if use_chroot {
+        chroot(path).map_err(io::Error::other)?;
+        chdir("/").map_err(io::Error::other)?;
+    } else {
+        chdir(path).map_err(io::Error::other)?;
+    }
     setgid(Gid::from_raw(gid)).map_err(io::Error::other)?;
     setuid(Uid::from_raw(uid)).map_err(io::Error::other)?;
     Ok(())
 }
 
 #[cfg(not(unix))]
-pub fn chroot_and_drop_privileges(_path: &Path, _uid: u32, _gid: u32) -> io::Result<()> {
+pub fn chroot_and_drop_privileges(
+    _path: &Path,
+    _uid: u32,
+    _gid: u32,
+    _use_chroot: bool,
+) -> io::Result<()> {
     Ok(())
 }
 
@@ -801,6 +864,30 @@ mod tests {
     fn parse_config_module_timeout() {
         let cfg = parse_config("[data]\npath=/tmp\ntimeout=7").unwrap();
         assert_eq!(cfg.modules[0].timeout, Some(Duration::from_secs(7)));
+    }
+
+    #[test]
+    fn parse_config_module_use_chroot() {
+        let cfg = parse_config("[data]\npath=/tmp\nuse chroot=no").unwrap();
+        assert!(!cfg.modules[0].use_chroot);
+    }
+
+    #[test]
+    fn parse_config_module_numeric_ids() {
+        let cfg = parse_config("[data]\npath=/tmp\nnumeric ids = yes").unwrap();
+        assert!(cfg.modules[0].numeric_ids);
+    }
+
+    #[test]
+    fn parse_config_global_use_chroot() {
+        let cfg = parse_config("use chroot=no\n[data]\npath=/tmp").unwrap();
+        assert_eq!(cfg.use_chroot, Some(false));
+    }
+
+    #[test]
+    fn parse_config_global_numeric_ids() {
+        let cfg = parse_config("numeric ids=yes\n[data]\npath=/tmp").unwrap();
+        assert_eq!(cfg.numeric_ids, Some(true));
     }
 
     #[cfg(unix)]
