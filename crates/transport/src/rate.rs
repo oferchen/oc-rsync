@@ -7,9 +7,9 @@ use crate::Transport;
 pub struct RateLimitedTransport<T> {
     inner: T,
     bwlimit: u64,
-    tokens: i64,
+    debt: i64,
     last: Instant,
-    burst: i64,
+    burst: usize,
     sleeper: Box<dyn Fn(Duration)>,
 }
 
@@ -20,11 +20,11 @@ impl<T> RateLimitedTransport<T> {
 
     #[doc(hidden)]
     pub fn with_sleeper(inner: T, bwlimit: u64, sleeper: Box<dyn Fn(Duration)>) -> Self {
-        let burst = std::cmp::max(bwlimit * 128, 512) as i64;
+        let burst = std::cmp::max(bwlimit * 128, 512) as usize;
         Self {
             inner,
             bwlimit,
-            tokens: burst,
+            debt: 0,
             last: Instant::now(),
             burst,
             sleeper,
@@ -37,38 +37,29 @@ impl<T> RateLimitedTransport<T> {
 }
 
 impl<T: Transport> RateLimitedTransport<T> {
-    fn replenish(&mut self) {
-        const ONE_SEC: i64 = 1_000_000;
-        let now = Instant::now();
-        let elapsed = now.duration_since(self.last).as_micros() as i64;
-        let added = elapsed * self.bwlimit as i64 / ONE_SEC;
-        self.tokens = (self.tokens + added).min(self.burst);
-        self.last = now;
-    }
-
-    fn regulate(&mut self, need: usize) -> io::Result<()> {
+    fn throttle(&mut self, wrote: usize) {
         const ONE_SEC: i64 = 1_000_000;
         const MIN_SLEEP: i64 = ONE_SEC / 10;
 
-        let mut need = need as i64;
-        loop {
-            self.replenish();
-            if self.tokens >= need {
-                self.tokens -= need;
-                return Ok(());
+        self.debt += wrote as i64;
+        let start = Instant::now();
+        let elapsed = start.duration_since(self.last).as_micros() as i64;
+        if elapsed > 0 {
+            self.debt -= elapsed * self.bwlimit as i64 / ONE_SEC;
+            if self.debt < 0 {
+                self.debt = 0;
             }
-            let deficit = need - self.tokens;
-            let sleep_us = deficit * ONE_SEC / self.bwlimit as i64;
-            if sleep_us < MIN_SLEEP {
-                self.tokens -= need;
-                return Ok(());
-            }
-            let start = Instant::now();
+        }
+
+        let sleep_us = self.debt * ONE_SEC / self.bwlimit as i64;
+        if sleep_us >= MIN_SLEEP {
             (self.sleeper)(Duration::from_micros(sleep_us as u64));
             self.inner.update_timeout();
+            let actual = Instant::now().duration_since(start).as_micros() as i64;
+            self.debt = (sleep_us - actual) * self.bwlimit as i64 / ONE_SEC;
+            self.last = Instant::now();
+        } else {
             self.last = start;
-            self.tokens -= need;
-            need = 0;
         }
     }
 }
@@ -77,10 +68,10 @@ impl<T: Transport> Transport for RateLimitedTransport<T> {
     fn send(&mut self, data: &[u8]) -> io::Result<()> {
         let mut offset = 0;
         while offset < data.len() {
-            let end = std::cmp::min(offset + self.burst as usize, data.len());
+            let end = std::cmp::min(offset + self.burst, data.len());
             let chunk = end - offset;
-            self.regulate(chunk)?;
             self.inner.send(&data[offset..end])?;
+            self.throttle(chunk);
             offset = end;
         }
         Ok(())
