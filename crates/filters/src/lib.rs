@@ -1342,3 +1342,34 @@ pub fn parse_file(
     let data = fs::read(path)?;
     parse_from_bytes(&data, from0, visited, depth)
 }
+
+pub fn parse_rule_list_from_bytes(
+    input: &[u8],
+    from0: bool,
+    sign: char,
+    visited: &mut HashSet<PathBuf>,
+    depth: usize,
+) -> Result<Vec<Rule>, ParseError> {
+    let pats = parse_list(input, from0);
+    let mut rules = Vec::new();
+    for pat in pats {
+        let line = if from0 {
+            format!("{sign}{pat}\n")
+        } else {
+            format!("{sign} {pat}\n")
+        };
+        rules.extend(parse(&line, visited, depth)?);
+    }
+    Ok(rules)
+}
+
+pub fn parse_rule_list_file(
+    path: &Path,
+    from0: bool,
+    sign: char,
+    visited: &mut HashSet<PathBuf>,
+    depth: usize,
+) -> Result<Vec<Rule>, ParseError> {
+    let data = fs::read(path)?;
+    parse_rule_list_from_bytes(&data, from0, sign, visited, depth)
+}

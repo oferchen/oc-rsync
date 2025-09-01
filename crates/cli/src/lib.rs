@@ -1698,39 +1698,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
 fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
-        if from0 {
-            let content = fs::read(path)?;
-            Ok(content
-                .split(|b| *b == 0)
-                .filter_map(|s| {
-                    if s.is_empty() {
-                        return None;
-                    }
-                    let mut end = s.len();
-                    while end > 0 && (s[end - 1] == b'\n' || s[end - 1] == b'\r') {
-                        end -= 1;
-                    }
-                    if end == 0 {
-                        return None;
-                    }
-                    let p = String::from_utf8_lossy(&s[..end]).to_string();
-                    if p.is_empty() {
-                        None
-                    } else {
-                        Some(p)
-                    }
-                })
-                .collect())
-        } else {
-            let content = fs::read_to_string(path)?;
-            Ok(content
-                .lines()
-                .map(|l| l.trim_end_matches('\r'))
-                .map(|l| l.trim())
-                .filter(|s| !s.is_empty() && !s.trim_start().starts_with('#'))
-                .map(|s| s.to_string())
-                .collect())
-        }
+        filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
     }
 
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
@@ -1794,13 +1762,10 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("include_from")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
-            for pat in load_patterns(file, opts.from0)? {
-                add_rules(
-                    idx,
-                    parse_filters(&format!("+ {}", pat))
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                );
-            }
+            let mut vset = HashSet::new();
+            let rs = filters::parse_rule_list_file(file, opts.from0, '+', &mut vset, 0)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+            add_rules(idx, rs);
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("exclude_from") {
@@ -1808,13 +1773,10 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("exclude_from")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
-            for pat in load_patterns(file, opts.from0)? {
-                add_rules(
-                    idx,
-                    parse_filters(&format!("- {}", pat))
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                );
-            }
+            let mut vset = HashSet::new();
+            let rs = filters::parse_rule_list_file(file, opts.from0, '-', &mut vset, 0)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+            add_rules(idx, rs);
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("files_from") {
@@ -1829,17 +1791,25 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     format!("/{}", pat)
                 };
 
+                let rule1 = if opts.from0 {
+                    format!("+{}", anchored)
+                } else {
+                    format!("+ {}", anchored)
+                };
                 add_rules(
                     idx,
-                    parse_filters(&format!("+ {}", anchored))
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    parse_filters(&rule1).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
 
                 let dir_pat = format!("{}/***", anchored.trim_end_matches('/'));
+                let rule2 = if opts.from0 {
+                    format!("+{}", dir_pat)
+                } else {
+                    format!("+ {}", dir_pat)
+                };
                 add_rules(
                     idx,
-                    parse_filters(&format!("+ {}", dir_pat))
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    parse_filters(&rule2).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
             }
         }
