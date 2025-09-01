@@ -1,4 +1,5 @@
 // crates/engine/tests/cdc.rs
+#![cfg(feature = "blake3")]
 use engine::cdc::chunk_bytes;
 
 #[test]

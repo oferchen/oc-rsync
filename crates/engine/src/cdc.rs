@@ -1,4 +1,5 @@
 // crates/engine/src/cdc.rs
+
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
@@ -7,36 +8,6 @@ use std::path::{Path, PathBuf};
 use blake3::Hash;
 use fastcdc::v2020::StreamCDC;
 use memmap2::MmapOptions;
-
-const RSYNC_BLOCK_SIZE: usize = 700;
-const RSYNC_MAX_BLOCK_SIZE: usize = 1 << 17;
-
-pub fn block_size(len: u64) -> usize {
-    if len <= (RSYNC_BLOCK_SIZE * RSYNC_BLOCK_SIZE) as u64 {
-        return RSYNC_BLOCK_SIZE;
-    }
-
-    let mut c: usize = 1;
-    let mut l = len;
-    while l >> 2 > 0 {
-        l >>= 2;
-        c <<= 1;
-    }
-
-    if c >= RSYNC_MAX_BLOCK_SIZE || c == 0 {
-        RSYNC_MAX_BLOCK_SIZE
-    } else {
-        let mut blength: usize = 0;
-        while c >= 8 {
-            blength |= c;
-            if len < (blength as u64).wrapping_mul(blength as u64) {
-                blength &= !c;
-            }
-            c >>= 1;
-        }
-        blength.max(RSYNC_BLOCK_SIZE)
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct Chunk {
