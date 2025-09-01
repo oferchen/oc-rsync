@@ -233,7 +233,7 @@ impl Metadata {
                 self.gid
             };
             let res = if is_symlink {
-                unistd::fchownat(
+                match unistd::fchownat(
                     None,
                     path,
                     if opts.owner {
@@ -247,7 +247,22 @@ impl Metadata {
                         None
                     },
                     FchownatFlags::NoFollowSymlink,
-                )
+                ) {
+                    Err(Errno::EOPNOTSUPP) => unistd::chown(
+                        path,
+                        if opts.owner {
+                            Some(Uid::from_raw(uid))
+                        } else {
+                            None
+                        },
+                        if opts.group {
+                            Some(Gid::from_raw(gid))
+                        } else {
+                            None
+                        },
+                    ),
+                    other => other,
+                }
             } else {
                 unistd::chown(
                     path,
@@ -265,7 +280,11 @@ impl Metadata {
             };
             if let Err(err) = res {
                 match err {
-                    Errno::EPERM | Errno::EACCES | Errno::ENOSYS | Errno::EINVAL => {}
+                    Errno::EPERM
+                    | Errno::EACCES
+                    | Errno::ENOSYS
+                    | Errno::EINVAL
+                    | Errno::EOPNOTSUPP => {}
                     _ => return Err(nix_to_io(err)),
                 }
             }
@@ -307,7 +326,24 @@ impl Metadata {
             let mode = Mode::from_bits_truncate(mode_t);
             if let Err(err) = stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink) {
                 match err {
-                    Errno::EPERM | Errno::EACCES | Errno::ENOSYS | Errno::EINVAL => {}
+                    Errno::EINVAL | Errno::EOPNOTSUPP => {
+                        let perm = fs::Permissions::from_mode(mode_val);
+                        if let Err(e) = fs::set_permissions(path, perm) {
+                            if let Some(code) = e.raw_os_error() {
+                                match Errno::from_i32(code) {
+                                    Errno::EPERM
+                                    | Errno::EACCES
+                                    | Errno::ENOSYS
+                                    | Errno::EINVAL
+                                    | Errno::EOPNOTSUPP => {}
+                                    _ => return Err(e),
+                                }
+                            } else {
+                                return Err(e);
+                            }
+                        }
+                    }
+                    Errno::EPERM | Errno::EACCES | Errno::ENOSYS => {}
                     _ => return Err(nix_to_io(err)),
                 }
             }
