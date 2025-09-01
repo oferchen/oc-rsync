@@ -2079,6 +2079,9 @@ pub fn sync(
                             &dest_path,
                         )?
                     {
+                        if let Some(parent) = dest_path.parent() {
+                            fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
+                        }
                         continue;
                     }
                     let partial_exists = if opts.partial {
