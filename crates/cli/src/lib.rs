@@ -1865,6 +1865,23 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
 fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut modules: HashMap<String, Module> = HashMap::new();
     let mut secrets = opts.secrets_file.clone();
+    let password = matches
+        .get_one::<PathBuf>("password_file")
+        .cloned()
+        .map(|pf| -> Result<String> {
+            #[cfg(unix)]
+            {
+                let mode = fs::metadata(&pf)?.permissions().mode();
+                if mode & 0o077 != 0 {
+                    return Err(EngineError::Other(
+                        "password file permissions are too open".into(),
+                    ));
+                }
+            }
+            let data = fs::read_to_string(&pf)?;
+            Ok(data.lines().next().unwrap_or_default().trim().to_string())
+        })
+        .transpose()?;
     let mut hosts_allow = opts.hosts_allow.clone();
     let mut hosts_deny = opts.hosts_deny.clone();
     let mut log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
@@ -1922,6 +1939,7 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     daemon::run_daemon(
         modules,
         secrets,
+        password,
         hosts_allow,
         hosts_deny,
         log_file,

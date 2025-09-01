@@ -5,6 +5,7 @@ set -euo pipefail
 cargo test --test daemon --features blake3 -- --exact daemon_rejects_invalid_token
 cargo test --test daemon --features blake3 -- --exact daemon_rejects_unauthorized_module
 cargo test --test daemon --features blake3 -- --exact daemon_accepts_authorized_client
+cargo test --test daemon --features blake3 -- --exact client_authenticates_with_password_file
 cargo test --test daemon --features blake3 -- --exact client_respects_no_motd
 cargo test --test daemon --features blake3 -- --exact daemon_logs_connections
 cargo test --test daemon --features blake3 -- --exact daemon_honors_bwlimit
