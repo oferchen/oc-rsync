@@ -1,8 +1,10 @@
 // crates/transport/tests/bwlimit.rs
+use std::cell::RefCell;
 use std::io;
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use transport::{rate_limited, LocalPipeTransport, Transport};
+use transport::{rate_limited, LocalPipeTransport, RateLimitedTransport, Transport};
 
 #[test]
 fn sustained_transfer_is_limited() {
@@ -71,4 +73,52 @@ fn partial_refill_shortens_sleep() {
 
     assert!(elapsed >= Duration::from_millis(400));
     assert!(elapsed < Duration::from_millis(800));
+}
+
+#[test]
+fn burst_and_sleep_cross_check() {
+    use std::io::Write;
+
+    let reader = io::empty();
+    let counts = Rc::new(RefCell::new(Vec::new()));
+
+    struct Recorder {
+        inner: Vec<u8>,
+        counts: Rc<RefCell<Vec<usize>>>,
+    }
+
+    impl Write for Recorder {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.counts.borrow_mut().push(buf.len());
+            self.inner.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let writer = Recorder {
+        inner: Vec::new(),
+        counts: counts.clone(),
+    };
+    let inner = LocalPipeTransport::new(reader, writer);
+    let sleeps = Rc::new(RefCell::new(Vec::new()));
+    let sleep_rec = sleeps.clone();
+    let sleeper = move |d: Duration| {
+        sleep_rec.borrow_mut().push(d);
+    };
+    let mut t = RateLimitedTransport::with_sleeper(inner, 4, Box::new(sleeper));
+
+    let data = vec![0u8; 1536];
+    t.send(&data).unwrap();
+
+    assert_eq!(&*counts.borrow(), &[512, 512, 512]);
+    let expected = [
+        Duration::from_secs(128),
+        Duration::from_secs(256),
+        Duration::from_secs(384),
+    ];
+    assert_eq!(&*sleeps.borrow(), &expected);
 }
