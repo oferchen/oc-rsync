@@ -18,8 +18,8 @@ negotiates version 73.
 | `--8-bit-output` | `-8` | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--acls` | `-A` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `acl` feature | ≤3.2 |
 | `--address` | — | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
-| `--append` | — | ✅ | ❌ | [tests/resume.rs](../tests/resume.rs) |  | ≤3.2 |
-| `--append-verify` | — | ✅ | ❌ | [tests/resume.rs](../tests/resume.rs) |  | ≤3.2 |
+| `--append` | — | ✅ | ✅ | [tests/resume.rs](../tests/resume.rs) |  | ≤3.2 |
+| `--append-verify` | — | ✅ | ✅ | [tests/resume.rs](../tests/resume.rs) |  | ≤3.2 |
 | `--archive` | `-a` | ✅ | ❌ | [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) |  | ≤3.2 |
 | `--atimes` | `-U` | ✅ | ❌ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--backup` | `-b` | ✅ | ✅ | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | uses `~` suffix without `--backup-dir` | ≤3.2 |
@@ -130,7 +130,7 @@ negotiates version 73.
 | `--outbuf` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--owner` | `-o` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires root or CAP_CHOWN | ≤3.2 |
 | `--partial` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/resume.rs](../crates/engine/tests/resume.rs) |  | ≤3.2 |
-| `--partial-dir` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
+| `--partial-dir` | — | ✅ | ✅ | [tests/resume.rs](../tests/resume.rs) |  | ≤3.2 |
 | `--password-file` | — | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--perms` | `-p` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--port` | — | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) | overrides default port | ≤3.2 |
