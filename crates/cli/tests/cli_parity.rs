@@ -1,3 +1,4 @@
+// crates/cli/tests/cli_parity.rs
 use oc_rsync_cli::cli_command;
 use std::process::Command;
 use tempfile::tempdir;
