@@ -466,6 +466,12 @@ struct ClientOpts {
     copy_dest: Option<PathBuf>,
     #[arg(long = "compare-dest", value_name = "DIR", help_heading = "Misc")]
     compare_dest: Option<PathBuf>,
+    #[arg(
+        long = "mkpath",
+        help_heading = "Misc",
+        help = "create destination's missing path components"
+    )]
+    mkpath: bool,
     #[arg(long, help_heading = "Attributes")]
     numeric_ids: bool,
     #[arg(long, help_heading = "Output")]
@@ -497,6 +503,8 @@ struct ClientOpts {
         help = "use the protocol to safely send the args"
     )]
     secluded_args: bool,
+    #[arg(long = "trust-sender", help_heading = "Misc")]
+    trust_sender: bool,
     #[arg(
         long = "sockopts",
         value_name = "OPTIONS",
@@ -958,6 +966,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     if opts.secluded_args {
         remote_opts.push("--secluded-args".into());
     }
+    if opts.trust_sender {
+        remote_opts.push("--trust-sender".into());
+    }
     if let Some(spec) = &opts.iconv {
         remote_opts.push(format!("--iconv={spec}"));
     }
@@ -986,6 +997,21 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
     let src = parse_remote_spec(&src_arg)?;
     let mut dst = parse_remote_spec(&dst_arg)?;
+    if opts.mkpath {
+        match &dst {
+            RemoteSpec::Local(ps) => {
+                let target = if ps.trailing_slash {
+                    &ps.path
+                } else {
+                    ps.path.parent().unwrap_or(&ps.path)
+                };
+                fs::create_dir_all(target).map_err(|e| EngineError::Other(e.to_string()))?;
+            }
+            RemoteSpec::Remote { .. } => {
+                remote_opts.push("--mkpath".into());
+            }
+        }
+    }
 
     let known_hosts = opts.known_hosts.clone();
     let strict_host_key_checking = !opts.no_host_key_checking;

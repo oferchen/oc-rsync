@@ -75,3 +75,21 @@ fn fake_super_flag_is_accepted() {
         .assert()
         .success();
 }
+
+#[test]
+fn mkpath_flag_is_accepted() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--mkpath", "--version"])
+        .assert()
+        .success();
+}
+
+#[test]
+fn trust_sender_flag_is_accepted() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--trust-sender", "--version"])
+        .assert()
+        .success();
+}
