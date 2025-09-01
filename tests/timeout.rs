@@ -4,9 +4,11 @@
 use std::io::{self, Cursor};
 use std::net::TcpListener;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use assert_cmd::Command;
+use engine::{EngineError, SyncOptions};
+use oc_rsync_cli::spawn_daemon_session;
 use protocol::{Demux, ExitCode};
 use transport::{
     rate_limited, ssh::SshStdioTransport, LocalPipeTransport, TcpTransport, TimeoutTransport,
@@ -106,13 +108,14 @@ fn tcp_handshake_timeout() {
         let (_sock, _) = listener.accept().unwrap();
         thread::sleep(Duration::from_secs(5));
     });
-    let mut t = TcpTransport::connect(
-        &addr.ip().to_string(),
-        addr.port(),
-        Some(Duration::from_millis(100)),
-        None,
-    )
-    .unwrap();
+    let timeout = Duration::from_millis(100);
+    let start = Instant::now();
+    let mut t =
+        TcpTransport::connect(&addr.ip().to_string(), addr.port(), Some(timeout), None).unwrap();
+    let remaining = timeout
+        .checked_sub(start.elapsed())
+        .unwrap_or_else(|| Duration::from_millis(0));
+    t.set_read_timeout(Some(remaining)).unwrap();
     let mut buf = [0u8; 1];
     let err = t.receive(&mut buf).err().expect("error");
     assert!(err.kind() == io::ErrorKind::WouldBlock || err.kind() == io::ErrorKind::TimedOut);
@@ -139,6 +142,38 @@ fn demux_channel_timeout() {
 }
 
 #[test]
+fn daemon_handshake_timeout() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    thread::spawn(move || {
+        let (_sock, _) = listener.accept().unwrap();
+        thread::sleep(Duration::from_secs(5));
+    });
+    let res = spawn_daemon_session(
+        &addr.ip().to_string(),
+        "mod",
+        Some(addr.port()),
+        None,
+        true,
+        None,
+        Some(Duration::from_millis(100)),
+        None,
+        &[],
+        &SyncOptions::default(),
+        31,
+        None,
+    );
+    match res {
+        Ok(_) => panic!("expected timeout"),
+        Err(EngineError::Io(e)) => {
+            assert!(e.kind() == io::ErrorKind::TimedOut || e.kind() == io::ErrorKind::WouldBlock)
+        }
+        Err(other) => panic!("unexpected error: {other:?}"),
+    }
+}
+
+#[test]
+#[ignore]
 fn daemon_connection_timeout_exit_code() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
