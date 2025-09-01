@@ -126,13 +126,14 @@ make test
 
 ## Development
 
-The Makefile offers shortcuts for common tasks:
+The Makefile offers shortcuts for common tasks. Repository guidelines require verifying file header comments:
 
 ```
 make fmt    # Format the code
 make clippy # Run Clippy lints
 make doc    # Build documentation
 make test   # Run the test suite
+make verify-comments  # Validate file header comments
 ```
 
 ## Fuzzing
