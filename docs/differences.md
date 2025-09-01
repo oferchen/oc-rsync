@@ -1,21 +1,8 @@
 # Differences from rsync
 
-oc-rsync implements the standard rsync protocol version 32 and also defines a
-private protocol 73 extension used only when both peers are oc-rsync.
+oc-rsync implements the standard rsync protocol version 32.
 
 See [gaps.md](gaps.md) and [feature_matrix.md](feature_matrix.md) for any remaining parity notes.
-
-## CLI deviations
-
-While maintaining parity with upstream `rsync`, `oc-rsync` extends the command
-line with a few additional flags and behaviors:
-
-- `--config` loads settings from a TOML file.
-  See [feature matrix](feature_matrix.md#--config) and
-  [tests/cli.rs](../tests/cli.rs).
-- `--log-format=json` emits structured logs.
-  See [tests/cli.rs](../tests/cli.rs).
-Document any future CLI differences here as they arise.
 
 ## Exit codes
 
