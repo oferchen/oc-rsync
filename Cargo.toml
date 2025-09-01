@@ -52,6 +52,7 @@ shell-words = "1.1"
 wait-timeout = "0.2"
 users = "0.11"
 meta = { path = "crates/meta" }
+daemon = { path = "crates/daemon" }
 
 [[bin]]
 name = "flag_matrix"
