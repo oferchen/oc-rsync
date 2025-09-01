@@ -1342,7 +1342,7 @@ impl Receiver {
                 }
             }
 
-            let meta_opts = meta::Options {
+            let mut meta_opts = meta::Options {
                 xattrs: {
                     #[cfg(feature = "xattr")]
                     {
@@ -1379,6 +1379,22 @@ impl Receiver {
             };
 
             if meta_opts.needs_metadata() {
+                if let Ok(src_meta) = fs::symlink_metadata(src) {
+                    if src_meta.file_type().is_dir() {
+                        if let Some(ref rules) = meta_opts.chmod {
+                            if rules
+                                .iter()
+                                .all(|r| matches!(r.target, meta::ChmodTarget::File))
+                            {
+                                meta_opts.chmod = None;
+                                if !meta_opts.needs_metadata() {
+                                    return Ok(());
+                                }
+                            }
+                        }
+                    }
+                }
+
                 let meta =
                     meta::Metadata::from_path(src, meta_opts.clone()).map_err(EngineError::from)?;
                 meta.apply(dest, meta_opts.clone())
