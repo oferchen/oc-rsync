@@ -830,6 +830,34 @@ fn numeric_ids_require_privileges() {
 
 #[cfg(unix)]
 #[test]
+fn owner_requires_privileges() {
+    let dir = tempdir().unwrap();
+    let probe = dir.path().join("probe");
+    std::fs::write(&probe, b"probe").unwrap();
+    let current_uid = get_current_uid();
+    let target_uid = if current_uid == 0 { 1 } else { current_uid + 1 };
+    if chown(&probe, Some(Uid::from_raw(target_uid)), None).is_ok() {
+        eprintln!("skipping owner_requires_privileges: has CAP_CHOWN");
+        return;
+    }
+
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("id.txt");
+    std::fs::write(&file, b"ids").unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--owner", &src_arg, dst_dir.to_str().unwrap()])
+        .assert()
+        .failure();
+}
+
+#[cfg(unix)]
+#[test]
 fn user_and_group_ids_are_mapped() {
     let uid = get_current_uid();
     let _gid = get_current_gid();
