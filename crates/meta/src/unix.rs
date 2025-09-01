@@ -654,12 +654,8 @@ fn read_acl_from_path(
     let acl = match posix_acl::PosixACL::read_acl(path) {
         Ok(acl) => acl.entries(),
         Err(err) => {
-            if let Some(code) = err.as_io_error().and_then(|e| e.raw_os_error()) {
-                if matches!(code, libc::ENODATA | libc::ENOTSUP | libc::ENOSYS) {
-                    Vec::new()
-                } else {
-                    return Err(acl_to_io(err));
-                }
+            if should_ignore_acl_error(&err) {
+                Vec::new()
             } else {
                 return Err(acl_to_io(err));
             }
@@ -669,12 +665,8 @@ fn read_acl_from_path(
         match posix_acl::PosixACL::read_default_acl(path) {
             Ok(dacl) => dacl.entries(),
             Err(err) => {
-                if let Some(code) = err.as_io_error().and_then(|e| e.raw_os_error()) {
-                    if matches!(code, libc::ENODATA | libc::ENOTSUP | libc::ENOSYS) {
-                        Vec::new()
-                    } else {
-                        return Err(acl_to_io(err));
-                    }
+                if should_ignore_acl_error(&err) {
+                    Vec::new()
                 } else {
                     return Err(acl_to_io(err));
                 }
