@@ -1706,7 +1706,7 @@ fn delete_extraneous(
     opts: &SyncOptions,
     stats: &mut Stats,
 ) -> Result<()> {
-    let walker = walk(dst, 1024);
+    let walker = walk(dst, 1024, opts.links);
     let mut state = String::new();
 
     let mut first_err: Option<EngineError> = None;
@@ -1840,7 +1840,7 @@ pub fn sync(
     }
     if opts.list_only {
         let matcher = matcher.clone().with_root(src_root.clone());
-        let walker = walk(&src_root, 1024);
+        let walker = walk(&src_root, 1024, opts.links);
         let mut state = String::new();
         for batch in walker {
             let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1913,7 +1913,7 @@ pub fn sync(
     }
     sender.start();
     let mut state = String::new();
-    for batch in walk(&src_root, 1024) {
+    for batch in walk(&src_root, 1024, opts.links) {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
             let path = entry.apply(&mut state);
@@ -2128,7 +2128,6 @@ pub fn sync(
                         dir_meta.push((path.clone(), dest_path.clone()));
                     }
                 } else if file_type.is_symlink() {
-                    let created = fs::symlink_metadata(&dest_path).is_err();
                     let target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
                     let target_path = if target.is_absolute() {
                         target.clone()
@@ -2177,11 +2176,12 @@ pub fn sync(
                             }
                         }
                     } else if opts.links {
+                        let created = fs::symlink_metadata(&dest_path).is_err();
                         if let Some(parent) = dest_path.parent() {
                             fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
                         }
-                        if let Ok(meta) = fs::symlink_metadata(&dest_path) {
-                            if meta.is_dir() {
+                        if let Ok(meta_dest) = fs::symlink_metadata(&dest_path) {
+                            if meta_dest.is_dir() {
                                 remove_dir_all_opts(&dest_path, opts)?;
                             } else {
                                 remove_file_opts(&dest_path, opts)?;
@@ -2192,7 +2192,7 @@ pub fn sync(
                             .map_err(|e| io_context(&dest_path, e))?;
                         #[cfg(windows)]
                         {
-                            if meta.map_or(false, |m| m.is_dir()) {
+                            if meta.as_ref().map_or(false, |m| m.is_dir()) {
                                 std::os::windows::fs::symlink_dir(&target, &dest_path)
                                     .map_err(|e| io_context(&dest_path, e))?;
                             } else {

@@ -23,7 +23,7 @@ fn walk_includes_files_dirs_and_symlinks() {
 
     let mut entries = Vec::new();
     let mut state = String::new();
-    for batch in walk(root, 10) {
+    for batch in walk(root, 10, true) {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
@@ -58,7 +58,7 @@ fn walk_preserves_order_and_bounds_batches() {
 
     let mut paths = Vec::new();
     let mut state = String::new();
-    let mut walker = walk(root, 2);
+    let mut walker = walk(root, 2, false);
     while let Some(batch) = walker.next() {
         let batch = batch.unwrap();
         assert!(batch.len() <= 2);
@@ -89,7 +89,7 @@ fn walk_skips_files_over_threshold() {
 
     let mut paths = Vec::new();
     let mut state = String::new();
-    for batch in walk_with_max_size(root, 10, 1024) {
+    for batch in walk_with_max_size(root, 10, 1024, false) {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
