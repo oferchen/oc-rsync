@@ -732,11 +732,13 @@ pub fn gid_from_name(name: &str) -> Option<u32> {
 }
 
 pub fn uid_from_name_or_id(spec: &str) -> Option<u32> {
-    spec.parse().ok().or_else(|| uid_from_name(spec))
+    let s = spec.trim();
+    s.parse().ok().or_else(|| uid_from_name(s))
 }
 
 pub fn gid_from_name_or_id(spec: &str) -> Option<u32> {
-    spec.parse().ok().or_else(|| gid_from_name(spec))
+    let s = spec.trim();
+    s.parse().ok().or_else(|| gid_from_name(s))
 }
 
 pub fn uid_to_name(uid: u32) -> Option<String> {
