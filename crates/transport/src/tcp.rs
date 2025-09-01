@@ -15,7 +15,7 @@ impl TcpTransport {
     pub fn connect(
         host: &str,
         port: u16,
-        timeout: Option<Duration>,
+        connect_timeout: Option<Duration>,
         family: Option<AddressFamily>,
     ) -> io::Result<Self> {
         let addrs: Vec<SocketAddr> = (host, port).to_socket_addrs()?.collect();
@@ -26,7 +26,7 @@ impl TcpTransport {
         }
         .ok_or_else(|| io::Error::other("invalid address"))?;
 
-        let stream = if let Some(dur) = timeout {
+        let stream = if let Some(dur) = connect_timeout {
             TcpStream::connect_timeout(&addr, dur)?
         } else {
             TcpStream::connect(addr)?
