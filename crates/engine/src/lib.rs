@@ -18,7 +18,7 @@ use std::sync::Arc;
 #[cfg(unix)]
 use std::sync::OnceLock;
 use std::time::Duration;
-use tempfile::NamedTempFile;
+use tempfile::{Builder, NamedTempFile};
 
 pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
@@ -1180,7 +1180,18 @@ impl Receiver {
             if let (Ok(d_meta), Ok(t_meta)) = (fs::metadata(dest_parent), fs::metadata(tmp_parent))
             {
                 if d_meta.dev() != t_meta.dev() {
-                    tmp_dest = dest.with_extension("tmp");
+                    let prefix = dest
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|n| format!(".{n}."))
+                        .unwrap_or_else(|| String::from(".tmp."));
+                    tmp_dest = Builder::new()
+                        .prefix(&prefix)
+                        .tempfile_in(dest_parent)
+                        .map_err(|e| io_context(dest_parent, e))?
+                        .into_temp_path()
+                        .keep()
+                        .map_err(|e| io_context(dest_parent, e.error))?;
                     auto_tmp = true;
                 }
             }
