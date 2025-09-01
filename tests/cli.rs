@@ -3,6 +3,7 @@
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
 use filetime::{set_file_mtime, FileTime};
+use logging::progress_formatter;
 #[cfg(unix)]
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 use predicates::prelude::PredicateBooleanExt;
@@ -303,24 +304,7 @@ fn progress_flag_shows_output() {
     let path_line = stderr.lines().next().unwrap();
     assert_eq!(path_line, dst_dir.join("a.txt").display().to_string());
     let progress_line = stderr.split('\r').next_back().unwrap().trim_end();
-    let expected_bytes = logging::progress_formatter(2048, false)
-        .split_whitespace()
-        .next()
-        .unwrap()
-        .parse::<u64>()
-        .unwrap();
-    let expected_bytes_str = {
-        let s = expected_bytes.to_string();
-        let mut out = String::new();
-        for (i, c) in s.chars().rev().enumerate() {
-            if i > 0 && i % 3 == 0 {
-                out.push(',');
-            }
-            out.push(c);
-        }
-        out.chars().rev().collect::<String>()
-    };
-    let expected = format!("{:>15} {:>3}%", expected_bytes_str, 100);
+    let expected = format!("{:>15} {:>3}%", progress_formatter(2048, false), 100);
     assert_eq!(progress_line, expected);
 }
 
@@ -348,12 +332,9 @@ fn progress_flag_human_readable() {
     let mut lines = stderr.lines();
     let path_line = lines.next().unwrap();
     assert_eq!(path_line, dst_dir.join("a.txt").display().to_string());
-    let progress_line = lines
-        .next()
-        .unwrap()
-        .trim_start_matches(|c: char| c == '\r' || c.is_whitespace());
-    let expected = logging::progress_formatter(2 * 1024, true);
-    assert!(progress_line.starts_with(&expected));
+    let progress_line = lines.next().unwrap().trim_start_matches('\r').trim_end();
+    let expected = format!("{:>15} {:>3}%", progress_formatter(2 * 1024, true), 100);
+    assert_eq!(progress_line, expected);
 }
 
 #[test]

@@ -161,6 +161,14 @@ pub fn progress_formatter(bytes: u64, human_readable: bool) -> String {
     if human_readable {
         human_bytes(bytes)
     } else {
-        format!("{} bytes", bytes)
+        let s = bytes.to_string();
+        let mut out = String::new();
+        for (i, c) in s.chars().rev().enumerate() {
+            if i > 0 && i % 3 == 0 {
+                out.push(',');
+            }
+            out.push(c);
+        }
+        out.chars().rev().collect()
     }
 }
