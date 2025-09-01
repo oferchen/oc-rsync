@@ -13,6 +13,8 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
+#[cfg(unix)]
+use std::sync::OnceLock;
 use std::time::Duration;
 use tempfile::NamedTempFile;
 
@@ -92,6 +94,17 @@ fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
     } else {
         Ok(())
     }
+}
+
+#[cfg(unix)]
+fn default_umask() -> u32 {
+    static UMASK: OnceLock<u32> = OnceLock::new();
+    *UMASK.get_or_init(|| {
+        use nix::sys::stat::{umask, Mode};
+        let old = umask(Mode::from_bits_truncate(0));
+        umask(old);
+        old.bits()
+    })
 }
 
 #[cfg(unix)]
@@ -1348,10 +1361,13 @@ impl Receiver {
         }
 
         #[cfg(unix)]
-        if self.opts.perms {
+        {
             let src_meta = fs::symlink_metadata(src).map_err(|e| io_context(src, e))?;
             if !src_meta.file_type().is_symlink() {
-                let mode = meta::mode_from_metadata(&src_meta);
+                let mut mode = meta::mode_from_metadata(&src_meta);
+                if !self.opts.perms {
+                    mode &= !default_umask();
+                }
                 fs::set_permissions(dest, fs::Permissions::from_mode(mode))
                     .map_err(|e| io_context(dest, e))?;
             }
