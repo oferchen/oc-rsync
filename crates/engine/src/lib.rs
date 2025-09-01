@@ -489,11 +489,13 @@ fn format_number(n: u64) -> String {
 struct Progress<'a> {
     total: u64,
     written: u64,
-    last: std::time::Instant,
+    last_print: std::time::Instant,
     human_readable: bool,
     #[allow(dead_code)]
     dest: &'a Path,
 }
+
+const PROGRESS_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 impl<'a> Progress<'a> {
     fn new(dest: &'a Path, total: u64, human_readable: bool, initial: u64) -> Self {
@@ -501,7 +503,7 @@ impl<'a> Progress<'a> {
         Self {
             total,
             written: initial,
-            last: std::time::Instant::now(),
+            last_print: std::time::Instant::now() - PROGRESS_UPDATE_INTERVAL,
             human_readable,
             dest,
         }
@@ -509,9 +511,9 @@ impl<'a> Progress<'a> {
 
     fn add(&mut self, bytes: u64) {
         self.written += bytes;
-        if self.last.elapsed() >= std::time::Duration::from_secs(1) && self.written < self.total {
+        if self.last_print.elapsed() >= PROGRESS_UPDATE_INTERVAL && self.written < self.total {
             self.print(false);
-            self.last = std::time::Instant::now();
+            self.last_print = std::time::Instant::now();
         }
     }
 
@@ -532,9 +534,9 @@ impl<'a> Progress<'a> {
             self.written * 100 / self.total
         };
         if done {
-            eprintln!("\r{:>11} {:>3}%", bytes, percent);
+            eprintln!("\r{:>15} {:>3}%", bytes, percent);
         } else {
-            eprint!("\r{:>11} {:>3}%", bytes, percent);
+            eprint!("\r{:>15} {:>3}%", bytes, percent);
             let _ = std::io::stderr().flush();
         }
     }
@@ -1607,6 +1609,15 @@ impl Default for SyncOptions {
             write_devices: false,
             uid_map: None,
             gid_map: None,
+        }
+    }
+}
+
+impl SyncOptions {
+    pub fn prepare_remote(&mut self) {
+        if let Some(dir) = &self.partial_dir {
+            self.remote_options
+                .push(format!("--partial-dir={}", dir.display()));
         }
     }
 }

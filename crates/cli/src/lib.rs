@@ -1153,7 +1153,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     } else {
         None
     };
-    let sync_opts = SyncOptions {
+    let mut sync_opts = SyncOptions {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
         ignore_missing_args: opts.ignore_missing_args,
@@ -1266,6 +1266,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         write_devices: opts.write_devices,
         fake_super: opts.fake_super,
     };
+    sync_opts.prepare_remote();
     let stats = if opts.local {
         match (src, dst) {
             (RemoteSpec::Local(src), RemoteSpec::Local(dst)) => sync(
