@@ -124,11 +124,23 @@ fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
 
 impl Transport for TcpTransport {
     fn send(&mut self, data: &[u8]) -> io::Result<()> {
-        self.stream.write_all(data)
+        self.stream.write_all(data).map_err(|e| {
+            if e.kind() == io::ErrorKind::WouldBlock {
+                io::Error::new(io::ErrorKind::TimedOut, "operation timed out")
+            } else {
+                e
+            }
+        })
     }
 
     fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.stream.read(buf)
+        self.stream.read(buf).map_err(|e| {
+            if e.kind() == io::ErrorKind::WouldBlock {
+                io::Error::new(io::ErrorKind::TimedOut, "operation timed out")
+            } else {
+                e
+            }
+        })
     }
 
     fn set_read_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
