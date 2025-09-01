@@ -1,8 +1,7 @@
 # Feature Matrix
 
 This table tracks the implementation status of rsync 3.4.x command-line options.
-See [differences.md](differences.md) for a summary of notable behavioral differences and [gaps.md](gaps.md) for
-outstanding parity gaps.
+Behavioral differences from upstream rsync are tracked in [differences.md](differences.md) (currently none) and outstanding parity gaps appear in [gaps.md](gaps.md).
 
 Classic `rsync` protocol versions 31–32 are supported.
 
