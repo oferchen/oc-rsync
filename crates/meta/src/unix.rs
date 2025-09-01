@@ -10,13 +10,18 @@ use nix::sys::stat::{self, FchmodatFlags, Mode, SFlag};
 use nix::unistd::{self, FchownatFlags, Gid, Uid};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::sync::Arc;
+#[cfg(feature = "xattr")]
+use std::rc::Rc;
 use users::{get_group_by_gid, get_group_by_name, get_user_by_name, get_user_by_uid};
 
 #[cfg(target_os = "macos")]
 use std::os::unix::ffi::OsStrExt;
 
 #[cfg(feature = "xattr")]
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
+
+#[cfg(feature = "xattr")]
+type XattrFilter = Rc<dyn Fn(&OsStr) -> bool>;
 
 #[cfg(all(test, feature = "xattr"))]
 mod xattr {
@@ -76,6 +81,10 @@ pub struct Options {
     pub omit_link_times: bool,
     pub uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
     pub gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
+    #[cfg(feature = "xattr")]
+    pub xattr_filter: Option<XattrFilter>,
+    #[cfg(feature = "xattr")]
+    pub xattr_filter_delete: Option<XattrFilter>,
 }
 
 impl std::fmt::Debug for Options {
@@ -98,6 +107,26 @@ impl std::fmt::Debug for Options {
             .field("omit_link_times", &self.omit_link_times)
             .field("uid_map", &self.uid_map.is_some())
             .field("gid_map", &self.gid_map.is_some())
+            .field("xattr_filter", &{
+                #[cfg(feature = "xattr")]
+                {
+                    self.xattr_filter.is_some()
+                }
+                #[cfg(not(feature = "xattr"))]
+                {
+                    false
+                }
+            })
+            .field("xattr_filter_delete", &{
+                #[cfg(feature = "xattr")]
+                {
+                    self.xattr_filter_delete.is_some()
+                }
+                #[cfg(not(feature = "xattr"))]
+                {
+                    false
+                }
+            })
             .finish()
     }
 }
@@ -183,6 +212,11 @@ impl Metadata {
                                 || name == "system.posix_acl_access"
                                 || name == "system.posix_acl_default"
                             {
+                                continue;
+                            }
+                        }
+                        if let Some(ref filter) = opts.xattr_filter {
+                            if !filter(attr.as_os_str()) {
                                 continue;
                             }
                         }
@@ -442,7 +476,12 @@ impl Metadata {
 
         #[cfg(feature = "xattr")]
         if opts.xattrs {
-            crate::apply_xattrs(path, &self.xattrs)?;
+            crate::apply_xattrs(
+                path,
+                &self.xattrs,
+                opts.xattr_filter.as_deref(),
+                opts.xattr_filter_delete.as_deref(),
+            )?;
         }
 
         #[cfg(feature = "acl")]
