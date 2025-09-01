@@ -174,11 +174,10 @@ fn daemon_handshake_timeout() {
 }
 
 #[test]
-#[ignore]
 fn daemon_connection_timeout_exit_code() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--contimeout=1", "rsync://203.0.113.1/test", "."])
+        .args(["--contimeout=1", "rsync://203.0.113.1/test/", "."])
         .assert()
         .failure()
         .code(u8::from(ExitCode::ConnTimeout) as i32);

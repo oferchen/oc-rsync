@@ -67,11 +67,18 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
     let name = parts
         .next()
         .ok_or_else(|| "missing module name".to_string())?
-        .to_string();
-    let path = parts
+        .trim();
+    if name.is_empty() {
+        return Err("missing module name".to_string());
+    }
+    let path_str = parts
         .next()
-        .ok_or_else(|| "missing module path".to_string())?;
-    let raw = PathBuf::from(path);
+        .ok_or_else(|| "missing module path".to_string())?
+        .trim();
+    if path_str.is_empty() {
+        return Err("missing module path".to_string());
+    }
+    let raw = PathBuf::from(path_str);
     let abs = if raw.is_absolute() {
         raw
     } else {
@@ -79,7 +86,7 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
     };
     let canonical = fs::canonicalize(abs).map_err(|e| e.to_string())?;
     Ok(Module {
-        name,
+        name: name.to_string(),
         path: canonical,
         hosts_allow: Vec::new(),
         hosts_deny: Vec::new(),

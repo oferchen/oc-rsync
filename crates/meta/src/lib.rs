@@ -61,7 +61,7 @@ use std::collections::HashMap;
 #[cfg(all(unix, feature = "xattr"))]
 use std::collections::HashSet;
 #[cfg(all(unix, feature = "xattr"))]
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -149,7 +149,12 @@ pub(crate) fn should_ignore_xattr_error(err: &io::Error) -> bool {
 }
 
 #[cfg(all(unix, feature = "xattr"))]
-pub fn apply_xattrs(path: &Path, xattrs: &[(OsString, Vec<u8>)]) -> io::Result<()> {
+pub fn apply_xattrs(
+    path: &Path,
+    xattrs: &[(OsString, Vec<u8>)],
+    include: Option<&dyn Fn(&OsStr) -> bool>,
+    include_for_delete: Option<&dyn Fn(&OsStr) -> bool>,
+) -> io::Result<()> {
     let mut existing: HashSet<OsString> = match xattr::list(path) {
         Ok(list) => list.collect(),
         Err(err) => {
@@ -160,6 +165,11 @@ pub fn apply_xattrs(path: &Path, xattrs: &[(OsString, Vec<u8>)]) -> io::Result<(
         }
     };
     for (name, value) in xattrs {
+        if let Some(filter) = include {
+            if !filter(name.as_os_str()) {
+                continue;
+            }
+        }
         existing.remove(name);
         if let Err(err) = xattr::set(path, name, value) {
             if !should_ignore_xattr_error(&err) {
@@ -168,6 +178,11 @@ pub fn apply_xattrs(path: &Path, xattrs: &[(OsString, Vec<u8>)]) -> io::Result<(
         }
     }
     for name in existing {
+        if let Some(filter) = include_for_delete {
+            if !filter(name.as_os_str()) {
+                continue;
+            }
+        }
         if let Some(s) = name.to_str() {
             if s == "system.posix_acl_access"
                 || s == "system.posix_acl_default"

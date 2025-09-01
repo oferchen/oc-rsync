@@ -12,6 +12,8 @@ pub struct Server<R: Read, W: Write> {
     pub demux: Demux,
     pub version: u32,
     pub caps: u32,
+    pub args: Vec<String>,
+    pub env: Vec<(String, String)>,
 }
 
 impl<R: Read, W: Write> Server<R, W> {
@@ -23,6 +25,8 @@ impl<R: Read, W: Write> Server<R, W> {
             demux: Demux::new(timeout),
             version: 0,
             caps: 0,
+            args: Vec::new(),
+            env: Vec::new(),
         }
     }
 
@@ -32,13 +36,29 @@ impl<R: Read, W: Write> Server<R, W> {
         caps: u32,
         codecs: &[Codec],
     ) -> io::Result<(u32, Vec<Codec>)> {
+        self.args.clear();
+        self.env.clear();
         let mut b = [0u8; 1];
         let mut cur = Vec::new();
+        let mut in_env = false;
         loop {
             self.reader.read_exact(&mut b)?;
             if b[0] == 0 {
                 if cur.is_empty() {
                     break;
+                }
+                let s = String::from_utf8(cur.clone())
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                if !in_env && s.contains('=') && !s.starts_with('-') {
+                    in_env = true;
+                }
+                if in_env {
+                    let mut parts = s.splitn(2, '=');
+                    let k = parts.next().unwrap_or_default().to_string();
+                    let v = parts.next().unwrap_or_default().to_string();
+                    self.env.push((k, v));
+                } else {
+                    self.args.push(s);
                 }
                 cur.clear();
             } else {

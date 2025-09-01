@@ -10,13 +10,18 @@ use nix::sys::stat::{self, FchmodatFlags, Mode, SFlag};
 use nix::unistd::{self, FchownatFlags, Gid, Uid};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::sync::Arc;
+#[cfg(feature = "xattr")]
+use std::rc::Rc;
 use users::{get_group_by_gid, get_group_by_name, get_user_by_name, get_user_by_uid};
 
 #[cfg(target_os = "macos")]
 use std::os::unix::ffi::OsStrExt;
 
 #[cfg(feature = "xattr")]
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
+
+#[cfg(feature = "xattr")]
+type XattrFilter = Rc<dyn Fn(&OsStr) -> bool>;
 
 #[cfg(all(test, feature = "xattr"))]
 mod xattr {
@@ -76,6 +81,10 @@ pub struct Options {
     pub omit_link_times: bool,
     pub uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
     pub gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
+    #[cfg(feature = "xattr")]
+    pub xattr_filter: Option<XattrFilter>,
+    #[cfg(feature = "xattr")]
+    pub xattr_filter_delete: Option<XattrFilter>,
 }
 
 impl std::fmt::Debug for Options {
@@ -98,6 +107,26 @@ impl std::fmt::Debug for Options {
             .field("omit_link_times", &self.omit_link_times)
             .field("uid_map", &self.uid_map.is_some())
             .field("gid_map", &self.gid_map.is_some())
+            .field("xattr_filter", &{
+                #[cfg(feature = "xattr")]
+                {
+                    self.xattr_filter.is_some()
+                }
+                #[cfg(not(feature = "xattr"))]
+                {
+                    false
+                }
+            })
+            .field("xattr_filter_delete", &{
+                #[cfg(feature = "xattr")]
+                {
+                    self.xattr_filter_delete.is_some()
+                }
+                #[cfg(not(feature = "xattr"))]
+                {
+                    false
+                }
+            })
             .finish()
     }
 }
@@ -183,6 +212,11 @@ impl Metadata {
                                 || name == "system.posix_acl_access"
                                 || name == "system.posix_acl_default"
                             {
+                                continue;
+                            }
+                        }
+                        if let Some(ref filter) = opts.xattr_filter {
+                            if !filter(attr.as_os_str()) {
                                 continue;
                             }
                         }
@@ -272,6 +306,8 @@ impl Metadata {
         let is_symlink = ft.is_symlink();
         let is_dir = ft.is_dir();
 
+        let mut expected_uid = self.uid;
+        let mut expected_gid = self.gid;
         if opts.owner || opts.group {
             let uid = if let Some(ref map) = opts.uid_map {
                 map(self.uid)
@@ -283,6 +319,8 @@ impl Metadata {
             } else {
                 self.gid
             };
+            expected_uid = uid;
+            expected_gid = gid;
             let res = if is_symlink {
                 match unistd::fchownat(
                     None,
@@ -330,28 +368,26 @@ impl Metadata {
                 )
             };
             if let Err(err) = res {
-                match err {
-                    Errno::EPERM
-                    | Errno::EACCES
-                    | Errno::ENOSYS
-                    | Errno::EINVAL
-                    | Errno::EOPNOTSUPP
-                        if !opts.super_user && !opts.numeric_ids => {}
-                    _ => return Err(nix_to_io(err)),
-                }
+                return Err(nix_to_io(err));
             }
         }
 
-        if (opts.perms || opts.chmod.is_some() || opts.executability) && !is_symlink {
-            let mut mode_val = if opts.perms {
-                normalize_mode(self.mode)
-            } else {
-                normalize_mode(meta.permissions().mode())
-            };
-            if opts.executability && !opts.perms {
-                mode_val = (mode_val & !0o111) | (self.mode & 0o111);
-            }
-            let orig_mode = mode_val;
+        let mut need_chmod =
+            (opts.perms || opts.chmod.is_some() || opts.executability) && !is_symlink;
+        let mut mode_val = if opts.perms {
+            normalize_mode(self.mode)
+        } else {
+            normalize_mode(meta.permissions().mode())
+        };
+        if opts.executability && !opts.perms {
+            mode_val = (mode_val & !0o111) | (self.mode & 0o111);
+        }
+        let orig_mode = mode_val;
+        if (opts.owner || opts.group) && !is_symlink && (self.mode & 0o6000) != 0 {
+            need_chmod = true;
+            mode_val = (mode_val & !0o6000) | (normalize_mode(self.mode) & 0o6000);
+        }
+        if need_chmod {
             if let Some(ref rules) = opts.chmod {
                 for rule in rules {
                     match rule.target {
@@ -380,25 +416,24 @@ impl Metadata {
                 match err {
                     Errno::EINVAL | Errno::EOPNOTSUPP => {
                         let perm = fs::Permissions::from_mode(mode_val);
-                        if let Err(e) = fs::set_permissions(path, perm) {
-                            if let Some(code) = e.raw_os_error() {
-                                match Errno::from_i32(code) {
-                                    Errno::EPERM
-                                    | Errno::EACCES
-                                    | Errno::ENOSYS
-                                    | Errno::EINVAL
-                                    | Errno::EOPNOTSUPP
-                                        if !opts.super_user => {}
-                                    _ => return Err(e),
-                                }
-                            } else {
-                                return Err(e);
-                            }
-                        }
+                        fs::set_permissions(path, perm)?;
                     }
-                    Errno::EPERM | Errno::EACCES | Errno::ENOSYS if !opts.super_user => {}
                     _ => return Err(nix_to_io(err)),
                 }
+            }
+            let meta_after = fs::symlink_metadata(path)?;
+            if normalize_mode(meta_after.permissions().mode()) != mode_val {
+                return Err(io::Error::other("failed to restore mode"));
+            }
+        }
+
+        if opts.owner || opts.group {
+            let meta_after = fs::symlink_metadata(path)?;
+            if opts.owner && meta_after.uid() != expected_uid {
+                return Err(io::Error::other("failed to restore uid"));
+            }
+            if opts.group && meta_after.gid() != expected_gid {
+                return Err(io::Error::other("failed to restore gid"));
             }
         }
 
@@ -441,7 +476,12 @@ impl Metadata {
 
         #[cfg(feature = "xattr")]
         if opts.xattrs {
-            crate::apply_xattrs(path, &self.xattrs)?;
+            crate::apply_xattrs(
+                path,
+                &self.xattrs,
+                opts.xattr_filter.as_deref(),
+                opts.xattr_filter_delete.as_deref(),
+            )?;
         }
 
         #[cfg(feature = "acl")]

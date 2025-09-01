@@ -466,6 +466,12 @@ struct ClientOpts {
     copy_dest: Option<PathBuf>,
     #[arg(long = "compare-dest", value_name = "DIR", help_heading = "Misc")]
     compare_dest: Option<PathBuf>,
+    #[arg(
+        long = "mkpath",
+        help_heading = "Misc",
+        help = "create destination's missing path components"
+    )]
+    mkpath: bool,
     #[arg(long, help_heading = "Attributes")]
     numeric_ids: bool,
     #[arg(long, help_heading = "Output")]
@@ -497,6 +503,8 @@ struct ClientOpts {
         help = "use the protocol to safely send the args"
     )]
     secluded_args: bool,
+    #[arg(long = "trust-sender", help_heading = "Misc")]
+    trust_sender: bool,
     #[arg(
         long = "sockopts",
         value_name = "OPTIONS",
@@ -826,11 +834,13 @@ pub fn spawn_daemon_session(
     } else {
         (host, port.unwrap_or(873))
     };
+    let connect_timeout = contimeout;
     let start = Instant::now();
-    let mut t = TcpTransport::connect(host, port, contimeout, family).map_err(EngineError::from)?;
+    let mut t =
+        TcpTransport::connect(host, port, connect_timeout, family).map_err(EngineError::from)?;
     let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(EngineError::Other)?;
     t.apply_sockopts(&parsed).map_err(EngineError::from)?;
-    let handshake_timeout = contimeout
+    let handshake_timeout = connect_timeout
         .map(|dur| {
             dur.checked_sub(start.elapsed())
                 .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "connection timed out"))
@@ -956,6 +966,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     if opts.secluded_args {
         remote_opts.push("--secluded-args".into());
     }
+    if opts.trust_sender {
+        remote_opts.push("--trust-sender".into());
+    }
     if let Some(spec) = &opts.iconv {
         remote_opts.push(format!("--iconv={spec}"));
     }
@@ -984,6 +997,21 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
     let src = parse_remote_spec(&src_arg)?;
     let mut dst = parse_remote_spec(&dst_arg)?;
+    if opts.mkpath {
+        match &dst {
+            RemoteSpec::Local(ps) => {
+                let target = if ps.trailing_slash {
+                    &ps.path
+                } else {
+                    ps.path.parent().unwrap_or(&ps.path)
+                };
+                fs::create_dir_all(target).map_err(|e| EngineError::Other(e.to_string()))?;
+            }
+            RemoteSpec::Remote { .. } => {
+                remote_opts.push("--mkpath".into());
+            }
+        }
+    }
 
     let known_hosts = opts.known_hosts.clone();
     let strict_host_key_checking = !opts.no_host_key_checking;
@@ -1696,39 +1724,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
 fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
-        if from0 {
-            let content = fs::read(path)?;
-            Ok(content
-                .split(|b| *b == 0)
-                .filter_map(|s| {
-                    if s.is_empty() {
-                        return None;
-                    }
-                    let mut end = s.len();
-                    while end > 0 && (s[end - 1] == b'\n' || s[end - 1] == b'\r') {
-                        end -= 1;
-                    }
-                    if end == 0 {
-                        return None;
-                    }
-                    let p = String::from_utf8_lossy(&s[..end]).to_string();
-                    if p.is_empty() {
-                        None
-                    } else {
-                        Some(p)
-                    }
-                })
-                .collect())
-        } else {
-            let content = fs::read_to_string(path)?;
-            Ok(content
-                .lines()
-                .map(|l| l.trim_end_matches('\r'))
-                .map(|l| l.trim())
-                .filter(|s| !s.is_empty() && !s.trim_start().starts_with('#'))
-                .map(|s| s.to_string())
-                .collect())
-        }
+        filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
     }
 
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
@@ -1792,13 +1788,10 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("include_from")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
-            for pat in load_patterns(file, opts.from0)? {
-                add_rules(
-                    idx,
-                    parse_filters(&format!("+ {}", pat))
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                );
-            }
+            let mut vset = HashSet::new();
+            let rs = filters::parse_rule_list_file(file, opts.from0, '+', &mut vset, 0)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+            add_rules(idx, rs);
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("exclude_from") {
@@ -1806,13 +1799,10 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("exclude_from")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
-            for pat in load_patterns(file, opts.from0)? {
-                add_rules(
-                    idx,
-                    parse_filters(&format!("- {}", pat))
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                );
-            }
+            let mut vset = HashSet::new();
+            let rs = filters::parse_rule_list_file(file, opts.from0, '-', &mut vset, 0)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+            add_rules(idx, rs);
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("files_from") {
@@ -1827,17 +1817,25 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     format!("/{}", pat)
                 };
 
+                let rule1 = if opts.from0 {
+                    format!("+{}", anchored)
+                } else {
+                    format!("+ {}", anchored)
+                };
                 add_rules(
                     idx,
-                    parse_filters(&format!("+ {}", anchored))
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    parse_filters(&rule1).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
 
                 let dir_pat = format!("{}/***", anchored.trim_end_matches('/'));
+                let rule2 = if opts.from0 {
+                    format!("+{}", dir_pat)
+                } else {
+                    format!("+ {}", dir_pat)
+                };
                 add_rules(
                     idx,
-                    parse_filters(&format!("+ {}", dir_pat))
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    parse_filters(&rule2).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
             }
         }

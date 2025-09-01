@@ -8,10 +8,14 @@ mod non_unix {
     #[cfg(feature = "acl")]
     use posix_acl::ACLEntry;
     #[cfg(feature = "xattr")]
-    use std::ffi::OsString;
+    use std::ffi::{OsStr, OsString};
+    #[cfg(feature = "xattr")]
+    type XattrFilter = Rc<dyn Fn(&OsStr) -> bool>;
     use std::io;
     use std::path::Path;
     use std::sync::Arc;
+    #[cfg(feature = "xattr")]
+    use std::rc::Rc;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum ChmodTarget {
@@ -55,6 +59,10 @@ mod non_unix {
         pub omit_link_times: bool,
         pub uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
         pub gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
+        #[cfg(feature = "xattr")]
+        pub xattr_filter: Option<XattrFilter>,
+        #[cfg(feature = "xattr")]
+        pub xattr_filter_delete: Option<XattrFilter>,
     }
 
     impl std::fmt::Debug for Options {
@@ -77,6 +85,26 @@ mod non_unix {
                 .field("omit_link_times", &self.omit_link_times)
                 .field("uid_map", &self.uid_map.is_some())
                 .field("gid_map", &self.gid_map.is_some())
+                .field("xattr_filter", &{
+                    #[cfg(feature = "xattr")]
+                    {
+                        self.xattr_filter.is_some()
+                    }
+                    #[cfg(not(feature = "xattr"))]
+                    {
+                        false
+                    }
+                })
+                .field("xattr_filter_delete", &{
+                    #[cfg(feature = "xattr")]
+                    {
+                        self.xattr_filter_delete.is_some()
+                    }
+                    #[cfg(not(feature = "xattr"))]
+                    {
+                        false
+                    }
+                })
                 .finish()
         }
     }

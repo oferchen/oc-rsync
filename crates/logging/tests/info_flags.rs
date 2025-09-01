@@ -56,6 +56,7 @@ fn each_info_flag_emits_output() {
             tracing::info!(target: flag.target(), "{}", flag.as_str());
         });
         assert!(writer.is_empty(), "{} emitted without flag", flag.as_str());
+
         let writer = VecWriter::default();
         let mut filter = EnvFilter::builder()
             .with_default_directive(LevelFilter::WARN.into())
