@@ -47,8 +47,8 @@ No known gaps.
 - `--info` — info flag handling incomplete. [logging/src/lib.rs](../crates/logging/src/lib.rs) · [crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs)
 
 ## Progress & Exit Codes
-- `--progress` — progress output differs from upstream and current progress tests fail to compile. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs#L332](../tests/cli.rs#L332)
-- Exit code propagation across transports now covered by tests. [crates/protocol/src/demux.rs](../crates/protocol/src/demux.rs) · [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs) · [tests/server.rs](../tests/server.rs)
+- `--progress` — output and rate formatting mirror upstream `rsync`. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
+- Exit code mapping aligns with upstream semantics. [crates/protocol/src/lib.rs](../crates/protocol/src/lib.rs) · [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs)
 
 ## Error Propagation
 - Remote error forwarding verified. [crates/protocol/src/demux.rs](../crates/protocol/src/demux.rs) · [tests/remote_remote.rs](../tests/remote_remote.rs)

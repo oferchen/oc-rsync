@@ -577,11 +577,7 @@ impl<'a> Progress<'a> {
         };
         let elapsed = self.start.elapsed().as_secs().max(1);
         let rate = self.written / elapsed;
-        let rate = if self.human_readable {
-            format!("{}/s", progress_formatter(rate, true))
-        } else {
-            format!("{}B/s", progress_formatter(rate, false))
-        };
+        let rate = format!("{}/s", progress_formatter(rate, true));
         if done {
             eprintln!("\r{:>15} {:>3}% {:>15}", bytes, percent, rate);
         } else {
