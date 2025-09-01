@@ -10,7 +10,8 @@ use tracing_subscriber::{
 
 use clap::ValueEnum;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+#[clap(rename_all = "kebab-case")]
 pub enum LogFormat {
     Text,
     Json,
@@ -138,15 +139,19 @@ pub fn subscriber(
         LogFormat::Text => fmt_layer.boxed(),
     };
     let registry = tracing_subscriber::registry().with(filter).with(fmt_layer);
-    if let Some((path, _fmt)) = log_file {
+    if let Some((path, fmt)) = log_file {
         let file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(path)
             .expect("failed to open log file");
-        let file_layer = fmt::layer()
+        let base = fmt::layer()
             .with_writer(move || file.try_clone().unwrap())
             .with_ansi(false);
+        let file_layer = match fmt.as_deref() {
+            Some("json") => base.json().boxed(),
+            _ => base.boxed(),
+        };
         Box::new(registry.with(file_layer))
     } else {
         Box::new(registry)

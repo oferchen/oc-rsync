@@ -42,12 +42,9 @@ fn verbose_and_log_format_json_parity() {
         .get_many::<logging::DebugFlag>("debug")
         .map(|v| v.copied().collect())
         .unwrap_or_default();
-    let log_format = if matches.get_one::<String>("log_format").map(String::as_str) == Some("json")
-    {
-        logging::LogFormat::Json
-    } else {
-        logging::LogFormat::Text
-    };
+    let log_format = *matches
+        .get_one::<logging::LogFormat>("log_format")
+        .unwrap_or(&logging::LogFormat::Text);
     logging::init(log_format, verbose, &info, &debug, false, None);
     oc_rsync_cli::run(&matches).unwrap();
 }
@@ -83,7 +80,7 @@ fn debug_flag_enables_flist() {
         .get_many::<logging::DebugFlag>("debug")
         .map(|v| v.copied().collect())
         .unwrap_or_default();
-    let sub = logging::subscriber(logging::LogFormat::Text, 0, &[], &debug, false);
+    let sub = logging::subscriber(logging::LogFormat::Text, 0, &[], &debug, false, None);
     with_default(sub, || {
         assert!(tracing::enabled!(
             target: logging::DebugFlag::Flist.target(),
