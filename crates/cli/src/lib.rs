@@ -633,7 +633,6 @@ pub fn parse_rsync_path(raw: Option<String>) -> Result<Option<RshCommand>> {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Parser, Debug)]
 struct DaemonOpts {
     #[arg(long)]
@@ -658,7 +657,6 @@ struct DaemonOpts {
     state_dir: Option<PathBuf>,
 }
 
-#[allow(dead_code)]
 #[derive(Parser, Debug)]
 struct ProbeOpts {
     #[arg(long)]
@@ -1882,7 +1880,6 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     Ok(matcher)
 }
 
-#[allow(dead_code)]
 fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut modules: HashMap<String, Module> = HashMap::new();
     let mut secrets = opts.secrets_file.clone();
@@ -2001,7 +1998,6 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     .map_err(|e| EngineError::Other(format!("daemon failed to bind to port {port}: {e}")))
 }
 
-#[allow(dead_code)]
 fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
     if let Some(addr) = opts.addr {
         let mut stream = TcpStream::connect(&addr)?;
@@ -2025,8 +2021,7 @@ fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
     }
 }
 
-#[allow(dead_code)]
-fn run_server() -> Result<()> {
+fn _run_server() -> Result<()> {
     use protocol::{Server, CAP_CODECS};
     let stdin = io::stdin();
     let stdout = io::stdout();
