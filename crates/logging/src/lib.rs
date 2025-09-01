@@ -26,9 +26,14 @@ pub enum InfoFlag {
     Del,
     Flist,
     Misc,
+    Mount,
     Name,
+    Nonreg,
     Progress,
+    Remove,
+    Skip,
     Stats,
+    Symsafe,
 }
 
 impl InfoFlag {
@@ -39,9 +44,14 @@ impl InfoFlag {
             InfoFlag::Del => "del",
             InfoFlag::Flist => "flist",
             InfoFlag::Misc => "misc",
+            InfoFlag::Mount => "mount",
             InfoFlag::Name => "name",
+            InfoFlag::Nonreg => "nonreg",
             InfoFlag::Progress => "progress",
+            InfoFlag::Remove => "remove",
+            InfoFlag::Skip => "skip",
             InfoFlag::Stats => "stats",
+            InfoFlag::Symsafe => "symsafe",
         }
     }
 
@@ -52,9 +62,14 @@ impl InfoFlag {
             InfoFlag::Del => "info::del",
             InfoFlag::Flist => "info::flist",
             InfoFlag::Misc => "info::misc",
+            InfoFlag::Mount => "info::mount",
             InfoFlag::Name => "info::name",
+            InfoFlag::Nonreg => "info::nonreg",
             InfoFlag::Progress => "info::progress",
+            InfoFlag::Remove => "info::remove",
+            InfoFlag::Skip => "info::skip",
             InfoFlag::Stats => "info::stats",
+            InfoFlag::Symsafe => "info::symsafe",
         }
     }
 }
@@ -158,11 +173,11 @@ pub fn subscriber(
 ) -> Box<dyn tracing::Subscriber + Send + Sync> {
     let level = if quiet {
         LevelFilter::ERROR
-    } else if !debug.is_empty() || verbose > 2 {
+    } else if verbose > 2 {
         LevelFilter::TRACE
     } else if verbose > 1 {
         LevelFilter::DEBUG
-    } else if !info.is_empty() || verbose > 0 {
+    } else if verbose > 0 {
         LevelFilter::INFO
     } else {
         LevelFilter::WARN

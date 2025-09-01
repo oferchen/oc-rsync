@@ -1,8 +1,8 @@
 // bin/oc-rsync/src/main.rs
-use logging::{DebugFlag, InfoFlag, LogFormat};
+use logging::LogFormat;
 use std::{io::ErrorKind, path::PathBuf};
 
-use oc_rsync_cli::{cli_command, EngineError};
+use oc_rsync_cli::{cli_command, parse_logging_flags, EngineError};
 use protocol::ExitCode;
 
 fn main() {
@@ -19,22 +19,11 @@ fn main() {
     } else {
         matches.get_count("verbose") as u8
     };
-    let info: Vec<InfoFlag> = if quiet {
-        Vec::new()
-    } else {
-        matches
-            .get_many::<InfoFlag>("info")
-            .map(|v| v.copied().collect())
-            .unwrap_or_default()
-    };
-    let debug: Vec<DebugFlag> = if quiet {
-        Vec::new()
-    } else {
-        matches
-            .get_many::<DebugFlag>("debug")
-            .map(|v| v.copied().collect())
-            .unwrap_or_default()
-    };
+    let (mut info, mut debug) = parse_logging_flags(&matches);
+    if quiet {
+        info.clear();
+        debug.clear();
+    }
     let log_format = *matches
         .get_one::<LogFormat>("log_format")
         .unwrap_or(&LogFormat::Text);

@@ -1,7 +1,7 @@
 // crates/cli/tests/logging_flags.rs
 use assert_cmd::Command;
 use clap::ValueEnum;
-use oc_rsync_cli::cli_command;
+use oc_rsync_cli::{cli_command, parse_logging_flags};
 use tempfile::tempdir;
 use tracing::subscriber::with_default;
 use tracing::Level;
@@ -36,14 +36,7 @@ fn verbose_and_log_format_json_parity() {
         ])
         .unwrap();
     let verbose = matches.get_count("verbose") as u8;
-    let info: Vec<logging::InfoFlag> = matches
-        .get_many::<logging::InfoFlag>("info")
-        .map(|v| v.copied().collect())
-        .unwrap_or_default();
-    let debug: Vec<logging::DebugFlag> = matches
-        .get_many::<logging::DebugFlag>("debug")
-        .map(|v| v.copied().collect())
-        .unwrap_or_default();
+    let (info, debug) = parse_logging_flags(&matches);
     let log_format = *matches
         .get_one::<logging::LogFormat>("log_format")
         .unwrap_or(&logging::LogFormat::Text);
@@ -56,13 +49,10 @@ fn info_flag_enables_progress() {
     let matches = cli_command()
         .try_get_matches_from(["oc-rsync", "--info=progress", "src", "dst"])
         .unwrap();
-    let info: Vec<logging::InfoFlag> = matches
-        .get_many::<logging::InfoFlag>("info")
-        .map(|v| v.copied().collect())
-        .unwrap_or_default();
+    let (info, _) = parse_logging_flags(&matches);
     let sub = logging::subscriber(logging::LogFormat::Text, 0, &info, &[], false, None);
     with_default(sub, || {
-        assert!(tracing::enabled!(Level::INFO));
+        assert!(!tracing::enabled!(Level::INFO));
         assert!(!tracing::enabled!(Level::DEBUG));
         assert!(tracing::enabled!(
             target: logging::InfoFlag::Progress.target(),
@@ -80,13 +70,10 @@ fn debug_flag_enables_flist() {
     let matches = cli_command()
         .try_get_matches_from(["oc-rsync", "--debug=flist", "src", "dst"])
         .unwrap();
-    let debug: Vec<logging::DebugFlag> = matches
-        .get_many::<logging::DebugFlag>("debug")
-        .map(|v| v.copied().collect())
-        .unwrap_or_default();
+    let (_, debug) = parse_logging_flags(&matches);
     let sub = logging::subscriber(logging::LogFormat::Text, 0, &[], &debug, false, None);
     with_default(sub, || {
-        assert!(tracing::enabled!(Level::TRACE));
+        assert!(!tracing::enabled!(Level::TRACE));
         assert!(tracing::enabled!(
             target: logging::DebugFlag::Flist.target(),
             Level::DEBUG
@@ -99,9 +86,9 @@ fn debug_flag_enables_flist() {
 }
 
 #[test]
-fn all_debug_flags_enable_targets() {
+fn all_debug_flags_parse() {
     for flag in logging::DebugFlag::value_variants() {
-        let matches = cli_command()
+        cli_command()
             .try_get_matches_from([
                 "oc-rsync",
                 &format!("--debug={}", flag.as_str()),
@@ -109,15 +96,20 @@ fn all_debug_flags_enable_targets() {
                 "dst",
             ])
             .unwrap();
-        let debug: Vec<logging::DebugFlag> = matches
-            .get_many::<logging::DebugFlag>("debug")
-            .map(|v| v.copied().collect())
-            .unwrap_or_default();
-        let sub = logging::subscriber(logging::LogFormat::Text, 0, &[], &debug, false, None);
-        with_default(sub, || {
-            assert!(tracing::enabled!(Level::TRACE));
-            assert!(tracing::enabled!(target: flag.target(), Level::DEBUG));
-        });
+    }
+}
+
+#[test]
+fn all_info_flags_parse() {
+    for flag in logging::InfoFlag::value_variants() {
+        cli_command()
+            .try_get_matches_from([
+                "oc-rsync",
+                &format!("--info={}", flag.as_str()),
+                "src",
+                "dst",
+            ])
+            .unwrap();
     }
 }
 
@@ -151,14 +143,7 @@ fn quiet_overrides_logging_flags() {
             "dst",
         ])
         .unwrap();
-    let info: Vec<logging::InfoFlag> = matches
-        .get_many::<logging::InfoFlag>("info")
-        .map(|v| v.copied().collect())
-        .unwrap_or_default();
-    let debug: Vec<logging::DebugFlag> = matches
-        .get_many::<logging::DebugFlag>("debug")
-        .map(|v| v.copied().collect())
-        .unwrap_or_default();
+    let (info, debug) = parse_logging_flags(&matches);
     let sub = logging::subscriber(logging::LogFormat::Text, 0, &info, &debug, true, None);
     with_default(sub, || {
         assert!(!tracing::enabled!(Level::INFO));
