@@ -52,7 +52,6 @@ coverage so progress can be tracked as features land.
 - Forwarding errors between remote endpoints is under-tested. [protocol/src/demux.rs](../crates/protocol/src/demux.rs) · [tests/remote_remote.rs](../tests/remote_remote.rs)
 
 ## Performance Knobs
-- `--max-alloc` — not implemented. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/perf_limits.rs](../tests/perf_limits.rs)
 - `--temp-dir` — cross-filesystem behavior differs. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
 
 ## CI

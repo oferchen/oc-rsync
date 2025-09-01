@@ -171,7 +171,7 @@
 | -K | --keep-dirlinks | treat symlinked dir on receiver as dir | no |  | no |
 |  | --link-dest=DIR | hardlink to files in DIR when unchanged | yes |  | no |
 |  | --links | copy symlinks as symlinks | yes |  | no |
-|  | --max-alloc=SIZE | change a limit relating to memory alloc | no |  | no |
+|  | --max-alloc=SIZE | change a limit relating to memory alloc | yes |  | no |
 |  | --max-size=SIZE | don't transfer any file larger than SIZE | no |  | no |
 |  | --min-size=SIZE | don't transfer any file smaller than SIZE | no |  | no |
 |  | --mkpath | create destination's missing path components | no |  | no |
