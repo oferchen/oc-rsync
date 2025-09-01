@@ -164,7 +164,8 @@ pub fn rolling_checksum_seeded(data: &[u8], seed: u32) -> u32 {
 }
 
 #[inline]
-fn rolling_checksum_scalar(data: &[u8], seed: u32) -> u32 {
+#[doc(hidden)]
+pub fn rolling_checksum_scalar(data: &[u8], seed: u32) -> u32 {
     let mut s1: u32 = 0;
     let mut s2: u32 = 0;
     let n = data.len();
@@ -179,20 +180,191 @@ fn rolling_checksum_scalar(data: &[u8], seed: u32) -> u32 {
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "sse4.2")]
-unsafe fn rolling_checksum_sse42(data: &[u8], seed: u32) -> u32 {
-    rolling_checksum_scalar(data, seed)
+#[doc(hidden)]
+pub unsafe fn rolling_checksum_sse42(data: &[u8], seed: u32) -> u32 {
+    use std::arch::x86_64::*;
+
+    const IDX_LO: [i16; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+    const IDX_HI: [i16; 8] = [8, 9, 10, 11, 12, 13, 14, 15];
+
+    let n = data.len();
+    let mut sum_bytes: u64 = 0;
+    let mut sum_indices: u64 = 0;
+    let mut offset: u64 = 0;
+
+    let zero = _mm_setzero_si128();
+    let idx_lo = _mm_loadu_si128(IDX_LO.as_ptr() as *const __m128i);
+    let idx_hi = _mm_loadu_si128(IDX_HI.as_ptr() as *const __m128i);
+
+    let mut i = 0;
+    while i + 16 <= n {
+        let chunk = _mm_loadu_si128(data.as_ptr().add(i) as *const __m128i);
+
+        let sad = _mm_sad_epu8(chunk, zero);
+        let mut tmp_sum = [0u64; 2];
+        _mm_storeu_si128(tmp_sum.as_mut_ptr() as *mut __m128i, sad);
+        let chunk_sum = tmp_sum[0] + tmp_sum[1];
+        sum_bytes += chunk_sum;
+
+        let lo = _mm_cvtepu8_epi16(chunk);
+        let hi = _mm_cvtepu8_epi16(_mm_srli_si128(chunk, 8));
+        let prod_lo = _mm_madd_epi16(lo, idx_lo);
+        let prod_hi = _mm_madd_epi16(hi, idx_hi);
+        let mut tmp = [0i32; 4];
+        _mm_storeu_si128(tmp.as_mut_ptr() as *mut __m128i, prod_lo);
+        let sum_lo: i64 = tmp.iter().map(|&v| v as i64).sum();
+        _mm_storeu_si128(tmp.as_mut_ptr() as *mut __m128i, prod_hi);
+        let sum_hi: i64 = tmp.iter().map(|&v| v as i64).sum();
+        let chunk_idx_sum = sum_lo + sum_hi;
+
+        sum_indices += offset * chunk_sum + chunk_idx_sum as u64;
+
+        offset += 16;
+        i += 16;
+    }
+
+    for &b in &data[i..] {
+        sum_bytes += b as u64;
+        sum_indices += offset * b as u64;
+        offset += 1;
+    }
+
+    let s1 = (sum_bytes as u32).wrapping_add(seed);
+    let s2 = ((n as u64)
+        .wrapping_mul(seed as u64)
+        .wrapping_add((n as u64).wrapping_mul(sum_bytes).wrapping_sub(sum_indices)))
+        as u32;
+    (s1 & 0xffff) | (s2 << 16)
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2")]
-unsafe fn rolling_checksum_avx2(data: &[u8], seed: u32) -> u32 {
-    rolling_checksum_scalar(data, seed)
+#[doc(hidden)]
+pub unsafe fn rolling_checksum_avx2(data: &[u8], seed: u32) -> u32 {
+    use std::arch::x86_64::*;
+
+    const IDX_LO: [i16; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    const IDX_HI: [i16; 16] = [
+        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+    ];
+
+    let n = data.len();
+    let mut sum_bytes: u64 = 0;
+    let mut sum_indices: u64 = 0;
+    let mut offset: u64 = 0;
+
+    let zero = _mm256_setzero_si256();
+    let idx_lo = _mm256_loadu_si256(IDX_LO.as_ptr() as *const __m256i);
+    let idx_hi = _mm256_loadu_si256(IDX_HI.as_ptr() as *const __m256i);
+
+    let mut i = 0;
+    while i + 32 <= n {
+        let chunk = _mm256_loadu_si256(data.as_ptr().add(i) as *const __m256i);
+
+        let sad = _mm256_sad_epu8(chunk, zero);
+        let mut tmp_sum = [0u64; 4];
+        _mm256_storeu_si256(tmp_sum.as_mut_ptr() as *mut __m256i, sad);
+        let chunk_sum = tmp_sum.iter().sum::<u64>();
+        sum_bytes += chunk_sum;
+
+        let lower = _mm256_castsi256_si128(chunk);
+        let upper = _mm256_extracti128_si256(chunk, 1);
+        let lo = _mm256_cvtepu8_epi16(lower);
+        let hi = _mm256_cvtepu8_epi16(upper);
+        let prod_lo = _mm256_madd_epi16(lo, idx_lo);
+        let prod_hi = _mm256_madd_epi16(hi, idx_hi);
+        let mut tmp = [0i32; 8];
+        _mm256_storeu_si256(tmp.as_mut_ptr() as *mut __m256i, prod_lo);
+        let sum_lo: i64 = tmp.iter().map(|&v| v as i64).sum();
+        _mm256_storeu_si256(tmp.as_mut_ptr() as *mut __m256i, prod_hi);
+        let sum_hi: i64 = tmp.iter().map(|&v| v as i64).sum();
+        let chunk_idx_sum = sum_lo + sum_hi;
+
+        sum_indices += offset * chunk_sum + chunk_idx_sum as u64;
+
+        offset += 32;
+        i += 32;
+    }
+
+    for &b in &data[i..] {
+        sum_bytes += b as u64;
+        sum_indices += offset * b as u64;
+        offset += 1;
+    }
+
+    let s1 = (sum_bytes as u32).wrapping_add(seed);
+    let s2 = ((n as u64)
+        .wrapping_mul(seed as u64)
+        .wrapping_add((n as u64).wrapping_mul(sum_bytes).wrapping_sub(sum_indices)))
+        as u32;
+    (s1 & 0xffff) | (s2 << 16)
 }
 
 #[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
-#[target_feature(enable = "avx512f")]
-unsafe fn rolling_checksum_avx512(data: &[u8], seed: u32) -> u32 {
-    rolling_checksum_scalar(data, seed)
+#[target_feature(enable = "avx512f,avx512bw")]
+#[doc(hidden)]
+pub unsafe fn rolling_checksum_avx512(data: &[u8], seed: u32) -> u32 {
+    use std::arch::x86_64::*;
+
+    const IDX_LO: [i16; 32] = [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26, 27, 28, 29, 30, 31,
+    ];
+    const IDX_HI: [i16; 32] = [
+        32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54,
+        55, 56, 57, 58, 59, 60, 61, 62, 63,
+    ];
+
+    let n = data.len();
+    let mut sum_bytes: u64 = 0;
+    let mut sum_indices: u64 = 0;
+    let mut offset: u64 = 0;
+
+    let zero = _mm512_setzero_si512();
+    let idx_lo = _mm512_loadu_si512(IDX_LO.as_ptr() as *const __m512i);
+    let idx_hi = _mm512_loadu_si512(IDX_HI.as_ptr() as *const __m512i);
+
+    let mut i = 0;
+    while i + 64 <= n {
+        let chunk = _mm512_loadu_si512(data.as_ptr().add(i) as *const __m512i);
+
+        let sad = _mm512_sad_epu8(chunk, zero);
+        let mut tmp_sum = [0u64; 8];
+        _mm512_storeu_si512(tmp_sum.as_mut_ptr() as *mut __m512i, sad);
+        let chunk_sum = tmp_sum.iter().sum::<u64>();
+        sum_bytes += chunk_sum;
+
+        let lower = _mm512_castsi512_si256(chunk);
+        let upper = _mm512_extracti64x4_epi64(chunk, 1);
+        let lo = _mm512_cvtepu8_epi16(lower);
+        let hi = _mm512_cvtepu8_epi16(upper);
+        let prod_lo = _mm512_madd_epi16(lo, idx_lo);
+        let prod_hi = _mm512_madd_epi16(hi, idx_hi);
+        let mut tmp = [0i32; 16];
+        _mm512_storeu_si512(tmp.as_mut_ptr() as *mut __m512i, prod_lo);
+        let sum_lo: i64 = tmp.iter().map(|&v| v as i64).sum();
+        _mm512_storeu_si512(tmp.as_mut_ptr() as *mut __m512i, prod_hi);
+        let sum_hi: i64 = tmp.iter().map(|&v| v as i64).sum();
+        let chunk_idx_sum = sum_lo + sum_hi;
+
+        sum_indices += offset * chunk_sum + chunk_idx_sum as u64;
+
+        offset += 64;
+        i += 64;
+    }
+
+    for &b in &data[i..] {
+        sum_bytes += b as u64;
+        sum_indices += offset * b as u64;
+        offset += 1;
+    }
+
+    let s1 = (sum_bytes as u32).wrapping_add(seed);
+    let s2 = ((n as u64)
+        .wrapping_mul(seed as u64)
+        .wrapping_add((n as u64).wrapping_mul(sum_bytes).wrapping_sub(sum_indices)))
+        as u32;
+    (s1 & 0xffff) | (s2 << 16)
 }
 
 #[derive(Debug, Clone)]
@@ -310,6 +482,24 @@ mod tests {
             assert_eq!(rolling_checksum_avx2(data, 0), scalar);
             #[cfg(feature = "nightly")]
             assert_eq!(rolling_checksum_avx512(data, 0), scalar);
+        }
+    }
+
+    #[test]
+    fn simd_matches_scalar_varied() {
+        let mut data = [0u8; 512];
+        for (i, b) in data.iter_mut().enumerate() {
+            *b = ((i as u32).wrapping_mul(31).wrapping_add(7)) as u8;
+        }
+        for len in 0..=data.len() {
+            let slice = &data[..len];
+            let scalar = rolling_checksum_scalar(slice, 1);
+            unsafe {
+                assert_eq!(rolling_checksum_sse42(slice, 1), scalar);
+                assert_eq!(rolling_checksum_avx2(slice, 1), scalar);
+                #[cfg(feature = "nightly")]
+                assert_eq!(rolling_checksum_avx512(slice, 1), scalar);
+            }
         }
     }
 }
