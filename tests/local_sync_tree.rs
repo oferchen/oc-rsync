@@ -172,7 +172,13 @@ fn sync_preserves_acls() {
 #[cfg(unix)]
 #[test]
 fn sync_preserves_owner_and_group() {
+    use nix::errno::Errno;
     use nix::unistd::{chown, Gid, Uid};
+
+    if !Uid::effective().is_root() {
+        eprintln!("not running as root; skipping");
+        return;
+    }
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -181,12 +187,17 @@ fn sync_preserves_owner_and_group() {
     fs::create_dir_all(&dst).unwrap();
     let file = src.join("file");
     fs::write(&file, b"hi").unwrap();
-    chown(
+    if let Err(err) = chown(
         &file,
         Some(Uid::from_raw(12345)),
         Some(Gid::from_raw(54321)),
-    )
-    .unwrap();
+    ) {
+        if err == Errno::EPERM {
+            eprintln!("chown EPERM; skipping");
+            return;
+        }
+        panic!("chown failed: {err}");
+    }
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
