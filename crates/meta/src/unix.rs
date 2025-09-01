@@ -9,9 +9,9 @@ use nix::errno::Errno;
 use nix::sys::stat::{self, FchmodatFlags, Mode, SFlag};
 use nix::unistd::{self, FchownatFlags, Gid, Uid};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
-use std::sync::Arc;
 #[cfg(feature = "xattr")]
 use std::rc::Rc;
+use std::sync::Arc;
 use users::{get_group_by_gid, get_group_by_name, get_user_by_name, get_user_by_uid};
 
 #[cfg(target_os = "macos")]
