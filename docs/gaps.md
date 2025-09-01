@@ -54,10 +54,10 @@ coverage so progress can be tracked as features land.
 
 ## Progress & Exit Codes
 - `--progress` — progress output differs from upstream and current progress tests fail to compile. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs#L332](../tests/cli.rs#L332)
-- Exit code propagation across transports lacks coverage. [protocol/src/lib.rs](../crates/protocol/src/lib.rs) · [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs)
+- Exit code propagation across transports now covered by tests. [crates/protocol/src/demux.rs](../crates/protocol/src/demux.rs) · [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs) · [tests/server.rs](../tests/server.rs)
 
 ## Error Propagation
-- Forwarding errors between remote endpoints is under-tested. [protocol/src/demux.rs](../crates/protocol/src/demux.rs) · [tests/remote_remote.rs](../tests/remote_remote.rs)
+- Remote error forwarding verified. [crates/protocol/src/demux.rs](../crates/protocol/src/demux.rs) · [tests/remote_remote.rs](../tests/remote_remote.rs)
 
 ## Performance Knobs
 - `--temp-dir` — cross-filesystem behavior differs. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)

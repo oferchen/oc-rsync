@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::time::{Duration, Instant};
 
-use crate::{Frame, Message};
+use crate::{ExitCode, Frame, Message};
 use checksums::StrongHash;
 use compress::Codec;
 
@@ -51,6 +51,18 @@ impl Mux {
         } else {
             Err(mpsc::SendError(msg))
         }
+    }
+
+    pub fn send_exit_code(&self, code: ExitCode) -> Result<(), mpsc::SendError<Message>> {
+        self.send(0, Message::Data(vec![code.into()]))
+    }
+
+    pub fn send_error<S: Into<String>>(
+        &self,
+        id: u16,
+        text: S,
+    ) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::Error(text.into()))
     }
 
     pub fn poll(&mut self) -> Option<Frame> {
