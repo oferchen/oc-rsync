@@ -846,43 +846,11 @@ fn set_file_crtime(_path: &Path, _crtime: FileTime) -> io::Result<()> {
 }
 
 pub fn uid_from_name(name: &str) -> Option<u32> {
-    get_user_by_name(name).map(|u| u.uid()).or_else(|| {
-        fs::read_to_string("/etc/passwd").ok().and_then(|data| {
-            data.lines().find_map(|line| {
-                if line.starts_with('#') {
-                    return None;
-                }
-                let mut parts = line.split(':');
-                let user_name = parts.next()?;
-                if user_name != name {
-                    return None;
-                }
-                parts.next();
-                let uid_str = parts.next()?;
-                uid_str.parse().ok()
-            })
-        })
-    })
+    get_user_by_name(name).map(|u| u.uid())
 }
 
 pub fn gid_from_name(name: &str) -> Option<u32> {
-    get_group_by_name(name).map(|g| g.gid()).or_else(|| {
-        fs::read_to_string("/etc/group").ok().and_then(|data| {
-            data.lines().find_map(|line| {
-                if line.starts_with('#') {
-                    return None;
-                }
-                let mut parts = line.split(':');
-                let group_name = parts.next()?;
-                if group_name != name {
-                    return None;
-                }
-                parts.next();
-                let gid_str = parts.next()?;
-                gid_str.parse().ok()
-            })
-        })
-    })
+    get_group_by_name(name).map(|g| g.gid())
 }
 
 pub fn uid_from_name_or_id(spec: &str) -> Option<u32> {
@@ -896,47 +864,11 @@ pub fn gid_from_name_or_id(spec: &str) -> Option<u32> {
 }
 
 pub fn uid_to_name(uid: u32) -> Option<String> {
-    get_user_by_uid(uid)
-        .map(|u| u.name().to_string_lossy().into_owned())
-        .or_else(|| {
-            fs::read_to_string("/etc/passwd").ok().and_then(|data| {
-                data.lines().find_map(|line| {
-                    if line.starts_with('#') {
-                        return None;
-                    }
-                    let mut parts = line.split(':');
-                    let name = parts.next()?;
-                    parts.next();
-                    let uid_str = parts.next()?;
-                    match uid_str.parse::<u32>() {
-                        Ok(u) if u == uid => Some(name.to_string()),
-                        _ => None,
-                    }
-                })
-            })
-        })
+    get_user_by_uid(uid).map(|u| u.name().to_string_lossy().into_owned())
 }
 
 pub fn gid_to_name(gid: u32) -> Option<String> {
-    get_group_by_gid(gid)
-        .map(|g| g.name().to_string_lossy().into_owned())
-        .or_else(|| {
-            fs::read_to_string("/etc/group").ok().and_then(|data| {
-                data.lines().find_map(|line| {
-                    if line.starts_with('#') {
-                        return None;
-                    }
-                    let mut parts = line.split(':');
-                    let name = parts.next()?;
-                    parts.next();
-                    let gid_str = parts.next()?;
-                    match gid_str.parse::<u32>() {
-                        Ok(g) if g == gid => Some(name.to_string()),
-                        _ => None,
-                    }
-                })
-            })
-        })
+    get_group_by_gid(gid).map(|g| g.name().to_string_lossy().into_owned())
 }
 
 #[cfg(all(test, feature = "xattr"))]

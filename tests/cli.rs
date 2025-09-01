@@ -1142,6 +1142,44 @@ fn group_names_are_mapped() {
 
 #[cfg(unix)]
 #[test]
+fn parse_usermap_accepts_numeric_and_name() {
+    use meta::{parse_id_map, IdKind};
+    use users::get_user_by_uid;
+
+    let numeric = parse_id_map("0:1", IdKind::User).unwrap();
+    assert_eq!(numeric(0), 1);
+
+    let root_name = get_user_by_uid(0)
+        .unwrap()
+        .name()
+        .to_string_lossy()
+        .into_owned();
+    let spec = format!("{root_name}:{root_name}");
+    let name_map = parse_id_map(&spec, IdKind::User).unwrap();
+    assert_eq!(name_map(0), 0);
+}
+
+#[cfg(unix)]
+#[test]
+fn parse_groupmap_accepts_numeric_and_name() {
+    use meta::{parse_id_map, IdKind};
+    use users::get_group_by_gid;
+
+    let numeric = parse_id_map("0:1", IdKind::Group).unwrap();
+    assert_eq!(numeric(0), 1);
+
+    let root_gname = get_group_by_gid(0)
+        .unwrap()
+        .name()
+        .to_string_lossy()
+        .into_owned();
+    let spec = format!("{root_gname}:{root_gname}");
+    let name_map = parse_id_map(&spec, IdKind::Group).unwrap();
+    assert_eq!(name_map(0), 0);
+}
+
+#[cfg(unix)]
+#[test]
 fn user_name_to_numeric_id_is_mapped() {
     let uid = get_current_uid();
     if uid != 0 {
