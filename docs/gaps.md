@@ -39,7 +39,6 @@ coverage so progress can be tracked as features land.
 No known gaps.
 
 ## Logging
-- `--debug` — debug flag handling incomplete. [logging/src/lib.rs](../crates/logging/src/lib.rs) · [crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs)
 - `--info` — info flag handling incomplete. [logging/src/lib.rs](../crates/logging/src/lib.rs) · [crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs)
 
 ## Performance Knobs

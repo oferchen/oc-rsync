@@ -1,5 +1,6 @@
 // crates/cli/tests/logging_flags.rs
 use assert_cmd::Command;
+use clap::ValueEnum;
 use oc_rsync_cli::cli_command;
 use tempfile::tempdir;
 use tracing::subscriber::with_default;
@@ -95,6 +96,29 @@ fn debug_flag_enables_flist() {
             Level::DEBUG
         ));
     });
+}
+
+#[test]
+fn all_debug_flags_enable_targets() {
+    for flag in logging::DebugFlag::value_variants() {
+        let matches = cli_command()
+            .try_get_matches_from([
+                "oc-rsync",
+                &format!("--debug={}", flag.as_str()),
+                "src",
+                "dst",
+            ])
+            .unwrap();
+        let debug: Vec<logging::DebugFlag> = matches
+            .get_many::<logging::DebugFlag>("debug")
+            .map(|v| v.copied().collect())
+            .unwrap_or_default();
+        let sub = logging::subscriber(logging::LogFormat::Text, 0, &[], &debug, false, None);
+        with_default(sub, || {
+            assert!(tracing::enabled!(Level::TRACE));
+            assert!(tracing::enabled!(target: flag.target(), Level::DEBUG));
+        });
+    }
 }
 
 #[test]
