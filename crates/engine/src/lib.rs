@@ -1344,7 +1344,7 @@ impl Receiver {
                     }))
                 };
 
-            let meta_opts = meta::Options {
+            let mut meta_opts = meta::Options {
                 xattrs: {
                     #[cfg(feature = "xattr")]
                     {
