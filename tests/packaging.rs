@@ -23,6 +23,13 @@ fn packaging_includes_service_unit() {
         "example config missing from package list:\n{}",
         listing
     );
+    assert!(
+        listing
+            .lines()
+            .any(|l| l.trim() == "packaging/systemd/oc-rsyncd.conf"),
+        "systemd example config missing from package list:\n{}",
+        listing
+    );
 }
 
 #[test]

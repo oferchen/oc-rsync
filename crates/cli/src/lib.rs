@@ -650,6 +650,8 @@ struct DaemonOpts {
     hosts_deny: Vec<String>,
     #[arg(long = "motd", value_name = "FILE")]
     motd: Option<PathBuf>,
+    #[arg(long = "pid-file", value_name = "FILE")]
+    pid_file: Option<PathBuf>,
     #[arg(long = "lock-file", value_name = "FILE")]
     lock_file: Option<PathBuf>,
     #[arg(long = "state-dir", value_name = "DIR")]
@@ -1907,7 +1909,8 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
     let log_format = matches.get_one::<String>("client-log-file-format").cloned();
     let mut motd = opts.motd.clone();
-    let lock_file = opts.lock_file.clone();
+    let mut pid_file = opts.pid_file.clone();
+    let mut lock_file = opts.lock_file.clone();
     let state_dir = opts.state_dir.clone();
     let mut port = matches.get_one::<u16>("port").copied().unwrap_or(873);
     let mut address = opts.address;
@@ -1930,6 +1933,12 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
         }
         if let Some(s) = cfg.secrets_file {
             secrets = Some(s);
+        }
+        if let Some(p) = cfg.pid_file {
+            pid_file = Some(p);
+        }
+        if let Some(l) = cfg.lock_file {
+            lock_file = Some(l);
         }
         if let Some(a) = cfg.address {
             address = Some(a);
@@ -1977,6 +1986,7 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
         log_file,
         log_format,
         motd,
+        pid_file,
         lock_file,
         state_dir,
         timeout,

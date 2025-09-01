@@ -947,6 +947,111 @@ fn daemon_accepts_authorized_client() {
 
 #[test]
 #[serial]
+fn daemon_accepts_listed_auth_user() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let data = dir.path().join("data");
+    fs::create_dir(&data).unwrap();
+    let secrets = dir.path().join("auth");
+    fs::write(&secrets, "alice data\n").unwrap();
+    #[cfg(unix)]
+    fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
+    let cfg = format!(
+        "port = 0\nsecrets file = {}\n[data]\n    path = {}\n    auth users = alice\n",
+        secrets.display(),
+        data.display()
+    );
+    let cfg_path = dir.path().join("rsyncd.conf");
+    fs::write(&cfg_path, cfg).unwrap();
+    let mut child = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let port = match read_port(&mut child) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
+    t.authenticate(Some("alice"), false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
+    t.send(b"data\n").unwrap();
+    t.send(b"\n").unwrap();
+    let n = t.receive(&mut buf).unwrap_or(0);
+    assert!(n == 0 || !String::from_utf8_lossy(&buf[..n]).starts_with("@ERROR"));
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_rejects_unlisted_auth_user() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let data = dir.path().join("data");
+    fs::create_dir(&data).unwrap();
+    let secrets = dir.path().join("auth");
+    fs::write(&secrets, "alice data\n").unwrap();
+    #[cfg(unix)]
+    fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
+    let cfg = format!(
+        "port = 0\nsecrets file = {}\n[data]\n    path = {}\n    auth users = alice\n",
+        secrets.display(),
+        data.display()
+    );
+    let cfg_path = dir.path().join("rsyncd.conf");
+    fs::write(&cfg_path, cfg).unwrap();
+    let mut child = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let port = match read_port(&mut child) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
+    let err = t.authenticate(Some("bob"), false).unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
 fn daemon_parses_secrets_file_with_comments() {
     if require_network().is_err() {
         eprintln!("skipping daemon test: network access required");
