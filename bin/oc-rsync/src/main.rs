@@ -1,5 +1,6 @@
 // bin/oc-rsync/src/main.rs
 use logging::{DebugFlag, InfoFlag, LogFormat};
+use std::path::PathBuf;
 
 use oc_rsync_cli::{cli_command, EngineError};
 use protocol::ExitCode;
@@ -44,7 +45,16 @@ fn main() {
             }
         })
         .unwrap_or(LogFormat::Text);
-    logging::init(log_format, verbose, &info, &debug, quiet);
+    let log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
+    let log_file_fmt = matches.get_one::<String>("client-log-file-format").cloned();
+    logging::init(
+        log_format,
+        verbose,
+        &info,
+        &debug,
+        quiet,
+        log_file.map(|p| (p, log_file_fmt)),
+    );
     if let Err(e) = oc_rsync_cli::run(&matches) {
         eprintln!("{e}");
         let code = match e {

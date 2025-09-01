@@ -1,3 +1,5 @@
+use std::fs::OpenOptions;
+use std::path::PathBuf;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{
     fmt,
@@ -102,7 +104,8 @@ pub fn subscriber(
     info: &[InfoFlag],
     debug: &[DebugFlag],
     quiet: bool,
-) -> impl tracing::Subscriber + Send + Sync {
+    log_file: Option<(PathBuf, Option<String>)>,
+) -> Box<dyn tracing::Subscriber + Send + Sync> {
     let level = if quiet {
         LevelFilter::ERROR
     } else if !debug.is_empty() || verbose > 1 {
@@ -134,12 +137,31 @@ pub fn subscriber(
         LogFormat::Json => fmt_layer.json().boxed(),
         LogFormat::Text => fmt_layer.boxed(),
     };
-
-    tracing_subscriber::registry().with(filter).with(fmt_layer)
+    let registry = tracing_subscriber::registry().with(filter).with(fmt_layer);
+    if let Some((path, _fmt)) = log_file {
+        let file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .expect("failed to open log file");
+        let file_layer = fmt::layer()
+            .with_writer(move || file.try_clone().unwrap())
+            .with_ansi(false);
+        Box::new(registry.with(file_layer))
+    } else {
+        Box::new(registry)
+    }
 }
 
-pub fn init(format: LogFormat, verbose: u8, info: &[InfoFlag], debug: &[DebugFlag], quiet: bool) {
-    subscriber(format, verbose, info, debug, quiet).init();
+pub fn init(
+    format: LogFormat,
+    verbose: u8,
+    info: &[InfoFlag],
+    debug: &[DebugFlag],
+    quiet: bool,
+    log_file: Option<(PathBuf, Option<String>)>,
+) {
+    subscriber(format, verbose, info, debug, quiet, log_file).init();
 }
 
 pub fn human_bytes(bytes: u64) -> String {
