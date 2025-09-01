@@ -30,6 +30,7 @@ SCENARIOS=(
   "append_verify --append-verify"
   "resume --partial"
   "progress --progress"
+  "resume_progress --partial --progress"
 )
 
 # Options used for all transfers. -a implies -rtgoD, we add -A and -X for ACLs
@@ -224,7 +225,7 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             if [[ "$name" == drop_connection ]]; then
               dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
               timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
-            elif [[ "$name" == resume ]]; then
+            elif [[ "$name" == resume* ]]; then
               dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
               timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
               "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
@@ -270,7 +271,7 @@ for c in "${CLIENT_VERSIONS[@]}"; do
               if [[ "$name" == drop_connection ]]; then
                 dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
                 timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
-              elif [[ "$name" == resume ]]; then
+              elif [[ "$name" == resume* ]]; then
                 dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
                 timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
                 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null
