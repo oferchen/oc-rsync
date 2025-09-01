@@ -7,12 +7,14 @@ use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::process::Command;
 
 use compress::available_codecs;
-use engine::{sync, SyncOptions};
+use engine::{sync, IdMapper, SyncOptions};
 use filetime::{set_file_atime, set_file_mtime, set_symlink_file_times, FileTime};
 use filters::Matcher;
-use meta::{parse_chmod, parse_chown};
+use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use nix::sys::stat::{makedev, mknod, Mode, SFlag};
 use nix::unistd::{chown, mkfifo, Gid, Uid};
+#[cfg(feature = "acl")]
+use posix_acl::{PosixACL, Qualifier, ACL_READ, ACL_WRITE};
 use tempfile::tempdir;
 #[cfg(feature = "xattr")]
 use xattr;
@@ -853,4 +855,96 @@ fn super_overrides_fake_super() {
     .unwrap();
     let dst_file = dst.join("file");
     assert!(xattr::get(&dst_file, "user.rsync.uid").unwrap().is_none());
+}
+
+#[cfg(all(feature = "xattr"))]
+#[test]
+fn xattrs_roundtrip() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    xattr::set(&file, "user.test", b"val").unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(),
+        &SyncOptions {
+            xattrs: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let val = xattr::get(dst.join("file"), "user.test").unwrap().unwrap();
+    assert_eq!(&val[..], b"val");
+}
+
+#[cfg(all(feature = "acl"))]
+#[test]
+fn acls_roundtrip() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    let mut acl = PosixACL::read_acl(&file).unwrap();
+    acl.set(Qualifier::User(12345), ACL_READ | ACL_WRITE);
+    acl.write_acl(&file).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(),
+        &SyncOptions {
+            acls: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let acl_src = PosixACL::read_acl(&file).unwrap();
+    let acl_dst = PosixACL::read_acl(dst.join("file")).unwrap();
+    assert_eq!(acl_src.entries(), acl_dst.entries());
+}
+
+#[test]
+fn usermap_groupmap_names() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    chown(
+        &file,
+        Some(Uid::from_raw(65534)),
+        Some(Gid::from_raw(65534)),
+    )
+    .unwrap();
+    let uid_map = parse_id_map("nobody:root", IdKind::User).unwrap();
+    let gid_map = parse_id_map("nogroup:root", IdKind::Group).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(),
+        &SyncOptions {
+            owner: true,
+            group: true,
+            perms: true,
+            uid_map: Some(IdMapper(uid_map)),
+            gid_map: Some(IdMapper(gid_map)),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let meta = fs::symlink_metadata(dst.join("file")).unwrap();
+    assert_eq!(meta.uid(), 0);
+    assert_eq!(meta.gid(), 0);
 }

@@ -2403,6 +2403,7 @@ pub fn sync(
 mod tests {
     use super::*;
     use checksums::rolling_checksum;
+    use compress::available_codecs;
     use tempfile::tempdir;
 
     #[test]
