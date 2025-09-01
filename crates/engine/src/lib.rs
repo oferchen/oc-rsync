@@ -1352,7 +1352,7 @@ impl Receiver {
 impl Receiver {
     fn copy_metadata_now(&self, src: &Path, dest: &Path) -> Result<()> {
         #[cfg(unix)]
-        if self.opts.write_devices {
+        if self.opts.write_devices && !self.opts.devices {
             if let Ok(meta) = fs::symlink_metadata(dest) {
                 let ft = meta.file_type();
                 if ft.is_char_device() || ft.is_block_device() {
@@ -2369,7 +2369,7 @@ pub fn sync(
                                 Mode::from_bits_truncate((meta.mode() & 0o777) as libc::mode_t);
                             meta::mknod(&dest_path, kind, perm, meta.rdev())
                                 .map_err(|e| io_context(&dest_path, e))?;
-                            receiver.copy_metadata(&path, &dest_path)?;
+                            receiver.copy_metadata_now(&path, &dest_path)?;
                             if created {
                                 stats.files_transferred += 1;
                                 if opts.itemize_changes && !opts.quiet {
