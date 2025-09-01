@@ -348,7 +348,14 @@ fn sync_preserves_atimes() {
 #[cfg(target_os = "linux")]
 #[test]
 fn sync_preserves_device_nodes() {
+    use nix::errno::Errno;
     use nix::sys::stat::{major, minor, Mode, SFlag};
+    use nix::unistd::Uid;
+
+    if !Uid::effective().is_root() {
+        eprintln!("skipping: test requires root to create device nodes");
+        return;
+    }
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -356,21 +363,31 @@ fn sync_preserves_device_nodes() {
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst).unwrap();
     let cdev = src.join("char");
-    mknod(
+    if let Err(err) = mknod(
         &cdev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
         makedev(1, 3),
-    )
-    .unwrap();
+    ) {
+        if err.raw_os_error() == Some(Errno::EPERM as i32) {
+            eprintln!("skipping: failed to create char device: {err}");
+            return;
+        }
+        panic!("failed to create char device: {err}");
+    }
     let bdev = src.join("block");
-    mknod(
+    if let Err(err) = mknod(
         &bdev,
         SFlag::S_IFBLK,
         Mode::from_bits_truncate(0o600),
         makedev(8, 1),
-    )
-    .unwrap();
+    ) {
+        if err.raw_os_error() == Some(Errno::EPERM as i32) {
+            eprintln!("skipping: failed to create block device: {err}");
+            return;
+        }
+        panic!("failed to create block device: {err}");
+    }
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
