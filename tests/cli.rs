@@ -1630,6 +1630,66 @@ fn include_from_file_allows_patterns() {
 }
 
 #[test]
+fn per_dir_merge_can_override_later_include() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join(".rsync-filter"), "- skip.txt\n").unwrap();
+    std::fs::write(src.join("skip.txt"), b"s").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--filter",
+            ": .rsync-filter",
+            "--include",
+            "skip.txt",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
+fn include_before_per_dir_merge_allows_file() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join(".rsync-filter"), "- skip.txt\n").unwrap();
+    std::fs::write(src.join("skip.txt"), b"s").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--include",
+            "skip.txt",
+            "--filter",
+            ": .rsync-filter",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("skip.txt").exists());
+}
+
+#[test]
 fn exclude_complex_pattern_skips_nested_files() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
@@ -1812,6 +1872,38 @@ fn include_from_zero_separated_list_with_crlf() {
         .success();
 
     assert!(dst.join("keep.txt").exists());
+    assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
+fn include_from_zero_separated_list_allows_hash() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("keep#me.txt"), b"k").unwrap();
+    std::fs::write(src.join("skip.txt"), b"s").unwrap();
+    let inc = dir.path().join("include.lst");
+    std::fs::write(&inc, b"keep#me.txt\0").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--from0",
+            "--include-from",
+            inc.to_str().unwrap(),
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep#me.txt").exists());
     assert!(!dst.join("skip.txt").exists());
 }
 
