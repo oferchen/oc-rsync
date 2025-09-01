@@ -636,6 +636,14 @@ pub fn gid_from_name(name: &str) -> Option<u32> {
     get_group_by_name(name).map(|g| g.gid())
 }
 
+pub fn uid_from_name_or_id(spec: &str) -> Option<u32> {
+    spec.parse().ok().or_else(|| uid_from_name(spec))
+}
+
+pub fn gid_from_name_or_id(spec: &str) -> Option<u32> {
+    spec.parse().ok().or_else(|| gid_from_name(spec))
+}
+
 pub fn uid_to_name(uid: u32) -> Option<String> {
     get_user_by_uid(uid).map(|u| u.name().to_string_lossy().into_owned())
 }

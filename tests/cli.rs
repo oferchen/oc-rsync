@@ -708,6 +708,60 @@ fn user_and_group_ids_are_mapped() {
     assert_eq!(meta.gid(), mapped_gid);
 }
 
+#[cfg(unix)]
+#[test]
+fn user_and_group_names_are_mapped() {
+    use users::{get_current_gid, get_current_uid, get_group_by_gid, get_user_by_uid};
+
+    let uid = get_current_uid();
+    let _gid = get_current_gid();
+    if uid != 0 {
+        eprintln!("skipping user_and_group_names_are_mapped: requires root or CAP_CHOWN");
+        return;
+    }
+
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("id.txt");
+    std::fs::write(&file, b"ids").unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    let uid = get_current_uid();
+    let gid = get_current_gid();
+    let uname = get_user_by_uid(uid)
+        .unwrap()
+        .name()
+        .to_string_lossy()
+        .into_owned();
+    let gname = get_group_by_gid(gid)
+        .unwrap()
+        .name()
+        .to_string_lossy()
+        .into_owned();
+    let mapped_uid = uid + 1;
+    let mapped_gid = gid + 1;
+    let usermap = format!("--usermap={uname}:{mapped_uid}");
+    let groupmap = format!("--groupmap={gname}:{mapped_gid}");
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            usermap.as_str(),
+            groupmap.as_str(),
+            src_arg.as_str(),
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let meta = std::fs::metadata(dst_dir.join("id.txt")).unwrap();
+    assert_eq!(meta.uid(), mapped_uid);
+    assert_eq!(meta.gid(), mapped_gid);
+}
+
 #[test]
 fn verbose_flag_increases_logging() {
     let dir = tempdir().unwrap();
