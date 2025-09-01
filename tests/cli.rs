@@ -1167,6 +1167,38 @@ fn exclude_from_file_skips_patterns() {
 }
 
 #[test]
+fn files_from_list_transfers_only_listed_files() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("keep.txt"), b"k").unwrap();
+    fs::write(src.join("other file.txt"), b"o").unwrap();
+    fs::write(src.join("skip.txt"), b"s").unwrap();
+    let list = dir.path().join("files.txt");
+    fs::write(&list, "keep.txt\nother\\ file.txt\n#comment\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep.txt").exists());
+    assert!(dst.join("other file.txt").exists());
+    assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
 fn include_pattern_allows_file() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
