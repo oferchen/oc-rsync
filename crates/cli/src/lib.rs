@@ -1223,6 +1223,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 },
                 RemoteSpec::Local(dst),
             ) => {
+                let connect_timeout = opts.contimeout;
                 let (session, codecs, _caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &src.path,
@@ -1235,7 +1236,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                     opts.port,
-                    opts.contimeout,
+                    connect_timeout,
                     addr_family,
                     opts.protocol.unwrap_or(31),
                 )
@@ -1284,6 +1285,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     module: None,
                 },
             ) => {
+                let connect_timeout = opts.contimeout;
                 let (session, codecs, _caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &dst.path,
@@ -1296,7 +1298,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     known_hosts.as_deref(),
                     strict_host_key_checking,
                     opts.port,
-                    opts.contimeout,
+                    connect_timeout,
                     addr_family,
                     opts.protocol.unwrap_or(31),
                 )

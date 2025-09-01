@@ -99,6 +99,37 @@ fn ssh_read_timeout() {
 }
 
 #[test]
+fn tcp_handshake_timeout() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    thread::spawn(move || {
+        let (_sock, _) = listener.accept().unwrap();
+        thread::sleep(Duration::from_secs(5));
+    });
+    let mut t = TcpTransport::connect(
+        &addr.ip().to_string(),
+        addr.port(),
+        Some(Duration::from_millis(100)),
+        None,
+    )
+    .unwrap();
+    let mut buf = [0u8; 1];
+    let err = t.receive(&mut buf).err().expect("error");
+    assert!(err.kind() == io::ErrorKind::WouldBlock || err.kind() == io::ErrorKind::TimedOut);
+}
+
+#[test]
+fn ssh_handshake_timeout() {
+    let mut t = SshStdioTransport::spawn("sh", ["-c", "sleep 5"]).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(100)))
+        .unwrap();
+    t.set_write_timeout(Some(Duration::from_millis(100)))
+        .unwrap();
+    let err = SshStdioTransport::handshake(&mut t, &[], &[], 31).unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::TimedOut);
+}
+
+#[test]
 fn demux_channel_timeout() {
     let mut demux = Demux::new(Duration::from_millis(100));
     demux.register_channel(0);

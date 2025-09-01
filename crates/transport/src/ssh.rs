@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use compress::{available_codecs, Codec};
 use protocol::{negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS};
@@ -377,6 +377,7 @@ impl SshStdioTransport {
         family: Option<AddressFamily>,
         version: u32,
     ) -> io::Result<(Self, Vec<Codec>, u32)> {
+        let start = Instant::now();
         let mut t = Self::spawn_with_rsh(
             host,
             path,
@@ -391,7 +392,19 @@ impl SshStdioTransport {
             connect_timeout,
             family,
         )?;
+        if let Some(dur) = connect_timeout {
+            let elapsed = start.elapsed();
+            let remaining = dur
+                .checked_sub(elapsed)
+                .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "connection timed out"))?;
+            t.set_read_timeout(Some(remaining))?;
+            t.set_write_timeout(Some(remaining))?;
+        }
         let (codecs, caps) = Self::handshake(&mut t, rsync_env, remote_opts, version)?;
+        if connect_timeout.is_some() {
+            t.set_read_timeout(None)?;
+            t.set_write_timeout(None)?;
+        }
         Ok((t, codecs, caps))
     }
 
