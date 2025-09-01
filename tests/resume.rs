@@ -100,7 +100,7 @@ fn partial_dir_transfer_resumes_after_interrupt() {
 
 #[cfg(unix)]
 #[test]
-fn remote_nested_partial_dir_transfer_resumes_after_interrupt() {
+fn remote_nested_partial_dir_transfer_resumes_after_interrupt_daemon() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
