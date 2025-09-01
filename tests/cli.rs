@@ -795,6 +795,8 @@ fn perms_flag_preserves_permissions() {
     let dst_file = dst_dir.join("a.txt");
     fs::copy(&file, &dst_file).unwrap();
     fs::set_permissions(&dst_file, fs::Permissions::from_mode(0o600)).unwrap();
+    let mtime = FileTime::from_last_modification_time(&fs::metadata(&file).unwrap());
+    set_file_mtime(&dst_file, mtime).unwrap();
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
