@@ -1,3 +1,4 @@
+// crates/logging/src/lib.rs
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use tracing::level_filters::LevelFilter;

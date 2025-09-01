@@ -1,5 +1,4 @@
-// On Unix platforms other than Linux and macOS we reuse the full-featured
-
+// crates/meta/src/stub.rs
 #[cfg(unix)]
 include!("unix.rs");
 
