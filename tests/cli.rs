@@ -612,13 +612,11 @@ fn numeric_ids_are_preserved() {
     #[cfg(unix)]
     let (uid, gid) = {
         let desired = (Uid::from_raw(12345), Gid::from_raw(12345));
-        match chown(&file, Some(desired.0), Some(desired.1)) {
-            Ok(_) => desired,
-            Err(_) => {
-                let meta = std::fs::metadata(&file).unwrap();
-                (Uid::from_raw(meta.uid()), Gid::from_raw(meta.gid()))
-            }
+        if let Err(err) = chown(&file, Some(desired.0), Some(desired.1)) {
+            eprintln!("skipping numeric_ids_are_preserved: {err}");
+            return;
         }
+        desired
     };
 
     let dst_file = dst_dir.join("id.txt");
@@ -652,6 +650,42 @@ fn numeric_ids_are_preserved() {
         assert_eq!(meta.uid(), uid.as_raw());
         assert_eq!(meta.gid(), gid.as_raw());
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn numeric_ids_require_privileges() {
+    let dir = tempdir().unwrap();
+    let probe = dir.path().join("probe");
+    std::fs::write(&probe, b"probe").unwrap();
+    let current_uid = get_current_uid();
+    let target_uid = if current_uid == 0 { 1 } else { current_uid + 1 };
+    if chown(&probe, Some(Uid::from_raw(target_uid)), None).is_ok() {
+        eprintln!("skipping numeric_ids_require_privileges: has CAP_CHOWN");
+        return;
+    }
+
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("id.txt");
+    std::fs::write(&file, b"ids").unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    let usermap = format!("--usermap={current_uid}:{target_uid}");
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--numeric-ids",
+            "--owner",
+            &usermap,
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .failure();
 }
 
 #[cfg(unix)]

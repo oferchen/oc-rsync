@@ -63,6 +63,7 @@ pub struct Options {
     pub acl: bool,
     pub fake_super: bool,
     pub super_user: bool,
+    pub numeric_ids: bool,
     pub chmod: Option<Vec<Chmod>>,
     pub owner: bool,
     pub group: bool,
@@ -84,6 +85,7 @@ impl std::fmt::Debug for Options {
             .field("acl", &self.acl)
             .field("fake_super", &self.fake_super)
             .field("super_user", &self.super_user)
+            .field("numeric_ids", &self.numeric_ids)
             .field("chmod", &self.chmod)
             .field("owner", &self.owner)
             .field("group", &self.group)
@@ -319,7 +321,7 @@ impl Metadata {
                     | Errno::ENOSYS
                     | Errno::EINVAL
                     | Errno::EOPNOTSUPP
-                        if !opts.super_user => {}
+                        if !opts.super_user && !opts.numeric_ids => {}
                     _ => return Err(nix_to_io(err)),
                 }
             }
