@@ -332,7 +332,7 @@ fn resumes_from_partial_dir() {
     std::fs::create_dir_all(&src_dir).unwrap();
     std::fs::write(src_dir.join("a.txt"), b"hello").unwrap();
     std::fs::create_dir_all(&partial_dir).unwrap();
-    std::fs::write(partial_dir.join("a.partial"), b"he").unwrap();
+    std::fs::write(partial_dir.join("a.txt"), b"he").unwrap();
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
@@ -348,7 +348,7 @@ fn resumes_from_partial_dir() {
 
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, b"hello");
-    assert!(!partial_dir.join("a.partial").exists());
+    assert!(!partial_dir.join("a.txt").exists());
 }
 
 #[test]
@@ -360,7 +360,7 @@ fn resumes_from_partial_dir_with_subdirs() {
     std::fs::create_dir_all(src_dir.join("sub")).unwrap();
     std::fs::write(src_dir.join("sub/a.txt"), b"hello").unwrap();
     std::fs::create_dir_all(partial_dir.join("sub")).unwrap();
-    std::fs::write(partial_dir.join("sub/a.partial"), b"he").unwrap();
+    std::fs::write(partial_dir.join("sub/a.txt"), b"he").unwrap();
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
@@ -376,7 +376,7 @@ fn resumes_from_partial_dir_with_subdirs() {
 
     let out = std::fs::read(dst_dir.join("sub/a.txt")).unwrap();
     assert_eq!(out, b"hello");
-    assert!(!partial_dir.join("sub/a.partial").exists());
+    assert!(!partial_dir.join("sub/a.txt").exists());
     assert!(!partial_dir.join("sub").exists());
 }
 

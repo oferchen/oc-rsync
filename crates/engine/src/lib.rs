@@ -740,7 +740,12 @@ impl Sender {
             None
         };
         let partial_path = if let Some(dir) = &self.opts.partial_dir {
-            dir.join(rel).with_extension("partial")
+            let file = dest.file_name().unwrap_or_default();
+            if let Some(parent) = dest.parent() {
+                parent.join(dir).join(file)
+            } else {
+                dir.join(file)
+            }
         } else {
             dest.with_extension("partial")
         };
@@ -938,7 +943,12 @@ impl Receiver {
     {
         self.state = ReceiverState::Applying;
         let partial = if let Some(dir) = &self.opts.partial_dir {
-            dir.join(rel).with_extension("partial")
+            let file = dest.file_name().unwrap_or_default();
+            if let Some(parent) = dest.parent() {
+                parent.join(dir).join(file)
+            } else {
+                dir.join(file)
+            }
         } else {
             dest.with_extension("partial")
         };
@@ -1843,7 +1853,12 @@ pub fn sync(
                     }
                     let partial_exists = if opts.partial {
                         let partial_path = if let Some(ref dir) = opts.partial_dir {
-                            dir.join(rel).with_extension("partial")
+                            let file = dest_path.file_name().unwrap_or_default();
+                            if let Some(parent) = dest_path.parent() {
+                                parent.join(dir).join(file)
+                            } else {
+                                dir.join(file)
+                            }
                         } else {
                             dest_path.with_extension("partial")
                         };

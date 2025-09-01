@@ -36,6 +36,8 @@ test-golden:
 	done; \
 	echo "Running tests/filter_rule_precedence.sh"; \
 	bash tests/filter_rule_precedence.sh; \
-	echo "Running tests/partial_transfer_resume.sh"; \
-	bash tests/partial_transfer_resume.sh
+        echo "Running tests/partial_transfer_resume.sh"; \
+        bash tests/partial_transfer_resume.sh; \
+        echo "Running tests/partial_dir_transfer_resume.sh"; \
+        bash tests/partial_dir_transfer_resume.sh
 
