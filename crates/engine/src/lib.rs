@@ -1097,6 +1097,9 @@ impl Receiver {
                 self.pending_links
                     .push((existing.clone(), dest.to_path_buf()));
             } else {
+                if dest.exists() {
+                    fs::remove_file(dest).map_err(|e| io_context(dest, e))?;
+                }
                 fs::hard_link(existing, dest).map_err(|e| io_context(dest, e))?;
             }
             Ok(false)
