@@ -169,11 +169,15 @@ impl Metadata {
         let xattrs = if opts.xattrs || opts.fake_super {
             let mut attrs = Vec::new();
             for attr in xattr::list(path)? {
-                if !opts.fake_super {
-                    if let Some(name) = attr.to_str() {
-                        if name.starts_with("user.rsync.") {
-                            continue;
-                        }
+                if let Some(name) = attr.to_str() {
+                    if !opts.fake_super && name.starts_with("user.rsync.") {
+                        continue;
+                    }
+                    if name.starts_with("security.")
+                        || name == "system.posix_acl_access"
+                        || name == "system.posix_acl_default"
+                    {
+                        continue;
                     }
                 }
                 if let Some(value) = xattr::get(path, &attr)? {

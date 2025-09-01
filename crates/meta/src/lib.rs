@@ -143,7 +143,10 @@ pub fn apply_xattrs(path: &Path, xattrs: &[(OsString, Vec<u8>)]) -> io::Result<(
     }
     for name in existing {
         if let Some(s) = name.to_str() {
-            if s == "system.posix_acl_access" || s == "system.posix_acl_default" {
+            if s == "system.posix_acl_access"
+                || s == "system.posix_acl_default"
+                || s.starts_with("security.")
+            {
                 continue;
             }
         }
