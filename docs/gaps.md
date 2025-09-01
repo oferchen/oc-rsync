@@ -31,7 +31,8 @@ coverage so progress can be tracked as features land.
 
 ## Transfer Mechanics
 - `--force` — forced deletion of non-empty dirs unsupported. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*
-- `--iconv` — filename charset conversion unsupported. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*
+
+Filename charset conversion via `--iconv` is supported and exercised by [tests/cli.rs](../tests/cli.rs).
 
 ## Resume/Partials
 
