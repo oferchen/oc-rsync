@@ -40,9 +40,19 @@ coverage so progress can be tracked as features land.
 - `--secrets-file` — module authentication incomplete. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
 - `--timeout` — connection timeout semantics differ. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
 
+## Transfer Mechanics
+- `--force` — forced deletion of non-empty dirs unsupported. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*
+- `--fuzzy` — basis file search via fuzzy matching unimplemented. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*
+- `--iconv` — filename charset conversion unsupported. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*
+
 ## Resume/Partials
 - `--append` / `--append-verify` — remote resume semantics untested. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/resume.rs](../tests/resume.rs)
 - `--partial-dir` — remote partial directory handling lacks parity. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*
+
+## Logging
+- `--debug` — debug flag handling incomplete. [logging/src/lib.rs](../crates/logging/src/lib.rs) · [crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs)
+- `--info` — info flag handling incomplete. [logging/src/lib.rs](../crates/logging/src/lib.rs) · [crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs)
+- `--log-file` / `--log-file-format` — log file support incomplete. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
 
 ## Progress & Exit Codes
 - `--progress` — progress output differs from upstream and current progress tests fail to compile. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs#L332](../tests/cli.rs#L332)
