@@ -41,6 +41,7 @@ mod non_unix {
         pub xattrs: bool,
         pub acl: bool,
         pub fake_super: bool,
+        pub super_user: bool,
         pub chmod: Option<Vec<Chmod>>,
         pub owner: bool,
         pub group: bool,
@@ -61,6 +62,7 @@ mod non_unix {
                 .field("xattrs", &self.xattrs)
                 .field("acl", &self.acl)
                 .field("fake_super", &self.fake_super)
+                .field("super_user", &self.super_user)
                 .field("chmod", &self.chmod)
                 .field("owner", &self.owner)
                 .field("group", &self.group)

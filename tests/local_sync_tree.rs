@@ -631,6 +631,48 @@ fn sync_preserves_multiple_hard_links() {
 
 #[cfg(unix)]
 #[test]
+fn sync_preserves_hard_links_with_link_dest() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let link = tmp.path().join("link");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&link).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let f1 = src.join("f1");
+    fs::write(&f1, b"hi").unwrap();
+    let f2 = src.join("f2");
+    fs::hard_link(&f1, &f2).unwrap();
+    fs::write(link.join("f1"), b"hi").unwrap();
+    fs::write(link.join("f2"), b"hi").unwrap();
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--hard-links",
+            "--link-dest",
+            link.to_str().unwrap(),
+            &format!("{}/", src.display()),
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    use std::os::unix::fs::MetadataExt;
+    let link1 = fs::metadata(link.join("f1")).unwrap().ino();
+    let link2 = fs::metadata(link.join("f2")).unwrap().ino();
+    assert_ne!(link1, link2);
+    let m1 = fs::metadata(dst.join("f1")).unwrap().ino();
+    let m2 = fs::metadata(dst.join("f2")).unwrap().ino();
+    assert_eq!(m1, link1);
+    assert_eq!(m1, m2);
+}
+
+#[cfg(unix)]
+#[test]
 fn sync_preserves_symlinks() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");

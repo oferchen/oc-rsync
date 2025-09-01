@@ -18,6 +18,8 @@ use std::time::Duration;
 use tempfile::{tempdir, tempdir_in};
 #[cfg(unix)]
 use users::{get_current_gid, get_current_uid};
+#[cfg(all(unix, feature = "xattr"))]
+use xattr;
 
 #[test]
 fn prints_version() {
@@ -1560,6 +1562,68 @@ fn links_preserve_symlinks() {
 
 #[cfg(unix)]
 #[test]
+fn links_copy_dangling_symlink() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    symlink("missing", src.join("dangling")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let meta = std::fs::symlink_metadata(dst.join("dangling")).unwrap();
+    assert!(meta.file_type().is_symlink());
+    let target = std::fs::read_link(dst.join("dangling")).unwrap();
+    assert_eq!(target, std::path::PathBuf::from("missing"));
+}
+
+#[cfg(unix)]
+#[test]
+fn links_replace_and_skip_existing() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(&dst).unwrap();
+    std::fs::write(src.join("file"), b"data").unwrap();
+    symlink("file", src.join("link")).unwrap();
+    std::fs::write(dst.join("link"), b"old").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+    let meta = std::fs::symlink_metadata(dst.join("link")).unwrap();
+    assert!(meta.file_type().is_symlink());
+    std::fs::remove_file(dst.join("link")).unwrap();
+    std::fs::write(dst.join("link"), b"old").unwrap();
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--links",
+            "--ignore-existing",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let meta = std::fs::symlink_metadata(dst.join("link")).unwrap();
+    assert!(!meta.file_type().is_symlink());
+    let content = std::fs::read(dst.join("link")).unwrap();
+    assert_eq!(content, b"old");
+}
+
+#[cfg(unix)]
+#[test]
 fn links_preserve_directory_symlinks() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
@@ -1848,4 +1912,29 @@ fn cvs_exclude_skips_ignored_files() {
     assert!(!dst.join("home_ignored").exists());
     assert!(!dst.join("local_ignored").exists());
     assert!(dst.join(".cvsignore").exists());
+}
+
+#[cfg(all(unix, feature = "xattr"))]
+#[test]
+fn super_overrides_fake_super() {
+    let tmp = tempdir().unwrap();
+    let src_dir = tmp.path().join("src");
+    let dst_dir = tmp.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    fs::write(src_dir.join("file"), b"hi").unwrap();
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "-a",
+            "--fake-super",
+            "--super",
+            src_dir.to_str().unwrap(),
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let dst_file = dst_dir.join("file");
+    assert!(xattr::get(&dst_file, "user.rsync.uid").unwrap().is_none());
 }

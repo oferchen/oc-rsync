@@ -47,7 +47,7 @@
 | --exclude-from | Supported |  |
 | --executability | Supported |  |
 | --existing | Supported |  |
-| --fake-super | Ignored |  |
+| --fake-super | Supported |  |
 | --files-from | Supported |  |
 | --filter | Supported |  |
 | --force | Ignored |  |
@@ -127,7 +127,7 @@
 | --stop-after | Ignored |  |
 | --stop-at | Ignored |  |
 | --suffix | Ignored |  |
-| --super | Ignored |  |
+| --super | Supported |  |
 | --temp-dir | Supported |  |
 | --timeout | Supported |  |
 | --times | Supported |  |
