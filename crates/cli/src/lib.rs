@@ -15,11 +15,10 @@ use std::time::Duration;
 use clap::parser::ValueSource;
 use clap::{ArgAction, ArgMatches, Args, CommandFactory, FromArgMatches, Parser};
 use compress::{available_codecs, Codec, ModernCompress};
+pub use engine::EngineError;
 #[cfg(feature = "blake3")]
 use engine::ModernHash;
-use engine::{
-    sync, DeleteMode, EngineError, IdMapper, ModernCdc, Result, Stats, StrongHash, SyncOptions,
-};
+use engine::{sync, DeleteMode, IdMapper, ModernCdc, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag};
 use meta::{parse_chmod, parse_chown, parse_id_map};
@@ -618,7 +617,7 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     let probe_opts =
         ProbeOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
     if probe_opts.probe {
-        return run_probe(probe_opts);
+        return run_probe(probe_opts, matches.get_flag("quiet"));
     }
     let mut opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
@@ -844,6 +843,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         .dst
         .take()
         .ok_or_else(|| EngineError::Other("missing DST".into()))?;
+    if opts.archive {
+        opts.recursive = true;
+    }
     let matcher = build_matcher(&opts, matches)?;
     let addr_family = if opts.ipv4 {
         Some(AddressFamily::V4)
@@ -1256,6 +1258,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         copy_devices: opts.copy_devices,
         write_devices: opts.write_devices,
         fake_super: opts.fake_super,
+        quiet: opts.quiet,
     };
     sync_opts.prepare_remote();
     let stats = if opts.local {
@@ -1898,6 +1901,7 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     };
 
     let handler: Arc<daemon::Handler> = Arc::new(|_| Ok(()));
+    let quiet = matches.get_flag("quiet");
 
     daemon::run_daemon(
         modules,
@@ -1917,12 +1921,13 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
         65534,
         65534,
         handler,
+        quiet,
     )
     .map_err(|e| EngineError::Other(format!("daemon failed to bind to port {port}: {e}")))
 }
 
 #[allow(dead_code)]
-fn run_probe(opts: ProbeOpts) -> Result<()> {
+fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
     if let Some(addr) = opts.addr {
         let mut stream = TcpStream::connect(&addr)?;
         stream.write_all(&LATEST_VERSION.to_be_bytes())?;
@@ -1931,12 +1936,16 @@ fn run_probe(opts: ProbeOpts) -> Result<()> {
         let peer = u32::from_be_bytes(buf);
         let ver = negotiate_version(LATEST_VERSION, peer)
             .map_err(|e| EngineError::Other(e.to_string()))?;
-        println!("negotiated version {}", ver);
+        if !quiet {
+            println!("negotiated version {}", ver);
+        }
         Ok(())
     } else {
         let ver = negotiate_version(LATEST_VERSION, opts.peer_version)
             .map_err(|e| EngineError::Other(e.to_string()))?;
-        println!("negotiated version {}", ver);
+        if !quiet {
+            println!("negotiated version {}", ver);
+        }
         Ok(())
     }
 }

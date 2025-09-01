@@ -37,7 +37,7 @@ impl Default for SyncConfig {
 }
 
 pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Result<()> {
-    let sub = subscriber(cfg.log_format, cfg.verbose, &cfg.info, &cfg.debug);
+    let sub = subscriber(cfg.log_format, cfg.verbose, &cfg.info, &cfg.debug, false);
     with_default(sub, || -> Result<()> {
         if !dst.exists() {
             fs::create_dir_all(dst)?;

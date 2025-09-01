@@ -493,35 +493,47 @@ struct Progress<'a> {
     human_readable: bool,
     #[allow(dead_code)]
     dest: &'a Path,
+    quiet: bool,
 }
 
 const PROGRESS_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 impl<'a> Progress<'a> {
-    fn new(dest: &'a Path, total: u64, human_readable: bool, initial: u64) -> Self {
-        eprintln!("{}", dest.display());
+    fn new(dest: &'a Path, total: u64, human_readable: bool, initial: u64, quiet: bool) -> Self {
+        if !quiet {
+            eprintln!("{}", dest.display());
+        }
         Self {
             total,
             written: initial,
             last_print: std::time::Instant::now() - PROGRESS_UPDATE_INTERVAL,
             human_readable,
             dest,
+            quiet,
         }
     }
 
     fn add(&mut self, bytes: u64) {
         self.written += bytes;
-        if self.last_print.elapsed() >= PROGRESS_UPDATE_INTERVAL && self.written < self.total {
+        if !self.quiet
+            && self.last_print.elapsed() >= PROGRESS_UPDATE_INTERVAL
+            && self.written < self.total
+        {
             self.print(false);
             self.last_print = std::time::Instant::now();
         }
     }
 
     fn finish(&mut self) {
-        self.print(true);
+        if !self.quiet {
+            self.print(true);
+        }
     }
 
     fn print(&self, done: bool) {
+        if self.quiet {
+            return;
+        }
         use std::io::Write as _;
         let bytes = if self.human_readable {
             human_bytes(self.written)
@@ -1191,6 +1203,7 @@ impl Receiver {
                 src_len,
                 self.opts.human_readable,
                 resume,
+                self.opts.quiet,
             ))
         } else {
             None
@@ -1368,6 +1381,22 @@ impl Receiver {
             };
 
             if meta_opts.needs_metadata() {
+                if let Ok(src_meta) = fs::symlink_metadata(src) {
+                    if src_meta.file_type().is_dir() {
+                        if let Some(ref rules) = meta_opts.chmod {
+                            if rules
+                                .iter()
+                                .all(|r| matches!(r.target, meta::ChmodTarget::File))
+                            {
+                                meta_opts.chmod = None;
+                                if !meta_opts.needs_metadata() {
+                                    return Ok(());
+                                }
+                            }
+                        }
+                    }
+                }
+
                 let meta =
                     meta::Metadata::from_path(src, meta_opts.clone()).map_err(EngineError::from)?;
                 meta.apply(dest, meta_opts.clone())
@@ -1525,6 +1554,7 @@ pub struct SyncOptions {
     pub write_batch: Option<PathBuf>,
     pub copy_devices: bool,
     pub write_devices: bool,
+    pub quiet: bool,
     pub uid_map: Option<IdMapper>,
     pub gid_map: Option<IdMapper>,
 }
@@ -1618,6 +1648,7 @@ impl Default for SyncOptions {
             write_batch: None,
             copy_devices: false,
             write_devices: false,
+            quiet: false,
             uid_map: None,
             gid_map: None,
         }
@@ -1869,12 +1900,14 @@ pub fn sync(
                             continue;
                         }
                     }
-                    if rel.as_os_str().is_empty() {
-                        println!(".");
-                    } else if entry.file_type.is_dir() {
-                        println!("{}/", rel.display());
-                    } else {
-                        println!("{}", rel.display());
+                    if !opts.quiet {
+                        if rel.as_os_str().is_empty() {
+                            println!(".");
+                        } else if entry.file_type.is_dir() {
+                            println!("{}/", rel.display());
+                        } else {
+                            println!("{}", rel.display());
+                        }
                     }
                 }
             }
@@ -2017,7 +2050,7 @@ pub fn sync(
                                             if let Some(f) = batch_file.as_mut() {
                                                 let _ = writeln!(f, "{}", rel.display());
                                             }
-                                            if opts.itemize_changes {
+                                            if opts.itemize_changes && !opts.quiet {
                                                 println!(">f+++++++++ {}", rel.display());
                                             }
                                             for c in &chunks {
@@ -2081,7 +2114,7 @@ pub fn sync(
                         if let Some(f) = batch_file.as_mut() {
                             let _ = writeln!(f, "{}", rel.display());
                         }
-                        if opts.itemize_changes {
+                        if opts.itemize_changes && !opts.quiet {
                             println!(">f+++++++++ {}", rel.display());
                         }
                         if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
@@ -2129,7 +2162,7 @@ pub fn sync(
                             chown(&dest_path, Some(Uid::from_raw(uid)), gid)
                                 .map_err(|e| io_context(&dest_path, std::io::Error::from(e)))?;
                         }
-                        if opts.itemize_changes {
+                        if opts.itemize_changes && !opts.quiet {
                             println!("cd+++++++++ {}/", rel.display());
                         }
                     }
@@ -2212,7 +2245,7 @@ pub fn sync(
                         receiver.copy_metadata(&path, &dest_path)?;
                         if created {
                             stats.files_transferred += 1;
-                            if opts.itemize_changes {
+                            if opts.itemize_changes && !opts.quiet {
                                 println!("cL+++++++++ {} -> {}", rel.display(), target.display());
                             }
                         }
@@ -2249,7 +2282,7 @@ pub fn sync(
                             receiver.copy_metadata(&path, &dest_path)?;
                             if created {
                                 stats.files_transferred += 1;
-                                if opts.itemize_changes {
+                                if opts.itemize_changes && !opts.quiet {
                                     println!("cD+++++++++ {}", rel.display());
                                 }
                             }
