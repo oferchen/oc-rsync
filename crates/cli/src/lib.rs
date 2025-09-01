@@ -1179,16 +1179,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         ignore_existing: opts.ignore_existing,
         size_only: opts.size_only,
         ignore_times: opts.ignore_times,
-        perms: opts.perms || opts.archive || {
-            #[cfg(feature = "acl")]
-            {
-                opts.acls
-            }
-            #[cfg(not(feature = "acl"))]
-            {
-                false
-            }
-        },
+        perms: opts.perms || opts.archive,
         executability: opts.executability,
         times: opts.times || opts.archive,
         atimes: opts.atimes,

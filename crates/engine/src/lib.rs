@@ -1277,6 +1277,17 @@ impl Receiver {
                 }
             }
         }
+
+        #[cfg(unix)]
+        if self.opts.perms {
+            let src_meta = fs::symlink_metadata(src).map_err(|e| io_context(src, e))?;
+            if !src_meta.file_type().is_symlink() {
+                let mode = meta::mode_from_metadata(&src_meta);
+                fs::set_permissions(dest, fs::Permissions::from_mode(mode))
+                    .map_err(|e| io_context(dest, e))?;
+            }
+        }
+
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         {
             let chown_uid = self.opts.chown.and_then(|(u, _)| u);
@@ -1319,15 +1330,6 @@ impl Receiver {
                         gid
                     }))
                 };
-
-            if self.opts.perms {
-                let src_meta = fs::symlink_metadata(src).map_err(|e| io_context(src, e))?;
-                if !src_meta.file_type().is_symlink() {
-                    let mode = meta::mode_from_metadata(&src_meta);
-                    fs::set_permissions(dest, fs::Permissions::from_mode(mode))
-                        .map_err(|e| io_context(dest, e))?;
-                }
-            }
 
             let meta_opts = meta::Options {
                 xattrs: {
