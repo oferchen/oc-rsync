@@ -2448,6 +2448,42 @@ fn copy_dirlinks_transforms_directory_symlinks() {
 
 #[cfg(unix)]
 #[test]
+fn keep_dirlinks_handles_nested_symlinks() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    let target = dir.path().join("target");
+    let nested = dir.path().join("nested");
+
+    std::fs::create_dir_all(src.join("a/b")).unwrap();
+    std::fs::write(src.join("a/b/file"), b"hi").unwrap();
+
+    std::fs::create_dir_all(&dst).unwrap();
+    std::fs::create_dir_all(&target).unwrap();
+    symlink(&target, dst.join("a")).unwrap();
+    symlink(&nested, target.join("b")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--keep-dirlinks",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let meta = std::fs::symlink_metadata(dst.join("a")).unwrap();
+    assert!(meta.file_type().is_symlink());
+    let nested_meta = std::fs::symlink_metadata(target.join("b")).unwrap();
+    assert!(nested_meta.file_type().is_symlink());
+    assert!(nested.join("file").exists());
+}
+
+#[cfg(unix)]
+#[test]
 fn copy_links_resolves_relative_and_absolute_targets() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");

@@ -2220,7 +2220,20 @@ pub fn sync(
                     let mut created = dest_meta.is_none();
                     if dest_is_symlink {
                         if opts.keep_dirlinks {
-                            created = false;
+                            let link_target =
+                                fs::read_link(&dest_path).map_err(|e| io_context(&dest_path, e))?;
+                            let target_path = if link_target.is_absolute() {
+                                normalize_path(&link_target)
+                            } else if let Some(parent) = dest_path.parent() {
+                                normalize_path(parent.join(&link_target))
+                            } else {
+                                normalize_path(&link_target)
+                            };
+                            if !target_path.exists() {
+                                created = true;
+                            }
+                            fs::create_dir_all(&target_path)
+                                .map_err(|e| io_context(&target_path, e))?;
                         } else {
                             remove_file_opts(&dest_path, opts)?;
                             fs::create_dir_all(&dest_path)
@@ -2228,6 +2241,9 @@ pub fn sync(
                             created = true;
                         }
                     } else {
+                        if !dest_path.exists() {
+                            created = true;
+                        }
                         fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
                     }
                     if created {
@@ -2241,9 +2257,7 @@ pub fn sync(
                             println!("cd+++++++++ {}/", rel.display());
                         }
                     }
-                    if !(dest_is_symlink && opts.keep_dirlinks) {
-                        dir_meta.push((path.clone(), dest_path.clone()));
-                    }
+                    dir_meta.push((path.clone(), dest_path.clone()));
                 } else if file_type.is_symlink() {
                     let target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
                     let target_path = if target.is_absolute() {
