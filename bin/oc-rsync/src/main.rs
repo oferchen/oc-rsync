@@ -1,8 +1,7 @@
 // bin/oc-rsync/src/main.rs
-use engine::EngineError;
 use logging::{DebugFlag, InfoFlag, LogFormat};
 
-use oc_rsync_cli::cli_command;
+use oc_rsync_cli::{cli_command, EngineError};
 use protocol::ExitCode;
 
 fn main() {
@@ -47,6 +46,7 @@ fn main() {
         .unwrap_or(LogFormat::Text);
     logging::init(log_format, verbose, &info, &debug, quiet);
     if let Err(e) = oc_rsync_cli::run(&matches) {
+        eprintln!("{e}");
         let code = match e {
             EngineError::MaxAlloc => ExitCode::Malloc,
             _ => ExitCode::Protocol,
