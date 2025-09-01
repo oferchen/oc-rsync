@@ -936,14 +936,16 @@ fn daemon_respects_module_host_lists() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
-    stream
-        .set_read_timeout(Some(Duration::from_millis(200)))
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200)))
         .unwrap();
-    stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
-    stream.read_exact(&mut buf).unwrap();
-    stream.write_all(b"data\n").unwrap();
-    let res = stream.read(&mut buf);
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    t.receive(&mut buf).unwrap();
+    t.authenticate(None, false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
+    t.send(b"data\n").unwrap();
+    let res = t.receive(&mut buf);
     assert!(res.is_err() || res.unwrap() == 0);
     let _ = child.kill();
     let _ = child.wait();
