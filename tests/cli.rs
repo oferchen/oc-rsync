@@ -827,7 +827,6 @@ fn chmod_masks_file_type_bits() {
         dst_dir.to_str().unwrap(),
     ]);
     cmd.assert().success();
-    fs::set_permissions(&dst_dir, fs::Permissions::from_mode(0o755)).unwrap();
 
     let mode = fs::metadata(dst_dir.join("a.txt"))
         .unwrap()
