@@ -48,7 +48,7 @@ fn verbose_and_log_format_json_parity() {
     } else {
         logging::LogFormat::Text
     };
-    logging::init(log_format, verbose, &info, &debug);
+    logging::init(log_format, verbose, &info, &debug, false);
     oc_rsync_cli::run(&matches).unwrap();
 }
 
@@ -61,7 +61,7 @@ fn info_flag_enables_progress() {
         .get_many::<logging::InfoFlag>("info")
         .map(|v| v.copied().collect())
         .unwrap_or_default();
-    let sub = logging::subscriber(logging::LogFormat::Text, 0, &info, &[]);
+    let sub = logging::subscriber(logging::LogFormat::Text, 0, &info, &[], false);
     with_default(sub, || {
         assert!(tracing::enabled!(
             target: logging::InfoFlag::Progress.target(),
@@ -83,7 +83,7 @@ fn debug_flag_enables_flist() {
         .get_many::<logging::DebugFlag>("debug")
         .map(|v| v.copied().collect())
         .unwrap_or_default();
-    let sub = logging::subscriber(logging::LogFormat::Text, 0, &[], &debug);
+    let sub = logging::subscriber(logging::LogFormat::Text, 0, &[], &debug, false);
     with_default(sub, || {
         assert!(tracing::enabled!(
             target: logging::DebugFlag::Flist.target(),

@@ -568,6 +568,7 @@ pub fn run_daemon(
     uid: u32,
     gid: u32,
     handler: Arc<Handler>,
+    quiet: bool,
 ) -> io::Result<()> {
     let _lock = if let Some(path) = lock_file {
         let mut f = OpenOptions::new()
@@ -605,7 +606,7 @@ pub fn run_daemon(
     }
 
     let (listener, real_port) = TcpTransport::listen(address, port, family)?;
-    if port == 0 {
+    if port == 0 && !quiet {
         println!("{}", real_port);
         io::stdout().flush()?;
     }
@@ -650,7 +651,9 @@ pub fn run_daemon(
                 )
             };
             if let Err(e) = res {
-                eprintln!("connection error: {}", e);
+                if !quiet {
+                    eprintln!("connection error: {}", e);
+                }
             }
         });
     }
