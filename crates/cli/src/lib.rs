@@ -20,7 +20,7 @@ use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions}
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
-use protocol::{negotiate_version, LATEST_VERSION};
+use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
 use shell_words::split as shell_split;
 use transport::{
     parse_sockopts, AddressFamily, RateLimitedTransport, SockOpt, SshStdioTransport, TcpTransport,
@@ -593,7 +593,7 @@ struct ProbeOpts {
     #[arg(long)]
     probe: bool,
     addr: Option<String>,
-    #[arg(long, default_value_t = LATEST_VERSION, value_name = "VER")]
+    #[arg(long, default_value_t = SUPPORTED_PROTOCOLS[0], value_name = "VER")]
     peer_version: u32,
 }
 
@@ -1844,18 +1844,18 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
 fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
     if let Some(addr) = opts.addr {
         let mut stream = TcpStream::connect(&addr)?;
-        stream.write_all(&LATEST_VERSION.to_be_bytes())?;
+        stream.write_all(&SUPPORTED_PROTOCOLS[0].to_be_bytes())?;
         let mut buf = [0u8; 4];
         stream.read_exact(&mut buf)?;
         let peer = u32::from_be_bytes(buf);
-        let ver = negotiate_version(LATEST_VERSION, peer)
+        let ver = negotiate_version(SUPPORTED_PROTOCOLS[0], peer)
             .map_err(|e| EngineError::Other(e.to_string()))?;
         if !quiet {
             println!("negotiated version {}", ver);
         }
         Ok(())
     } else {
-        let ver = negotiate_version(LATEST_VERSION, opts.peer_version)
+        let ver = negotiate_version(SUPPORTED_PROTOCOLS[0], opts.peer_version)
             .map_err(|e| EngineError::Other(e.to_string()))?;
         if !quiet {
             println!("negotiated version {}", ver);
@@ -2060,7 +2060,9 @@ mod tests {
             let mut buf = [0u8; 4];
             stream.read_exact(&mut buf).unwrap();
             assert_eq!(u32::from_be_bytes(buf), 30);
-            stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+            stream
+                .write_all(&SUPPORTED_PROTOCOLS[0].to_be_bytes())
+                .unwrap();
 
             let mut b = [0u8; 1];
             while stream.read(&mut b).unwrap() > 0 {
@@ -2121,7 +2123,9 @@ mod tests {
             let mut ver = [0u8; 4];
             stream.read_exact(&mut ver).unwrap();
             assert_eq!(u32::from_be_bytes(ver), 30);
-            stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+            stream
+                .write_all(&SUPPORTED_PROTOCOLS[0].to_be_bytes())
+                .unwrap();
             let mut b = [0u8; 1];
             while stream.read(&mut b).unwrap() > 0 {
                 if b[0] == b'\n' {

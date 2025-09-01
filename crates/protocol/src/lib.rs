@@ -14,6 +14,7 @@ pub use server::Server;
 
 pub const V32: u32 = 32;
 pub const V31: u32 = 31;
+pub const SUPPORTED_PROTOCOLS: &[u32] = &[V32, V31];
 pub const LATEST_VERSION: u32 = V32;
 pub const MIN_VERSION: u32 = V31;
 
@@ -39,13 +40,12 @@ impl From<VersionError> for io::Error {
 }
 
 pub fn negotiate_version(local: u32, peer: u32) -> Result<u32, VersionError> {
-    if local >= V32 && peer >= V32 {
-        Ok(V32)
-    } else if local >= V31 && peer >= V31 {
-        Ok(V31)
-    } else {
-        Err(VersionError(local.min(peer)))
+    for &v in SUPPORTED_PROTOCOLS {
+        if local >= v && peer >= v {
+            return Ok(v);
+        }
     }
+    Err(VersionError(local.min(peer)))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -451,11 +451,12 @@ mod tests {
 
     #[test]
     fn version_negotiation() {
-        assert_eq!(negotiate_version(V32, V32), Ok(V32));
-        assert_eq!(negotiate_version(V32, V31), Ok(V31));
-        assert_eq!(negotiate_version(V31, V32), Ok(V31));
-        assert_eq!(negotiate_version(V31, V31), Ok(V31));
-        assert!(negotiate_version(V32, 30).is_err());
+        let latest = SUPPORTED_PROTOCOLS[0];
+        for &peer in SUPPORTED_PROTOCOLS {
+            assert_eq!(negotiate_version(latest, peer), Ok(peer));
+            assert_eq!(negotiate_version(peer, latest), Ok(peer));
+        }
+        assert!(negotiate_version(latest, MIN_VERSION - 1).is_err());
     }
 
     #[test]
