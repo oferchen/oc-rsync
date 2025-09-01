@@ -46,7 +46,8 @@ negotiating protocol versions.
 .PP
 If the daemon finds an \f[V]auth\f[R] file in its working directory,
 clients must supply a matching token.
-The secrets file path can be overridden with \f[V]--secrets-file\f[R].
+The secrets file path can be overridden with \f[V]--secrets-file\f[R],
+or a single token may be stored via \f[V]--password-file\f[R].
 The file must be readable only by the daemon user (mode \f[V]0600\f[R]
 on Unix) and may list optional modules a token is permitted to access:
 .IP
@@ -58,6 +59,8 @@ s3cr3t data backups
 .fi
 .PP
 During the handshake the client sends the token followed by a newline.
+Clients may provide this token using \f[V]--password-file\f[R] or the
+\f[V]RSYNC_PASSWORD\f[R] environment variable.
 The test suite demonstrates that an invalid token is rejected with an
 \f[V]\[at]ERROR\f[R] message.
 Tokens without an explicit module list allow access to any module.

@@ -17,7 +17,7 @@ negotiates version 73.
 | --- | --- | --- | --- | --- | --- | --- |
 | `--8-bit-output` | `-8` | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--acls` | `-A` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `acl` feature | ≤3.2 |
-| `--address` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
+| `--address` | — | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--append` | — | ✅ | ❌ | [tests/resume.rs](../tests/resume.rs) |  | ≤3.2 |
 | `--append-verify` | — | ✅ | ❌ | [tests/resume.rs](../tests/resume.rs) |  | ≤3.2 |
 | `--archive` | `-a` | ✅ | ❌ | [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) |  | ≤3.2 |
@@ -90,8 +90,8 @@ negotiates version 73.
 | `--include-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--info` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--inplace` | — | ✅ | ✅ | [tests/golden/cli_parity/inplace.sh](../tests/golden/cli_parity/inplace.sh) |  | ≤3.2 |
-| `--ipv4` | `-4` | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | select IPv4 transport or listener | ≤3.2 |
-| `--ipv6` | `-6` | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | select IPv6 transport or listener | ≤3.2 |
+| `--ipv4` | `-4` | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) | select IPv4 transport or listener | ≤3.2 |
+| `--ipv6` | `-6` | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) | select IPv6 transport or listener | ≤3.2 |
 | `--itemize-changes` | `-i` | ✅ | ✅ | [tests/golden/cli_parity/itemize-changes.sh](../tests/golden/cli_parity/itemize-changes.sh) |  | 3.2 |
 | `--keep-dirlinks` | `-K` | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--link-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
@@ -116,7 +116,7 @@ negotiates version 73.
 | `--no-D` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--no-devices --no-specials` | ≤3.2 |
 | `--no-OPTION` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--no-implied-dirs` | — | ❌ | — | — | not yet implemented | ≤3.2 |
-| `--no-motd` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
+| `--no-motd` | — | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--numeric-ids` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--old-args` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--old-d` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--old-dirs` | ≤3.2 |
@@ -131,9 +131,9 @@ negotiates version 73.
 | `--owner` | `-o` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires root or CAP_CHOWN | ≤3.2 |
 | `--partial` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/resume.rs](../crates/engine/tests/resume.rs) |  | ≤3.2 |
 | `--partial-dir` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--password-file` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
+| `--password-file` | — | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--perms` | `-p` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--port` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | overrides default port | ≤3.2 |
+| `--port` | — | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) | overrides default port | ≤3.2 |
 | `--preallocate` | — | ✅ | ✅ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
 | `--progress` | — | ✅ | ❌ | [tests/cli.rs#L309](../tests/cli.rs#L309) |  | ≤3.2 |
 | `--protocol` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
@@ -148,7 +148,7 @@ negotiates version 73.
 | `--rsync-path` | — | ✅ | ✅ | [tests/rsh.rs](../tests/rsh.rs)<br>[tests/rsync_path.rs](../tests/rsync_path.rs) | accepts remote commands with env vars | ≤3.2 |
 | `--safe-links` | — | ✅ | ❌ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) |  | ≤3.2 |
 | `--secluded-args` | `-s` | ✅ | ❌ | [tests/secluded_args.rs](../tests/secluded_args.rs) |  | ≤3.2 |
-| `--secrets-file` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
+| `--secrets-file` | — | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
 | `--server` | — | ✅ | ❌ | [tests/server.rs](../tests/server.rs) | negotiates protocol version and codecs | ≤3.2 |
 | `--size-only` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--skip-compress` | — | ✅ | ✅ | [tests/skip_compress.rs](../tests/skip_compress.rs) | comma-separated list of file suffixes to avoid compressing | ≤3.2 |

@@ -326,6 +326,7 @@ pub fn authenticate_token(token: &str, path: &Path) -> io::Result<Vec<String>> {
 pub fn authenticate<T: Transport>(
     t: &mut T,
     path: Option<&Path>,
+    password: Option<&str>,
 ) -> io::Result<(Option<String>, Vec<String>, bool)> {
     let mut no_motd = false;
     const MAX_TOKEN: usize = 256;
@@ -381,6 +382,20 @@ pub fn authenticate<T: Transport>(
         }
         let allowed = authenticate_token(&token_str, auth_path)?;
         Ok((Some(token_str), allowed, no_motd))
+    } else if let Some(pw) = password {
+        if token_str.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "missing token",
+            ));
+        }
+        if token_str != pw {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "unauthorized",
+            ));
+        }
+        Ok((Some(token_str), Vec::new(), no_motd))
     } else {
         let token_opt = if token_str.is_empty() {
             None
@@ -453,6 +468,7 @@ pub fn handle_connection<T: Transport>(
     transport: &mut T,
     modules: &HashMap<String, Module>,
     secrets: Option<&Path>,
+    password: Option<&str>,
     log_file: Option<&Path>,
     log_format: Option<&str>,
     motd: Option<&Path>,
@@ -471,9 +487,7 @@ pub fn handle_connection<T: Transport>(
     let peer_ver = u32::from_be_bytes(buf);
     transport.send(&LATEST_VERSION.to_be_bytes())?;
     negotiate_version(LATEST_VERSION, peer_ver).map_err(|e| io::Error::other(e.to_string()))?;
-
-    let (mut token, global_allowed, no_motd) = authenticate(transport, secrets)?;
-
+    let (token, global_allowed, no_motd) = authenticate(transport, secrets, password)?;
     if !no_motd {
         if let Some(mpath) = motd {
             if let Ok(content) = fs::read_to_string(mpath) {
@@ -558,6 +572,7 @@ pub fn handle_connection<T: Transport>(
 pub fn run_daemon(
     modules: HashMap<String, Module>,
     secrets: Option<PathBuf>,
+    password: Option<String>,
     hosts_allow: Vec<String>,
     hosts_deny: Vec<String>,
     log_file: Option<PathBuf>,
@@ -620,6 +635,7 @@ pub fn run_daemon(
         let peer = addr.ip().to_string();
         let modules = modules.clone();
         let secrets = secrets.clone();
+        let password = password.clone();
         let log_file = log_file.clone();
         let log_format = log_format.clone();
         let motd = motd.clone();
@@ -633,6 +649,7 @@ pub fn run_daemon(
                     &mut t,
                     &modules,
                     secrets.as_deref(),
+                    password.as_deref(),
                     log_file.as_deref(),
                     log_format.as_deref(),
                     motd.as_deref(),
@@ -646,6 +663,7 @@ pub fn run_daemon(
                     &mut transport,
                     &modules,
                     secrets.as_deref(),
+                    password.as_deref(),
                     log_file.as_deref(),
                     log_format.as_deref(),
                     motd.as_deref(),
