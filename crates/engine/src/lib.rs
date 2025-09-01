@@ -1423,6 +1423,7 @@ impl Receiver {
                 gid_map,
                 fake_super: self.opts.fake_super && !self.opts.super_user,
                 super_user: self.opts.super_user,
+                numeric_ids: self.opts.numeric_ids,
             };
 
             if meta_opts.needs_metadata() {
