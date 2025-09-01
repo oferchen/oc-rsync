@@ -487,7 +487,7 @@ pub fn handle_connection<T: Transport>(
     let peer_ver = u32::from_be_bytes(buf);
     transport.send(&LATEST_VERSION.to_be_bytes())?;
     negotiate_version(LATEST_VERSION, peer_ver).map_err(|e| io::Error::other(e.to_string()))?;
-    let (token, global_allowed, no_motd) = authenticate(transport, secrets, password)?;
+    let (mut token, global_allowed, no_motd) = authenticate(transport, secrets, password)?;
     if !no_motd {
         if let Some(mpath) = motd {
             if let Ok(content) = fs::read_to_string(mpath) {
@@ -530,7 +530,7 @@ pub fn handle_connection<T: Transport>(
             log_format = Some(v.to_string());
         }
     }
-    if let Some(module) = mod
+    if let Some(module) = modules.get(&name) {
         let allowed = if let Some(path) = module.secrets_file.as_deref() {
             match token.as_deref() {
                 Some(tok) => authenticate_token(tok, path)?,
