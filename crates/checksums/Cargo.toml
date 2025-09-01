@@ -19,3 +19,8 @@ nightly = []
 
 [dev-dependencies]
 hex = "0.4"
+criterion = { version = "0.5", default-features = false }
+
+[[bench]]
+name = "rolling"
+harness = false
