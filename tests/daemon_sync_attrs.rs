@@ -9,6 +9,8 @@ use std::fs;
 #[cfg(unix)]
 use std::net::{TcpListener, TcpStream};
 #[cfg(unix)]
+use std::os::unix::fs::MetadataExt;
+#[cfg(unix)]
 use std::process::{Child, Command as StdCommand};
 #[cfg(unix)]
 use std::thread::sleep;
@@ -98,7 +100,6 @@ fn daemon_preserves_xattrs() {
 
 #[cfg(all(unix, feature = "xattr"))]
 #[test]
-#[ignore]
 #[serial]
 fn daemon_preserves_xattrs_rr_client() {
     let tmp = tempdir().unwrap();
@@ -450,6 +451,34 @@ fn daemon_preserves_uid_gid_perms() {
     assert_eq!(meta.uid(), 1);
     assert_eq!(meta.gid(), 1);
 
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[cfg(unix)]
+#[test]
+#[serial]
+fn daemon_preserves_hard_links_rr_client() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let srv = tmp.path().join("srv");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&srv).unwrap();
+    let f1 = src.join("a");
+    fs::write(&f1, b"hi").unwrap();
+    let f2 = src.join("b");
+    fs::hard_link(&f1, &f2).unwrap();
+    let (mut child, port) = spawn_daemon(&srv);
+    wait_for_daemon(port);
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["-aH", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
+        .assert()
+        .success();
+    let meta1 = fs::symlink_metadata(srv.join("a")).unwrap();
+    let meta2 = fs::symlink_metadata(srv.join("b")).unwrap();
+    assert_eq!(meta1.ino(), meta2.ino());
     let _ = child.kill();
     let _ = child.wait();
 }
