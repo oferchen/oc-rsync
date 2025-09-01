@@ -119,6 +119,7 @@ fn daemon_remote_option_forwarded() {
         &sync_opts,
         protocol::LATEST_VERSION,
         None,
+        None,
     )
     .unwrap();
     std::thread::sleep(std::time::Duration::from_millis(50));

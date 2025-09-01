@@ -2,12 +2,14 @@
 
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
+use engine::SyncOptions;
 use filetime::{set_file_mtime, FileTime};
 use logging::progress_formatter;
 #[cfg(unix)]
 use nix::unistd::{chown, mkfifo, Gid, Uid};
+use oc_rsync_cli::{parse_iconv, spawn_daemon_session};
 use predicates::prelude::PredicateBooleanExt;
-use serial_test::serial;
+use protocol::SUPPORTED_PROTOCOLS;
 use std::fs;
 use std::io::{Seek, SeekFrom, Write};
 #[cfg(unix)]
@@ -82,6 +84,102 @@ fn remote_option_short_flag_is_accepted() {
         .args(["-M", "--log-file=/tmp/foo", "--version"])
         .assert()
         .success();
+}
+
+#[test]
+fn iconv_invalid_charset_fails() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--iconv=FOO",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(
+            "iconv_open(\"UTF-8\", \"FOO\") failed",
+        ));
+}
+
+#[test]
+fn iconv_option_sent_to_daemon() {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::thread;
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let handle = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut buf = [0u8; 4];
+        stream.read_exact(&mut buf).unwrap();
+        stream
+            .write_all(&SUPPORTED_PROTOCOLS[0].to_be_bytes())
+            .unwrap();
+        let mut b = [0u8; 1];
+        loop {
+            stream.read_exact(&mut b).unwrap();
+            if b[0] == b'\n' {
+                break;
+            }
+        }
+        stream.write_all(b"@RSYNCD: OK\n").unwrap();
+        let mut line = Vec::new();
+        loop {
+            stream.read_exact(&mut b).unwrap();
+            if b[0] == b'\n' {
+                break;
+            }
+            line.push(b[0]);
+        }
+        assert_eq!(line, b"mod");
+        let mut got = false;
+        loop {
+            line.clear();
+            loop {
+                stream.read_exact(&mut b).unwrap();
+                if b[0] == b'\n' {
+                    break;
+                }
+                line.push(b[0]);
+            }
+            if line.is_empty() {
+                break;
+            }
+            if line == b"--iconv=utf8,latin1" {
+                got = true;
+            }
+        }
+        assert!(got);
+    });
+
+    let mut sync_opts = SyncOptions::default();
+    sync_opts.remote_options.push("--iconv=utf8,latin1".into());
+    let cv = parse_iconv("utf8,latin1").unwrap();
+    let _ = spawn_daemon_session(
+        "127.0.0.1",
+        "mod",
+        Some(port),
+        None,
+        true,
+        None,
+        None,
+        None,
+        &[],
+        &sync_opts,
+        SUPPORTED_PROTOCOLS[0],
+        None,
+        Some(&cv),
+    )
+    .unwrap();
+    handle.join().unwrap();
 }
 
 #[test]
