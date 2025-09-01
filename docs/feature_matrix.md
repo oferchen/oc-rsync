@@ -102,7 +102,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--max-delete` | — | ✅ | ✅ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--max-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
 | `--min-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
-| `--mkpath` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--mkpath` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--modify-window` | `-@` | ✅ | ❌ | [tests/modify_window.rs](../tests/modify_window.rs) | treat close mtimes as equal | ≤3.2 |
 | `--munge-links` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--no-detach` | — | ❌ | — | — | not yet implemented | ≤3.2 |
@@ -157,7 +157,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--temp-dir` | `-T` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires same filesystem for atomic rename | ≤3.2 |
 | `--timeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) | idle and I/O timeout | ≤3.2 |
 | `--times` | `-t` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
-| `--trust-sender` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--trust-sender` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) | no-op; always trusts sender | ≤3.2 |
 | `--update` | `-u` | ✅ | ❌ | [crates/engine/tests/update.rs](../crates/engine/tests/update.rs) |  | ≤3.2 |
 | `--usermap` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires root or CAP_CHOWN | ≤3.2 |
 | `--verbose` | `-v` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
