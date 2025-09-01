@@ -11,16 +11,19 @@ fn roundtrip() {
             path: b"a".to_vec(),
             uid: 1,
             gid: 2,
+            group: None,
         },
         Entry {
             path: b"a/b".to_vec(),
             uid: 1,
             gid: 3,
+            group: None,
         },
         Entry {
             path: b"c".to_vec(),
             uid: 4,
             gid: 3,
+            group: None,
         },
     ];
     let payloads = flist::encode(&entries, None);

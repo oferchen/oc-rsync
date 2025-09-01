@@ -9,6 +9,7 @@ pub struct Entry {
     pub path: Vec<u8>,
     pub uid: u32,
     pub gid: u32,
+    pub group: Option<u32>,
 }
 
 #[derive(Debug, Default)]
@@ -49,6 +50,12 @@ impl Encoder {
         out.extend_from_slice(suffix);
         out.extend_from_slice(&encode_id(entry.uid, &mut self.uid_table));
         out.extend_from_slice(&encode_id(entry.gid, &mut self.gid_table));
+        if let Some(group) = entry.group {
+            out.push(1);
+            out.extend_from_slice(&group.to_le_bytes());
+        } else {
+            out.push(0);
+        }
         self.prev_path = entry.path.clone();
         out
     }
@@ -77,10 +84,32 @@ impl Decoder {
             .chain(suffix.iter().copied())
             .collect();
         let (uid, rest) = decode_id(input, &mut self.uid_table, true)?;
-        let (gid, rest) = decode_id(rest, &mut self.gid_table, false)?;
+        let (gid, mut rest) = decode_id(rest, &mut self.gid_table, false)?;
+        let group = if rest.is_empty() {
+            None
+        } else {
+            let tag = rest[0];
+            rest = &rest[1..];
+            if tag == 1 {
+                if rest.len() < 4 {
+                    return Err(DecodeError::ShortInput);
+                }
+                let mut buf = [0u8; 4];
+                buf.copy_from_slice(&rest[..4]);
+                rest = &rest[4..];
+                Some(u32::from_le_bytes(buf))
+            } else {
+                None
+            }
+        };
         debug_assert!(rest.is_empty());
         self.prev_path = path.clone();
-        Ok(Entry { path, uid, gid })
+        Ok(Entry {
+            path,
+            uid,
+            gid,
+            group,
+        })
     }
 }
 
@@ -145,16 +174,19 @@ mod tests {
                 path: b"dir/file1".to_vec(),
                 uid: 1000,
                 gid: 1000,
+                group: None,
             },
             Entry {
                 path: b"dir/file2".to_vec(),
                 uid: 1000,
                 gid: 1001,
+                group: None,
             },
             Entry {
                 path: b"other".to_vec(),
                 uid: 1002,
                 gid: 1001,
+                group: None,
             },
         ];
         let mut enc = Encoder::new();
