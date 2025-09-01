@@ -191,10 +191,8 @@ impl Metadata {
             Vec::new()
         };
 
-        let _is_dir = SFlag::from_bits_truncate(raw_mode).contains(SFlag::S_IFDIR);
-
         #[cfg(feature = "acl")]
-        let is_dir = _is_dir;
+        let is_dir = meta.file_type().is_dir();
 
         #[cfg(feature = "acl")]
         let (acl, default_acl) = if opts.acl {

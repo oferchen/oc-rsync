@@ -105,13 +105,13 @@ fn daemon_preserves_acls() {
     let srv = tmp.path().join("srv");
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&srv).unwrap();
-    let file = src.join("file");
-    fs::write(&file, b"hi").unwrap();
+    let src_file = src.join("file");
+    fs::write(&src_file, b"hi").unwrap();
 
-    let mut acl = PosixACL::read_acl(&file).unwrap();
+    let mut acl = PosixACL::read_acl(&src_file).unwrap();
     acl.set(Qualifier::User(12345), ACL_READ);
     acl.set(Qualifier::User(23456), ACL_WRITE);
-    acl.write_acl(&file).unwrap();
+    acl.write_acl(&src_file).unwrap();
 
     let mut dacl = PosixACL::read_default_acl(&src).unwrap();
     dacl.set(Qualifier::User(12345), ACL_READ);
@@ -126,7 +126,7 @@ fn daemon_preserves_acls() {
         .assert()
         .success();
 
-    let acl_src = PosixACL::read_acl(&file).unwrap();
+    let acl_src = PosixACL::read_acl(&src_file).unwrap();
     let acl_dst = PosixACL::read_acl(srv.join("file")).unwrap();
     assert_eq!(acl_src.entries(), acl_dst.entries());
 
@@ -154,8 +154,8 @@ fn daemon_inherits_default_acls() {
 
     let sub = src.join("sub");
     fs::create_dir(&sub).unwrap();
-    let file = sub.join("file");
-    fs::write(&file, b"hi").unwrap();
+    let src_file = sub.join("file");
+    fs::write(&src_file, b"hi").unwrap();
 
     let (mut child, port) = spawn_daemon(&srv);
     wait_for_daemon(port);
@@ -174,7 +174,7 @@ fn daemon_inherits_default_acls() {
     let dacl_dst_sub = PosixACL::read_default_acl(srv.join("sub")).unwrap();
     assert_eq!(dacl_src_sub.entries(), dacl_dst_sub.entries());
 
-    let acl_src_file = PosixACL::read_acl(&file).unwrap();
+    let acl_src_file = PosixACL::read_acl(&src_file).unwrap();
     let acl_dst_file = PosixACL::read_acl(srv.join("sub/file")).unwrap();
     assert_eq!(acl_src_file.entries(), acl_dst_file.entries());
 
