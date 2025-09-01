@@ -12,8 +12,8 @@ compress = { path = "../compress" }
 filelist = { path = "../filelist" }
 nix = { version = "0.27", features = ["user", "fs"] }
 meta = { path = "../meta", default-features = false }
-blake3 = "1"
-fastcdc = "3.2"
+blake3 = { version = "1", optional = true }
+fastcdc = { version = "3.2", optional = true }
 logging = { path = "../logging" }
 libc = "0.2"
 memmap2 = "0.9"
@@ -48,4 +48,4 @@ lz4 = ["compress/lz4"]
 zstd = []
 xattr = ["meta/xattr"]
 acl = ["meta/acl"]
-blake3 = ["checksums/blake3"]
+blake3 = ["checksums/blake3", "dep:blake3", "dep:fastcdc"]

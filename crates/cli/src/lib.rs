@@ -101,6 +101,7 @@ enum ModernHashArg {
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum ModernCdcArg {
+    #[cfg(feature = "blake3")]
     Fastcdc,
     Off,
 }
@@ -959,17 +960,32 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let modern_cdc_arg = if let Some(arg) = opts.modern_cdc {
         arg
     } else if opts.modern || opts.modern_cdc_min.is_some() || opts.modern_cdc_max.is_some() {
-        ModernCdcArg::Fastcdc
+        #[cfg(feature = "blake3")]
+        {
+            ModernCdcArg::Fastcdc
+        }
+        #[cfg(not(feature = "blake3"))]
+        {
+            ModernCdcArg::Off
+        }
     } else {
         ModernCdcArg::Off
     };
     let modern_cdc = match modern_cdc_arg {
+        #[cfg(feature = "blake3")]
         ModernCdcArg::Fastcdc => ModernCdc::Fastcdc,
-        ModernCdcArg::Off => ModernCdc::Off,
+        _ => ModernCdc::Off,
     };
-    let modern_enabled = modern_compress.is_some()
-        || modern_hash.is_some()
-        || matches!(modern_cdc, ModernCdc::Fastcdc);
+    let modern_enabled = modern_compress.is_some() || modern_hash.is_some() || {
+        #[cfg(feature = "blake3")]
+        {
+            matches!(modern_cdc, ModernCdc::Fastcdc)
+        }
+        #[cfg(not(feature = "blake3"))]
+        {
+            false
+        }
+    };
 
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
         #[cfg_attr(not(feature = "blake3"), allow(unused_mut))]
