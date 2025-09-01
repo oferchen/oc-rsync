@@ -199,3 +199,27 @@ fn server_parses_args_and_env() {
     assert_eq!(srv.args, vec!["--foo", "bar"]);
     assert_eq!(srv.env, vec![("X".into(), "1".into())]);
 }
+
+#[test]
+fn server_rejects_option_after_arg() {
+    let local = available_codecs();
+    let payload = encode_codecs(&local);
+    let frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
+    let mut frame_buf = Vec::new();
+    frame.encode(&mut frame_buf).unwrap();
+    let latest = SUPPORTED_PROTOCOLS[0];
+    let mut input = Cursor::new({
+        let mut v = Vec::new();
+        v.extend_from_slice(b"foo\0--bar\0\0");
+        v.extend_from_slice(&latest.to_be_bytes());
+        v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
+        v.extend_from_slice(&frame_buf);
+        v
+    });
+    let mut output = Vec::new();
+    let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
+    let err = srv
+        .handshake(latest, SUPPORTED_CAPS, &local)
+        .expect_err("handshake should fail");
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+}

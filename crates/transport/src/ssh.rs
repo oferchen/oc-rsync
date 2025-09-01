@@ -215,11 +215,19 @@ impl SshStdioTransport {
         while read < cap_buf.len() {
             let n = transport.receive(&mut cap_buf[read..])?;
             if n == 0 {
-                return Err(io::Error::other("failed to read capabilities"));
+                if read == 0 {
+                    break;
+                } else {
+                    return Err(io::Error::other("failed to read capabilities"));
+                }
             }
             read += n;
         }
-        let server_caps = u32::from_be_bytes(cap_buf);
+        let server_caps = if read == 4 {
+            u32::from_be_bytes(cap_buf)
+        } else {
+            0
+        };
         let caps = server_caps & local_caps;
 
         let mut peer_codecs = vec![Codec::Zlib];
@@ -331,8 +339,8 @@ impl SshStdioTransport {
             } else {
                 cmd.arg("rsync");
             }
-            cmd.args(remote_opts);
             cmd.arg("--server");
+            cmd.args(remote_opts);
             cmd.arg(path.as_os_str());
             Self::spawn_from_command(cmd)
         } else {
@@ -351,8 +359,8 @@ impl SshStdioTransport {
             } else {
                 args.push("rsync".to_string());
             }
-            args.extend_from_slice(remote_opts);
             args.push("--server".to_string());
+            args.extend_from_slice(remote_opts);
             args.push(path.to_string_lossy().into_owned());
             let mut cmd = Command::new(program);
             cmd.args(args);
