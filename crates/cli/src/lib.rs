@@ -414,7 +414,7 @@ struct ClientOpts {
         value_parser = parse_nonzero_duration,
         help_heading = "Misc"
     )]
-    contimeout: Option<Duration>,
+    connect_timeout: Option<Duration>,
     #[arg(long = "modify-window", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     modify_window: Option<Duration>,
     #[arg(
@@ -823,7 +823,7 @@ pub fn spawn_daemon_session(
     password_file: Option<&Path>,
     no_motd: bool,
     timeout: Option<Duration>,
-    contimeout: Option<Duration>,
+    connect_timeout: Option<Duration>,
     family: Option<AddressFamily>,
     sockopts: &[String],
     opts: &SyncOptions,
@@ -837,7 +837,6 @@ pub fn spawn_daemon_session(
     } else {
         (host, port.unwrap_or(873))
     };
-    let connect_timeout = contimeout;
     let start = Instant::now();
     let mut t =
         TcpTransport::connect(host, port, connect_timeout, family).map_err(EngineError::from)?;
@@ -1333,7 +1332,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.password_file.as_deref(),
                     opts.no_motd,
                     opts.timeout,
-                    opts.contimeout,
+                    opts.connect_timeout,
                     addr_family,
                     &opts.sockopts,
                     &sync_opts,
@@ -1357,7 +1356,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 },
                 RemoteSpec::Local(dst),
             ) => {
-                let connect_timeout = opts.contimeout;
+                let connect_timeout = opts.connect_timeout;
                 let (session, codecs, _caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &src.path,
@@ -1401,7 +1400,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.password_file.as_deref(),
                     opts.no_motd,
                     opts.timeout,
-                    opts.contimeout,
+                    opts.connect_timeout,
                     addr_family,
                     &opts.sockopts,
                     &sync_opts,
@@ -1425,7 +1424,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     module: None,
                 },
             ) => {
-                let connect_timeout = opts.contimeout;
+                let connect_timeout = opts.connect_timeout;
                 let (session, codecs, _caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &dst.path,
@@ -1488,7 +1487,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
@@ -1503,7 +1502,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
@@ -1563,7 +1562,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.password_file.as_deref(),
                             opts.no_motd,
                             opts.timeout,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -1578,7 +1577,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.password_file.as_deref(),
                             opts.no_motd,
                             opts.timeout,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -1608,7 +1607,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
@@ -1619,7 +1618,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.password_file.as_deref(),
                             opts.no_motd,
                             opts.timeout,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -1664,7 +1663,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.password_file.as_deref(),
                             opts.no_motd,
                             opts.timeout,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -1683,7 +1682,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;

@@ -47,6 +47,7 @@ fn main() {
                         | ErrorKind::ConnectionRefused
                         | ErrorKind::AddrNotAvailable
                         | ErrorKind::NetworkUnreachable
+                        | ErrorKind::WouldBlock
                 ) =>
             {
                 ExitCode::ConnTimeout
