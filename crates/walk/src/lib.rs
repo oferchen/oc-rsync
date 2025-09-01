@@ -31,6 +31,7 @@ pub struct Walk {
     prev_path: String,
     batch_size: usize,
     max_file_size: Option<u64>,
+    links: bool,
     uid_map: HashMap<u32, usize>,
     uid_table: Vec<u32>,
     gid_map: HashMap<u32, usize>,
@@ -42,7 +43,7 @@ pub struct Walk {
 }
 
 impl Walk {
-    fn new(root: PathBuf, batch_size: usize, max_file_size: Option<u64>) -> Self {
+    fn new(root: PathBuf, batch_size: usize, max_file_size: Option<u64>, links: bool) -> Self {
         Walk {
             iter: WalkDir::new(root)
                 .sort_by(|a, b| a.file_name().cmp(b.file_name()))
@@ -50,6 +51,7 @@ impl Walk {
             prev_path: String::new(),
             batch_size,
             max_file_size,
+            links,
             uid_map: HashMap::new(),
             uid_table: Vec::new(),
             gid_map: HashMap::new(),
@@ -78,12 +80,22 @@ impl Walk {
     }
 }
 
-pub fn walk(root: impl AsRef<Path>, batch_size: usize) -> Walk {
-    Walk::new(root.as_ref().to_path_buf(), batch_size, None)
+pub fn walk(root: impl AsRef<Path>, batch_size: usize, links: bool) -> Walk {
+    Walk::new(root.as_ref().to_path_buf(), batch_size, None, links)
 }
 
-pub fn walk_with_max_size(root: impl AsRef<Path>, batch_size: usize, max_file_size: u64) -> Walk {
-    Walk::new(root.as_ref().to_path_buf(), batch_size, Some(max_file_size))
+pub fn walk_with_max_size(
+    root: impl AsRef<Path>,
+    batch_size: usize,
+    max_file_size: u64,
+    links: bool,
+) -> Walk {
+    Walk::new(
+        root.as_ref().to_path_buf(),
+        batch_size,
+        Some(max_file_size),
+        links,
+    )
 }
 
 impl Iterator for Walk {
@@ -94,6 +106,10 @@ impl Iterator for Walk {
         while batch.len() < self.batch_size {
             match self.iter.next() {
                 Some(Ok(entry)) => {
+                    let file_type = entry.file_type();
+                    if file_type.is_symlink() && !self.links {
+                        continue;
+                    }
                     let path = entry.path().to_string_lossy().into_owned();
                     let prefix = common_prefix_len(&self.prev_path, &path);
                     let suffix = path[prefix..].to_string();
@@ -133,7 +149,7 @@ impl Iterator for Walk {
                     batch.push(Entry {
                         prefix_len: prefix,
                         suffix,
-                        file_type: entry.file_type(),
+                        file_type,
                         uid: uid_idx,
                         gid: gid_idx,
                         dev: dev_idx,
