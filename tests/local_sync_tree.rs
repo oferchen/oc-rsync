@@ -4,7 +4,7 @@ use assert_cmd::Command;
 #[cfg(unix)]
 use filetime::{set_file_atime, FileTime};
 #[cfg(unix)]
-use meta::{makedev, mkfifo, mknod};
+use meta::mkfifo;
 #[cfg(unix)]
 use nix::sys::stat::Mode;
 use std::collections::BTreeMap;
@@ -363,11 +363,11 @@ fn sync_preserves_device_nodes() {
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst).unwrap();
     let cdev = src.join("char");
-    if let Err(err) = mknod(
+    if let Err(err) = meta::mknod(
         &cdev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
-        makedev(1, 3),
+        meta::makedev(1, 3),
     ) {
         if err.raw_os_error() == Some(Errno::EPERM as i32) {
             eprintln!("skipping: failed to create char device: {err}");
@@ -376,11 +376,11 @@ fn sync_preserves_device_nodes() {
         panic!("failed to create char device: {err}");
     }
     let bdev = src.join("block");
-    if let Err(err) = mknod(
+    if let Err(err) = meta::mknod(
         &bdev,
         SFlag::S_IFBLK,
         Mode::from_bits_truncate(0o600),
-        makedev(8, 1),
+        meta::makedev(8, 1),
     ) {
         if err.raw_os_error() == Some(Errno::EPERM as i32) {
             eprintln!("skipping: failed to create block device: {err}");
@@ -401,14 +401,14 @@ fn sync_preserves_device_nodes() {
     let meta = fs::symlink_metadata(dst.join("char")).unwrap();
     assert!(meta.file_type().is_char_device());
     let rdev = meta.rdev();
-    assert_eq!(rdev, makedev(1, 3));
+    assert_eq!(rdev, meta::makedev(1, 3));
     assert_eq!(major(rdev), 1);
     assert_eq!(minor(rdev), 3);
 
     let meta = fs::symlink_metadata(dst.join("block")).unwrap();
     assert!(meta.file_type().is_block_device());
     let rdev = meta.rdev();
-    assert_eq!(rdev, makedev(8, 1));
+    assert_eq!(rdev, meta::makedev(8, 1));
     assert_eq!(major(rdev), 8);
     assert_eq!(minor(rdev), 1);
 }
