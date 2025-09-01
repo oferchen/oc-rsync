@@ -692,6 +692,8 @@ fn quiet_flag_suppresses_output() {
         "--local",
         "--recursive",
         "--quiet",
+        "--progress",
+        "--stats",
         &src_arg,
         dst_dir.to_str().unwrap(),
     ]);

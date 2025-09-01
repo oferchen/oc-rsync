@@ -101,8 +101,11 @@ pub fn subscriber(
     verbose: u8,
     info: &[InfoFlag],
     debug: &[DebugFlag],
+    quiet: bool,
 ) -> impl tracing::Subscriber + Send + Sync {
-    let level = if !debug.is_empty() || verbose > 1 {
+    let level = if quiet {
+        LevelFilter::ERROR
+    } else if !debug.is_empty() || verbose > 1 {
         LevelFilter::DEBUG
     } else if !info.is_empty() || verbose > 0 {
         LevelFilter::INFO
@@ -113,15 +116,17 @@ pub fn subscriber(
         .with_default_directive(level.into())
         .from_env_lossy();
 
-    for flag in info {
-        let directive: tracing_subscriber::filter::Directive =
-            format!("{}=info", flag.target()).parse().unwrap();
-        filter = filter.add_directive(directive);
-    }
-    for flag in debug {
-        let directive: tracing_subscriber::filter::Directive =
-            format!("{}=debug", flag.target()).parse().unwrap();
-        filter = filter.add_directive(directive);
+    if !quiet {
+        for flag in info {
+            let directive: tracing_subscriber::filter::Directive =
+                format!("{}=info", flag.target()).parse().unwrap();
+            filter = filter.add_directive(directive);
+        }
+        for flag in debug {
+            let directive: tracing_subscriber::filter::Directive =
+                format!("{}=debug", flag.target()).parse().unwrap();
+            filter = filter.add_directive(directive);
+        }
     }
 
     let fmt_layer = fmt::layer();
@@ -133,8 +138,8 @@ pub fn subscriber(
     tracing_subscriber::registry().with(filter).with(fmt_layer)
 }
 
-pub fn init(format: LogFormat, verbose: u8, info: &[InfoFlag], debug: &[DebugFlag]) {
-    subscriber(format, verbose, info, debug).init();
+pub fn init(format: LogFormat, verbose: u8, info: &[InfoFlag], debug: &[DebugFlag], quiet: bool) {
+    subscriber(format, verbose, info, debug, quiet).init();
 }
 
 pub fn human_bytes(bytes: u64) -> String {
