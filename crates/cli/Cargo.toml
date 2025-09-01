@@ -9,7 +9,7 @@ engine = { path = "../engine" }
 protocol = { path = "../protocol" }
 filters = { path = "../filters" }
 transport = { path = "../transport" }
-nix = { version = "0.27", features = ["fs", "user"] }
+users = "0.11"
 compress = { path = "../compress" }
 shell-words = "1.1"
 meta = { path = "../meta", default-features = false }

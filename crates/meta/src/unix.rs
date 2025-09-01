@@ -10,6 +10,7 @@ use nix::sys::stat::{self, FchmodatFlags, Mode, SFlag};
 use nix::unistd::{self, FchownatFlags, Gid, Uid};
 use std::os::unix::fs::PermissionsExt;
 use std::sync::Arc;
+use users::{get_group_by_gid, get_group_by_name, get_user_by_name, get_user_by_uid};
 
 #[cfg(target_os = "macos")]
 use std::os::unix::ffi::OsStrExt;
@@ -583,6 +584,22 @@ fn set_file_crtime(path: &Path, crtime: FileTime) -> io::Result<()> {
 #[cfg(not(target_os = "macos"))]
 fn set_file_crtime(_path: &Path, _crtime: FileTime) -> io::Result<()> {
     Ok(())
+}
+
+pub fn uid_from_name(name: &str) -> Option<u32> {
+    get_user_by_name(name).map(|u| u.uid())
+}
+
+pub fn gid_from_name(name: &str) -> Option<u32> {
+    get_group_by_name(name).map(|g| g.gid())
+}
+
+pub fn uid_to_name(uid: u32) -> Option<String> {
+    get_user_by_uid(uid).map(|u| u.name().to_string_lossy().into_owned())
+}
+
+pub fn gid_to_name(gid: u32) -> Option<String> {
+    get_group_by_gid(gid).map(|g| g.name().to_string_lossy().into_owned())
 }
 
 #[cfg(all(test, feature = "xattr"))]

@@ -21,15 +21,15 @@ use engine::ModernHash;
 use engine::{sync, DeleteMode, IdMapper, ModernCdc, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
-use meta::{parse_chmod, parse_chown, parse_id_map};
-#[cfg(unix)]
-use nix::unistd::{Uid, User};
+use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use protocol::{negotiate_version, LATEST_VERSION};
 use shell_words::split as shell_split;
 use transport::{
     parse_sockopts, AddressFamily, RateLimitedTransport, SockOpt, SshStdioTransport, TcpTransport,
     Transport,
 };
+#[cfg(unix)]
+use users::get_user_by_uid;
 
 fn parse_filters(s: &str) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
@@ -1143,10 +1143,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         } else {
             #[cfg(unix)]
             {
-                User::from_uid(Uid::from_raw(uid))
-                    .ok()
-                    .flatten()
-                    .map(|u| u.gid.as_raw())
+                get_user_by_uid(uid).map(|u| u.primary_group_id())
             }
             #[cfg(not(unix))]
             {
@@ -1159,13 +1156,17 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     };
     let uid_map = if !opts.usermap.is_empty() {
         let spec = opts.usermap.join(",");
-        Some(IdMapper(parse_id_map(&spec).map_err(EngineError::Other)?))
+        Some(IdMapper(
+            parse_id_map(&spec, IdKind::User).map_err(EngineError::Other)?,
+        ))
     } else {
         None
     };
     let gid_map = if !opts.groupmap.is_empty() {
         let spec = opts.groupmap.join(",");
-        Some(IdMapper(parse_id_map(&spec).map_err(EngineError::Other)?))
+        Some(IdMapper(
+            parse_id_map(&spec, IdKind::Group).map_err(EngineError::Other)?,
+        ))
     } else {
         None
     };
