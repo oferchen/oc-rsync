@@ -87,7 +87,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--ignore-times` | `-I` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--include` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--include-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--info` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--info` | — | ✅ | ❌ | [crates/logging/tests/info_flags.rs](../crates/logging/tests/info_flags.rs)<br>[crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs) |  | ≤3.2 |
 | `--inplace` | — | ✅ | ✅ | [tests/golden/cli_parity/inplace.sh](../tests/golden/cli_parity/inplace.sh) |  | ≤3.2 |
 | `--ipv4` | `-4` | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) | select IPv4 transport or listener | ≤3.2 |
 | `--ipv6` | `-6` | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) | select IPv6 transport or listener | ≤3.2 |

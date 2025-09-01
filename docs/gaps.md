@@ -38,7 +38,7 @@ coverage so progress can be tracked as features land.
 No known gaps.
 
 ## Logging
-- `--info` — info flag handling incomplete. [logging/src/lib.rs](../crates/logging/src/lib.rs) · [crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs)
+No known gaps.
 
 ## Performance Knobs
 - `--temp-dir` — cross-filesystem behavior differs. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
