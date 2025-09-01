@@ -28,7 +28,7 @@ negotiates version 73.
 | `--blocking-io` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--bwlimit` | — | ✅ | ✅ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) | token bucket matches upstream | ≤3.2 |
 | `--cc` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | alias for `--checksum-choice` | ≤3.2 |
-| `--checksum` | `-c` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, BLAKE3 | ≤3.2 |
+| `--checksum` | `-c` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, MD4 | ≤3.2 |
 | `--checksum-choice` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | choose the strong hash algorithm | ≤3.2 |
 | `--checksum-seed` | — | ✅ | ✅ | [tests/checksum_seed.rs](../tests/checksum_seed.rs)<br>[tests/checksum_seed_cli.rs](../tests/checksum_seed_cli.rs) | set block/file checksum seed | ≤3.2 |
 | `--chmod` | — | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/golden/cli_parity/chmod.sh](../tests/golden/cli_parity/chmod.sh) |  | ≤3.2 |
@@ -104,12 +104,6 @@ negotiates version 73.
 | `--max-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
 | `--min-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
 | `--mkpath` | — | ❌ | — | — | not yet implemented | ≤3.2 |
-| `--modern` | — | ✅ | ✅ | [tests/interop/modern.rs](../tests/interop/modern.rs) | oc-rsync only; enables zstd compression and BLAKE3 checksums (requires `blake3` feature) | — |
-| `--modern-compress` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; choose `auto`, `zstd`, or `lz4` compression | — |
-| `--modern-hash` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; select BLAKE3 hash (requires `blake3` feature) | — |
-| `--modern-cdc` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; enable `fastcdc` chunking | — |
-| `--modern-cdc-min` | — | ✅ | ✅ | [tests/cdc.rs](../tests/cdc.rs) | oc-rsync only; set FastCDC minimum chunk size | — |
-| `--modern-cdc-max` | — | ✅ | ✅ | [tests/cdc.rs](../tests/cdc.rs) | oc-rsync only; set FastCDC maximum chunk size | — |
 | `--modify-window` | `-@` | ✅ | ❌ | [tests/modify_window.rs](../tests/modify_window.rs) | treat close mtimes as equal | ≤3.2 |
 | `--munge-links` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--no-detach` | — | ❌ | — | — | not yet implemented | ≤3.2 |

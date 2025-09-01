@@ -17,7 +17,6 @@ pub struct Demux {
     channels: IndexMap<u16, Channel>,
     pub strong_hash: StrongHash,
     pub compressor: Codec,
-    pub cdc: bool,
     exit_code: Option<u8>,
     remote_error: Option<String>,
 }
@@ -29,7 +28,6 @@ impl Demux {
             channels: IndexMap::new(),
             strong_hash: StrongHash::Md5,
             compressor: Codec::Zlib,
-            cdc: false,
             exit_code: None,
             remote_error: None,
         }

@@ -12,4 +12,3 @@ filelist = { path = "../filelist" }
 
 [features]
 default = []
-blake3 = ["checksums/blake3"]

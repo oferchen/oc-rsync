@@ -71,6 +71,5 @@ default = []
 lz4 = ["engine/lz4"]
 xattr = ["engine/xattr", "oc-rsync-cli/xattr", "meta/xattr"]
 acl = ["engine/acl", "oc-rsync-cli/acl", "meta/acl"]
-blake3 = ["checksums/blake3", "engine/blake3", "oc-rsync-cli/blake3", "protocol/blake3"]
 # Enables AVX-512 implementations requiring a nightly toolchain
 nightly = ["checksums/nightly", "compress/nightly"]

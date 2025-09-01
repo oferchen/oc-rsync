@@ -1,12 +1,7 @@
 // crates/protocol/tests/server.rs
-#[cfg(feature = "blake3")]
-use checksums::StrongHash;
 use compress::{available_codecs, encode_codecs, Codec};
-#[cfg(feature = "blake3")]
-use protocol::CAP_BLAKE3;
 use protocol::{
-    ExitCode, Message, Server, CAP_CODECS, CAP_LZ4, CAP_ZSTD, LATEST_VERSION, SUPPORTED_CAPS, V31,
-    V32,
+    ExitCode, Message, Server, CAP_CODECS, CAP_ZSTD, LATEST_VERSION, SUPPORTED_CAPS, V31, V32,
 };
 use std::io::Cursor;
 use std::time::Duration;
@@ -110,31 +105,6 @@ fn server_classic_versions() {
     }
 }
 
-#[cfg(feature = "blake3")]
-#[test]
-fn server_negotiates_blake3() {
-    let codecs = vec![Codec::Zlib];
-    let payload = encode_codecs(&codecs);
-    let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
-    let mut codecs_buf = Vec::new();
-    codecs_frame.encode(&mut codecs_buf).unwrap();
-    let mut input = Cursor::new({
-        let mut v = vec![0];
-        v.extend_from_slice(&LATEST_VERSION.to_be_bytes());
-        v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
-        v.extend_from_slice(&codecs_buf);
-        v
-    });
-    let mut output = Vec::new();
-    let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
-    let (caps, _) = srv
-        .handshake(LATEST_VERSION, SUPPORTED_CAPS, &codecs)
-        .unwrap();
-    assert_eq!(caps & CAP_BLAKE3, CAP_BLAKE3);
-    assert!(matches!(srv.mux.strong_hash, StrongHash::Blake3));
-    assert!(matches!(srv.demux.strong_hash, StrongHash::Blake3));
-}
-
 #[test]
 fn server_negotiates_zstd() {
     let local = vec![Codec::Zstd, Codec::Zlib];
@@ -157,30 +127,6 @@ fn server_negotiates_zstd() {
     assert_eq!(caps & CAP_ZSTD, CAP_ZSTD);
     assert_eq!(srv.mux.compressor, Codec::Zstd);
     assert_eq!(srv.demux.compressor, Codec::Zstd);
-}
-
-#[test]
-fn server_negotiates_lz4() {
-    let local = vec![Codec::Lz4, Codec::Zlib];
-    let payload = encode_codecs(&local);
-    let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
-    let mut codecs_buf = Vec::new();
-    codecs_frame.encode(&mut codecs_buf).unwrap();
-    let mut input = Cursor::new({
-        let mut v = vec![0];
-        v.extend_from_slice(&LATEST_VERSION.to_be_bytes());
-        v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
-        v.extend_from_slice(&codecs_buf);
-        v
-    });
-    let mut output = Vec::new();
-    let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
-    let (caps, _) = srv
-        .handshake(LATEST_VERSION, SUPPORTED_CAPS, &local)
-        .unwrap();
-    assert_eq!(caps & CAP_LZ4, CAP_LZ4);
-    assert_eq!(srv.mux.compressor, Codec::Lz4);
-    assert_eq!(srv.demux.compressor, Codec::Lz4);
 }
 
 #[test]
