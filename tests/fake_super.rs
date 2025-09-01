@@ -1,3 +1,4 @@
+// tests/fake_super.rs
 #[cfg(all(unix, feature = "xattr"))]
 use assert_cmd::Command;
 #[cfg(all(unix, feature = "xattr"))]

@@ -1,3 +1,4 @@
+// tests/packaging.rs
 use std::process::Command;
 
 #[test]

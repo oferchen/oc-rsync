@@ -1,3 +1,4 @@
+// tests/cli_flags.rs
 use assert_cmd::Command;
 use tempfile::NamedTempFile;
 
