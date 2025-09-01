@@ -1703,6 +1703,18 @@ impl Default for SyncOptions {
 
 impl SyncOptions {
     pub fn prepare_remote(&mut self) {
+        if self.partial {
+            self.remote_options.push("--partial".into());
+        }
+        if self.append {
+            self.remote_options.push("--append".into());
+        }
+        if self.append_verify {
+            self.remote_options.push("--append-verify".into());
+        }
+        if self.inplace {
+            self.remote_options.push("--inplace".into());
+        }
         if let Some(dir) = &self.partial_dir {
             self.remote_options
                 .push(format!("--partial-dir={}", dir.display()));

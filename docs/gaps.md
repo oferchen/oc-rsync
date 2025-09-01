@@ -39,8 +39,8 @@ coverage so progress can be tracked as features land.
 - `--iconv` — filename charset conversion unsupported. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*
 
 ## Resume/Partials
-- `--append` / `--append-verify` — remote resume semantics untested. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/resume.rs](../tests/resume.rs)
-- `--partial-dir` — remote partial directory handling lacks parity. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*
+
+No known gaps.
 
 ## Logging
 - `--debug` — debug flag handling incomplete. [logging/src/lib.rs](../crates/logging/src/lib.rs) · [crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs)
