@@ -18,6 +18,8 @@ use std::time::Duration;
 use tempfile::{tempdir, tempdir_in};
 #[cfg(unix)]
 use users::{get_current_gid, get_current_uid};
+#[cfg(all(unix, feature = "xattr"))]
+use xattr;
 
 #[test]
 fn prints_version() {
@@ -1794,4 +1796,29 @@ fn cvs_exclude_skips_ignored_files() {
     assert!(!dst.join("home_ignored").exists());
     assert!(!dst.join("local_ignored").exists());
     assert!(dst.join(".cvsignore").exists());
+}
+
+#[cfg(all(unix, feature = "xattr"))]
+#[test]
+fn super_overrides_fake_super() {
+    let tmp = tempdir().unwrap();
+    let src_dir = tmp.path().join("src");
+    let dst_dir = tmp.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    fs::write(src_dir.join("file"), b"hi").unwrap();
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "-a",
+            "--fake-super",
+            "--super",
+            src_dir.to_str().unwrap(),
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let dst_file = dst_dir.join("file");
+    assert!(xattr::get(&dst_file, "user.rsync.uid").unwrap().is_none());
 }
