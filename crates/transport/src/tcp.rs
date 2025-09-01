@@ -1,7 +1,7 @@
 // crates/transport/src/tcp.rs
 use std::io::{self, Read, Write};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use socket2::SockRef;
 
@@ -25,11 +25,23 @@ impl TcpTransport {
             None => addrs.into_iter().next(),
         }
         .ok_or_else(|| io::Error::other("invalid address"))?;
+
+        let start = Instant::now();
         let stream = if let Some(dur) = timeout {
             TcpStream::connect_timeout(&addr, dur)?
         } else {
             TcpStream::connect(addr)?
         };
+
+        if let Some(dur) = timeout {
+            let elapsed = start.elapsed();
+            let remaining = dur
+                .checked_sub(elapsed)
+                .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "connection timed out"))?;
+            stream.set_read_timeout(Some(remaining))?;
+            stream.set_write_timeout(Some(remaining))?;
+        }
+
         Ok(Self { stream })
     }
 
