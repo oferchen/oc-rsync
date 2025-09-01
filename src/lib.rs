@@ -1,20 +1,9 @@
 // src/lib.rs
 use compress::available_codecs;
-use engine::{EngineError, Result, SyncOptions};
-use filetime::{set_file_times, set_symlink_file_times, FileTime};
+use engine::{Result, SyncOptions};
 use filters::Matcher;
 use logging::{subscriber, DebugFlag, InfoFlag, LogFormat};
-#[cfg(unix)]
-use nix::{
-    sys::stat::{dev_t, mknod, Mode, SFlag},
-    unistd::mkfifo,
-};
-use std::convert::TryInto;
-#[cfg(unix)]
-use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
-#[cfg(windows)]
-use std::os::windows::fs::{symlink_dir, symlink_file};
-use std::{fs, io, path::Path};
+use std::path::Path;
 use tracing::subscriber::with_default;
 
 #[derive(Clone)]
@@ -46,18 +35,16 @@ pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Resu
         None,
     );
     with_default(sub, || -> Result<()> {
-        if !dst.exists() {
-            fs::create_dir_all(dst)?;
-        }
-        engine::sync(
-            src,
-            dst,
-            &Matcher::default(),
-            &available_codecs(),
-            &SyncOptions::default(),
-        )?;
-
-        let _ = copy_recursive(src, dst)?;
+        let opts = SyncOptions {
+            perms: true,
+            times: true,
+            atimes: true,
+            links: true,
+            devices: true,
+            specials: true,
+            ..SyncOptions::default()
+        };
+        engine::sync(src, dst, &Matcher::default(), &available_codecs(), &opts)?;
         Ok(())
     })
 }
@@ -66,112 +53,11 @@ pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
     synchronize_with_config(src, dst, &SyncConfig::default())
 }
 
-fn io_context(path: &Path, err: io::Error) -> EngineError {
-    EngineError::Io(io::Error::new(
-        err.kind(),
-        format!("{}: {}", path.display(), err),
-    ))
-}
-
-fn apply_metadata(dst: &Path, meta: &fs::Metadata) -> Result<()> {
-    let atime = FileTime::from_last_access_time(meta);
-    let mtime = FileTime::from_last_modification_time(meta);
-
-    fs::set_permissions(dst, meta.permissions()).map_err(|e| io_context(dst, e))?;
-    set_file_times(dst, atime, mtime).map_err(|e| io_context(dst, e))?;
-    Ok(())
-}
-
-fn copy_recursive(src: &Path, dst: &Path) -> Result<usize> {
-    let mut copied = 0;
-
-    for entry in fs::read_dir(src).map_err(|e| io_context(src, e))? {
-        let entry = entry.map_err(|e| io_context(src, e))?;
-        let src_path = entry.path();
-        let dst_path = dst.join(entry.file_name());
-        let meta = fs::symlink_metadata(&src_path).map_err(|e| io_context(&src_path, e))?;
-        let file_type = meta.file_type();
-
-        if file_type.is_dir() {
-            fs::create_dir_all(&dst_path).map_err(|e| io_context(&dst_path, e))?;
-            copied += copy_recursive(&src_path, &dst_path)?;
-            apply_metadata(&dst_path, &meta)?;
-            continue;
-        }
-
-        if file_type.is_file() {
-            if !dst_path.exists() {
-                fs::copy(&src_path, &dst_path).map_err(|e| io_context(&src_path, e))?;
-                copied += 1;
-            }
-            apply_metadata(&dst_path, &meta)?;
-            continue;
-        }
-
-        #[cfg(unix)]
-        {
-            if file_type.is_symlink() {
-                if !dst_path.exists() {
-                    let target = fs::read_link(&src_path).map_err(|e| io_context(&src_path, e))?;
-                    std::os::unix::fs::symlink(&target, &dst_path)
-                        .map_err(|e| io_context(&dst_path, e))?;
-                    let atime = FileTime::from_last_access_time(&meta);
-                    let mtime = FileTime::from_last_modification_time(&meta);
-                    set_symlink_file_times(&dst_path, atime, mtime)
-                        .map_err(|e| io_context(&dst_path, e))?;
-                    copied += 1;
-                }
-                continue;
-            }
-
-            let raw_mode: u16 = meta.permissions().mode().try_into().unwrap();
-            let mode = Mode::from_bits_truncate(raw_mode.into());
-            use std::io as stdio;
-            if file_type.is_fifo() {
-                mkfifo(&dst_path, mode)
-                    .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
-                    .map_err(|e| io_context(&dst_path, e))?;
-            } else if file_type.is_char_device() {
-                let dev: dev_t = meta.rdev() as dev_t;
-                mknod(&dst_path, SFlag::S_IFCHR, mode, dev)
-                    .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
-                    .map_err(|e| io_context(&dst_path, e))?;
-            } else if file_type.is_block_device() {
-                let dev: dev_t = meta.rdev() as dev_t;
-                mknod(&dst_path, SFlag::S_IFBLK, mode, dev)
-                    .map_err(|e| stdio::Error::from_raw_os_error(e as i32))
-                    .map_err(|e| io_context(&dst_path, e))?;
-            } else {
-                continue;
-            }
-            copied += 1;
-            apply_metadata(&dst_path, &meta)?;
-            continue;
-        }
-
-        #[cfg(windows)]
-        {
-            if file_type.is_symlink() {
-                if !dst_path.exists() {
-                    let target = fs::read_link(&src_path).map_err(|e| io_context(&src_path, e))?;
-                    match fs::metadata(&src_path) {
-                        Ok(m) if m.is_dir() => symlink_dir(&target, &dst_path),
-                        _ => symlink_file(&target, &dst_path),
-                    }
-                    .map_err(|e| io_context(&dst_path, e))?;
-                    copied += 1;
-                }
-                continue;
-            }
-            continue;
-        }
-    }
-    Ok(copied)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use filetime::{set_file_times, FileTime};
+    use std::{fs, path::Path};
     use tempfile::{tempdir, TempDir};
 
     fn setup_dirs() -> (TempDir, std::path::PathBuf, std::path::PathBuf) {
@@ -180,10 +66,6 @@ mod tests {
         let dst_dir = dir.path().join("dst");
         fs::create_dir_all(&src_dir).unwrap();
         (dir, src_dir, dst_dir)
-    }
-
-    fn assert_no_remaining_copy(src: &Path, dst: &Path) {
-        assert_eq!(copy_recursive(src, dst).unwrap(), 0);
     }
 
     #[test]
@@ -256,7 +138,7 @@ mod tests {
     fn sync_preserves_fifo() {
         use nix::sys::stat::Mode;
         use nix::unistd::mkfifo;
-        use std::os::unix::fs::PermissionsExt;
+        use std::os::unix::fs::{FileTypeExt, PermissionsExt};
 
         let (_dir, src_dir, dst_dir) = setup_dirs();
         fs::write(src_dir.join("file.txt"), b"data").unwrap();
@@ -264,8 +146,6 @@ mod tests {
         assert!(!dst_dir.exists());
         synchronize(&src_dir, &dst_dir).unwrap();
         assert!(dst_dir.exists());
-
-        assert_no_remaining_copy(&src_dir, &dst_dir);
 
         let fifo = src_dir.join("fifo");
         mkfifo(&fifo, Mode::from_bits_truncate(0o640)).unwrap();
@@ -282,6 +162,30 @@ mod tests {
         let dst_atime = FileTime::from_last_access_time(&meta);
         let dst_mtime = FileTime::from_last_modification_time(&meta);
         assert_eq!(dst_atime, atime);
+        assert_eq!(dst_mtime, mtime);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sync_preserves_directory_metadata() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let (_dir, src_dir, dst_dir) = setup_dirs();
+
+        let subdir = src_dir.join("sub");
+        fs::create_dir(&subdir).unwrap();
+        fs::set_permissions(&subdir, fs::Permissions::from_mode(0o711)).unwrap();
+        fs::write(subdir.join("file.txt"), b"data").unwrap();
+        let atime = FileTime::from_unix_time(3_000_000, 0);
+        let mtime = FileTime::from_unix_time(3_000_100, 0);
+        set_file_times(&subdir, atime, mtime).unwrap();
+
+        synchronize(&src_dir, &dst_dir).unwrap();
+
+        let meta = fs::metadata(dst_dir.join("sub")).unwrap();
+        assert!(meta.is_dir());
+        assert_eq!(meta.permissions().mode() & 0o777, 0o711);
+        let dst_mtime = FileTime::from_last_modification_time(&meta);
         assert_eq!(dst_mtime, mtime);
     }
 }
