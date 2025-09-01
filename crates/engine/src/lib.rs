@@ -13,6 +13,8 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
+#[cfg(unix)]
+use std::sync::OnceLock;
 use std::time::Duration;
 use tempfile::NamedTempFile;
 
@@ -92,6 +94,17 @@ fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
     } else {
         Ok(())
     }
+}
+
+#[cfg(unix)]
+fn default_umask() -> u32 {
+    static UMASK: OnceLock<u32> = OnceLock::new();
+    *UMASK.get_or_init(|| {
+        use nix::sys::stat::{umask, Mode};
+        let old = umask(Mode::from_bits_truncate(0));
+        umask(old);
+        old.bits()
+    })
 }
 
 #[cfg(unix)]
@@ -191,19 +204,31 @@ fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
     match fs::rename(src, dst) {
         Ok(_) => Ok(()),
         Err(e) => {
-            #[cfg(unix)]
-            {
-                if e.raw_os_error() == Some(nix::errno::Errno::EXDEV as i32) {
-                    let parent = dst.parent().unwrap_or_else(|| Path::new("."));
-                    let tmp = NamedTempFile::new_in(parent).map_err(|e| io_context(parent, e))?;
-                    let tmp_path = tmp.into_temp_path();
-                    fs::copy(src, &tmp_path).map_err(|e| io_context(src, e))?;
-                    fs::rename(&tmp_path, dst).map_err(|e| io_context(dst, e))?;
-                    fs::remove_file(src).map_err(|e| io_context(src, e))?;
-                    return Ok(());
+            let cross_device = {
+                #[cfg(unix)]
+                {
+                    e.raw_os_error() == Some(nix::errno::Errno::EXDEV as i32)
                 }
+                #[cfg(windows)]
+                {
+                    matches!(e.raw_os_error(), Some(17))
+                }
+                #[cfg(not(any(unix, windows)))]
+                {
+                    false
+                }
+            };
+            if cross_device {
+                let parent = dst.parent().unwrap_or_else(|| Path::new("."));
+                let tmp = NamedTempFile::new_in(parent).map_err(|e| io_context(parent, e))?;
+                let tmp_path = tmp.into_temp_path();
+                fs::copy(src, &tmp_path).map_err(|e| io_context(src, e))?;
+                fs::rename(&tmp_path, dst).map_err(|e| io_context(dst, e))?;
+                fs::remove_file(src).map_err(|e| io_context(src, e))?;
+                Ok(())
+            } else {
+                Err(io_context(src, e))
             }
-            Err(io_context(src, e))
         }
     }
 }
@@ -1336,10 +1361,13 @@ impl Receiver {
         }
 
         #[cfg(unix)]
-        if self.opts.perms {
+        {
             let src_meta = fs::symlink_metadata(src).map_err(|e| io_context(src, e))?;
             if !src_meta.file_type().is_symlink() {
-                let mode = meta::mode_from_metadata(&src_meta);
+                let mut mode = meta::mode_from_metadata(&src_meta);
+                if !self.opts.perms {
+                    mode &= !default_umask();
+                }
                 fs::set_permissions(dest, fs::Permissions::from_mode(mode))
                     .map_err(|e| io_context(dest, e))?;
             }
@@ -1423,6 +1451,7 @@ impl Receiver {
                 gid_map,
                 fake_super: self.opts.fake_super && !self.opts.super_user,
                 super_user: self.opts.super_user,
+                numeric_ids: self.opts.numeric_ids,
             };
 
             if meta_opts.needs_metadata() {

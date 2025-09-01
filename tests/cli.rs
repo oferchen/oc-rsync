@@ -18,11 +18,43 @@ use std::os::unix::fs::symlink;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::thread;
 use std::time::Duration;
-use tempfile::{tempdir, tempdir_in};
+use tempfile::{tempdir, tempdir_in, TempDir};
 #[cfg(unix)]
 use users::{get_current_gid, get_current_uid, get_group_by_gid};
 #[cfg(all(unix, feature = "xattr"))]
 use xattr as _;
+
+#[cfg(unix)]
+struct Tmpfs(TempDir);
+
+#[cfg(unix)]
+impl Tmpfs {
+    fn new() -> Option<Self> {
+        let dir = tempdir().ok()?;
+        let status = std::process::Command::new("mount")
+            .args(["-t", "tmpfs", "tmpfs", dir.path().to_str().unwrap()])
+            .status()
+            .ok()?;
+        if status.success() {
+            Some(Tmpfs(dir))
+        } else {
+            None
+        }
+    }
+
+    fn path(&self) -> &std::path::Path {
+        self.0.path()
+    }
+}
+
+#[cfg(unix)]
+impl Drop for Tmpfs {
+    fn drop(&mut self) {
+        let _ = std::process::Command::new("umount")
+            .arg(self.0.path())
+            .status();
+    }
+}
 
 #[test]
 fn prints_version() {
@@ -640,13 +672,17 @@ fn temp_dir_cross_filesystem_rename() {
     fs::create_dir_all(&dst_dir).unwrap();
     fs::write(src_dir.join("a.txt"), b"x").unwrap();
 
-    let tmp_dir = tempdir().unwrap();
+    let tmp_dir = match Tmpfs::new() {
+        Some(t) => t,
+        None => {
+            eprintln!("skipping cross-filesystem rename test; mount failed");
+            return;
+        }
+    };
+
     let dst_dev = fs::metadata(&dst_dir).unwrap().dev();
     let tmp_dev = fs::metadata(tmp_dir.path()).unwrap().dev();
-    if dst_dev == tmp_dev {
-        eprintln!("skipping cross-filesystem rename test; devices match");
-        return;
-    }
+    assert_ne!(dst_dev, tmp_dev, "devices match");
 
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
@@ -674,13 +710,17 @@ fn delay_updates_cross_filesystem_rename() {
     fs::create_dir_all(&dst_dir).unwrap();
     fs::write(src_dir.join("a.txt"), b"y").unwrap();
 
-    let tmp_dir = tempdir().unwrap();
+    let tmp_dir = match Tmpfs::new() {
+        Some(t) => t,
+        None => {
+            eprintln!("skipping cross-filesystem rename test; mount failed");
+            return;
+        }
+    };
+
     let dst_dev = fs::metadata(&dst_dir).unwrap().dev();
     let tmp_dev = fs::metadata(tmp_dir.path()).unwrap().dev();
-    if dst_dev == tmp_dev {
-        eprintln!("skipping cross-filesystem rename test; devices match");
-        return;
-    }
+    assert_ne!(dst_dev, tmp_dev, "devices match");
 
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
@@ -711,13 +751,11 @@ fn numeric_ids_are_preserved() {
     #[cfg(unix)]
     let (uid, gid) = {
         let desired = (Uid::from_raw(12345), Gid::from_raw(12345));
-        match chown(&file, Some(desired.0), Some(desired.1)) {
-            Ok(_) => desired,
-            Err(_) => {
-                let meta = std::fs::metadata(&file).unwrap();
-                (Uid::from_raw(meta.uid()), Gid::from_raw(meta.gid()))
-            }
+        if let Err(err) = chown(&file, Some(desired.0), Some(desired.1)) {
+            eprintln!("skipping numeric_ids_are_preserved: {err}");
+            return;
         }
+        desired
     };
 
     let dst_file = dst_dir.join("id.txt");
@@ -751,6 +789,42 @@ fn numeric_ids_are_preserved() {
         assert_eq!(meta.uid(), uid.as_raw());
         assert_eq!(meta.gid(), gid.as_raw());
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn numeric_ids_require_privileges() {
+    let dir = tempdir().unwrap();
+    let probe = dir.path().join("probe");
+    std::fs::write(&probe, b"probe").unwrap();
+    let current_uid = get_current_uid();
+    let target_uid = if current_uid == 0 { 1 } else { current_uid + 1 };
+    if chown(&probe, Some(Uid::from_raw(target_uid)), None).is_ok() {
+        eprintln!("skipping numeric_ids_require_privileges: has CAP_CHOWN");
+        return;
+    }
+
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("id.txt");
+    std::fs::write(&file, b"ids").unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    let usermap = format!("--usermap={current_uid}:{target_uid}");
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--numeric-ids",
+            "--owner",
+            &usermap,
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .failure();
 }
 
 #[cfg(unix)]
@@ -1036,7 +1110,9 @@ fn checksum_forces_transfer_cli() {
 
 #[cfg(unix)]
 #[test]
+#[serial]
 fn perms_flag_preserves_permissions() {
+    use nix::sys::stat::{umask, Mode};
     use std::fs;
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
@@ -1052,16 +1128,55 @@ fn perms_flag_preserves_permissions() {
     let mtime = FileTime::from_last_modification_time(&fs::metadata(&file).unwrap());
     set_file_mtime(&dst_file, mtime).unwrap();
 
+    let old_umask = umask(Mode::from_bits_truncate(0o077));
+
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args(["--local", "--perms", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
+
+    umask(old_umask);
 
     let mode = fs::metadata(dst_dir.join("a.txt"))
         .unwrap()
         .permissions()
         .mode();
     assert_eq!(mode & 0o7777, 0o741);
+}
+
+#[cfg(unix)]
+#[test]
+#[serial]
+fn default_umask_masks_permissions() {
+    use nix::sys::stat::{umask, Mode};
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("a.sh");
+    fs::write(&file, b"hi").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o754)).unwrap();
+
+    let old_umask = umask(Mode::from_bits_truncate(0o027));
+
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", &src_arg, dst_dir.to_str().unwrap()])
+        .assert()
+        .success();
+
+    umask(old_umask);
+
+    let mode = fs::metadata(dst_dir.join("a.sh"))
+        .unwrap()
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(mode, 0o754 & !0o027);
 }
 
 #[cfg(unix)]
