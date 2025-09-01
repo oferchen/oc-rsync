@@ -304,7 +304,9 @@ fn progress_flag_shows_output() {
     let path_line = stderr.lines().next().unwrap();
     assert_eq!(path_line, dst_dir.join("a.txt").display().to_string());
     let progress_line = stderr.split('\r').next_back().unwrap().trim_end();
-    let expected = format!("{:>15} {:>3}%", progress_formatter(2048, false), 100);
+    let bytes = progress_formatter(2048, false);
+    let rate = format!("{}B/s", bytes);
+    let expected = format!("{:>15} {:>3}% {:>15}", bytes, 100, rate);
     assert_eq!(progress_line, expected);
 }
 
@@ -333,7 +335,9 @@ fn progress_flag_human_readable() {
     let path_line = lines.next().unwrap();
     assert_eq!(path_line, dst_dir.join("a.txt").display().to_string());
     let progress_line = lines.next().unwrap().trim_start_matches('\r').trim_end();
-    let expected = format!("{:>15} {:>3}%", progress_formatter(2 * 1024, true), 100);
+    let bytes = progress_formatter(2 * 1024, true);
+    let rate = format!("{}/s", bytes);
+    let expected = format!("{:>15} {:>3}% {:>15}", bytes, 100, rate);
     assert_eq!(progress_line, expected);
 }
 
