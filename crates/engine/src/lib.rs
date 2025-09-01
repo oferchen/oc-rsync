@@ -13,6 +13,8 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
+#[cfg(feature = "xattr")]
+use std::rc::Rc;
 #[cfg(unix)]
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -1074,6 +1076,7 @@ pub struct Receiver {
     state: ReceiverState,
     codec: Option<Codec>,
     opts: SyncOptions,
+    matcher: Matcher,
     delayed: Vec<(PathBuf, PathBuf, PathBuf)>,
     #[cfg(unix)]
     link_map: HashMap<(u64, u64), PathBuf>,
@@ -1093,6 +1096,7 @@ impl Receiver {
             state: ReceiverState::Idle,
             codec,
             opts,
+            matcher: Matcher::default(),
             delayed: Vec::new(),
             #[cfg(unix)]
             link_map: HashMap::new(),
@@ -1421,6 +1425,11 @@ impl Receiver {
                     }))
                 };
 
+            #[cfg(feature = "xattr")]
+            let m1 = self.matcher.clone();
+            #[cfg(feature = "xattr")]
+            let m2 = self.matcher.clone();
+
             let mut meta_opts = meta::Options {
                 xattrs: {
                     #[cfg(feature = "xattr")]
@@ -1432,6 +1441,14 @@ impl Receiver {
                         false
                     }
                 },
+                #[cfg(feature = "xattr")]
+                xattr_filter: Some(Rc::new(move |name: &std::ffi::OsStr| {
+                    m1.is_xattr_included(name).unwrap_or(false)
+                })),
+                #[cfg(feature = "xattr")]
+                xattr_filter_delete: Some(Rc::new(move |name: &std::ffi::OsStr| {
+                    m2.is_xattr_included_for_delete(name).unwrap_or(false)
+                })),
                 acl: {
                     #[cfg(feature = "acl")]
                     {
@@ -2017,6 +2034,7 @@ pub fn sync(
     let matcher = matcher.clone().with_root(src_root.clone());
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
     let mut receiver = Receiver::new(codec, opts.clone());
+    receiver.matcher = matcher.clone();
     let mut dir_meta: Vec<(PathBuf, PathBuf)> = Vec::new();
     if matches!(opts.delete, Some(DeleteMode::Before)) {
         delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
