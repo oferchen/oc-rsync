@@ -15,11 +15,10 @@ use std::time::Duration;
 use clap::parser::ValueSource;
 use clap::{ArgAction, ArgMatches, Args, CommandFactory, FromArgMatches, Parser};
 use compress::{available_codecs, Codec, ModernCompress};
+pub use engine::EngineError;
 #[cfg(feature = "blake3")]
 use engine::ModernHash;
-use engine::{
-    sync, DeleteMode, EngineError, IdMapper, ModernCdc, Result, Stats, StrongHash, SyncOptions,
-};
+use engine::{sync, DeleteMode, IdMapper, ModernCdc, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag};
 use meta::{parse_chmod, parse_chown, parse_id_map};
