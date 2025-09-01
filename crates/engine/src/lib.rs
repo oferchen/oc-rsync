@@ -1418,7 +1418,7 @@ impl Receiver {
                 xattrs: {
                     #[cfg(feature = "xattr")]
                     {
-                        self.opts.xattrs || self.opts.fake_super
+                        self.opts.xattrs || (self.opts.fake_super && !self.opts.super_user)
                     }
                     #[cfg(not(feature = "xattr"))]
                     {
@@ -1447,7 +1447,8 @@ impl Receiver {
                 omit_link_times: self.opts.omit_link_times,
                 uid_map,
                 gid_map,
-                fake_super: self.opts.fake_super,
+                fake_super: self.opts.fake_super && !self.opts.super_user,
+                super_user: self.opts.super_user,
             };
 
             if meta_opts.needs_metadata() {
@@ -1471,7 +1472,7 @@ impl Receiver {
                     meta::Metadata::from_path(src, meta_opts.clone()).map_err(EngineError::from)?;
                 meta.apply(dest, meta_opts.clone())
                     .map_err(EngineError::from)?;
-                if self.opts.fake_super {
+                if self.opts.fake_super && !self.opts.super_user {
                     #[cfg(feature = "xattr")]
                     {
                         meta::store_fake_super(dest, meta.uid, meta.gid, meta.mode);
@@ -1583,6 +1584,7 @@ pub struct SyncOptions {
     pub specials: bool,
     pub fsync: bool,
     pub fuzzy: bool,
+    pub super_user: bool,
     pub fake_super: bool,
     #[cfg(feature = "xattr")]
     pub xattrs: bool,
@@ -1673,6 +1675,7 @@ impl Default for SyncOptions {
             specials: false,
             fsync: false,
             fuzzy: false,
+            super_user: false,
             fake_super: false,
             #[cfg(feature = "xattr")]
             xattrs: false,

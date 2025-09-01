@@ -236,7 +236,7 @@
   },
   {
     "flag": "--fake-super",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -636,7 +636,7 @@
   },
   {
     "flag": "--super",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {

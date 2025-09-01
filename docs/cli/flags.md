@@ -12,7 +12,7 @@
 | -N | --crtimes | preserve create times (newness) | yes |  | no |
 |  | --devices | preserve device files (super-user only) | yes |  | no |
 | -E | --executability | preserve executability | no |  | no |
-|  | --fake-super | store/recover privileged attrs using xattrs | no |  | no |
+|  | --fake-super | store/recover privileged attrs using xattrs | yes |  | no |
 |  | --group | preserve group | yes |  | no |
 |  | --groupmap=STRING | custom groupname mapping | no |  | no |
 |  | --numeric-ids | don't map uid/gid values by user/group name | yes |  | no |
@@ -22,7 +22,7 @@
 |  | --owner | preserve owner (super-user only) | yes |  | no |
 |  | --perms | preserve permissions | yes |  | no |
 |  | --specials | preserve special files | yes |  | no |
-|  | --super | receiver attempts super-user activities | no |  | no |
+|  | --super | receiver attempts super-user activities | yes | overrides `--fake-super` | no |
 |  | --times | preserve modification times | yes |  | no |
 |  | --usermap=STRING | custom username mapping | no |  | no |
 |  | --write-devices | write to devices as files (implies --inplace) | yes |  | no |

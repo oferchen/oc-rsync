@@ -317,6 +317,8 @@ struct ClientOpts {
     acls: bool,
     #[arg(long = "fake-super", help_heading = "Attributes")]
     fake_super: bool,
+    #[arg(long = "super", help_heading = "Attributes")]
+    super_user: bool,
     #[arg(short = 'z', long, help_heading = "Compression")]
     compress: bool,
     #[arg(
@@ -1250,7 +1252,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         devices: opts.devices || opts.archive,
         specials: opts.specials || opts.archive,
         #[cfg(feature = "xattr")]
-        xattrs: opts.xattrs || opts.fake_super,
+        xattrs: opts.xattrs || (opts.fake_super && !opts.super_user),
         #[cfg(feature = "acl")]
         acls: opts.acls,
         sparse: opts.sparse,
@@ -1303,7 +1305,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         write_devices: opts.write_devices,
         fsync: opts.fsync,
         fuzzy: opts.fuzzy,
-        fake_super: opts.fake_super,
+        super_user: opts.super_user,
+        fake_super: opts.fake_super && !opts.super_user,
         quiet: opts.quiet,
     };
     sync_opts.prepare_remote();

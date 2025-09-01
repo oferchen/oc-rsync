@@ -160,7 +160,7 @@ negotiates version 73.
 | `--stop-after` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--stop-at` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--suffix` | — | ❌ | — | — | not yet implemented | ≤3.2 |
-| `--super` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--super` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | overrides `--fake-super` | ≤3.2 |
 | `--temp-dir` | `-T` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires same filesystem for atomic rename | ≤3.2 |
 | `--timeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) | idle and I/O timeout | ≤3.2 |
 | `--times` | `-t` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |

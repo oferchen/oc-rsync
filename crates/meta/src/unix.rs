@@ -62,6 +62,7 @@ pub struct Options {
     pub xattrs: bool,
     pub acl: bool,
     pub fake_super: bool,
+    pub super_user: bool,
     pub chmod: Option<Vec<Chmod>>,
     pub owner: bool,
     pub group: bool,
@@ -82,6 +83,7 @@ impl std::fmt::Debug for Options {
             .field("xattrs", &self.xattrs)
             .field("acl", &self.acl)
             .field("fake_super", &self.fake_super)
+            .field("super_user", &self.super_user)
             .field("chmod", &self.chmod)
             .field("owner", &self.owner)
             .field("group", &self.group)
@@ -318,7 +320,8 @@ impl Metadata {
                     | Errno::EACCES
                     | Errno::ENOSYS
                     | Errno::EINVAL
-                    | Errno::EOPNOTSUPP => {}
+                    | Errno::EOPNOTSUPP
+                        if !opts.super_user => {}
                     _ => return Err(nix_to_io(err)),
                 }
             }
@@ -369,7 +372,8 @@ impl Metadata {
                                     | Errno::EACCES
                                     | Errno::ENOSYS
                                     | Errno::EINVAL
-                                    | Errno::EOPNOTSUPP => {}
+                                    | Errno::EOPNOTSUPP
+                                        if !opts.super_user => {}
                                     _ => return Err(e),
                                 }
                             } else {
@@ -377,7 +381,7 @@ impl Metadata {
                             }
                         }
                     }
-                    Errno::EPERM | Errno::EACCES | Errno::ENOSYS => {}
+                    Errno::EPERM | Errno::EACCES | Errno::ENOSYS if !opts.super_user => {}
                     _ => return Err(nix_to_io(err)),
                 }
             }
