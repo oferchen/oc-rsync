@@ -242,7 +242,8 @@ struct ClientOpts {
     #[arg(
         long,
         help_heading = "Delete",
-        help = "force deletion of dirs even if not empty"
+        help = "force deletion of dirs even if not empty",
+        action = ArgAction::SetTrue
     )]
     force: bool,
     #[arg(long = "max-delete", value_name = "NUM", help_heading = "Delete")]
