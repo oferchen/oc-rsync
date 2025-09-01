@@ -26,7 +26,7 @@ negotiates version 73.
 | `--backup-dir` | — | ✅ | ✅ | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | implies `--backup` | ≤3.2 |
 | `--block-size` | `-B` | ✅ | ❌ | [tests/block_size.rs](../tests/block_size.rs) | controls delta block size | ≤3.2 |
 | `--blocking-io` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
-| `--bwlimit` | — | ✅ | ❌ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) |  | ≤3.2 |
+| `--bwlimit` | — | ✅ | ✅ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) | token bucket matches upstream | ≤3.2 |
 | `--cc` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | alias for `--checksum-choice` | ≤3.2 |
 | `--checksum` | `-c` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, BLAKE3 | ≤3.2 |
 | `--checksum-choice` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | choose the strong hash algorithm | ≤3.2 |
@@ -40,7 +40,7 @@ negotiates version 73.
 | `--zc` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | alias for `--compress-choice` | ≤3.2 |
 | `--zl` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | alias for `--compress-level` | ≤3.2 |
 | `--config` | — | ✅ | ❌ | [tests/daemon_config.rs](../tests/daemon_config.rs) |  | ≤3.2 |
-| `--contimeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
+| `--contimeout` | — | ✅ | ✅ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
 | `--copy-as` | — | ✅ | ❌ | [tests/copy_as.rs](../tests/copy_as.rs) | requires root or CAP_CHOWN | ≤3.2 |
 | `--copy-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
 | `--copy-devices` | — | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
@@ -60,7 +60,7 @@ negotiates version 73.
 | `--delete-during` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | ≤3.2 |
 | `--delete-excluded` | — | ✅ | ✅ | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) |  | ≤3.2 |
 | `--delete-missing-args` | — | ✅ | ✅ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
-| `--devices` | — | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
+| `--devices` | — | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--dirs` | `-d` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--dparam` | `-M` | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--dry-run` | `-n` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
@@ -95,7 +95,7 @@ negotiates version 73.
 | `--itemize-changes` | `-i` | ✅ | ✅ | [tests/golden/cli_parity/itemize-changes.sh](../tests/golden/cli_parity/itemize-changes.sh) |  | 3.2 |
 | `--keep-dirlinks` | `-K` | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--link-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
-| `--links` | `-l` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
+| `--links` | `-l` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | preserves relative/absolute targets; supports dangling links | ≤3.2 |
 | `--list-only` | — | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--log-file` | — | ✅ | ❌ | [tests/log_file.rs](../tests/log_file.rs) | limited format support | ≤3.2 |
 | `--log-file-format` | — | ✅ | ❌ | [tests/log_file.rs](../tests/log_file.rs) | limited format support | ≤3.2 |
@@ -160,9 +160,9 @@ negotiates version 73.
 | `--stop-after` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--stop-at` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--suffix` | — | ❌ | — | — | not yet implemented | ≤3.2 |
-| `--super` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--super` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | overrides `--fake-super` | ≤3.2 |
 | `--temp-dir` | `-T` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires same filesystem for atomic rename | ≤3.2 |
-| `--timeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
+| `--timeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) | idle and I/O timeout | ≤3.2 |
 | `--times` | `-t` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--trust-sender` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--update` | `-u` | ✅ | ❌ | [crates/engine/tests/update.rs](../crates/engine/tests/update.rs) |  | ≤3.2 |
@@ -172,4 +172,4 @@ negotiates version 73.
 | `--whole-file` | `-W` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--write-batch` | — | ✅ | ✅ | [tests/write_batch.rs](../tests/write_batch.rs) |  | ≤3.2 |
 | `--write-devices` | — | ✅ | ✅ | [tests/write_devices.rs](../tests/write_devices.rs) | writes to existing devices | ≤3.2 |
-| `--xattrs` | `-X` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `xattr` feature | ≤3.2 |
+| `--xattrs` | `-X` | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | requires `xattr` feature | ≤3.2 |

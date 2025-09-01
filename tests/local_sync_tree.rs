@@ -386,7 +386,7 @@ fn sync_preserves_atimes() {
 
 #[cfg(target_os = "linux")]
 #[test]
-fn sync_preserves_device_nodes() {
+fn sync_creates_device_nodes() {
     use nix::errno::Errno;
     use nix::sys::stat::{major, minor, Mode, SFlag};
     use nix::unistd::Uid;
@@ -439,6 +439,7 @@ fn sync_preserves_device_nodes() {
 
     let meta = fs::symlink_metadata(dst.join("char")).unwrap();
     assert!(meta.file_type().is_char_device());
+    assert_eq!(meta.mode() & 0o777, 0o600);
     let rdev = meta.rdev();
     assert_eq!(rdev, meta::makedev(1, 3));
     assert_eq!(major(rdev), 1);
@@ -446,10 +447,98 @@ fn sync_preserves_device_nodes() {
 
     let meta = fs::symlink_metadata(dst.join("block")).unwrap();
     assert!(meta.file_type().is_block_device());
+    assert_eq!(meta.mode() & 0o777, 0o600);
     let rdev = meta.rdev();
     assert_eq!(rdev, meta::makedev(8, 1));
     assert_eq!(major(rdev), 8);
     assert_eq!(minor(rdev), 1);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn sync_copies_device_contents() {
+    use nix::errno::Errno;
+    use nix::sys::stat::{Mode, SFlag};
+    use nix::unistd::Uid;
+
+    if !Uid::effective().is_root() {
+        eprintln!("skipping: test requires root to create device nodes");
+        return;
+    }
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let dev = src.join("null");
+    if let Err(err) = meta::mknod(
+        &dev,
+        SFlag::S_IFCHR,
+        Mode::from_bits_truncate(0o600),
+        meta::makedev(1, 3),
+    ) {
+        if err.raw_os_error() == Some(Errno::EPERM as i32) {
+            eprintln!("skipping: failed to create char device: {err}");
+            return;
+        }
+        panic!("failed to create char device: {err}");
+    }
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--copy-devices", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let meta = fs::symlink_metadata(dst.join("null")).unwrap();
+    assert!(!meta.file_type().is_char_device());
+    assert!(meta.is_file());
+    assert_eq!(meta.len(), 0);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn sync_deletes_device_nodes() {
+    use nix::errno::Errno;
+    use nix::sys::stat::{Mode, SFlag};
+    use nix::unistd::Uid;
+
+    if !Uid::effective().is_root() {
+        eprintln!("skipping: test requires root to create device nodes");
+        return;
+    }
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let dev = dst.join("null");
+    if let Err(err) = meta::mknod(
+        &dev,
+        SFlag::S_IFCHR,
+        Mode::from_bits_truncate(0o600),
+        meta::makedev(1, 3),
+    ) {
+        if err.raw_os_error() == Some(Errno::EPERM as i32) {
+            eprintln!("skipping: failed to create char device: {err}");
+            return;
+        }
+        panic!("failed to create char device: {err}");
+    }
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--delete", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    assert!(!dst.join("null").exists());
 }
 
 #[cfg(unix)]

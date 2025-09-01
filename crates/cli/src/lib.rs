@@ -40,6 +40,15 @@ fn parse_duration(s: &str) -> std::result::Result<Duration, std::num::ParseIntEr
     Ok(Duration::from_secs(s.parse()?))
 }
 
+fn parse_nonzero_duration(s: &str) -> std::result::Result<Duration, String> {
+    let d = parse_duration(s).map_err(|e| e.to_string())?;
+    if d.as_secs() == 0 {
+        Err("value must be greater than 0".into())
+    } else {
+        Ok(d)
+    }
+}
+
 fn parse_size(s: &str) -> std::result::Result<usize, String> {
     let s = s.trim();
     if s == "0" {
@@ -308,6 +317,8 @@ struct ClientOpts {
     acls: bool,
     #[arg(long = "fake-super", help_heading = "Attributes")]
     fake_super: bool,
+    #[arg(long = "super", help_heading = "Attributes")]
+    super_user: bool,
     #[arg(short = 'z', long, help_heading = "Compression")]
     compress: bool,
     #[arg(
@@ -385,7 +396,12 @@ struct ClientOpts {
     bwlimit: Option<u64>,
     #[arg(long = "timeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     timeout: Option<Duration>,
-    #[arg(long = "contimeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
+    #[arg(
+        long = "contimeout",
+        value_name = "SECONDS",
+        value_parser = parse_nonzero_duration,
+        help_heading = "Misc"
+    )]
     contimeout: Option<Duration>,
     #[arg(long = "modify-window", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     modify_window: Option<Duration>,
@@ -791,8 +807,7 @@ pub fn spawn_daemon_session(
     } else {
         (host, port.unwrap_or(873))
     };
-    let mut t = TcpTransport::connect(host, port, contimeout, family)
-        .map_err(|e| EngineError::Other(e.to_string()))?;
+    let mut t = TcpTransport::connect(host, port, contimeout, family).map_err(EngineError::from)?;
     let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(EngineError::Other)?;
     t.apply_sockopts(&parsed).map_err(EngineError::from)?;
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
@@ -1237,7 +1252,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         devices: opts.devices || opts.archive,
         specials: opts.specials || opts.archive,
         #[cfg(feature = "xattr")]
-        xattrs: opts.xattrs || opts.fake_super,
+        xattrs: opts.xattrs || (opts.fake_super && !opts.super_user),
         #[cfg(feature = "acl")]
         acls: opts.acls,
         sparse: opts.sparse,
@@ -1290,7 +1305,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         write_devices: opts.write_devices,
         fsync: opts.fsync,
         fuzzy: opts.fuzzy,
-        fake_super: opts.fake_super,
+        super_user: opts.super_user,
+        fake_super: opts.fake_super && !opts.super_user,
         quiet: opts.quiet,
     };
     sync_opts.prepare_remote();
@@ -1369,7 +1385,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.protocol
                         .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                 )
-                .map_err(|e| EngineError::Other(e.to_string()))?;
+                .map_err(EngineError::from)?;
                 let (err, _) = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
@@ -1433,7 +1449,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.protocol
                         .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                 )
-                .map_err(|e| EngineError::Other(e.to_string()))?;
+                .map_err(EngineError::from)?;
                 let (err, _) = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
@@ -1477,7 +1493,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                         )
-                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                        .map_err(EngineError::from)?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
                             &src_path.path,
@@ -1492,7 +1508,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                         )
-                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                        .map_err(EngineError::from)?;
 
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1585,7 +1601,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                         )
-                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                        .map_err(EngineError::from)?;
                         let mut src_session = spawn_daemon_session(
                             &src_host,
                             &sm,
@@ -1654,7 +1670,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                         )
-                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                        .map_err(EngineError::from)?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             pipe_transports(&mut src_session, &mut dst_session)

@@ -14,6 +14,8 @@ use meta::{parse_chmod, parse_chown};
 use nix::sys::stat::{makedev, mknod, Mode, SFlag};
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 use tempfile::tempdir;
+#[cfg(feature = "xattr")]
+use xattr;
 
 #[test]
 fn perms_roundtrip() {
@@ -800,4 +802,55 @@ fn metadata_matches_rsync() {
             assert_eq!(cr_rrs, cr_rsync);
         }
     }
+}
+
+#[cfg(all(feature = "xattr"))]
+#[test]
+fn fake_super_stores_xattrs() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("file"), b"hi").unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &SyncOptions {
+            perms: true,
+            fake_super: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let dst_file = dst.join("file");
+    assert!(xattr::get(&dst_file, "user.rsync.uid").unwrap().is_some());
+}
+
+#[cfg(all(feature = "xattr"))]
+#[test]
+fn super_overrides_fake_super() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("file"), b"hi").unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &SyncOptions {
+            perms: true,
+            fake_super: true,
+            super_user: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let dst_file = dst.join("file");
+    assert!(xattr::get(&dst_file, "user.rsync.uid").unwrap().is_none());
 }

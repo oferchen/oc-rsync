@@ -12,7 +12,7 @@ use std::time::Duration;
 use std::os::unix::fs::PermissionsExt;
 
 use protocol::{negotiate_version, LATEST_VERSION};
-use transport::{AddressFamily, RateLimitedTransport, TcpTransport, Transport};
+use transport::{AddressFamily, RateLimitedTransport, TcpTransport, TimeoutTransport, Transport};
 
 fn parse_list(val: &str) -> Vec<String> {
     val.split([' ', ','])
@@ -551,6 +551,10 @@ pub fn handle_connection<T: Transport>(
                 "unauthorized module",
             ));
         }
+        if let Some(dur) = module.timeout {
+            transport.set_read_timeout(Some(dur))?;
+            transport.set_write_timeout(Some(dur))?;
+        }
         serve_module(
             transport,
             module,
@@ -640,38 +644,41 @@ pub fn run_daemon(
         let motd = motd.clone();
         let handler = handler.clone();
         std::thread::spawn(move || {
-            let mut transport = TcpTransport::from_stream(stream);
-            let _ = transport.set_read_timeout(timeout);
-            let res = if let Some(limit) = bwlimit {
-                let mut t = RateLimitedTransport::new(transport, limit);
-                handle_connection(
-                    &mut t,
-                    &modules,
-                    secrets.as_deref(),
-                    password.as_deref(),
-                    log_file.as_deref(),
-                    log_format.as_deref(),
-                    motd.as_deref(),
-                    &peer,
-                    uid,
-                    gid,
-                    &handler,
-                )
-            } else {
-                handle_connection(
-                    &mut transport,
-                    &modules,
-                    secrets.as_deref(),
-                    password.as_deref(),
-                    log_file.as_deref(),
-                    log_format.as_deref(),
-                    motd.as_deref(),
-                    &peer,
-                    uid,
-                    gid,
-                    &handler,
-                )
-            };
+            let transport = TcpTransport::from_stream(stream);
+            let res = (|| -> io::Result<()> {
+                let t = TimeoutTransport::new(transport, timeout)?;
+                if let Some(limit) = bwlimit {
+                    let mut t = RateLimitedTransport::new(t, limit);
+                    handle_connection(
+                        &mut t,
+                        &modules,
+                        secrets.as_deref(),
+                        password.as_deref(),
+                        log_file.as_deref(),
+                        log_format.as_deref(),
+                        motd.as_deref(),
+                        &peer,
+                        uid,
+                        gid,
+                        &handler,
+                    )
+                } else {
+                    let mut t = t;
+                    handle_connection(
+                        &mut t,
+                        &modules,
+                        secrets.as_deref(),
+                        password.as_deref(),
+                        log_file.as_deref(),
+                        log_format.as_deref(),
+                        motd.as_deref(),
+                        &peer,
+                        uid,
+                        gid,
+                        &handler,
+                    )
+                }
+            })();
             if let Err(e) = res {
                 if !quiet {
                     eprintln!("connection error: {}", e);
@@ -727,7 +734,7 @@ mod tests {
         };
         let writer = io::sink();
         let mut t = LocalPipeTransport::new(reader, writer);
-        let (_tok, allowed, no_motd) = authenticate(&mut t, Some(&auth_path)).unwrap();
+        let (_tok, allowed, no_motd) = authenticate(&mut t, Some(&auth_path), None).unwrap();
         assert!(!no_motd);
         assert_eq!(allowed, vec!["user".to_string()]);
     }
@@ -745,7 +752,7 @@ mod tests {
         let reader = std::io::Cursor::new(data);
         let writer = io::sink();
         let mut t = LocalPipeTransport::new(reader, writer);
-        let err = authenticate(&mut t, Some(&auth_path)).unwrap_err();
+        let err = authenticate(&mut t, Some(&auth_path), None).unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         assert_eq!(err.to_string(), "token too long");
     }

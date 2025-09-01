@@ -1355,7 +1355,7 @@ impl Receiver {
 impl Receiver {
     fn copy_metadata_now(&self, src: &Path, dest: &Path) -> Result<()> {
         #[cfg(unix)]
-        if self.opts.write_devices {
+        if self.opts.write_devices && !self.opts.devices {
             if let Ok(meta) = fs::symlink_metadata(dest) {
                 let ft = meta.file_type();
                 if ft.is_char_device() || ft.is_block_device() {
@@ -1421,7 +1421,7 @@ impl Receiver {
                 xattrs: {
                     #[cfg(feature = "xattr")]
                     {
-                        self.opts.xattrs || self.opts.fake_super
+                        self.opts.xattrs || (self.opts.fake_super && !self.opts.super_user)
                     }
                     #[cfg(not(feature = "xattr"))]
                     {
@@ -1450,7 +1450,8 @@ impl Receiver {
                 omit_link_times: self.opts.omit_link_times,
                 uid_map,
                 gid_map,
-                fake_super: self.opts.fake_super,
+                fake_super: self.opts.fake_super && !self.opts.super_user,
+                super_user: self.opts.super_user,
             };
 
             if meta_opts.needs_metadata() {
@@ -1474,7 +1475,7 @@ impl Receiver {
                     meta::Metadata::from_path(src, meta_opts.clone()).map_err(EngineError::from)?;
                 meta.apply(dest, meta_opts.clone())
                     .map_err(EngineError::from)?;
-                if self.opts.fake_super {
+                if self.opts.fake_super && !self.opts.super_user {
                     #[cfg(feature = "xattr")]
                     {
                         meta::store_fake_super(dest, meta.uid, meta.gid, meta.mode);
@@ -1586,6 +1587,7 @@ pub struct SyncOptions {
     pub specials: bool,
     pub fsync: bool,
     pub fuzzy: bool,
+    pub super_user: bool,
     pub fake_super: bool,
     #[cfg(feature = "xattr")]
     pub xattrs: bool,
@@ -1676,6 +1678,7 @@ impl Default for SyncOptions {
             specials: false,
             fsync: false,
             fuzzy: false,
+            super_user: false,
             fake_super: false,
             #[cfg(feature = "xattr")]
             xattrs: false,
@@ -2266,14 +2269,19 @@ pub fn sync(
                     let target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
                     let target_path = if target.is_absolute() {
                         target.clone()
+                    } else if let Some(parent) = path.parent() {
+                        parent.join(&target)
                     } else {
-                        path.parent().unwrap_or(Path::new("")).join(&target)
+                        src_root.join(&target)
                     };
                     let is_unsafe = match fs::canonicalize(&target_path) {
                         Ok(p) => !p.starts_with(&src_root),
                         Err(_) => true,
                     };
                     if opts.safe_links && is_unsafe {
+                        continue;
+                    }
+                    if opts.ignore_existing && dest_path.exists() {
                         continue;
                     }
                     let meta = fs::metadata(&target_path).ok();
@@ -2372,7 +2380,7 @@ pub fn sync(
                                 Mode::from_bits_truncate((meta.mode() & 0o777) as libc::mode_t);
                             meta::mknod(&dest_path, kind, perm, meta.rdev())
                                 .map_err(|e| io_context(&dest_path, e))?;
-                            receiver.copy_metadata(&path, &dest_path)?;
+                            receiver.copy_metadata_now(&path, &dest_path)?;
                             if created {
                                 stats.files_transferred += 1;
                                 if opts.itemize_changes && !opts.quiet {
