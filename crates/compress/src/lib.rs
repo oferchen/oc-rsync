@@ -2,9 +2,6 @@
 use std::io::{self, Read, Write};
 use std::path::Path;
 
-#[cfg(feature = "lz4")]
-use lz4::block;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModernCompress {
     Auto,
@@ -192,37 +189,79 @@ fn zstd_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "sse4.2")]
 unsafe fn zstd_compress_sse42(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
-    zstd_compress_scalar(data, level)
+    use zstd::zstd_safe;
+    let bound = zstd_safe::compress_bound(data.len());
+    let mut out = vec![0u8; bound];
+    let written =
+        zstd_safe::compress(&mut out, data, level).map_err(|e| io::Error::other(format!("{e}")))?;
+    out.truncate(written);
+    Ok(out)
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2")]
 unsafe fn zstd_compress_avx2(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
-    zstd_compress_scalar(data, level)
+    use zstd::zstd_safe;
+    let bound = zstd_safe::compress_bound(data.len());
+    let mut out = vec![0u8; bound];
+    let written =
+        zstd_safe::compress(&mut out, data, level).map_err(|e| io::Error::other(format!("{e}")))?;
+    out.truncate(written);
+    Ok(out)
 }
 
 #[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "avx512f")]
 unsafe fn zstd_compress_avx512(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
-    zstd_compress_scalar(data, level)
+    use zstd::zstd_safe;
+    let bound = zstd_safe::compress_bound(data.len());
+    let mut out = vec![0u8; bound];
+    let written =
+        zstd_safe::compress(&mut out, data, level).map_err(|e| io::Error::other(format!("{e}")))?;
+    out.truncate(written);
+    Ok(out)
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "sse4.2")]
 unsafe fn zstd_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
-    zstd_decompress_scalar(data)
+    use zstd::zstd_safe;
+    let size = zstd_safe::get_frame_content_size(data)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e}")))?
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "unknown size"))?;
+    let mut out = vec![0u8; size as usize];
+    let written = zstd_safe::decompress(&mut out, data)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e}")))?;
+    out.truncate(written);
+    Ok(out)
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2")]
 unsafe fn zstd_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
-    zstd_decompress_scalar(data)
+    use zstd::zstd_safe;
+    let size = zstd_safe::get_frame_content_size(data)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e}")))?
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "unknown size"))?;
+    let mut out = vec![0u8; size as usize];
+    let written = zstd_safe::decompress(&mut out, data)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e}")))?;
+    out.truncate(written);
+    Ok(out)
 }
 
 #[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "avx512f")]
 unsafe fn zstd_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
-    zstd_decompress_scalar(data)
+    use zstd::zstd_safe;
+    let size = zstd_safe::get_frame_content_size(data)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e}")))?
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "unknown size"))?;
+    let mut out = vec![0u8; size as usize];
+    let written = zstd_safe::decompress(&mut out, data)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e}")))?;
+    out.truncate(written);
+    Ok(out)
 }
 
 impl Compressor for Zstd {
@@ -322,16 +361,29 @@ fn lz4_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
 #[cfg(feature = "lz4")]
 #[inline]
 fn lz4_lib_compress(data: &[u8]) -> io::Result<Vec<u8>> {
-    let compressed = block::compress(data, None, false).map_err(io::Error::other)?;
-    let mut out = Vec::with_capacity(4 + compressed.len());
-    out.extend_from_slice(&(data.len() as u32).to_le_bytes());
-    out.extend_from_slice(&compressed);
+    use lz4::liblz4::{LZ4_compressBound, LZ4_compress_default};
+    use std::ffi::{c_char, c_int};
+
+    let src_size = data.len() as c_int;
+    let bound = unsafe { LZ4_compressBound(src_size) };
+    let mut out = vec![0u8; 4 + bound as usize];
+    let dst_ptr = out[4..].as_mut_ptr() as *mut c_char;
+    let src_ptr = data.as_ptr() as *const c_char;
+    let written = unsafe { LZ4_compress_default(src_ptr, dst_ptr, src_size, bound) };
+    if written <= 0 {
+        return Err(io::Error::other("LZ4_compress_default failed"));
+    }
+    out[..4].copy_from_slice(&(data.len() as u32).to_le_bytes());
+    out.truncate(4 + written as usize);
     Ok(out)
 }
 
 #[cfg(feature = "lz4")]
 #[inline]
 fn lz4_lib_decompress(data: &[u8]) -> io::Result<Vec<u8>> {
+    use lz4::liblz4::LZ4_decompress_safe;
+    use std::ffi::{c_char, c_int};
+
     if data.len() < 4 {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
@@ -339,8 +391,18 @@ fn lz4_lib_decompress(data: &[u8]) -> io::Result<Vec<u8>> {
         ));
     }
     let (size_bytes, rest) = data.split_at(4);
-    let size = u32::from_le_bytes(size_bytes.try_into().unwrap()) as i32;
-    block::decompress(rest, Some(size)).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    let size = u32::from_le_bytes(size_bytes.try_into().unwrap()) as c_int;
+    let mut out = vec![0u8; size as usize];
+    let src_ptr = rest.as_ptr() as *const c_char;
+    let dst_ptr = out.as_mut_ptr() as *mut c_char;
+    let decoded = unsafe { LZ4_decompress_safe(src_ptr, dst_ptr, rest.len() as c_int, size) };
+    if decoded < 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "LZ4_decompress_safe failed",
+        ));
+    }
+    Ok(out)
 }
 
 #[cfg(all(feature = "lz4", any(target_arch = "x86", target_arch = "x86_64")))]
@@ -432,6 +494,24 @@ mod tests {
             assert_eq!(zstd_decompress_avx2(&scalar_c).unwrap(), scalar_d);
             #[cfg(feature = "nightly")]
             assert_eq!(zstd_decompress_avx512(&scalar_c).unwrap(), scalar_d);
+        }
+    }
+
+    #[cfg(feature = "lz4")]
+    #[test]
+    fn lz4_simd_matches_scalar() {
+        let data = b"hello world";
+        let scalar_c = lz4_compress_scalar(data).unwrap();
+        unsafe {
+            assert_eq!(lz4_compress_sse42(data).unwrap(), scalar_c);
+            assert_eq!(lz4_compress_avx2(data).unwrap(), scalar_c);
+            #[cfg(feature = "nightly")]
+            assert_eq!(lz4_compress_avx512(data).unwrap(), scalar_c);
+            let scalar_d = lz4_decompress_scalar(&scalar_c).unwrap();
+            assert_eq!(lz4_decompress_sse42(&scalar_c).unwrap(), scalar_d);
+            assert_eq!(lz4_decompress_avx2(&scalar_c).unwrap(), scalar_d);
+            #[cfg(feature = "nightly")]
+            assert_eq!(lz4_decompress_avx512(&scalar_c).unwrap(), scalar_d);
         }
     }
 }
