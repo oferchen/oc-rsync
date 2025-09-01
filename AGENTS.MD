@@ -1,14 +1,14 @@
 # AGENTS.MD
 
 ## Purpose
-This document describes the agents, their responsibilities, and how they collaborate to achieve a full-featured, production-grade, pure-Rust reimplementation of **rsync** (protocol v32), maintaining full interoperability with upstream rsync while offering optional enhancements, including support for modern mode 73. Each agent operates as a dedicated unit of functionality, designed to isolate complexity, maximize maintainability, and enforce clean code principles. The orchestration of these agents ensures both **feature parity** with upstream `rsync` and forward-looking extensibility.
+This document describes the agents, their responsibilities, and how they collaborate to achieve a full-featured, production-grade, pure-Rust reimplementation of **rsync** (protocol v32), maintaining full interoperability with upstream rsync. Each agent operates as a dedicated unit of functionality, designed to isolate complexity, maximize maintainability, and enforce clean code principles. The orchestration of these agents ensures **feature parity** with upstream `rsync`. Future enhancements may be explored only after parity is achieved.
 
 ---
 
 ## Agent Overview
 
 ### 1. **ProtocolAgent**
-- **Role**: Implements the rsync v32 protocol with support for modern mode 73, including message framing, multiplexing, negotiation, keep-alives, error propagation, and exit codes.
+- **Role**: Implements the rsync v32 protocol, including message framing, multiplexing, negotiation, keep-alives, error propagation, and exit codes.
 - **Responsibilities**:
   - Encode/decode frames (control, file list, data, checksums).
   - Manage sender/receiver protocol phases as a finite state machine.
@@ -22,7 +22,7 @@ This document describes the agents, their responsibilities, and how they collabo
 - **Role**: Calculates rolling and strong checksums for delta transfer and data integrity.
 - **Responsibilities**:
   - Provide legacy algorithms (MD4, MD5, SHA1) for compatibility.
-  - Provide modern algorithms (BLAKE3, XXH3) for enhanced transfers when in “modern mode.”
+  - Additional algorithms may be considered once interoperability parity is complete.
   - Match rsync’s block-size heuristics and checksum-seed semantics.
   - Strategy pattern to select checksum at runtime, negotiated during protocol setup.
 - **Design Pattern**: **Strategy** pattern for checksum selection.
@@ -33,7 +33,7 @@ This document describes the agents, their responsibilities, and how they collabo
 - **Role**: Handles data compression and decompression streams.
 - **Responsibilities**:
   - Support zlib, zlibx, and zstd (compatibility-first).
-  - Support modern compression modes (lz4, tuned zstd) when both sides are oc-rsync.
+  - Further compression options may be considered after parity with upstream is reached.
   - Parse and apply `--compress-choice`, `--compress-level`, and `--skip-compress` arguments.
   - Maintain throughput and low latency for large trees.
 - **Design Pattern**: **Strategy** pattern for algorithm choice; **Pipeline** integration with ProtocolAgent.
@@ -122,7 +122,7 @@ This document describes the agents, their responsibilities, and how they collabo
   - Use `clap v4` to implement all rsync flags and aliases.
   - Provide identical help text, usage, and defaults as upstream rsync.
   - Forward parsed arguments into a validated configuration (Builder pattern).
-  - Support `--modern` and other enhancement flags in a clearly separated namespace.
+  - Enhancement flags will be introduced only after achieving parity.
 - **Design Pattern**: **Builder** for options validation; **Facade** to simplify user entrypoint.
 
 ---
@@ -150,18 +150,6 @@ This document describes the agents, their responsibilities, and how they collabo
 
 ---
 
-## Modern Mode Agent (Optional Enhancements)
-- **ModernAgent**:
-  - Negotiates optional modern features if both peers are oc-rsync.
-  - Enhancements:
-    - Strong checksum upgrade (BLAKE3, XXH3).
-    - Preferential zstd or lz4 compression.
-    - Content-defined chunking (CDC) with manifest reuse across runs (dedup).
-  - Must be gated behind `--modern` and negotiated; never break stock interop.
-- **Design Pattern**: **Decorator** — wraps standard rsync behavior with enhancements.
-
----
-
 ## Agent Collaboration
 
 1. **CLIControllerAgent** parses arguments → builds config.
@@ -171,7 +159,6 @@ This document describes the agents, their responsibilities, and how they collabo
 5. **MetadataAgent** restores file attributes.
 6. **DaemonAgent** serves modules in rsync:// mode.
 7. **LoggingAgent** records every stage; **TestAgent** validates correctness.
-8. Optional: **ModernAgent** decorates checksums/compression pipeline if `--modern` is active and both peers agree.
 
 ---
 
@@ -185,7 +172,7 @@ This document describes the agents, their responsibilities, and how they collabo
 ---
 
 ## Summary
-This agent architecture provides a **clean separation of responsibilities**, explicit parity with upstream rsync (validated via interop tests), and a safe path to modern enhancements without breaking compatibility. Each agent can be individually tested, audited, and fuzzed, ensuring both **robustness** and **maintainability**.
+This agent architecture provides a **clean separation of responsibilities** and explicit parity with upstream rsync (validated via interop tests). Enhancements will only be considered once parity is fully realized. Each agent can be individually tested, audited, and fuzzed, ensuring both **robustness** and **maintainability**.
 
 ---
 
