@@ -51,6 +51,54 @@ fn partial_transfer_resumes_after_interrupt() {
 }
 
 #[test]
+fn partial_dir_transfer_resumes_after_interrupt() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    let partial_dir = dst_dir.join("partial");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let data = vec![b'a'; 200_000];
+    std::fs::write(src_dir.join("a.txt"), &data).unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    let mut child = Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--partial",
+            "--partial-dir",
+            partial_dir.to_str().unwrap(),
+            "--bwlimit",
+            "10240",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+    thread::sleep(Duration::from_millis(100));
+    let _ = child.kill();
+    let _ = child.wait();
+
+    assert!(partial_dir.join("a.txt").exists());
+
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    cmd.args([
+        "--local",
+        "--partial",
+        "--partial-dir",
+        partial_dir.to_str().unwrap(),
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, data);
+    assert!(!partial_dir.exists());
+}
+
+#[test]
 fn append_resumes_after_interrupt() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
@@ -295,4 +343,49 @@ fn remote_partial_transfer_resumes_after_interrupt() {
 
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, data);
+}
+
+#[cfg(unix)]
+#[test]
+fn remote_partial_dir_transfer_resumes_after_interrupt() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    let partial_dir = dst_dir.join("partial");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&partial_dir).unwrap();
+    let data = vec![b'e'; 2_000_000];
+    fs::write(src_dir.join("a.txt"), &data).unwrap();
+    fs::write(partial_dir.join("a.txt"), &data[..100_000]).unwrap();
+
+    let remote_bin = dir.path().join("rr-remote");
+    fs::copy(cargo_bin("oc-rsync"), &remote_bin).unwrap();
+    fs::set_permissions(&remote_bin, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let rsh = dir.path().join("fake_rsh.sh");
+    fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
+    fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let src_spec = format!("{}/", src_dir.display());
+    let dst_spec = format!("ignored:{}", dst_dir.display());
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "-e",
+            rsh.to_str().unwrap(),
+            "--rsync-path",
+            remote_bin.to_str().unwrap(),
+            "--partial",
+            "--partial-dir",
+            "partial",
+            &src_spec,
+            &dst_spec,
+        ])
+        .assert()
+        .success();
+
+    let out = fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, data);
+    assert!(!partial_dir.exists());
 }
