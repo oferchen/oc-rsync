@@ -3,7 +3,7 @@
 
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
-use daemon::parse_daemon_args;
+use daemon::{parse_daemon_args, parse_module};
 use protocol::LATEST_VERSION;
 use serial_test::serial;
 use std::fs;
@@ -11,6 +11,8 @@ use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+#[allow(unused_imports)]
+use std::path::PathBuf;
 use std::process::{Child, Command as StdCommand, Stdio};
 use std::sync::mpsc;
 use std::thread::sleep;
@@ -55,6 +57,31 @@ fn parse_daemon_args_rejects_mismatch() {
 fn parse_daemon_args_invalid_port() {
     let args = vec!["--port".to_string(), "not-a-number".to_string()];
     assert!(parse_daemon_args(args).is_err());
+}
+
+#[test]
+fn parse_module_parses_options() {
+    let dir = tempfile::tempdir().unwrap();
+    let auth = dir.path().join("auth");
+    fs::write(&auth, "alice data\n").unwrap();
+    let spec = format!(
+        "data={},hosts-allow=127.0.0.1,hosts-deny=10.0.0.1,auth-users=alice bob,secrets-file={},timeout=1,use-chroot=no,numeric-ids=yes",
+        dir.path().display(),
+        auth.display()
+    );
+    let module = parse_module(&spec).unwrap();
+    assert_eq!(module.name, "data");
+    assert_eq!(module.path, fs::canonicalize(dir.path()).unwrap());
+    assert_eq!(module.hosts_allow, vec!["127.0.0.1".to_string()]);
+    assert_eq!(module.hosts_deny, vec!["10.0.0.1".to_string()]);
+    assert_eq!(
+        module.auth_users,
+        vec!["alice".to_string(), "bob".to_string()]
+    );
+    assert_eq!(module.secrets_file, Some(PathBuf::from(&auth)));
+    assert_eq!(module.timeout, Some(Duration::from_secs(1)));
+    assert!(!module.use_chroot);
+    assert!(module.numeric_ids);
 }
 
 fn read_port(child: &mut Child) -> io::Result<u16> {

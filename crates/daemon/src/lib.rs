@@ -71,13 +71,16 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
     if name.is_empty() {
         return Err("missing module name".to_string());
     }
-    let path_str = parts
+    let rest = parts
         .next()
         .ok_or_else(|| "missing module path".to_string())?
         .trim();
-    if path_str.is_empty() {
+    if rest.is_empty() {
         return Err("missing module path".to_string());
     }
+
+    let mut iter = rest.split(',');
+    let path_str = iter.next().unwrap().trim();
     let raw = PathBuf::from(path_str);
     let abs = if raw.is_absolute() {
         raw
@@ -85,17 +88,47 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
         env::current_dir().map_err(|e| e.to_string())?.join(raw)
     };
     let canonical = fs::canonicalize(abs).map_err(|e| e.to_string())?;
-    Ok(Module {
+
+    let mut module = Module {
         name: name.to_string(),
         path: canonical,
-        hosts_allow: Vec::new(),
-        hosts_deny: Vec::new(),
-        auth_users: Vec::new(),
-        secrets_file: None,
-        timeout: None,
-        use_chroot: true,
-        numeric_ids: false,
-    })
+        ..Module::default()
+    };
+
+    for opt in iter {
+        let mut kv = opt.splitn(2, '=');
+        let key = kv
+            .next()
+            .ok_or_else(|| "missing option key".to_string())?
+            .trim()
+            .to_lowercase();
+        let val = kv
+            .next()
+            .ok_or_else(|| format!("missing value for {key}"))?
+            .trim();
+        let key = key.replace('-', "_");
+        match key.as_str() {
+            "hosts_allow" => module.hosts_allow = parse_list(val),
+            "hosts_deny" => module.hosts_deny = parse_list(val),
+            "auth_users" => module.auth_users = parse_list(val),
+            "secrets_file" => module.secrets_file = Some(PathBuf::from(val)),
+            "timeout" => {
+                let secs = val
+                    .parse::<u64>()
+                    .map_err(|e| format!("invalid timeout: {e}"))?;
+                module.timeout = if secs == 0 {
+                    None
+                } else {
+                    Some(Duration::from_secs(secs))
+                };
+            }
+            "use_chroot" => module.use_chroot = parse_bool(val).map_err(|e| e.to_string())?,
+            "numeric_ids" => module.numeric_ids = parse_bool(val).map_err(|e| e.to_string())?,
+            _ => return Err(format!("unknown option: {key}")),
+        }
+    }
+
+    Ok(module)
 }
 
 #[derive(Debug, Default, Clone)]
@@ -441,6 +474,7 @@ pub fn authenticate<T: Transport>(
             ));
         }
         let allowed = authenticate_token(&token_str, auth_path)?;
+        t.send(b"@RSYNCD: OK\n")?;
         Ok((Some(token_str), allowed, no_motd))
     } else if let Some(pw) = password {
         if token_str.is_empty() {
@@ -455,6 +489,7 @@ pub fn authenticate<T: Transport>(
                 "unauthorized",
             ));
         }
+        t.send(b"@RSYNCD: OK\n")?;
         Ok((Some(token_str), Vec::new(), no_motd))
     } else {
         let token_opt = if token_str.is_empty() {
@@ -462,6 +497,7 @@ pub fn authenticate<T: Transport>(
         } else {
             Some(token_str)
         };
+        t.send(b"@RSYNCD: OK\n")?;
         Ok((token_opt, Vec::new(), no_motd))
     }
 }
@@ -497,11 +533,12 @@ pub fn chroot_and_drop_privileges(
     use_chroot: bool,
 ) -> io::Result<()> {
     use nix::unistd::{chdir, chroot, setgid, setuid, Gid, Uid};
+    let canon = fs::canonicalize(path)?;
     if use_chroot {
-        chroot(path).map_err(io::Error::other)?;
+        chroot(&canon).map_err(io::Error::other)?;
         chdir("/").map_err(io::Error::other)?;
     } else {
-        chdir(path).map_err(io::Error::other)?;
+        chdir(&canon).map_err(io::Error::other)?;
     }
     setgid(Gid::from_raw(gid)).map_err(io::Error::other)?;
     setuid(Uid::from_raw(uid)).map_err(io::Error::other)?;
@@ -589,35 +626,6 @@ pub fn handle_connection<T: Transport>(
                 ));
             }
         }
-        if !module.auth_users.is_empty() {
-            match token.as_deref() {
-                Some(tok) if module.auth_users.iter().any(|u| u == tok) => {}
-                _ => {
-                    let _ = transport.send(b"@ERROR: access denied");
-                    return Err(io::Error::new(
-                        io::ErrorKind::PermissionDenied,
-                        "unauthorized user",
-                    ));
-                }
-            }
-        }
-    }
-    transport.send(b"@RSYNCD: OK\n")?;
-
-    let mut opt_buf = [0u8; 256];
-    loop {
-        let n = transport.receive(&mut opt_buf)?;
-        let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
-        if opt.is_empty() {
-            break;
-        }
-        if let Some(v) = opt.strip_prefix("--log-file=") {
-            log_file = Some(PathBuf::from(v));
-        } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
-            log_format = Some(v.to_string());
-        }
-    }
-    if let Some(module) = modules.get(&name) {
         let allowed = if let Some(path) = module.secrets_file.as_deref() {
             match token.as_deref() {
                 Some(tok) => authenticate_token(tok, path)?,
@@ -638,6 +646,32 @@ pub fn handle_connection<T: Transport>(
                 io::ErrorKind::PermissionDenied,
                 "unauthorized module",
             ));
+        }
+        if !module.auth_users.is_empty() {
+            match token.as_deref() {
+                Some(tok) if module.auth_users.iter().any(|u| u == tok) => {}
+                _ => {
+                    let _ = transport.send(b"@ERROR: access denied");
+                    return Err(io::Error::new(
+                        io::ErrorKind::PermissionDenied,
+                        "unauthorized user",
+                    ));
+                }
+            }
+        }
+        transport.send(b"@RSYNCD: OK\n")?;
+        let mut opt_buf = [0u8; 256];
+        loop {
+            let n = transport.receive(&mut opt_buf)?;
+            let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
+            if opt.is_empty() {
+                break;
+            }
+            if let Some(v) = opt.strip_prefix("--log-file=") {
+                log_file = Some(PathBuf::from(v));
+            } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
+                log_format = Some(v.to_string());
+            }
         }
         if let Some(dur) = module.timeout {
             transport.set_read_timeout(Some(dur))?;
