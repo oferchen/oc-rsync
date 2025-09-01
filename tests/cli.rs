@@ -20,7 +20,7 @@ use std::thread;
 use std::time::Duration;
 use tempfile::{tempdir, tempdir_in, TempDir};
 #[cfg(unix)]
-use users::{get_current_gid, get_current_uid, get_group_by_gid};
+use users::{get_current_gid, get_current_uid, get_group_by_gid, get_user_by_uid};
 #[cfg(all(unix, feature = "xattr"))]
 use xattr as _;
 
@@ -881,6 +881,84 @@ fn user_and_group_ids_are_mapped() {
     let meta = std::fs::metadata(dst_dir.join("id.txt")).unwrap();
     assert_eq!(meta.uid(), mapped_uid);
     assert_eq!(meta.gid(), mapped_gid);
+}
+
+#[cfg(unix)]
+#[test]
+fn user_names_are_mapped_even_with_numeric_ids() {
+    let uid = get_current_uid();
+    if uid != 0 {
+        eprintln!(
+            "skipping user_names_are_mapped_even_with_numeric_ids: requires root or CAP_CHOWN"
+        );
+        return;
+    }
+    {
+        let dir = tempdir().unwrap();
+        let probe = dir.path().join("probe");
+        std::fs::write(&probe, b"probe").unwrap();
+        if let Err(err) = chown(&probe, Some(Uid::from_raw(1)), Some(Gid::from_raw(1))) {
+            match err {
+                nix::errno::Errno::EPERM => {
+                    eprintln!(
+                        "skipping user_names_are_mapped_even_with_numeric_ids: lacks CAP_CHOWN"
+                    );
+                    return;
+                }
+                _ => panic!("unexpected chown error: {err}"),
+            }
+        }
+    }
+
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("id.txt");
+    std::fs::write(&file, b"ids").unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    let uname = get_user_by_uid(uid)
+        .unwrap()
+        .name()
+        .to_string_lossy()
+        .into_owned();
+    let passwd_data = std::fs::read_to_string("/etc/passwd").unwrap();
+    let (other_name, other_uid) = passwd_data
+        .lines()
+        .find_map(|line| {
+            if line.starts_with('#') || line.trim().is_empty() {
+                return None;
+            }
+            let mut parts = line.split(':');
+            let name = parts.next()?;
+            parts.next();
+            let uid_str = parts.next()?;
+            let uid_val: u32 = uid_str.parse().ok()?;
+            if uid_val != uid {
+                Some((name.to_string(), uid_val))
+            } else {
+                None
+            }
+        })
+        .expect("no alternate user found");
+
+    let usermap = format!("--usermap={uname}:{other_name}");
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--numeric-ids",
+            usermap.as_str(),
+            src_arg.as_str(),
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let meta = std::fs::metadata(dst_dir.join("id.txt")).unwrap();
+    assert_eq!(meta.uid(), other_uid);
 }
 
 #[cfg(unix)]
