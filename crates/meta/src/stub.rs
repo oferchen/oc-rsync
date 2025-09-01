@@ -90,6 +90,8 @@ mod non_unix {
         pub xattrs: Vec<(OsString, Vec<u8>)>,
         #[cfg(feature = "acl")]
         pub acl: Vec<ACLEntry>,
+        #[cfg(feature = "acl")]
+        pub default_acl: Vec<ACLEntry>,
     }
 
     impl Metadata {
@@ -105,6 +107,8 @@ mod non_unix {
                 xattrs: Vec::new(),
                 #[cfg(feature = "acl")]
                 acl: Vec::new(),
+                #[cfg(feature = "acl")]
+                default_acl: Vec::new(),
             })
         }
 

@@ -89,7 +89,6 @@ fn daemon_preserves_xattrs() {
 
 #[cfg(all(unix, feature = "acl"))]
 #[test]
-#[ignore]
 #[serial]
 fn daemon_preserves_acls() {
     let tmp = tempdir().unwrap();
@@ -101,10 +100,13 @@ fn daemon_preserves_acls() {
     fs::write(&file, b"hi").unwrap();
 
     let mut acl = PosixACL::read_acl(&file).unwrap();
-
     acl.set(Qualifier::User(12345), ACL_READ);
     acl.set(Qualifier::User(23456), ACL_WRITE);
     acl.write_acl(&file).unwrap();
+
+    let mut dacl = PosixACL::read_default_acl(&src).unwrap();
+    dacl.set(Qualifier::User(12345), ACL_READ);
+    dacl.write_default_acl(&src).unwrap();
 
     let (mut child, port) = spawn_daemon(&srv);
     wait_for_daemon(port);
@@ -118,6 +120,10 @@ fn daemon_preserves_acls() {
     let acl_src = PosixACL::read_acl(&file).unwrap();
     let acl_dst = PosixACL::read_acl(srv.join("file")).unwrap();
     assert_eq!(acl_src.entries(), acl_dst.entries());
+
+    let dacl_src = PosixACL::read_default_acl(&src).unwrap();
+    let dacl_dst = PosixACL::read_default_acl(&srv).unwrap();
+    assert_eq!(dacl_src.entries(), dacl_dst.entries());
 
     let _ = child.kill();
     let _ = child.wait();

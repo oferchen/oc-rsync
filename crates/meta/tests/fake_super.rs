@@ -21,7 +21,6 @@ fn fake_super_roundtrip() -> std::io::Result<()> {
     let dst = dir.path().join("dst");
     fs::write(&src, b"hello")?;
     fs::write(&dst, b"world")?;
-    // Simulate metadata requiring privileges
     #[cfg(feature = "xattr")]
     {
         xattr::set(&src, "user.rsync.uid", b"0")?;

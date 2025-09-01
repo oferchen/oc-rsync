@@ -1,3 +1,4 @@
+// tests/delay_updates.rs
 use std::fs::{self, File};
 use std::io::BufReader;
 use std::path::Path;
@@ -36,9 +37,7 @@ fn delay_updates_defers_rename() {
     let tmp_path = recv
         .apply(&src_file, &dst_file, rel, delta.into_iter().map(Ok))
         .unwrap();
-    // dest should still have old contents
     assert_eq!(fs::read(&dst_file).unwrap(), b"old");
-    // tmp file has new data
     assert_eq!(fs::read(&tmp_path).unwrap(), b"new");
 
     recv.copy_metadata(&src_file, &dst_file).unwrap();
