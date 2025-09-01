@@ -28,9 +28,13 @@ SCENARIOS=(
   "remote_remote"
   "append --append"
   "append_verify --append-verify"
-  "resume --partial"
+  "partial --partial"
+  "inplace --inplace"
   "progress --progress"
+  "progress2 --info=progress2"
+  "resume --partial"
   "resume_progress --partial --progress"
+  "resume_progress2 --partial --info=progress2"
 )
 
 # Options used for all transfers. -a implies -rtgoD, we add -A and -X for ACLs
