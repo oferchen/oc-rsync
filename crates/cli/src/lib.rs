@@ -93,6 +93,18 @@ fn parse_file_size(s: &str) -> std::result::Result<u64, String> {
     s.parse::<u64>().map_err(|e| e.to_string())
 }
 
+pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
+    let info = matches
+        .get_many::<InfoFlag>("info")
+        .map(|v| v.copied().collect())
+        .unwrap_or_default();
+    let debug = matches
+        .get_many::<DebugFlag>("debug")
+        .map(|v| v.copied().collect())
+        .unwrap_or_default();
+    (info, debug)
+}
+
 #[derive(Parser, Debug)]
 struct ClientOpts {
     #[arg(long)]
