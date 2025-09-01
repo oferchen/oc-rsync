@@ -633,6 +633,16 @@ pub fn parse_rsync_path(raw: Option<String>) -> Result<Option<RshCommand>> {
     }
 }
 
+fn parse_name_map(specs: &[String], kind: IdKind) -> Result<Option<IdMapper>> {
+    if specs.is_empty() {
+        Ok(None)
+    } else {
+        let spec = specs.join(",");
+        let mapper = parse_id_map(&spec, kind).map_err(EngineError::Other)?;
+        Ok(Some(IdMapper(mapper)))
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Parser, Debug)]
 struct DaemonOpts {
@@ -1180,20 +1190,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     } else {
         None
     };
-    let uid_map = if !opts.usermap.is_empty() {
-        let spec = opts.usermap.join(",");
-        let mapper = parse_id_map(&spec, IdKind::User).map_err(EngineError::Other)?;
-        Some(IdMapper(mapper))
-    } else {
-        None
-    };
-    let gid_map = if !opts.groupmap.is_empty() {
-        let spec = opts.groupmap.join(",");
-        let mapper = parse_id_map(&spec, IdKind::Group).map_err(EngineError::Other)?;
-        Some(IdMapper(mapper))
-    } else {
-        None
-    };
+    let uid_map = parse_name_map(&opts.usermap, IdKind::User)?;
+    let gid_map = parse_name_map(&opts.groupmap, IdKind::Group)?;
     let mut sync_opts = SyncOptions {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
