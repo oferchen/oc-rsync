@@ -21,6 +21,7 @@ use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions}
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
+use protocol::CharsetConv;
 use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
 use shell_words::split as shell_split;
 use transport::{
@@ -106,22 +107,6 @@ pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFla
     (info, debug)
 }
 
-pub struct CharsetConv {
-    remote: &'static Encoding,
-}
-
-impl CharsetConv {
-    fn encode_remote(&self, s: &str) -> Vec<u8> {
-        let (res, _, _) = self.remote.encode(s);
-        res.into_owned()
-    }
-
-    fn decode_remote(&self, b: &[u8]) -> String {
-        let (res, _, _) = self.remote.decode(b);
-        res.into_owned()
-    }
-}
-
 pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
     let mut parts = spec.split(',');
     let remote_label = parts
@@ -135,9 +120,9 @@ pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
             "iconv_open(\"{local_label}\", \"{remote_label}\") failed"
         ));
     }
-    Ok(CharsetConv {
-        remote: Encoding::for_label(remote_label.as_bytes()).unwrap(),
-    })
+    Ok(CharsetConv::new(
+        Encoding::for_label(remote_label.as_bytes()).unwrap(),
+    ))
 }
 
 #[derive(Parser, Debug)]
