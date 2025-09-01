@@ -8,9 +8,9 @@ After=network-online.target
 [Service]
 Type=notify
 NotifyAccess=main
-User=oc-rsyncd
-Group=oc-rsyncd
-ExecStart=/usr/bin/oc-rsync --daemon --no-detach --config /etc/oc-rsyncd.conf
+User=ocrsync
+Group=ocrsync
+ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf
 Restart=on-failure
 NoNewPrivileges=yes
 ProtectSystem=strict
@@ -30,17 +30,20 @@ RestrictSUIDSGID=yes
 RestrictRealtime=yes
 LockPersonality=yes
 RestrictNamespaces=yes
-CapabilityBoundingSet=CAP_NET_BIND_SERVICE
-AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE
+AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 MemoryDenyWriteExecute=yes
 SystemCallFilter=@system-service
 SystemCallFilter=~@privileged
 SystemCallFilter=~@resources
-RuntimeDirectory=oc-rsyncd
-LogsDirectory=oc-rsyncd
-StateDirectory=oc-rsyncd
-ConfigurationDirectory=oc-rsyncd
+RuntimeDirectory=oc-rsync
+LogsDirectory=oc-rsync
+StateDirectory=oc-rsync
+ConfigurationDirectory=oc-rsync
+PrivateIPC=yes
+ProtectKernelLogs=yes
+SystemCallArchitectures=native
 
 [Install]
 WantedBy=multi-user.target
