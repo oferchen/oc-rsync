@@ -68,7 +68,6 @@ path = "tools/strip_rs_comments.rs"
 
 [features]
 default = []
-lz4 = ["engine/lz4"]
 xattr = ["engine/xattr", "oc-rsync-cli/xattr", "meta/xattr"]
 acl = ["engine/acl", "oc-rsync-cli/acl", "meta/acl"]
 # Enables AVX-512 implementations requiring a nightly toolchain

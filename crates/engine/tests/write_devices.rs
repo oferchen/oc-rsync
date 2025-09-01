@@ -31,7 +31,7 @@ fn requires_flag_to_write_devices() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions::default(),
     )
     .unwrap_err();
@@ -41,7 +41,7 @@ fn requires_flag_to_write_devices() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             write_devices: true,
             ..Default::default()

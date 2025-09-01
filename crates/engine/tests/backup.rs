@@ -23,7 +23,7 @@ fn backups_replaced_and_deleted_files() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             delete: Some(DeleteMode::During),
             backup: true,

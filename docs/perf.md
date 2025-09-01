@@ -37,7 +37,7 @@ unit tests, integration tests, and documentation examples into a unified coverag
 Run locally with:
 
 ```
-cargo llvm-cov --workspace --features blake3 --doctests \
+cargo llvm-cov --workspace --doctests \
   --fail-under-lines 95 --fail-under-functions 95
 ```
 

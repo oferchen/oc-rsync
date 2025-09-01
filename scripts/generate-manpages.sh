@@ -3,7 +3,6 @@ set -euo pipefail
 
 pandoc -s -t man docs/cli.md -o man/oc-rsync.1
 pandoc -s -t man docs/daemon.md -o man/oc-rsyncd.conf.5
-pandoc -s -t man docs/modern.md -o man/oc-rsync-modern.7
 
 # Generate shell completions
 cargo run --quiet --bin gen-completions -- man

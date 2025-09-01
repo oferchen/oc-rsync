@@ -49,9 +49,7 @@ The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.x are bundled 
 ## CLI
 Documentation for invoking the command line interface, available flags, and
 configuration precedence lives in [docs/cli.md](docs/cli.md). Differences from
-classic `rsync`, including how `--modern` mode alters behavior, are covered in
-[docs/differences.md](docs/differences.md). The `--modern` flag requires the
-binary to be built with the `blake3` feature.
+classic `rsync` are covered in [docs/differences.md](docs/differences.md).
 
 Quick links:
 

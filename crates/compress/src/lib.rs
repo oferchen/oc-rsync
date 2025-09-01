@@ -3,16 +3,9 @@ use std::io::{self, Read, Write};
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ModernCompress {
-    Auto,
-    Zstd,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Codec {
     Zlib,
     Zstd,
-    Lz4,
 }
 
 impl Codec {
@@ -20,7 +13,6 @@ impl Codec {
         match self {
             Codec::Zlib => 0,
             Codec::Zstd => 1,
-            Codec::Lz4 => 2,
         }
     }
 
@@ -28,7 +20,6 @@ impl Codec {
         match b {
             0 => Ok(Codec::Zlib),
             1 => Ok(Codec::Zstd),
-            2 => Ok(Codec::Lz4),
             other => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("unknown codec {other}"),
@@ -37,12 +28,8 @@ impl Codec {
     }
 }
 
-pub fn available_codecs(modern: Option<ModernCompress>) -> Vec<Codec> {
-    let mut codecs = vec![Codec::Zlib];
-    if modern.is_some() {
-        codecs.push(Codec::Zstd);
-    }
-    codecs
+pub fn available_codecs() -> Vec<Codec> {
+    vec![Codec::Zlib, Codec::Zstd]
 }
 
 pub trait Compressor {
@@ -251,164 +238,9 @@ impl Decompressor for Zstd {
     }
 }
 
-#[cfg(feature = "lz4")]
-pub struct Lz4;
-
-#[cfg(feature = "lz4")]
-impl Compressor for Lz4 {
-    fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        {
-            #[cfg(feature = "nightly")]
-            if std::arch::is_x86_feature_detected!("avx512f") {
-                return unsafe { lz4_compress_avx512(data) };
-            }
-            if std::arch::is_x86_feature_detected!("avx2") {
-                return unsafe { lz4_compress_avx2(data) };
-            }
-            if std::arch::is_x86_feature_detected!("sse4.2") {
-                return unsafe { lz4_compress_sse42(data) };
-            }
-        }
-        lz4_compress_scalar(data)
-    }
-}
-
-#[cfg(feature = "lz4")]
-impl Decompressor for Lz4 {
-    fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        {
-            #[cfg(feature = "nightly")]
-            if std::arch::is_x86_feature_detected!("avx512f") {
-                return unsafe { lz4_decompress_avx512(data) };
-            }
-            if std::arch::is_x86_feature_detected!("avx2") {
-                return unsafe { lz4_decompress_avx2(data) };
-            }
-            if std::arch::is_x86_feature_detected!("sse4.2") {
-                return unsafe { lz4_decompress_sse42(data) };
-            }
-        }
-        lz4_decompress_scalar(data)
-    }
-}
-
-#[cfg(feature = "lz4")]
-#[inline]
-fn lz4_compress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
-    Ok(lz4_flex::block::compress_prepend_size(data))
-}
-
-#[cfg(feature = "lz4")]
-#[inline]
-fn lz4_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_flex::block::decompress_size_prepended(data)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-}
-
-#[cfg(feature = "lz4")]
-#[inline]
-fn lz4_lib_compress(data: &[u8]) -> io::Result<Vec<u8>> {
-    use lz4::liblz4::{LZ4_compressBound, LZ4_compress_default};
-    use std::ffi::{c_char, c_int};
-
-    let src_size = data.len() as c_int;
-    let bound = unsafe { LZ4_compressBound(src_size) };
-    let mut out = vec![0u8; 4 + bound as usize];
-    let dst_ptr = out[4..].as_mut_ptr() as *mut c_char;
-    let src_ptr = data.as_ptr() as *const c_char;
-    let written = unsafe { LZ4_compress_default(src_ptr, dst_ptr, src_size, bound) };
-    if written <= 0 {
-        return Err(io::Error::other("LZ4_compress_default failed"));
-    }
-    out[..4].copy_from_slice(&(data.len() as u32).to_le_bytes());
-    out.truncate(4 + written as usize);
-    Ok(out)
-}
-
-#[cfg(feature = "lz4")]
-#[inline]
-fn lz4_lib_decompress(data: &[u8]) -> io::Result<Vec<u8>> {
-    use lz4::liblz4::LZ4_decompress_safe;
-    use std::ffi::{c_char, c_int};
-
-    if data.len() < 4 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "input too short",
-        ));
-    }
-    let (size_bytes, rest) = data.split_at(4);
-    let size = u32::from_le_bytes(size_bytes.try_into().unwrap()) as c_int;
-    let mut out = vec![0u8; size as usize];
-    let src_ptr = rest.as_ptr() as *const c_char;
-    let dst_ptr = out.as_mut_ptr() as *mut c_char;
-    let decoded = unsafe { LZ4_decompress_safe(src_ptr, dst_ptr, rest.len() as c_int, size) };
-    if decoded < 0 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "LZ4_decompress_safe failed",
-        ));
-    }
-    Ok(out)
-}
-
-#[cfg(all(feature = "lz4", any(target_arch = "x86", target_arch = "x86_64")))]
-#[target_feature(enable = "sse4.2")]
-unsafe fn lz4_compress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_lib_compress(data)
-}
-
-#[cfg(all(feature = "lz4", any(target_arch = "x86", target_arch = "x86_64")))]
-#[target_feature(enable = "avx2")]
-unsafe fn lz4_compress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_lib_compress(data)
-}
-
-#[cfg(all(
-    feature = "lz4",
-    feature = "nightly",
-    any(target_arch = "x86", target_arch = "x86_64")
-))]
-#[target_feature(enable = "avx512f")]
-unsafe fn lz4_compress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_lib_compress(data)
-}
-
-#[cfg(all(feature = "lz4", any(target_arch = "x86", target_arch = "x86_64")))]
-#[target_feature(enable = "sse4.2")]
-unsafe fn lz4_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_lib_decompress(data)
-}
-
-#[cfg(all(feature = "lz4", any(target_arch = "x86", target_arch = "x86_64")))]
-#[target_feature(enable = "avx2")]
-unsafe fn lz4_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_lib_decompress(data)
-}
-
-#[cfg(all(
-    feature = "lz4",
-    feature = "nightly",
-    any(target_arch = "x86", target_arch = "x86_64")
-))]
-#[target_feature(enable = "avx512f")]
-unsafe fn lz4_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
-    lz4_lib_decompress(data)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn available_codecs_includes_zstd_when_modern() {
-        assert_eq!(
-            available_codecs(Some(ModernCompress::Auto)),
-            vec![Codec::Zlib, Codec::Zstd]
-        );
-    }
-
     #[test]
     fn zstd_simd_matches_scalar() {
         let data = b"hello world";
@@ -426,22 +258,8 @@ mod tests {
             assert_eq!(zstd_decompress_avx512(&scalar_c).unwrap(), scalar_d);
         }
     }
-
-    #[cfg(feature = "lz4")]
     #[test]
-    fn lz4_simd_matches_scalar() {
-        let data = b"hello world";
-        let scalar_c = lz4_compress_scalar(data).unwrap();
-        unsafe {
-            assert_eq!(lz4_compress_sse42(data).unwrap(), scalar_c);
-            assert_eq!(lz4_compress_avx2(data).unwrap(), scalar_c);
-            #[cfg(feature = "nightly")]
-            assert_eq!(lz4_compress_avx512(data).unwrap(), scalar_c);
-            let scalar_d = lz4_decompress_scalar(&scalar_c).unwrap();
-            assert_eq!(lz4_decompress_sse42(&scalar_c).unwrap(), scalar_d);
-            assert_eq!(lz4_decompress_avx2(&scalar_c).unwrap(), scalar_d);
-            #[cfg(feature = "nightly")]
-            assert_eq!(lz4_decompress_avx512(&scalar_c).unwrap(), scalar_d);
-        }
+    fn available_codecs_returns_zlib_and_zstd() {
+        assert_eq!(available_codecs(), vec![Codec::Zlib, Codec::Zstd]);
     }
 }

@@ -18,7 +18,7 @@ fn creates_destination_when_missing() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions::default(),
     )
     .unwrap();

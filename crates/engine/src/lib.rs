@@ -18,9 +18,7 @@ use tempfile::NamedTempFile;
 
 pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
-#[cfg(feature = "lz4")]
-use compress::Lz4;
-use compress::{should_compress, Codec, Compressor, Decompressor, ModernCompress, Zlib, Zstd};
+use compress::{should_compress, Codec, Compressor, Decompressor, Zlib, Zstd};
 use filters::Matcher;
 use logging::progress_formatter;
 use thiserror::Error;
@@ -1030,16 +1028,6 @@ impl Sender {
                             let lvl = self.opts.compress_level.unwrap_or(0);
                             Zstd::new(lvl).compress(d).map_err(EngineError::from)?
                         }
-                        Codec::Lz4 => {
-                            #[cfg(feature = "lz4")]
-                            {
-                                Lz4.compress(d).map_err(EngineError::from)?
-                            }
-                            #[cfg(not(feature = "lz4"))]
-                            {
-                                return Err(EngineError::Other("LZ4 feature not enabled".into()));
-                            }
-                        }
                     };
                 }
             }
@@ -1278,16 +1266,6 @@ impl Receiver {
                     *d = match codec {
                         Codec::Zlib => Zlib::default().decompress(d).map_err(EngineError::from)?,
                         Codec::Zstd => Zstd::default().decompress(d).map_err(EngineError::from)?,
-                        Codec::Lz4 => {
-                            #[cfg(feature = "lz4")]
-                            {
-                                Lz4.decompress(d).map_err(EngineError::from)?
-                            }
-                            #[cfg(not(feature = "lz4"))]
-                            {
-                                return Err(EngineError::Other("LZ4 feature not enabled".into()));
-                            }
-                        }
                     };
                 }
             }
@@ -1541,7 +1519,6 @@ pub struct SyncOptions {
     pub preallocate: bool,
     pub checksum: bool,
     pub compress: bool,
-    pub modern_compress: Option<ModernCompress>,
     pub dirs: bool,
     pub list_only: bool,
     pub update: bool,
@@ -1635,7 +1612,6 @@ impl Default for SyncOptions {
             preallocate: false,
             checksum: false,
             compress: false,
-            modern_compress: None,
             perms: false,
             executability: false,
             times: false,
@@ -2478,7 +2454,7 @@ mod tests {
             &src,
             &dst,
             &Matcher::default(),
-            &available_codecs(None),
+            &available_codecs(),
             &SyncOptions::default(),
         )
         .unwrap();

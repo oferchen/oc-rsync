@@ -29,6 +29,26 @@ The \f[V]-4\f[R] and \f[V]-6\f[R] flags restrict the listener to IPv4 or
 IPv6 addresses respectively.
 These can be combined with \f[V]--address\f[R] to bind a specific
 interface.
+.SS Example packaging
+.PP
+Sample files for running the daemon are provided under
+\f[V]packaging/\f[R] and are included in release artifacts:
+.IP \[bu] 2
+\f[V]packaging/rsyncd.conf.example\f[R] \[en] example configuration file
+.IP \[bu] 2
+\f[V]packaging/systemd/oc-rsyncd.service\f[R] \[en] systemd service unit
+.SS systemd hardening
+.PP
+The bundled \f[V]oc-rsyncd.service\f[R] applies systemd sandboxing
+features to reduce attack surface.
+It enables \f[V]NoNewPrivileges=yes\f[R] and mounts the host filesystem
+read-only with \f[V]ProtectSystem=strict\f[R].
+The unit grants only the \f[V]CAP_NET_BIND_SERVICE\f[R] capability via
+\f[V]CapabilityBoundingSet\f[R]/\f[V]AmbientCapabilities\f[R] and
+creates an isolated state directory with
+\f[V]StateDirectory=oc-rsyncd\f[R].
+These settings may be relaxed if the daemon requires additional
+privileges.
 .SS Module setup
 .PP
 Modules map a name to a directory on disk.
@@ -46,8 +66,7 @@ negotiating protocol versions.
 .PP
 If the daemon finds an \f[V]auth\f[R] file in its working directory,
 clients must supply a matching token.
-The secrets file path can be overridden with \f[V]--secrets-file\f[R],
-or a single token may be stored via \f[V]--password-file\f[R].
+The secrets file path can be overridden with \f[V]--secrets-file\f[R].
 The file must be readable only by the daemon user (mode \f[V]0600\f[R]
 on Unix) and may list optional modules a token is permitted to access:
 .IP
@@ -59,8 +78,6 @@ s3cr3t data backups
 .fi
 .PP
 During the handshake the client sends the token followed by a newline.
-Clients may provide this token using \f[V]--password-file\f[R] or the
-\f[V]RSYNC_PASSWORD\f[R] environment variable.
 The test suite demonstrates that an invalid token is rejected with an
 \f[V]\[at]ERROR\f[R] message.
 Tokens without an explicit module list allow access to any module.
@@ -111,6 +128,22 @@ oc-rsync --daemon \[rs]
 .PP
 Clients whose address does not satisfy these rules are disconnected
 before any authentication takes place.
+.PP
+Per-module allow and deny lists may also be specified in a configuration
+file:
+.IP
+.nf
+\f[C]
+[data]
+path = /srv/data
+hosts allow = 192.0.2.10
+hosts deny = 192.0.2.20
+\f[R]
+.fi
+.PP
+These rules are evaluated after the global lists.
+Module entries allow fine grained control when different exports require
+distinct access policies.
 .SS Logging
 .PP
 Supply \f[V]--log-file\f[R] to record daemon activity.

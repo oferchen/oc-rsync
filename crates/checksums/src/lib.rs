@@ -1,5 +1,4 @@
 // crates/checksums/src/lib.rs
-use md4::Md4;
 use md5::Digest;
 use md5::Md5;
 use sha1::Sha1;
@@ -7,7 +6,6 @@ use sha1::Sha1;
 pub enum StrongHash {
     Md5,
     Sha1,
-    Md4,
 }
 
 #[derive(Clone, Debug)]
@@ -80,12 +78,6 @@ pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
         }
         StrongHash::Sha1 => {
             let mut hasher = Sha1::new();
-            hasher.update(&seed.to_le_bytes());
-            hasher.update(data);
-            hasher.finalize().to_vec()
-        }
-        StrongHash::Md4 => {
-            let mut hasher = Md4::new();
             hasher.update(&seed.to_le_bytes());
             hasher.update(data);
             hasher.finalize().to_vec()
@@ -389,9 +381,6 @@ mod tests {
             hex::encode(digest_sha1),
             "1fb6475c524899f98b088f7608bdab8f1591e078"
         );
-
-        let digest_md4 = strong_digest(b"hello world", StrongHash::Md4, 0);
-        assert_eq!(hex::encode(digest_md4), "ea91f391e02b5e19f432b43bd87a531d",);
     }
 
     #[test]

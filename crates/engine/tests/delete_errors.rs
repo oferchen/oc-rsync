@@ -21,7 +21,7 @@ fn continues_deleting_after_io_errors() {
             &src,
             &dst,
             &Matcher::default(),
-            &available_codecs(None),
+            &available_codecs(),
             &SyncOptions {
                 delete: Some(DeleteMode::During),
                 ..Default::default()

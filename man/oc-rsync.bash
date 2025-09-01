@@ -23,7 +23,7 @@ _oc-rsync() {
 
     case "${cmd}" in
         oc__rsync)
-            opts="-a -r -d -R -n -S -u -m -I -v -q -8 -i -b -c -E -U -N -O -J -L -k -K -z -T -P -4 -6 -B -W -e -M -s -f -F -C -h --local --archive --recursive --dirs --relative --dry-run --list-only --sparse --update --existing --ignore-existing --prune-empty-dirs --size-only --ignore-times --verbose --log-format --human-readable --quiet --no-motd --8-bit-output --itemize-changes --delete --delete-before --delete-during --delete-after --delete-delay --delete-excluded --delete-missing-args --remove-source-files --ignore-errors --max-delete --max-alloc --max-size --min-size --preallocate --backup --backup-dir --checksum --cc --checksum-choice --checksum-seed --perms --executability --chmod --chown --usermap --groupmap --times --atimes --crtimes --omit-dir-times --omit-link-times --owner --group --links --copy-links --copy-dirlinks --keep-dirlinks --copy-unsafe-links --safe-links --hard-links --devices --specials --compress --zc --compress-choice --zl --compress-level --skip-compress --modern --modern-compress --modern-hash --modern-cdc --modern-cdc-min --modern-cdc-max --partial --partial-dir --temp-dir --progress --blocking-io --append --append-verify --inplace --bwlimit --timeout --contimeout --protocol --port --ipv4 --ipv6 --block-size --whole-file --no-whole-file --link-dest --copy-dest --compare-dest --numeric-ids --stats --config --known-hosts --no-host-key-checking --password-file --early-input --rsh --remote-option --secluded-args --sockopts --write-batch --copy-devices --write-devices --server --sender --rsync-path --filter --filter-file --cvs-exclude --include --exclude --include-from --exclude-from --files-from --from0 --help <SRC> <DST>"
+            opts="-a -r -d -R -n -S -u -m -I -v -q -8 -i -b -c -E -U -N -O -J -L -k -K -z -T -y -P -4 -6 -B -W -e -M -s -f -F -C -h --local --archive --recursive --dirs --relative --dry-run --list-only --sparse --update --existing --ignore-existing --prune-empty-dirs --size-only --ignore-times --verbose --log-format --log-file --log-file-format --info --debug --human-readable --quiet --no-motd --8-bit-output --itemize-changes --delete --delete-before --del --delete-during --delete-after --delete-delay --delete-excluded --delete-missing-args --ignore-missing-args --remove-source-files --ignore-errors --max-delete --max-alloc --max-size --min-size --preallocate --backup --backup-dir --checksum --cc --checksum-choice --checksum-seed --perms --executability --chmod --chown --copy-as --usermap --groupmap --times --atimes --crtimes --omit-dir-times --omit-link-times --owner --group --links --copy-links --copy-dirlinks --keep-dirlinks --copy-unsafe-links --safe-links --hard-links --devices --specials --fake-super --super --compress --zc --compress-choice --zl --compress-level --skip-compress --partial --partial-dir --temp-dir --progress --blocking-io --fsync --fuzzy --append --append-verify --inplace --delay-updates --bwlimit --timeout --contimeout --modify-window --protocol --port --ipv4 --ipv6 --block-size --whole-file --no-whole-file --link-dest --copy-dest --compare-dest --numeric-ids --stats --config --known-hosts --no-host-key-checking --password-file --early-input --rsh --remote-option --secluded-args --sockopts --write-batch --copy-devices --write-devices --server --sender --rsync-path --filter --filter-file --cvs-exclude --include --exclude --include-from --exclude-from --files-from --from0 --daemon --module --address --secrets-file --hosts-allow --hosts-deny --motd --lock-file --state-dir --probe --peer-version --help [SRC] [DST] [ADDR]"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -31,6 +31,22 @@ _oc-rsync() {
             case "${prev}" in
                 --log-format)
                     COMPREPLY=($(compgen -W "text json" -- "${cur}"))
+                    return 0
+                    ;;
+                --log-file)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --log-file-format)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --info)
+                    COMPREPLY=($(compgen -W "backup copy del flist misc name progress stats" -- "${cur}"))
+                    return 0
+                    ;;
+                --debug)
+                    COMPREPLY=($(compgen -W "backup copy del flist hash match misc options" -- "${cur}"))
                     return 0
                     ;;
                 --max-delete)
@@ -73,6 +89,10 @@ _oc-rsync() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --copy-as)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 --usermap)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
@@ -101,26 +121,6 @@ _oc-rsync() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
-                --modern-compress)
-                    COMPREPLY=($(compgen -W "auto zstd" -- "${cur}"))
-                    return 0
-                    ;;
-                --modern-hash)
-                    COMPREPLY=($(compgen -W "" -- "${cur}"))
-                    return 0
-                    ;;
-                --modern-cdc)
-                    COMPREPLY=($(compgen -W "fastcdc off" -- "${cur}"))
-                    return 0
-                    ;;
-                --modern-cdc-min)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --modern-cdc-max)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
                 --partial-dir)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
@@ -142,6 +142,10 @@ _oc-rsync() {
                     return 0
                     ;;
                 --contimeout)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --modify-window)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -246,6 +250,42 @@ _oc-rsync() {
                     return 0
                     ;;
                 --files-from)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --module)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --address)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --secrets-file)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --hosts-allow)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --hosts-deny)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --motd)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --lock-file)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --state-dir)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --peer-version)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;

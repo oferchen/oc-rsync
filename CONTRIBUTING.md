@@ -15,7 +15,7 @@ The Makefile offers shortcuts for common CI checks:
 
 - `make verify-comments` – run `scripts/check-comments.sh` to enforce comment headers.
 - `make lint` – run `cargo fmt --all --check` for formatting.
-- `make coverage` – execute `cargo llvm-cov --workspace --features blake3 --doctests \
+- `make coverage` – execute `cargo llvm-cov --workspace --doctests \
   --fail-under-lines 95 --fail-under-functions 95` to gather test coverage.
 - `make interop` – run the interoperability matrix with `tests/interop/run_matrix.sh`.
 

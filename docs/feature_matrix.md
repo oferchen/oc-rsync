@@ -4,8 +4,7 @@ This table tracks the implementation status of rsync 3.4.x command-line options.
 See [differences.md](differences.md) for a summary of notable behavioral differences and [gaps.md](gaps.md) for
 outstanding parity gaps.
 
-Classic `rsync` protocol versions 31–32 are supported, while modern mode
-negotiates version 73.
+Classic `rsync` protocol versions 31–32 are supported.
 
 ## Internal features
 
@@ -28,7 +27,7 @@ negotiates version 73.
 | `--blocking-io` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--bwlimit` | — | ✅ | ✅ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) | token bucket matches upstream | ≤3.2 |
 | `--cc` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | alias for `--checksum-choice` | ≤3.2 |
-| `--checksum` | `-c` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1, MD4 | ≤3.2 |
+| `--checksum` | `-c` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | strong hashes: MD5 (default), SHA-1 | ≤3.2 |
 | `--checksum-choice` | — | ✅ | ✅ | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | choose the strong hash algorithm | ≤3.2 |
 | `--checksum-seed` | — | ✅ | ✅ | [tests/checksum_seed.rs](../tests/checksum_seed.rs)<br>[tests/checksum_seed_cli.rs](../tests/checksum_seed_cli.rs) | set block/file checksum seed | ≤3.2 |
 | `--chmod` | — | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/golden/cli_parity/chmod.sh](../tests/golden/cli_parity/chmod.sh) |  | ≤3.2 |

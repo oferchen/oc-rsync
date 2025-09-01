@@ -912,7 +912,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     }
 
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
-        let list = ["md5", "sha1", "md4"];
+        let list = ["md5", "sha1"];
         rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
     }
 
@@ -923,7 +923,6 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         match choice {
             "md5" => StrongHash::Md5,
             "sha1" => StrongHash::Sha1,
-            "md4" => StrongHash::Md4,
             other => {
                 return Err(EngineError::Other(format!("unknown checksum {other}")));
             }
@@ -938,10 +937,6 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 }
                 "md5" => {
                     chosen = StrongHash::Md5;
-                    break;
-                }
-                "md4" => {
-                    chosen = StrongHash::Md4;
                     break;
                 }
                 _ => {}
@@ -993,7 +988,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         return Err(EngineError::Other(format!("unknown codec {other}")));
                     }
                 };
-                if !available_codecs(None).contains(&codec) {
+                if !available_codecs().contains(&codec) {
                     return Err(EngineError::Other(format!(
                         "codec {name} not supported by this build"
                     )));
@@ -1082,7 +1077,6 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         preallocate: opts.preallocate,
         checksum: opts.checksum,
         compress,
-        modern_compress: None,
         dirs: opts.dirs,
         list_only: opts.list_only,
         update: opts.update,
@@ -1179,7 +1173,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 &src.path,
                 &dst.path,
                 &matcher,
-                &available_codecs(None),
+                &available_codecs(),
                 &sync_opts,
             )?,
             _ => return Err(EngineError::Other("local sync requires local paths".into())),
@@ -1217,7 +1211,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &src.path,
                     &dst.path,
                     &matcher,
-                    &available_codecs(None),
+                    &available_codecs(),
                     &sync_opts,
                 )?
             }
@@ -1243,7 +1237,6 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.port,
                     opts.contimeout,
                     addr_family,
-                    None,
                     opts.protocol.unwrap_or(31),
                 )
                 .map_err(EngineError::from)?;
@@ -1279,7 +1272,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &src.path,
                     &dst.path,
                     &matcher,
-                    &available_codecs(None),
+                    &available_codecs(),
                     &sync_opts,
                 )?
             }
@@ -1305,7 +1298,6 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.port,
                     opts.contimeout,
                     addr_family,
-                    None,
                     opts.protocol.unwrap_or(31),
                 )
                 .map_err(EngineError::from)?;
@@ -1882,7 +1874,7 @@ fn run_server() -> Result<()> {
         .and_then(|s| s.parse().ok())
         .map(Duration::from_secs)
         .unwrap_or(Duration::from_secs(30));
-    let codecs = available_codecs(None);
+    let codecs = available_codecs();
     let mut srv = Server::new(stdin.lock(), stdout.lock(), timeout);
     let _ = srv
         .handshake(31, CAP_CODECS, &codecs)
@@ -1986,8 +1978,6 @@ mod tests {
     fn parses_checksum_choice_and_alias() {
         let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "sha1", "src", "dst"]);
         assert_eq!(opts.checksum_choice.as_deref(), Some("sha1"));
-        let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "md4", "src", "dst"]);
-        assert_eq!(opts.checksum_choice.as_deref(), Some("md4"));
         let opts = ClientOpts::parse_from(["prog", "--cc", "md5", "src", "dst"]);
         assert_eq!(opts.checksum_choice.as_deref(), Some("md5"));
     }

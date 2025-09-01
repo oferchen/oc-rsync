@@ -53,7 +53,7 @@ pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Resu
             src,
             dst,
             &Matcher::default(),
-            &available_codecs(None),
+            &available_codecs(),
             &SyncOptions::default(),
         )?;
 

@@ -21,14 +21,7 @@ fn checksum_seed_flag_transfers_files() {
     };
 
     fs::create_dir_all(&dst).unwrap();
-    sync(
-        &src,
-        &dst,
-        &Matcher::default(),
-        &available_codecs(None),
-        &opts,
-    )
-    .unwrap();
+    sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts).unwrap();
 
     let out = fs::read(dst.join("a.txt")).unwrap();
     assert_eq!(out, vec![0u8; 2048]);

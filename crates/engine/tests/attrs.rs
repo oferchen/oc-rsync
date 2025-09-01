@@ -31,7 +31,7 @@ fn perms_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             perms: true,
             ..Default::default()
@@ -56,7 +56,7 @@ fn chmod_applies() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             perms: true,
             chmod: Some(parse_chmod("F600").unwrap()),
@@ -81,7 +81,7 @@ fn chown_applies() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             owner: true,
             group: true,
@@ -110,7 +110,7 @@ fn times_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             times: true,
             ..Default::default()
@@ -137,7 +137,7 @@ fn omit_dir_times_skips_dirs() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             times: true,
             omit_dir_times: true,
@@ -167,7 +167,7 @@ fn omit_link_times_skips_symlinks() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             times: true,
             links: true,
@@ -196,7 +196,7 @@ fn atimes_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             atimes: true,
             ..Default::default()
@@ -229,7 +229,7 @@ fn symlink_atimes_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             links: true,
             atimes: true,
@@ -267,7 +267,7 @@ fn crtimes_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             crtimes: true,
             ..Default::default()
@@ -303,7 +303,7 @@ fn owner_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             owner: true,
             ..Default::default()
@@ -329,7 +329,7 @@ fn group_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             group: true,
             ..Default::default()
@@ -354,7 +354,7 @@ fn links_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             links: true,
             ..Default::default()
@@ -384,7 +384,7 @@ fn hard_links_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             hard_links: true,
             ..Default::default()
@@ -411,7 +411,7 @@ fn xattrs_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             xattrs: true,
             ..Default::default()
@@ -437,7 +437,7 @@ fn symlink_xattrs_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             xattrs: true,
             links: true,
@@ -474,7 +474,7 @@ fn acls_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             acls: true,
             ..Default::default()
@@ -510,7 +510,7 @@ fn devices_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             devices: true,
             ..Default::default()
@@ -541,7 +541,7 @@ fn copy_devices_creates_regular_files() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             copy_devices: true,
             ..Default::default()
@@ -573,7 +573,7 @@ fn copy_devices_handles_zero() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             copy_devices: true,
             ..Default::default()
@@ -598,7 +598,7 @@ fn specials_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             specials: true,
             ..Default::default()
@@ -626,7 +626,7 @@ fn sparse_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             sparse: true,
             ..Default::default()
@@ -657,7 +657,7 @@ fn sparse_creation_from_zeros() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             sparse: true,
             ..Default::default()
@@ -689,7 +689,7 @@ fn sparse_middle_hole() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             sparse: true,
             ..Default::default()
@@ -724,7 +724,7 @@ fn sparse_trailing_hole() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             sparse: true,
             ..Default::default()
@@ -760,7 +760,7 @@ fn metadata_matches_rsync() {
         &src,
         &dst_rrs,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             owner: true,
             group: true,
@@ -817,7 +817,7 @@ fn fake_super_stores_xattrs() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             perms: true,
             fake_super: true,
@@ -842,7 +842,7 @@ fn super_overrides_fake_super() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             perms: true,
             fake_super: true,

@@ -71,7 +71,7 @@ version and capability set.
   Adler-32–style checksum enables block matching without reading the entire
   file.
 - **Strong checksum** ([`checksums`](../crates/checksums)): cryptographic hashes
-  (e.g., BLAKE3) verify block identity, reducing collision risk.
+  (e.g., SHA-1) verify block identity, reducing collision risk.
 - **Delta encoding** ([`engine`](../crates/engine)): only modified blocks are
   transmitted, minimizing bandwidth and disk I/O.
 
