@@ -476,8 +476,10 @@ struct ClientOpts {
     sender: bool,
     #[arg(long = "rsync-path", value_name = "PATH", alias = "rsync_path")]
     rsync_path: Option<String>,
-    src: String,
-    dst: String,
+    #[arg(value_name = "SRC", required_unless_present_any = ["daemon", "server", "probe"])]
+    src: Option<String>,
+    #[arg(value_name = "DST", required_unless_present_any = ["daemon", "server", "probe"])]
+    dst: Option<String>,
     #[arg(short = 'f', long, value_name = "RULE", help_heading = "Selection")]
     filter: Vec<String>,
     #[arg(long, value_name = "FILE", help_heading = "Selection")]
@@ -579,8 +581,6 @@ struct DaemonOpts {
     module: Vec<Module>,
     #[arg(long)]
     address: Option<IpAddr>,
-    #[arg(long, value_name = "PORT")]
-    port: Option<u16>,
     #[arg(long = "secrets-file", value_name = "FILE")]
     secrets_file: Option<PathBuf>,
     #[arg(long = "hosts-allow", value_delimiter = ',', value_name = "LIST")]
@@ -835,7 +835,15 @@ pub fn spawn_daemon_session(
     Ok(t)
 }
 
-fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
+fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
+    let src_arg = opts
+        .src
+        .take()
+        .ok_or_else(|| EngineError::Other("missing SRC".into()))?;
+    let dst_arg = opts
+        .dst
+        .take()
+        .ok_or_else(|| EngineError::Other("missing DST".into()))?;
     let matcher = build_matcher(&opts, matches)?;
     let addr_family = if opts.ipv4 {
         Some(AddressFamily::V4)
@@ -883,8 +891,8 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         return Ok(());
     }
 
-    let src = parse_remote_spec(&opts.src)?;
-    let mut dst = parse_remote_spec(&opts.dst)?;
+    let src = parse_remote_spec(&src_arg)?;
+    let mut dst = parse_remote_spec(&dst_arg)?;
 
     let known_hosts = opts.known_hosts.clone();
     let strict_host_key_checking = !opts.no_host_key_checking;
@@ -1853,7 +1861,7 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut motd = opts.motd.clone();
     let lock_file = opts.lock_file.clone();
     let state_dir = opts.state_dir.clone();
-    let mut port = opts.port.unwrap_or(873);
+    let mut port = matches.get_one::<u16>("port").copied().unwrap_or(873);
     let mut address = opts.address;
     let timeout = matches.get_one::<Duration>("timeout").copied();
     let bwlimit = matches.get_one::<u64>("bwlimit").copied();

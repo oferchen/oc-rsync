@@ -99,7 +99,7 @@ negotiates version 73.
 | `--list-only` | — | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--log-file` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--log-file-format` | — | ❌ | — | — | not yet implemented | ≤3.2 |
-| `--max-alloc` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--max-alloc` | — | ✅ | ✅ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
 | `--max-delete` | — | ✅ | ✅ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--max-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
 | `--min-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |

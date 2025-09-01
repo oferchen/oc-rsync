@@ -386,7 +386,7 @@
   },
   {
     "flag": "--max-alloc",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {

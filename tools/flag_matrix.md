@@ -77,7 +77,7 @@
 | --list-only | Supported |  |
 | --log-file | Ignored |  |
 | --log-file-format | Ignored |  |
-| --max-alloc | Ignored |  |
+| --max-alloc | Supported |  |
 | --max-delete | Supported |  |
 | --max-size | Supported |  |
 | --min-size | Supported |  |
