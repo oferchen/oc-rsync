@@ -1140,7 +1140,15 @@ pub fn parse(
         }
 
         let mut pattern = rest.to_string();
+        let mut has_anchor = false;
+        while pattern.starts_with("./") {
+            has_anchor = true;
+            pattern = pattern[2..].to_string();
+        }
         if mods.contains('/') && !pattern.starts_with('/') {
+            pattern = format!("/{}", pattern);
+        }
+        if has_anchor && !pattern.starts_with('/') {
             pattern = format!("/{}", pattern);
         }
         let anchored = pattern.starts_with('/');

@@ -1726,7 +1726,13 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
 fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
-        filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
+        if path == Path::new("-") {
+            let mut buf = Vec::new();
+            io::stdin().read_to_end(&mut buf)?;
+            Ok(filters::parse_list(&buf, from0))
+        } else {
+            filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
+        }
     }
 
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();

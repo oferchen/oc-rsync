@@ -1950,6 +1950,33 @@ fn include_before_per_dir_merge_allows_file() {
 }
 
 #[test]
+fn exclude_dot_anchor_only_skips_root() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(src.join("sub")).unwrap();
+    std::fs::write(src.join("root.txt"), b"r").unwrap();
+    std::fs::write(src.join("sub/root.txt"), b"s").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--exclude=./root.txt",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("root.txt").exists());
+    assert!(dst.join("sub/root.txt").exists());
+}
+
+#[test]
 fn exclude_complex_pattern_skips_nested_files() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
