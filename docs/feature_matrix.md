@@ -77,7 +77,7 @@ negotiates version 73.
 | `--fsync` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--fuzzy` | `-y` | ✅ | ❌ | [tests/fuzzy.rs](../tests/fuzzy.rs) |  | ≤3.2 |
 | `--group` | `-g` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | requires root or CAP_CHOWN | ≤3.2 |
-| `--groupmap` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | numeric gid mapping only; requires root or CAP_CHOWN | ≤3.2 |
+| `--groupmap` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires root or CAP_CHOWN | ≤3.2 |
 | `--hard-links` | `-H` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--help` | `-h (*)` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--human-readable` |  | ✅ | ✅ | [tests/golden/cli_parity/human-readable.sh](../tests/golden/cli_parity/human-readable.sh) |  | ≤3.2 |
@@ -166,7 +166,7 @@ negotiates version 73.
 | `--times` | `-t` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--trust-sender` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--update` | `-u` | ✅ | ❌ | [crates/engine/tests/update.rs](../crates/engine/tests/update.rs) |  | ≤3.2 |
-| `--usermap` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | numeric uid mapping only; requires root or CAP_CHOWN | ≤3.2 |
+| `--usermap` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires root or CAP_CHOWN | ≤3.2 |
 | `--verbose` | `-v` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--version` | `-V` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--whole-file` | `-W` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |

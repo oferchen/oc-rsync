@@ -1187,17 +1187,15 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     };
     let uid_map = if !opts.usermap.is_empty() {
         let spec = opts.usermap.join(",");
-        Some(IdMapper(
-            parse_id_map(&spec, IdKind::User).map_err(EngineError::Other)?,
-        ))
+        let mapper = parse_id_map(&spec, IdKind::User).map_err(EngineError::Other)?;
+        Some(IdMapper(mapper))
     } else {
         None
     };
     let gid_map = if !opts.groupmap.is_empty() {
         let spec = opts.groupmap.join(",");
-        Some(IdMapper(
-            parse_id_map(&spec, IdKind::Group).map_err(EngineError::Other)?,
-        ))
+        let mapper = parse_id_map(&spec, IdKind::Group).map_err(EngineError::Other)?;
+        Some(IdMapper(mapper))
     } else {
         None
     };

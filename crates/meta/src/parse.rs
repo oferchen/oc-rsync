@@ -112,7 +112,7 @@ pub fn parse_chmod(s: &str) -> StdResult<Vec<Chmod>, String> {
 }
 
 #[cfg(unix)]
-use users::{get_group_by_name, get_user_by_name};
+use crate::{gid_from_name_or_id, uid_from_name_or_id};
 
 pub fn parse_chown(spec: &str) -> StdResult<(Option<u32>, Option<u32>), String> {
     let (user_part, group_part) = if let Some((u, g)) = spec.split_once(':') {
@@ -142,13 +142,12 @@ pub fn parse_chown(spec: &str) -> StdResult<(Option<u32>, Option<u32>), String> 
 
 #[cfg(unix)]
 fn parse_user(s: &str) -> StdResult<Option<u32>, String> {
-    if let Ok(id) = s.parse() {
-        return Ok(Some(id));
+    if s.is_empty() {
+        return Ok(None);
     }
-    match get_user_by_name(s) {
-        Some(u) => Ok(Some(u.uid())),
-        None => Err(format!("unknown user '{s}'")),
-    }
+    uid_from_name_or_id(s)
+        .map(Some)
+        .ok_or_else(|| format!("unknown user '{s}'"))
 }
 
 #[cfg(not(unix))]
@@ -159,13 +158,7 @@ fn parse_user(s: &str) -> StdResult<Option<u32>, String> {
 
 #[cfg(unix)]
 fn parse_group(s: &str) -> StdResult<u32, String> {
-    if let Ok(id) = s.parse() {
-        return Ok(id);
-    }
-    match get_group_by_name(s) {
-        Some(g) => Ok(g.gid()),
-        None => Err(format!("unknown group '{s}'")),
-    }
+    gid_from_name_or_id(s).ok_or_else(|| format!("unknown group '{s}'"))
 }
 
 #[cfg(not(unix))]
@@ -180,23 +173,16 @@ pub enum IdKind {
 }
 
 fn resolve_id(kind: IdKind, s: &str) -> StdResult<u32, String> {
-    if let Ok(id) = s.parse() {
-        return Ok(id);
-    }
     #[cfg(unix)]
     {
         match kind {
-            IdKind::User => get_user_by_name(s)
-                .map(|u| u.uid())
-                .ok_or_else(|| format!("unknown user '{s}'")),
-            IdKind::Group => get_group_by_name(s)
-                .map(|g| g.gid())
-                .ok_or_else(|| format!("unknown group '{s}'")),
+            IdKind::User => uid_from_name_or_id(s).ok_or_else(|| format!("unknown user '{s}'")),
+            IdKind::Group => gid_from_name_or_id(s).ok_or_else(|| format!("unknown group '{s}'")),
         }
     }
     #[cfg(not(unix))]
     {
-        Err(format!("invalid id '{s}'"))
+        s.parse().map_err(|_| format!("invalid id '{s}'"))
     }
 }
 
