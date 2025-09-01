@@ -986,7 +986,7 @@ pub struct Receiver {
     opts: SyncOptions,
     delayed: Vec<(PathBuf, PathBuf, PathBuf)>,
     #[cfg(unix)]
-    link_map: HashMap<usize, PathBuf>,
+    link_map: HashMap<(u64, u64), PathBuf>,
     #[cfg(unix)]
     pending_links: Vec<(PathBuf, PathBuf)>,
 }
@@ -1012,8 +1012,8 @@ impl Receiver {
     }
 
     #[cfg(unix)]
-    fn register_hard_link(&mut self, inode: usize, dest: &Path) -> Result<bool> {
-        if let Some(existing) = self.link_map.get(&inode) {
+    fn register_hard_link(&mut self, dev: u64, inode: u64, dest: &Path) -> Result<bool> {
+        if let Some(existing) = self.link_map.get(&(dev, inode)) {
             if self.opts.delay_updates || self.delayed.iter().any(|(_, _, d)| d == existing) {
                 self.pending_links
                     .push((existing.clone(), dest.to_path_buf()));
@@ -1022,7 +1022,7 @@ impl Receiver {
             }
             Ok(false)
         } else {
-            self.link_map.insert(inode, dest.to_path_buf());
+            self.link_map.insert((dev, inode), dest.to_path_buf());
             Ok(true)
         }
     }
@@ -1913,7 +1913,8 @@ pub fn sync(
     }
     sender.start();
     let mut state = String::new();
-    for batch in walk(&src_root, 1024, opts.links) {
+    let mut walker = walk(&src_root, 1024, opts.links);
+    while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
             let path = entry.apply(&mut state);
@@ -1957,7 +1958,13 @@ pub fn sync(
                         }
                     }
                     #[cfg(unix)]
-                    if opts.hard_links && !receiver.register_hard_link(entry.inode, &dest_path)? {
+                    if opts.hard_links
+                        && !receiver.register_hard_link(
+                            walker.devs()[entry.dev],
+                            walker.inodes()[entry.inode],
+                            &dest_path,
+                        )?
+                    {
                         continue;
                     }
                     let partial_exists = if opts.partial {
