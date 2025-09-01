@@ -411,7 +411,7 @@
   },
   {
     "flag": "--modify-window",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -521,7 +521,7 @@
   },
   {
     "flag": "--progress",
-    "status": "Supported",
+    "status": "Ignored",
     "notes": ""
   },
   {

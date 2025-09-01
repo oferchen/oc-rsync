@@ -110,7 +110,7 @@ negotiates version 73.
 | `--modern-cdc` | — | ✅ | ✅ | [tests/golden/cli_parity/modern_flags.sh](../tests/golden/cli_parity/modern_flags.sh) | oc-rsync only; enable `fastcdc` chunking | — |
 | `--modern-cdc-min` | — | ✅ | ✅ | [tests/cdc.rs](../tests/cdc.rs) | oc-rsync only; set FastCDC minimum chunk size | — |
 | `--modern-cdc-max` | — | ✅ | ✅ | [tests/cdc.rs](../tests/cdc.rs) | oc-rsync only; set FastCDC maximum chunk size | — |
-| `--modify-window` | `-@` | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--modify-window` | `-@` | ✅ | ❌ | [tests/modify_window.rs](../tests/modify_window.rs) | treat close mtimes as equal | ≤3.2 |
 | `--munge-links` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--no-detach` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--no-D` | — | ❌ | — | [gaps.md](gaps.md) | alias for `--no-devices --no-specials` | ≤3.2 |
@@ -135,7 +135,7 @@ negotiates version 73.
 | `--perms` | `-p` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--port` | — | ✅ | ❌ | [tests/daemon.rs](../tests/daemon.rs) | overrides default port | ≤3.2 |
 | `--preallocate` | — | ✅ | ✅ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
-| `--progress` | — | ⚠️ | ❌ | [tests/cli.rs#L332](../tests/cli.rs#L332) | progress tests fail to compile | ≤3.2 |
+| `--progress` | — | ✅ | ❌ | [tests/cli.rs#L309](../tests/cli.rs#L309) |  | ≤3.2 |
 | `--protocol` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--prune-empty-dirs` | `-m` | ✅ | ✅ | [tests/filter_corpus.rs](../tests/filter_corpus.rs) |  | ≤3.2 |
 | `--quiet` | `-q` | ✅ | ✅ | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |

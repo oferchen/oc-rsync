@@ -82,7 +82,7 @@
 | --max-size | Supported |  |
 | --min-size | Supported |  |
 | --mkpath | Ignored |  |
-| --modify-window | Ignored |  |
+| --modify-window | Supported |  |
 | --munge-links | Ignored |  |
 | --no-OPTION | Ignored |  |
 | --no-implied-dirs | Ignored |  |
@@ -104,7 +104,7 @@
 | --perms | Supported |  |
 | --port | Supported |  |
 | --preallocate | Supported |  |
-| --progress | Supported |  |
+| --progress | Ignored |  |
 | --protocol | Supported |  |
 | --prune-empty-dirs | Supported |  |
 | --quiet | Supported |  |
