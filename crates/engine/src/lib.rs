@@ -2266,14 +2266,19 @@ pub fn sync(
                     let target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
                     let target_path = if target.is_absolute() {
                         target.clone()
+                    } else if let Some(parent) = path.parent() {
+                        parent.join(&target)
                     } else {
-                        path.parent().unwrap_or(Path::new("")).join(&target)
+                        src_root.join(&target)
                     };
                     let is_unsafe = match fs::canonicalize(&target_path) {
                         Ok(p) => !p.starts_with(&src_root),
                         Err(_) => true,
                     };
                     if opts.safe_links && is_unsafe {
+                        continue;
+                    }
+                    if opts.ignore_existing && dest_path.exists() {
                         continue;
                     }
                     let meta = fs::metadata(&target_path).ok();

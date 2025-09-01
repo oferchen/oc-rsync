@@ -1508,6 +1508,68 @@ fn links_preserve_symlinks() {
 
 #[cfg(unix)]
 #[test]
+fn links_copy_dangling_symlink() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    symlink("missing", src.join("dangling")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let meta = std::fs::symlink_metadata(dst.join("dangling")).unwrap();
+    assert!(meta.file_type().is_symlink());
+    let target = std::fs::read_link(dst.join("dangling")).unwrap();
+    assert_eq!(target, std::path::PathBuf::from("missing"));
+}
+
+#[cfg(unix)]
+#[test]
+fn links_replace_and_skip_existing() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(&dst).unwrap();
+    std::fs::write(src.join("file"), b"data").unwrap();
+    symlink("file", src.join("link")).unwrap();
+    std::fs::write(dst.join("link"), b"old").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+    let meta = std::fs::symlink_metadata(dst.join("link")).unwrap();
+    assert!(meta.file_type().is_symlink());
+    std::fs::remove_file(dst.join("link")).unwrap();
+    std::fs::write(dst.join("link"), b"old").unwrap();
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--links",
+            "--ignore-existing",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let meta = std::fs::symlink_metadata(dst.join("link")).unwrap();
+    assert!(!meta.file_type().is_symlink());
+    let content = std::fs::read(dst.join("link")).unwrap();
+    assert_eq!(content, b"old");
+}
+
+#[cfg(unix)]
+#[test]
 fn links_preserve_directory_symlinks() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
