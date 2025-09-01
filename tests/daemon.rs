@@ -212,6 +212,56 @@ fn daemon_blocks_path_traversal() {
 
 #[test]
 #[serial]
+fn daemon_allows_path_traversal_without_chroot() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let data = dir.path().join("data");
+    fs::create_dir(&data).unwrap();
+    let secret = dir.path().join("secret");
+    fs::write(&secret, b"top secret").unwrap();
+    let cfg = format!(
+        "port = 0\n[data]\n    path = {}\n    use chroot = no\n",
+        data.display()
+    );
+    let cfg_path = dir.path().join("rsyncd.conf");
+    fs::write(&cfg_path, cfg).unwrap();
+    let mut child = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let port = match read_port(&mut child) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
+    wait_for_daemon(port);
+    let dest = tempfile::tempdir().unwrap();
+    let output = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            &format!("rsync://127.0.0.1:{port}/data/../secret"),
+            dest.path().to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(dest.path().join("secret").exists());
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
 fn daemon_drops_privileges_and_restricts_file_access() {
     if require_network().is_err() {
         eprintln!("skipping daemon test: network access required");
@@ -580,6 +630,43 @@ fn daemon_accepts_connection_on_ephemeral_port() {
 
 #[test]
 #[serial]
+fn daemon_runs_with_numeric_ids() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let mut child = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            &format!("data={}", dir.path().display()),
+            "--port",
+            "0",
+            "--numeric-ids",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let port = match read_port(&mut child) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
+    wait_for_daemon(port);
+    TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
 #[ignore]
 fn daemon_allows_module_access() {
     if require_network().is_err() {
@@ -757,8 +844,7 @@ fn daemon_rejects_unauthorized_module() {
 
 #[test]
 #[serial]
-#[ignore]
-fn daemon_authenticates_valid_token() {
+fn daemon_accepts_authorized_client() {
     if require_network().is_err() {
         eprintln!("skipping daemon test: network access required");
         return;

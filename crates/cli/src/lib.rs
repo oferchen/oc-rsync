@@ -1788,6 +1788,7 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut address = opts.address;
     let timeout = matches.get_one::<Duration>("timeout").copied();
     let bwlimit = matches.get_one::<u64>("bwlimit").copied();
+    let numeric_ids_flag = matches.get_flag("numeric_ids");
     if let Some(cfg_path) = matches.get_one::<PathBuf>("config") {
         let cfg = parse_config_file(cfg_path).map_err(|e| EngineError::Other(e.to_string()))?;
         for m in cfg.modules {
@@ -1814,10 +1815,21 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
         if !cfg.hosts_deny.is_empty() {
             hosts_deny = cfg.hosts_deny;
         }
+        if let Some(val) = cfg.numeric_ids {
+            for m in modules.values_mut() {
+                m.numeric_ids = val;
+            }
+        }
     }
 
     for m in opts.module {
         modules.insert(m.name.clone(), m);
+    }
+
+    if numeric_ids_flag {
+        for m in modules.values_mut() {
+            m.numeric_ids = true;
+        }
     }
 
     let addr_family = if matches.get_flag("ipv4") {
