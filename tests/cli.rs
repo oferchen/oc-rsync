@@ -19,7 +19,7 @@ use tempfile::{tempdir, tempdir_in};
 #[cfg(unix)]
 use users::{get_current_gid, get_current_uid};
 #[cfg(all(unix, feature = "xattr"))]
-use xattr;
+use xattr as _;
 
 #[test]
 fn prints_version() {
