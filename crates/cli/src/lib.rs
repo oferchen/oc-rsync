@@ -2333,7 +2333,7 @@ mod tests {
         let stream = TcpStream::connect(addr).unwrap();
         let mut t = TcpTransport::from_stream(stream);
 
-        let err = authenticate(&mut t, None).unwrap_err();
+        let err = authenticate(&mut t, None, None).unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
 
         env::set_current_dir(prev).unwrap();

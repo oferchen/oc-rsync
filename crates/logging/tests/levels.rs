@@ -4,7 +4,7 @@ use tracing::Level;
 
 #[test]
 fn info_not_emitted_by_default() {
-    let sub = subscriber(LogFormat::Text, 0, &[], &[], false);
+    let sub = subscriber(LogFormat::Text, 0, &[], &[], false, None);
     with_default(sub, || {
         assert!(!tracing::enabled!(Level::INFO));
     });
@@ -12,7 +12,7 @@ fn info_not_emitted_by_default() {
 
 #[test]
 fn verbose_enables_info() {
-    let sub = subscriber(LogFormat::Text, 1, &[], &[], false);
+    let sub = subscriber(LogFormat::Text, 1, &[], &[], false, None);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::INFO));
     });
@@ -20,7 +20,7 @@ fn verbose_enables_info() {
 
 #[test]
 fn debug_enables_debug() {
-    let sub = subscriber(LogFormat::Text, 0, &[], &[DebugFlag::Flist], false);
+    let sub = subscriber(LogFormat::Text, 0, &[], &[DebugFlag::Flist], false, None);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::DEBUG));
     });
@@ -28,7 +28,7 @@ fn debug_enables_debug() {
 
 #[test]
 fn debug_with_two_v() {
-    let sub = subscriber(LogFormat::Text, 2, &[], &[], false);
+    let sub = subscriber(LogFormat::Text, 2, &[], &[], false, None);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::DEBUG));
     });
@@ -36,7 +36,7 @@ fn debug_with_two_v() {
 
 #[test]
 fn info_flag_enables_info() {
-    let sub = subscriber(LogFormat::Text, 0, &[InfoFlag::Progress], &[], false);
+    let sub = subscriber(LogFormat::Text, 0, &[InfoFlag::Progress], &[], false, None);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::INFO));
     });
@@ -44,7 +44,7 @@ fn info_flag_enables_info() {
 
 #[test]
 fn json_verbose_enables_info() {
-    let sub = subscriber(LogFormat::Json, 1, &[], &[], false);
+    let sub = subscriber(LogFormat::Json, 1, &[], &[], false, None);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::INFO));
     });

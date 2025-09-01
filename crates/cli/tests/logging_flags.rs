@@ -60,6 +60,8 @@ fn info_flag_enables_progress() {
         .unwrap_or_default();
     let sub = logging::subscriber(logging::LogFormat::Text, 0, &info, &[], false, None);
     with_default(sub, || {
+        assert!(tracing::enabled!(Level::INFO));
+        assert!(!tracing::enabled!(Level::DEBUG));
         assert!(tracing::enabled!(
             target: logging::InfoFlag::Progress.target(),
             Level::INFO
@@ -82,12 +84,66 @@ fn debug_flag_enables_flist() {
         .unwrap_or_default();
     let sub = logging::subscriber(logging::LogFormat::Text, 0, &[], &debug, false, None);
     with_default(sub, || {
+        assert!(tracing::enabled!(Level::TRACE));
         assert!(tracing::enabled!(
             target: logging::DebugFlag::Flist.target(),
             Level::DEBUG
         ));
         assert!(!tracing::enabled!(
             target: logging::DebugFlag::Hash.target(),
+            Level::DEBUG
+        ));
+    });
+}
+
+#[test]
+fn verbose_levels_map_to_tracing() {
+    let sub = logging::subscriber(logging::LogFormat::Text, 1, &[], &[], false, None);
+    with_default(sub, || {
+        assert!(tracing::enabled!(Level::INFO));
+        assert!(!tracing::enabled!(Level::DEBUG));
+    });
+    let sub = logging::subscriber(logging::LogFormat::Text, 2, &[], &[], false, None);
+    with_default(sub, || {
+        assert!(tracing::enabled!(Level::DEBUG));
+        assert!(!tracing::enabled!(Level::TRACE));
+    });
+    let sub = logging::subscriber(logging::LogFormat::Text, 3, &[], &[], false, None);
+    with_default(sub, || {
+        assert!(tracing::enabled!(Level::TRACE));
+    });
+}
+
+#[test]
+fn quiet_overrides_logging_flags() {
+    let matches = cli_command()
+        .try_get_matches_from([
+            "oc-rsync",
+            "--quiet",
+            "--info=progress",
+            "--debug=flist",
+            "src",
+            "dst",
+        ])
+        .unwrap();
+    let info: Vec<logging::InfoFlag> = matches
+        .get_many::<logging::InfoFlag>("info")
+        .map(|v| v.copied().collect())
+        .unwrap_or_default();
+    let debug: Vec<logging::DebugFlag> = matches
+        .get_many::<logging::DebugFlag>("debug")
+        .map(|v| v.copied().collect())
+        .unwrap_or_default();
+    let sub = logging::subscriber(logging::LogFormat::Text, 0, &info, &debug, true, None);
+    with_default(sub, || {
+        assert!(!tracing::enabled!(Level::INFO));
+        assert!(!tracing::enabled!(Level::DEBUG));
+        assert!(!tracing::enabled!(
+            target: logging::InfoFlag::Progress.target(),
+            Level::INFO
+        ));
+        assert!(!tracing::enabled!(
+            target: logging::DebugFlag::Flist.target(),
             Level::DEBUG
         ));
     });
