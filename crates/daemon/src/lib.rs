@@ -183,6 +183,8 @@ pub struct DaemonConfig {
     pub hosts_deny: Vec<String>,
     pub motd_file: Option<PathBuf>,
     pub log_file: Option<PathBuf>,
+    pub pid_file: Option<PathBuf>,
+    pub lock_file: Option<PathBuf>,
     pub secrets_file: Option<PathBuf>,
     pub timeout: Option<Duration>,
     pub use_chroot: Option<bool>,
@@ -257,6 +259,8 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             }
             (false, "motd file") => cfg.motd_file = Some(PathBuf::from(val)),
             (false, "log file") => cfg.log_file = Some(PathBuf::from(val)),
+            (false, "pid file") => cfg.pid_file = Some(PathBuf::from(val)),
+            (false, "lock file") => cfg.lock_file = Some(PathBuf::from(val)),
             (false, "hosts allow") => {
                 cfg.hosts_allow = parse_list(&val);
             }
@@ -585,6 +589,18 @@ pub fn handle_connection<T: Transport>(
                 ));
             }
         }
+        if !module.auth_users.is_empty() {
+            match token.as_deref() {
+                Some(tok) if module.auth_users.iter().any(|u| u == tok) => {}
+                _ => {
+                    let _ = transport.send(b"@ERROR: access denied");
+                    return Err(io::Error::new(
+                        io::ErrorKind::PermissionDenied,
+                        "unauthorized user",
+                    ));
+                }
+            }
+        }
     }
     transport.send(b"@RSYNCD: OK\n")?;
 
@@ -653,6 +669,7 @@ pub fn run_daemon(
     log_file: Option<PathBuf>,
     log_format: Option<String>,
     motd: Option<PathBuf>,
+    pid_file: Option<PathBuf>,
     lock_file: Option<PathBuf>,
     state_dir: Option<PathBuf>,
     timeout: Option<Duration>,
@@ -665,6 +682,15 @@ pub fn run_daemon(
     handler: Arc<Handler>,
     quiet: bool,
 ) -> io::Result<()> {
+    if let Some(path) = &pid_file {
+        let mut f = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(path)?;
+        let _ = writeln!(f, "{}", std::process::id());
+    }
+
     let _lock = if let Some(path) = lock_file {
         let mut f = OpenOptions::new()
             .create(true)
@@ -700,7 +726,18 @@ pub fn run_daemon(
         }
     }
 
-    let (listener, real_port) = TcpTransport::listen(address, port, family)?;
+    let (listener, real_port) = match TcpTransport::listen(address, port, family) {
+        Ok(v) => v,
+        Err(e) => {
+            let errno = e.raw_os_error().unwrap_or(1) as u32;
+            let status = format!("listen failed: {e}");
+            let _ = sd_notify::notify(
+                false,
+                &[NotifyState::Status(&status), NotifyState::Errno(errno)],
+            );
+            return Err(e);
+        }
+    };
     if port == 0 && !quiet {
         println!("{}", real_port);
         io::stdout().flush()?;
@@ -768,6 +805,7 @@ mod tests {
     use super::*;
     use std::fs;
     use std::io::{self, Read};
+    use std::path::PathBuf;
     use std::time::Duration;
     use tempfile::tempdir;
     use transport::LocalPipeTransport;
@@ -883,6 +921,13 @@ mod tests {
     fn parse_config_module_numeric_ids() {
         let cfg = parse_config("[data]\npath=/tmp\nnumeric ids = yes").unwrap();
         assert!(cfg.modules[0].numeric_ids);
+    }
+
+    #[test]
+    fn parse_config_pid_and_lock_file() {
+        let cfg = parse_config("pid file=/tmp/pid\nlock file=/tmp/lock").unwrap();
+        assert_eq!(cfg.pid_file, Some(PathBuf::from("/tmp/pid")));
+        assert_eq!(cfg.lock_file, Some(PathBuf::from("/tmp/lock")));
     }
 
     #[test]
