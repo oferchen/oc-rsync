@@ -15,11 +15,43 @@ use std::os::unix::fs::symlink;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::thread;
 use std::time::Duration;
-use tempfile::{tempdir, tempdir_in};
+use tempfile::{tempdir, tempdir_in, TempDir};
 #[cfg(unix)]
 use users::{get_current_gid, get_current_uid, get_group_by_gid};
 #[cfg(all(unix, feature = "xattr"))]
 use xattr as _;
+
+#[cfg(unix)]
+struct Tmpfs(TempDir);
+
+#[cfg(unix)]
+impl Tmpfs {
+    fn new() -> Option<Self> {
+        let dir = tempdir().ok()?;
+        let status = std::process::Command::new("mount")
+            .args(["-t", "tmpfs", "tmpfs", dir.path().to_str().unwrap()])
+            .status()
+            .ok()?;
+        if status.success() {
+            Some(Tmpfs(dir))
+        } else {
+            None
+        }
+    }
+
+    fn path(&self) -> &std::path::Path {
+        self.0.path()
+    }
+}
+
+#[cfg(unix)]
+impl Drop for Tmpfs {
+    fn drop(&mut self) {
+        let _ = std::process::Command::new("umount")
+            .arg(self.0.path())
+            .status();
+    }
+}
 
 #[test]
 fn prints_version() {
@@ -541,13 +573,17 @@ fn temp_dir_cross_filesystem_rename() {
     fs::create_dir_all(&dst_dir).unwrap();
     fs::write(src_dir.join("a.txt"), b"x").unwrap();
 
-    let tmp_dir = tempdir().unwrap();
+    let tmp_dir = match Tmpfs::new() {
+        Some(t) => t,
+        None => {
+            eprintln!("skipping cross-filesystem rename test; mount failed");
+            return;
+        }
+    };
+
     let dst_dev = fs::metadata(&dst_dir).unwrap().dev();
     let tmp_dev = fs::metadata(tmp_dir.path()).unwrap().dev();
-    if dst_dev == tmp_dev {
-        eprintln!("skipping cross-filesystem rename test; devices match");
-        return;
-    }
+    assert_ne!(dst_dev, tmp_dev, "devices match");
 
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
@@ -575,13 +611,17 @@ fn delay_updates_cross_filesystem_rename() {
     fs::create_dir_all(&dst_dir).unwrap();
     fs::write(src_dir.join("a.txt"), b"y").unwrap();
 
-    let tmp_dir = tempdir().unwrap();
+    let tmp_dir = match Tmpfs::new() {
+        Some(t) => t,
+        None => {
+            eprintln!("skipping cross-filesystem rename test; mount failed");
+            return;
+        }
+    };
+
     let dst_dev = fs::metadata(&dst_dir).unwrap().dev();
     let tmp_dev = fs::metadata(tmp_dir.path()).unwrap().dev();
-    if dst_dev == tmp_dev {
-        eprintln!("skipping cross-filesystem rename test; devices match");
-        return;
-    }
+    assert_ne!(dst_dev, tmp_dev, "devices match");
 
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
