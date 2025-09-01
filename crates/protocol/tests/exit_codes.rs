@@ -72,3 +72,21 @@ fn forward_unknown_exit_code_over_mux_demux() {
         other => panic!("unexpected message: {:?}", other),
     }
 }
+
+#[test]
+fn demux_nonzero_exit_errors() {
+    let mut demux = Demux::new(Duration::from_millis(50));
+    let frame = Message::Data(vec![1]).to_frame(0);
+    let err = demux.ingest(frame).unwrap_err();
+    assert_eq!(demux.take_exit_code(), Some(1));
+    assert_eq!(err.kind(), std::io::ErrorKind::Other);
+}
+
+#[test]
+fn demux_remote_error_propagates() {
+    let mut demux = Demux::new(Duration::from_millis(50));
+    let frame = Message::Error("oops".into()).to_frame(5);
+    let err = demux.ingest(frame).unwrap_err();
+    assert_eq!(err.kind(), std::io::ErrorKind::Other);
+    assert_eq!(demux.take_remote_error().as_deref(), Some("oops"));
+}

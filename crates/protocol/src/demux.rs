@@ -18,6 +18,8 @@ pub struct Demux {
     pub strong_hash: StrongHash,
     pub compressor: Codec,
     pub cdc: bool,
+    exit_code: Option<u8>,
+    remote_error: Option<String>,
 }
 
 impl Demux {
@@ -28,6 +30,8 @@ impl Demux {
             strong_hash: StrongHash::Md5,
             compressor: Codec::Zlib,
             cdc: false,
+            exit_code: None,
+            remote_error: None,
         }
     }
 
@@ -51,6 +55,25 @@ impl Demux {
         let id = frame.header.channel;
         let msg = Message::from_frame(frame)?;
 
+        if let Message::Error(text) = &msg {
+            self.remote_error = Some(text.clone());
+            return Err(std::io::Error::other(text.clone()));
+        }
+
+        if id == 0 {
+            if let Message::Data(payload) = &msg {
+                if payload.len() == 1 {
+                    let code = payload[0];
+                    self.exit_code = Some(code);
+                    if code != 0 {
+                        return Err(std::io::Error::other(format!("remote exit code {}", code)));
+                    } else {
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
         if let Some(ch) = self.channels.get_mut(&id) {
             ch.last_recv = Instant::now();
             if msg != Message::KeepAlive {
@@ -65,6 +88,14 @@ impl Demux {
                 "unknown channel",
             ))
         }
+    }
+
+    pub fn take_exit_code(&mut self) -> Option<u8> {
+        self.exit_code.take()
+    }
+
+    pub fn take_remote_error(&mut self) -> Option<String> {
+        self.remote_error.take()
     }
 
     pub fn poll(&mut self) -> std::io::Result<()> {

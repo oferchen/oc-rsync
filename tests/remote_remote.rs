@@ -250,6 +250,24 @@ fn remote_to_remote_reports_errors() {
 }
 
 #[test]
+fn remote_to_remote_nonzero_exit() {
+    let dir = tempdir().unwrap();
+    let src_file = dir.path().join("src.txt");
+    fs::write(&src_file, b"data").unwrap();
+
+    let src_session =
+        SshStdioTransport::spawn("sh", ["-c", &format!("cat {}", src_file.display())]).unwrap();
+    let dst_session =
+        SshStdioTransport::spawn("sh", ["-c", "head -c 1 >/dev/null; exit 3"]).unwrap();
+
+    let (mut src_reader, _) = src_session.into_inner().expect("into_inner");
+    let (_, mut dst_writer) = dst_session.into_inner().expect("into_inner");
+
+    let err = std::io::copy(&mut src_reader, &mut dst_writer).unwrap_err();
+    assert_eq!(err.kind(), std::io::ErrorKind::BrokenPipe);
+}
+
+#[test]
 fn remote_to_remote_empty_file() {
     let dir = tempdir().unwrap();
     let src_file = dir.path().join("empty.txt");
