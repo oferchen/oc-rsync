@@ -56,7 +56,7 @@ fn server_handshake_succeeds() {
     stdout.read_exact(&mut cap_buf).unwrap();
     assert_eq!(u32::from_be_bytes(cap_buf) & CAP_CODECS, CAP_CODECS);
 
-    let codecs = available_codecs(None);
+    let codecs = available_codecs();
     let payload = encode_codecs(&codecs);
     let frame = Message::Codecs(payload).to_frame(0);
     let mut buf = Vec::new();
@@ -133,7 +133,7 @@ fn server_exit_code_roundtrip() {
     let mut cap_buf = [0u8; 4];
     stdout.read_exact(&mut cap_buf).unwrap();
 
-    let codecs = available_codecs(None);
+    let codecs = available_codecs();
     let payload = encode_codecs(&codecs);
     let frame = Message::Codecs(payload).to_frame(0);
     let mut buf = Vec::new();

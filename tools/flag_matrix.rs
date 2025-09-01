@@ -102,7 +102,6 @@ fn parse_feature_matrix() -> BTreeSet<String> {
         if supported != "✅"
             || notes.contains("requires `acl` feature")
             || notes.contains("requires `xattr` feature")
-            || notes.contains("requires `blake3` feature")
         {
             ignored.insert(option);
         }

@@ -20,7 +20,7 @@ fn removes_partial_dir_after_sync() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             partial: true,
             partial_dir: Some(partial.clone()),
@@ -47,7 +47,7 @@ fn removes_temp_dir_after_sync() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             temp_dir: Some(tmpdir.clone()),
             ..Default::default()

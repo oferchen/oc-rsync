@@ -16,13 +16,6 @@ fn deletes_missing_arg() {
         delete_missing_args: true,
         ..Default::default()
     };
-    sync(
-        &src,
-        &dst,
-        &Matcher::default(),
-        &available_codecs(None),
-        &opts,
-    )
-    .unwrap();
+    sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts).unwrap();
     assert!(!dst.exists());
 }

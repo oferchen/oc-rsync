@@ -92,16 +92,6 @@ oc-rsync -a --link-dest=\[dq]../prev\[dq] --compare-dest=\[dq]../base\[dq] \[dq]
 \f[R]
 .fi
 .IP \[bu] 2
-Throttled modern compression:
-.RS 2
-.IP
-.nf
-\f[C]
-oc-rsync -az --modern --bwlimit=1m ./src/ host:/archive/
-\f[R]
-.fi
-.RE
-.IP \[bu] 2
 Tune delta block size:
 .RS 2
 .IP
@@ -131,16 +121,6 @@ sudo oc-rsync --chown=0:0 ./src/ remote:/dst/
 \f[R]
 .fi
 .RE
-.RE
-.IP \[bu] 2
-Throttled modern compression:
-.RS 2
-.IP
-.nf
-\f[C]
-oc-rsync -az --modern --bwlimit=1m \[dq]./src/\[dq] \[dq]host:/archive/\[dq]
-\f[R]
-.fi
 .RE
 .IP \[bu] 2
 Tune delta block size:
@@ -302,7 +282,7 @@ T{
 T}@T{
 \f[V]--block-size\f[R]
 T}@T{
-1024
+auto
 T}@T{
 controls delta block size
 T}@T{
@@ -343,7 +323,7 @@ T}@T{
 T}@T{
 off
 T}@T{
-strong hashes: MD5 (default), SHA-1, BLAKE3
+strong hashes: MD5 (default), SHA-1
 T}@T{
 matrix
 T}
@@ -1031,66 +1011,6 @@ T}@T{
 matrix
 T}
 T{
-T}@T{
-\f[V]--modern\f[R]
-T}@T{
-off
-T}@T{
-oc-rsync only; negotiates zstd compression and BLAKE3 checksums; requires \f[V]blake3\f[R] feature
-T}@T{
-matrix
-T}
-T{
-T}@T{
-\f[V]--modern-compress\f[R]
-T}@T{
-auto
-T}@T{
-oc-rsync only; select \f[V]auto\f[R] or \f[V]zstd\f[R] compression
-T}@T{
-matrix
-T}
-T{
-T}@T{
-\f[V]--modern-hash\f[R]
-T}@T{
-off
-T}@T{
-oc-rsync only; choose \f[V]blake3\f[R] strong hash
-T}@T{
-matrix
-T}
-T{
-T}@T{
-\f[V]--modern-cdc\f[R]
-T}@T{
-off
-T}@T{
-oc-rsync only; enable \f[V]fastcdc\f[R] chunking
-T}@T{
-matrix
-T}
-T{
-T}@T{
-\f[V]--modern-cdc-min\f[R]
-T}@T{
-2048
-T}@T{
-oc-rsync only; set FastCDC minimum chunk size
-T}@T{
-matrix
-T}
-T{
-T}@T{
-\f[V]--modern-cdc-max\f[R]
-T}@T{
-16384
-T}@T{
-oc-rsync only; set FastCDC maximum chunk size
-T}@T{
-matrix
-T}
-T{
 \f[V]-\[at]\f[R]
 T}@T{
 \f[V]--modify-window\f[R]
@@ -1580,6 +1500,7 @@ T}@T{
 T}@T{
 off
 T}@T{
+set idle and I/O timeout in seconds
 T}@T{
 matrix
 T}

@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 OC_RSYNC="$ROOT/target/debug/oc-rsync"
 
 # Ensure binary is built
-cargo build --quiet --bin oc-rsync --features blake3
+cargo build --quiet --bin oc-rsync
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT

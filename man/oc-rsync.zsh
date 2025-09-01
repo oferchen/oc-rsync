@@ -16,6 +16,10 @@ _oc-rsync() {
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
 '--log-format=[]:LOG_FORMAT:(text json)' \
+'--log-file=[]:FILE:_files' \
+'--log-file-format=[]:FMT:_default' \
+'*--info=[]:FLAGS:(backup copy del flist misc name progress stats)' \
+'*--debug=[]:FLAGS:(backup copy del flist hash match misc options)' \
 '--max-delete=[]:NUM:_default' \
 '--max-alloc=[]:SIZE:_default' \
 '--max-size=[]:SIZE:_default' \
@@ -26,6 +30,7 @@ _oc-rsync() {
 '--checksum-seed=[set block/file checksum seed (advanced)]:NUM:_default' \
 '*--chmod=[]:CHMOD:_default' \
 '--chown=[]:USER:GROUP:_default' \
+'--copy-as=[]:USER[:GROUP]:_default' \
 '*--usermap=[]:FROM:TO:_default' \
 '*--groupmap=[]:FROM:TO:_default' \
 '--compress-choice=[]:STR:_default' \
@@ -33,17 +38,13 @@ _oc-rsync() {
 '--compress-level=[]:NUM:_default' \
 '--zl=[]:NUM:_default' \
 '*--skip-compress=[]:LIST:_default' \
-'--modern-compress=[]:MODERN_COMPRESS:(auto zstd)' \
-'--modern-hash=[]:MODERN_HASH:()' \
-'--modern-cdc=[]:MODERN_CDC:(fastcdc off)' \
-'--modern-cdc-min=[]:BYTES:_default' \
-'--modern-cdc-max=[]:BYTES:_default' \
 '--partial-dir=[]:DIR:_files' \
 '-T+[]:DIR:_files' \
 '--temp-dir=[]:DIR:_files' \
 '--bwlimit=[]:RATE:_default' \
 '--timeout=[]:SECONDS:_default' \
 '--contimeout=[]:SECONDS:_default' \
+'--modify-window=[]:SECONDS:_default' \
 '--protocol=[force an older protocol version]:VER:_default' \
 '--port=[]:PORT:_default' \
 '-B+[]:SIZE:_default' \
@@ -70,6 +71,15 @@ _oc-rsync() {
 '*--include-from=[]:FILE:_files' \
 '*--exclude-from=[]:FILE:_files' \
 '*--files-from=[]:FILE:_files' \
+'*--module=[]:NAME=PATH:_default' \
+'--address=[]:ADDRESS:_default' \
+'--secrets-file=[]:FILE:_files' \
+'*--hosts-allow=[]:LIST:_default' \
+'*--hosts-deny=[]:LIST:_default' \
+'--motd=[]:FILE:_files' \
+'--lock-file=[]:FILE:_files' \
+'--state-dir=[]:DIR:_files' \
+'--peer-version=[]:VER:_default' \
 '--local[]' \
 '-a[]' \
 '--archive[]' \
@@ -106,10 +116,12 @@ _oc-rsync() {
 '--delete[]' \
 '--delete-before[]' \
 '--delete-during[]' \
+'--del[]' \
 '--delete-after[]' \
 '--delete-delay[]' \
 '--delete-excluded[]' \
 '--delete-missing-args[]' \
+'--ignore-missing-args[]' \
 '--remove-source-files[]' \
 '--ignore-errors[]' \
 '--preallocate[allocate dest files before writing them]' \
@@ -143,16 +155,21 @@ _oc-rsync() {
 '--hard-links[]' \
 '--devices[]' \
 '--specials[]' \
+'--fake-super[]' \
+'--super[]' \
 '-z[]' \
 '--compress[]' \
-'--modern[Enable modern compression (zstd) and BLAKE3 checksums (requires \`blake3\` feature)]' \
 '--partial[]' \
 '--progress[]' \
 '--blocking-io[]' \
+'--fsync[]' \
+'-y[]' \
+'--fuzzy[]' \
 '-P[]' \
 '--append[]' \
 '--append-verify[]' \
 '--inplace[]' \
+'--delay-updates[]' \
 '(-6 --ipv6)-4[]' \
 '(-6 --ipv6)--ipv4[]' \
 '(-4 --ipv4)-6[]' \
@@ -173,10 +190,13 @@ _oc-rsync() {
 '-C[auto-ignore files in the same way CVS does]' \
 '--cvs-exclude[auto-ignore files in the same way CVS does]' \
 '--from0[]' \
+'--daemon[]' \
+'--probe[]' \
 '-h[Print help]' \
 '--help[Print help]' \
-':src:_default' \
-':dst:_default' \
+'::src:_default' \
+'::dst:_default' \
+'::addr:_default' \
 && ret=0
 }
 

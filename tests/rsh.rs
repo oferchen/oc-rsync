@@ -135,12 +135,11 @@ fn custom_rsh_negotiates_codecs() {
         None,
         None,
         None,
-        None,
         LATEST_VERSION,
     )
     .unwrap();
     drop(session);
-    assert_eq!(codecs, available_codecs(None));
+    assert_eq!(codecs, available_codecs());
 }
 
 #[cfg(unix)]

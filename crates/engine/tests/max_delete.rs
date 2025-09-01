@@ -20,14 +20,7 @@ fn caps_extraneous_deletions() {
         max_delete: Some(0),
         ..Default::default()
     };
-    let err = sync(
-        &src,
-        &dst,
-        &Matcher::default(),
-        &available_codecs(None),
-        &opts,
-    )
-    .unwrap_err();
+    let err = sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts).unwrap_err();
     assert!(format!("{}", err).contains("max-delete"));
     assert!(dst.join("extra.txt").exists());
 
@@ -36,14 +29,7 @@ fn caps_extraneous_deletions() {
         max_delete: Some(1),
         ..Default::default()
     };
-    let stats = sync(
-        &src,
-        &dst,
-        &Matcher::default(),
-        &available_codecs(None),
-        &opts,
-    )
-    .unwrap();
+    let stats = sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts).unwrap();
     assert_eq!(stats.files_deleted, 1);
     assert!(!dst.join("extra.txt").exists());
 }
@@ -60,14 +46,7 @@ fn caps_missing_arg_deletions() {
         max_delete: Some(0),
         ..Default::default()
     };
-    let err = sync(
-        &src,
-        &dst,
-        &Matcher::default(),
-        &available_codecs(None),
-        &opts,
-    )
-    .unwrap_err();
+    let err = sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts).unwrap_err();
     assert!(format!("{}", err).contains("max-delete"));
     assert!(dst.exists());
 
@@ -76,14 +55,7 @@ fn caps_missing_arg_deletions() {
         max_delete: Some(1),
         ..Default::default()
     };
-    let stats = sync(
-        &src,
-        &dst,
-        &Matcher::default(),
-        &available_codecs(None),
-        &opts,
-    )
-    .unwrap();
+    let stats = sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts).unwrap();
     assert_eq!(stats.files_deleted, 1);
     assert!(!dst.exists());
 }

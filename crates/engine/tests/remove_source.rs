@@ -19,7 +19,7 @@ fn removes_source_files_after_transfer() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             remove_source_files: true,
             ..Default::default()

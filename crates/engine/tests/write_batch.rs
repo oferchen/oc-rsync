@@ -19,7 +19,7 @@ fn writes_batch_file() {
         &src,
         &dst,
         &Matcher::default(),
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             write_batch: Some(batch.clone()),
             ..Default::default()

@@ -24,7 +24,7 @@ fn run_delete_filter(mode: DeleteMode) {
         &src,
         &dst,
         &matcher,
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             delete: Some(mode),
             ..Default::default()
@@ -41,7 +41,7 @@ fn run_delete_filter(mode: DeleteMode) {
         &src,
         &dst,
         &matcher,
-        &available_codecs(None),
+        &available_codecs(),
         &SyncOptions {
             delete: Some(mode),
             delete_excluded: true,

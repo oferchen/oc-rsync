@@ -42,7 +42,6 @@ harness = false
 
 [features]
 default = ["zstd"]
-lz4 = ["compress/lz4"]
 zstd = []
 xattr = ["meta/xattr"]
 acl = ["meta/acl"]

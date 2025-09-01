@@ -9,10 +9,8 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use compress::{available_codecs, Codec, ModernCompress};
-use protocol::{
-    negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, SUPPORTED_CAPS,
-};
+use compress::{available_codecs, Codec};
+use protocol::{negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS};
 
 use crate::{AddressFamily, LocalPipeTransport, SshTransport, Transport};
 
@@ -175,7 +173,6 @@ impl SshStdioTransport {
         transport: &mut T,
         env: &[(String, String)],
         remote_opts: &[String],
-        modern: Option<ModernCompress>,
         version: u32,
     ) -> io::Result<(Vec<Codec>, u32)> {
         for opt in remote_opts {
@@ -210,11 +207,7 @@ impl SshStdioTransport {
         let peer = u32::from_be_bytes(ver_buf);
         negotiate_version(version, peer).map_err(|e| io::Error::other(e.to_string()))?;
 
-        let local_caps = if modern.is_some() {
-            SUPPORTED_CAPS
-        } else {
-            CAP_CODECS
-        };
+        let local_caps = CAP_CODECS;
         transport.send(&local_caps.to_be_bytes())?;
 
         let mut cap_buf = [0u8; 4];
@@ -231,7 +224,7 @@ impl SshStdioTransport {
 
         let mut peer_codecs = vec![Codec::Zlib];
         if caps & CAP_CODECS != 0 {
-            let payload = compress::encode_codecs(&available_codecs(modern));
+            let payload = compress::encode_codecs(&available_codecs());
             let frame = Message::Codecs(payload).to_frame(0);
             let mut buf = Vec::new();
             frame
@@ -382,7 +375,6 @@ impl SshStdioTransport {
         port: Option<u16>,
         connect_timeout: Option<Duration>,
         family: Option<AddressFamily>,
-        modern: Option<ModernCompress>,
         version: u32,
     ) -> io::Result<(Self, Vec<Codec>, u32)> {
         let mut t = Self::spawn_with_rsh(
@@ -399,7 +391,7 @@ impl SshStdioTransport {
             connect_timeout,
             family,
         )?;
-        let (codecs, caps) = Self::handshake(&mut t, rsync_env, remote_opts, modern, version)?;
+        let (codecs, caps) = Self::handshake(&mut t, rsync_env, remote_opts, version)?;
         Ok((t, codecs, caps))
     }
 

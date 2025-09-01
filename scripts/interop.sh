@@ -12,7 +12,7 @@ FLAGS=(--recursive --times --perms)
 mkdir -p "$WIRE_DIR" "$FILELIST_DIR"
 
 # Build oc-rsync binary
-cargo build --quiet -p oc-rsync-bin --bin oc-rsync --features blake3
+cargo build --quiet -p oc-rsync-bin --bin oc-rsync
 
 # Ensure sshd exists
 if ! command -v sshd >/dev/null 2>&1; then

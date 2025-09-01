@@ -37,10 +37,6 @@ oc-rsync [OPTIONS] "<SRC>" "<DEST>"
   ```sh
   oc-rsync -a --link-dest="../prev" --compare-dest="../base" "./src/" "./snapshot/"
   ```
-  - Throttled modern compression:
-    ```sh
-    oc-rsync -az --modern --bwlimit=1m ./src/ host:/archive/
-    ```
   - Tune delta block size:
     ```sh
     oc-rsync -B 65536 ./src remote:/dst
@@ -53,10 +49,6 @@ oc-rsync [OPTIONS] "<SRC>" "<DEST>"
     ```sh
     sudo oc-rsync --chown=0:0 ./src/ remote:/dst/
     ```
-- Throttled modern compression:
-  ```sh
-  oc-rsync -az --modern --bwlimit=1m "./src/" "host:/archive/"
-  ```
 - Tune delta block size:
   ```sh
   oc-rsync -B 65536 "./src" "remote:/dst"
@@ -100,7 +92,7 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--blocking-io` | off |  | [matrix](feature_matrix.md#--blocking-io) |
 |  | `--bwlimit` | off |  | [matrix](feature_matrix.md#--bwlimit) |
 |  | `--cc` | off | alias for `--checksum-choice` | [matrix](feature_matrix.md#--cc) |
-| `-c` | `--checksum` | off | strong hashes: MD5 (default), SHA-1, BLAKE3 | [matrix](feature_matrix.md#--checksum) |
+| `-c` | `--checksum` | off | strong hashes: MD5 (default), SHA-1 | [matrix](feature_matrix.md#--checksum) |
 |  | `--checksum-choice` | off |  | [matrix](feature_matrix.md#--checksum-choice) |
 |  | `--checksum-seed` | off |  | [matrix](feature_matrix.md#--checksum-seed) |
 |  | `--chmod` | off |  | [matrix](feature_matrix.md#--chmod) |
@@ -174,12 +166,6 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--max-size` | off |  | [matrix](feature_matrix.md#--max-size) |
 |  | `--min-size` | off |  | [matrix](feature_matrix.md#--min-size) |
 |  | `--mkpath` | off |  | [matrix](feature_matrix.md#--mkpath) |
-|  | `--modern` | off | oc-rsync only; negotiates zstd compression and BLAKE3 checksums; requires `blake3` feature | [matrix](feature_matrix.md#--modern) |
-|  | `--modern-compress` | auto | oc-rsync only; select `auto` or `zstd` compression | [matrix](feature_matrix.md#--modern-compress) |
-|  | `--modern-hash` | off | oc-rsync only; choose `blake3` strong hash | [matrix](feature_matrix.md#--modern-hash) |
-|  | `--modern-cdc` | off | oc-rsync only; enable `fastcdc` chunking | [matrix](feature_matrix.md#--modern-cdc) |
-|  | `--modern-cdc-min` | 2048 | oc-rsync only; set FastCDC minimum chunk size | [matrix](feature_matrix.md#--modern-cdc-min) |
-|  | `--modern-cdc-max` | 16384 | oc-rsync only; set FastCDC maximum chunk size | [matrix](feature_matrix.md#--modern-cdc-max) |
 | `-@` | `--modify-window` | off |  | [matrix](feature_matrix.md#--modify-window) |
 |  | `--munge-links` | off |  | [matrix](feature_matrix.md#--munge-links) |
 |  | `--no-D` | off | alias for `--no-devices --no-specials` | [matrix](feature_matrix.md#--no-d) |
