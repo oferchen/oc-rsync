@@ -110,7 +110,9 @@ pub fn subscriber(
 ) -> Box<dyn tracing::Subscriber + Send + Sync> {
     let level = if quiet {
         LevelFilter::ERROR
-    } else if !debug.is_empty() || verbose > 1 {
+    } else if !debug.is_empty() || verbose > 2 {
+        LevelFilter::TRACE
+    } else if verbose > 1 {
         LevelFilter::DEBUG
     } else if !info.is_empty() || verbose > 0 {
         LevelFilter::INFO
@@ -129,7 +131,7 @@ pub fn subscriber(
         }
         for flag in debug {
             let directive: tracing_subscriber::filter::Directive =
-                format!("{}=debug", flag.target()).parse().unwrap();
+                format!("{}=trace", flag.target()).parse().unwrap();
             filter = filter.add_directive(directive);
         }
     }
