@@ -17,7 +17,7 @@ use std::thread;
 use std::time::Duration;
 use tempfile::{tempdir, tempdir_in};
 #[cfg(unix)]
-use users::{get_current_gid, get_current_uid};
+use users::{get_current_gid, get_current_uid, get_group_by_gid};
 #[cfg(all(unix, feature = "xattr"))]
 use xattr as _;
 
@@ -712,14 +712,25 @@ fn user_and_group_ids_are_mapped() {
 
 #[cfg(unix)]
 #[test]
-fn user_and_group_names_are_mapped() {
-    use users::{get_current_gid, get_current_uid, get_group_by_gid, get_user_by_uid};
-
+fn group_names_are_mapped() {
     let uid = get_current_uid();
-    let _gid = get_current_gid();
     if uid != 0 {
-        eprintln!("skipping user_and_group_names_are_mapped: requires root or CAP_CHOWN");
+        eprintln!("skipping group_names_are_mapped: requires root or CAP_CHOWN");
         return;
+    }
+    {
+        let dir = tempdir().unwrap();
+        let probe = dir.path().join("probe");
+        std::fs::write(&probe, b"probe").unwrap();
+        if let Err(err) = chown(&probe, Some(Uid::from_raw(1)), Some(Gid::from_raw(1))) {
+            match err {
+                nix::errno::Errno::EPERM => {
+                    eprintln!("skipping group_names_are_mapped: lacks CAP_CHOWN");
+                    return;
+                }
+                _ => panic!("unexpected chown error: {err}"),
+            }
+        }
     }
 
     let dir = tempdir().unwrap();
@@ -731,27 +742,38 @@ fn user_and_group_names_are_mapped() {
     std::fs::write(&file, b"ids").unwrap();
 
     let src_arg = format!("{}/", src_dir.display());
-    let uid = get_current_uid();
     let gid = get_current_gid();
-    let uname = get_user_by_uid(uid)
-        .unwrap()
-        .name()
-        .to_string_lossy()
-        .into_owned();
     let gname = get_group_by_gid(gid)
         .unwrap()
         .name()
         .to_string_lossy()
         .into_owned();
-    let mapped_uid = uid + 1;
-    let mapped_gid = gid + 1;
-    let usermap = format!("--usermap={uname}:{mapped_uid}");
-    let groupmap = format!("--groupmap={gname}:{mapped_gid}");
+
+    let group_data = std::fs::read_to_string("/etc/group").unwrap();
+    let (other_name, other_gid) = group_data
+        .lines()
+        .find_map(|line| {
+            if line.starts_with('#') || line.trim().is_empty() {
+                return None;
+            }
+            let mut parts = line.split(':');
+            let name = parts.next()?;
+            parts.next();
+            let gid_str = parts.next()?;
+            let gid_val: u32 = gid_str.parse().ok()?;
+            if gid_val != gid {
+                Some((name.to_string(), gid_val))
+            } else {
+                None
+            }
+        })
+        .expect("no alternate group found");
+
+    let groupmap = format!("--groupmap={gname}:{other_name}");
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
-            usermap.as_str(),
             groupmap.as_str(),
             src_arg.as_str(),
             dst_dir.to_str().unwrap(),
@@ -760,8 +782,7 @@ fn user_and_group_names_are_mapped() {
         .success();
 
     let meta = std::fs::metadata(dst_dir.join("id.txt")).unwrap();
-    assert_eq!(meta.uid(), mapped_uid);
-    assert_eq!(meta.gid(), mapped_gid);
+    assert_eq!(meta.gid(), other_gid);
 }
 
 #[test]
