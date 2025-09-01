@@ -191,19 +191,31 @@ fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
     match fs::rename(src, dst) {
         Ok(_) => Ok(()),
         Err(e) => {
-            #[cfg(unix)]
-            {
-                if e.raw_os_error() == Some(nix::errno::Errno::EXDEV as i32) {
-                    let parent = dst.parent().unwrap_or_else(|| Path::new("."));
-                    let tmp = NamedTempFile::new_in(parent).map_err(|e| io_context(parent, e))?;
-                    let tmp_path = tmp.into_temp_path();
-                    fs::copy(src, &tmp_path).map_err(|e| io_context(src, e))?;
-                    fs::rename(&tmp_path, dst).map_err(|e| io_context(dst, e))?;
-                    fs::remove_file(src).map_err(|e| io_context(src, e))?;
-                    return Ok(());
+            let cross_device = {
+                #[cfg(unix)]
+                {
+                    e.raw_os_error() == Some(nix::errno::Errno::EXDEV as i32)
                 }
+                #[cfg(windows)]
+                {
+                    matches!(e.raw_os_error(), Some(17))
+                }
+                #[cfg(not(any(unix, windows)))]
+                {
+                    false
+                }
+            };
+            if cross_device {
+                let parent = dst.parent().unwrap_or_else(|| Path::new("."));
+                let tmp = NamedTempFile::new_in(parent).map_err(|e| io_context(parent, e))?;
+                let tmp_path = tmp.into_temp_path();
+                fs::copy(src, &tmp_path).map_err(|e| io_context(src, e))?;
+                fs::rename(&tmp_path, dst).map_err(|e| io_context(dst, e))?;
+                fs::remove_file(src).map_err(|e| io_context(src, e))?;
+                Ok(())
+            } else {
+                Err(io_context(src, e))
             }
-            Err(io_context(src, e))
         }
     }
 }
