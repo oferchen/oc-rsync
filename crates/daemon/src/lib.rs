@@ -489,27 +489,28 @@ pub fn handle_connection<T: Transport>(
     let mut name_buf = [0u8; 256];
     let n = transport.receive(&mut name_buf)?;
     let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
-    let mut opt_buf = [0u8; 256];
-    loop {
-        let n = transport.receive(&mut opt_buf)?;
-        let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
-        if opt.is_empty() {
-            break;
-        }
-        if let Some(v) = opt.strip_prefix("--log-file=") {
-            log_file = Some(PathBuf::from(v));
-        } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
-            log_format = Some(v.to_string());
-        }
-    }
+
     if let Some(module) = modules.get(&name) {
         if let Ok(ip) = peer.parse::<IpAddr>() {
             if !host_allowed(&ip, &module.hosts_allow, &module.hosts_deny) {
-                let _ = transport.send(b"@ERROR: access denied");
                 return Err(io::Error::new(
                     io::ErrorKind::PermissionDenied,
                     "host denied",
                 ));
+            }
+        }
+
+        let mut opt_buf = [0u8; 256];
+        loop {
+            let n = transport.receive(&mut opt_buf)?;
+            let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
+            if opt.is_empty() {
+                break;
+            }
+            if let Some(v) = opt.strip_prefix("--log-file=") {
+                log_file = Some(PathBuf::from(v));
+            } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
+                log_format = Some(v.to_string());
             }
         }
         let allowed = if let Some(path) = module.secrets_file.as_deref() {

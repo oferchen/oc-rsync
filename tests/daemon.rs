@@ -941,9 +941,8 @@ fn daemon_respects_module_host_lists() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
-    stream
-        .set_read_timeout(Some(Duration::from_millis(200)))
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200)))
         .unwrap();
     stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 256];
