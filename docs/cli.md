@@ -96,7 +96,7 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 | `-U` | `--atimes` | off |  | [matrix](feature_matrix.md#--atimes) |
 | `-b` | `--backup` | off | uses `~` suffix without `--backup-dir` | [matrix](feature_matrix.md#--backup) |
 |  | `--backup-dir` | off | implies `--backup` | [matrix](feature_matrix.md#--backup-dir) |
-| `-B` | `--block-size` | 1024 | controls delta block size | [matrix](feature_matrix.md#--block-size) |
+| `-B` | `--block-size` | auto | controls delta block size | [matrix](feature_matrix.md#--block-size) |
 |  | `--blocking-io` | off |  | [matrix](feature_matrix.md#--blocking-io) |
 |  | `--bwlimit` | off |  | [matrix](feature_matrix.md#--bwlimit) |
 |  | `--cc` | off | alias for `--checksum-choice` | [matrix](feature_matrix.md#--cc) |

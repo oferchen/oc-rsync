@@ -644,7 +644,6 @@ impl Sender {
         codec: Option<Codec>,
         opts: SyncOptions,
     ) -> Self {
-        let block_size = block_size.max(1);
         Self {
             state: SenderState::Idle,
             cfg: ChecksumConfigBuilder::new()
@@ -722,6 +721,11 @@ impl Sender {
         let meta = fs::metadata(path).map_err(|e| io_context(path, e))?;
         let src_len = meta.len();
         ensure_max_alloc(src_len, &self.opts)?;
+        let block_size = if self.block_size == 0 {
+            cdc::block_size(src_len)
+        } else {
+            self.block_size
+        };
         let file_type = meta.file_type();
         let atime_guard = if self.opts.atimes {
             meta::AccessTime::new(path).ok()
@@ -746,10 +750,10 @@ impl Sender {
             dest.to_path_buf()
         };
         let mut resume = if self.opts.partial && partial_path.exists() {
-            last_good_block(&self.cfg, path, &partial_path, self.block_size, &self.opts)?
+            last_good_block(&self.cfg, path, &partial_path, block_size, &self.opts)?
         } else if self.opts.append || self.opts.append_verify {
             if self.opts.append_verify {
-                last_good_block(&self.cfg, path, dest, self.block_size, &self.opts)?
+                last_good_block(&self.cfg, path, dest, block_size, &self.opts)?
             } else {
                 fs::metadata(dest).map(|m| m.len()).unwrap_or(0)
             }
@@ -777,8 +781,8 @@ impl Sender {
         {
             Box::new(std::iter::empty())
         } else if self.opts.whole_file {
-            ensure_max_alloc(self.block_size.max(8192) as u64, &self.opts)?;
-            let mut buf = vec![0u8; self.block_size.max(8192)];
+            ensure_max_alloc(block_size.max(8192) as u64, &self.opts)?;
+            let mut buf = vec![0u8; block_size.max(8192)];
             Box::new(std::iter::from_fn(move || {
                 match src_reader.read(&mut buf) {
                     Ok(0) => None,
@@ -791,7 +795,7 @@ impl Sender {
                 &self.cfg,
                 &mut basis_reader,
                 &mut src_reader,
-                self.block_size,
+                block_size,
                 DEFAULT_BASIS_WINDOW,
                 &self.opts,
             )?)
@@ -974,16 +978,21 @@ impl Receiver {
             .strong(self.opts.strong)
             .seed(self.opts.checksum_seed)
             .build();
+        let src_len = fs::metadata(src).map(|m| m.len()).unwrap_or(0);
+        let block_size = if self.opts.block_size == 0 {
+            cdc::block_size(src_len)
+        } else {
+            self.opts.block_size
+        };
         let mut resume = if self.opts.partial || self.opts.append || self.opts.append_verify {
             if self.opts.append && !self.opts.append_verify {
                 fs::metadata(&tmp_dest).map(|m| m.len()).unwrap_or(0)
             } else {
-                last_good_block(&cfg, src, &tmp_dest, self.opts.block_size, &self.opts)?
+                last_good_block(&cfg, src, &tmp_dest, block_size, &self.opts)?
             }
         } else {
             0
         };
-        let src_len = fs::metadata(src).map(|m| m.len()).unwrap_or(0);
         if resume > src_len {
             resume = src_len;
         }
@@ -1118,19 +1127,6 @@ impl Receiver {
                             .unwrap_or(false)
                     {
                         let _ = fs::remove_dir(tmp_parent);
-                    }
-                }
-                #[cfg(unix)]
-                if let Some((uid, gid)) = self.opts.copy_as {
-                    let gid = gid.map(Gid::from_raw);
-                    chown(dest, Some(Uid::from_raw(uid)), gid)
-                        .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
-                    }
-                    #[cfg(unix)]
-                    if let Some((uid, gid)) = self.opts.copy_as {
-                        let gid = gid.map(Gid::from_raw);
-                        chown(dest, Some(Uid::from_raw(uid)), gid)
-                            .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
                     }
                 }
             }
@@ -1492,7 +1488,7 @@ impl Default for SyncOptions {
             delay_updates: false,
             modify_window: Duration::ZERO,
             bwlimit: None,
-            block_size: 1024,
+            block_size: 0,
             link_dest: None,
             copy_dest: None,
             compare_dest: None,

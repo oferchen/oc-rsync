@@ -1101,7 +1101,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     if delete_mode.is_none() && opts.delete_excluded {
         delete_mode = Some(DeleteMode::During);
     }
-    let block_size = opts.block_size.unwrap_or(1024);
+    let block_size = opts.block_size.unwrap_or(0);
     let mut chmod_rules = Vec::new();
     for spec in &opts.chmod {
         chmod_rules.extend(parse_chmod(spec).map_err(EngineError::Other)?);

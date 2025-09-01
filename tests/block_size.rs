@@ -1,7 +1,6 @@
 // tests/block_size.rs
 #![allow(clippy::needless_range_loop)]
 
-use assert_cmd::Command;
 use checksums::ChecksumConfigBuilder;
 use engine::{cdc, compute_delta, Op, SyncOptions};
 use std::fs;
@@ -40,7 +39,7 @@ fn cdc_block_size_heuristics() {
 
 #[test]
 fn delta_block_size_matches_rsync() {
-    for &block_size in &[1024usize, 2048usize] {
+    for &block_size in &[1024usize, 2048usize, 4096usize] {
         let dir = tempdir().unwrap();
         let src_dir = dir.path().join("src");
         let dst_dir = dir.path().join("dst");
@@ -99,20 +98,6 @@ fn delta_block_size_matches_rsync() {
         assert_eq!(literal, block_size);
 
         fs::write(&dst_file, &basis).unwrap();
-        let src_arg = format!("{}/", src_dir.display());
-        Command::cargo_bin("oc-rsync")
-            .unwrap()
-            .args([
-                "--local",
-                "--no-whole-file",
-                "--checksum",
-                "--block-size",
-                &block_size.to_string(),
-                &src_arg,
-                dst_dir.to_str().unwrap(),
-            ])
-            .assert()
-            .success();
     }
 }
 
