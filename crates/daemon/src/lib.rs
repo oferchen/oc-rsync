@@ -1,5 +1,4 @@
-//! Utilities for parsing rsync daemon configuration files.
-
+// crates/daemon/src/lib.rs
 use std::collections::HashMap;
 use std::env;
 use std::fs::{self, OpenOptions};
