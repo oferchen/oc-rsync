@@ -9,16 +9,19 @@ fn roundtrip() {
             path: "a".into(),
             uid: 1,
             gid: 2,
+            group: None,
         },
         Entry {
             path: "a/b".into(),
             uid: 1,
             gid: 3,
+            group: None,
         },
         Entry {
             path: "c".into(),
             uid: 4,
             gid: 3,
+            group: None,
         },
     ];
     let payloads = flist::encode(&entries);
