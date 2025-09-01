@@ -869,6 +869,50 @@ fn numeric_ids_are_preserved() {
 
 #[cfg(unix)]
 #[test]
+fn owner_group_and_mode_preserved() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("a.txt");
+    std::fs::write(&file, b"ids").unwrap();
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o741)).unwrap();
+
+    let dst_file = dst_dir.join("a.txt");
+    std::fs::copy(&file, &dst_file).unwrap();
+    let uid = get_current_uid();
+    let gid = get_current_gid();
+    let new_uid = if uid == 0 { 1 } else { 0 };
+    let new_gid = if gid == 0 { 1 } else { 0 };
+    let _ = chown(
+        &dst_file,
+        Some(Uid::from_raw(new_uid)),
+        Some(Gid::from_raw(new_gid)),
+    );
+    std::fs::set_permissions(&dst_file, std::fs::Permissions::from_mode(0o600)).unwrap();
+
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--local",
+        "--owner",
+        "--group",
+        "--perms",
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    let meta = std::fs::metadata(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(meta.uid(), uid);
+    assert_eq!(meta.gid(), gid);
+    assert_eq!(meta.permissions().mode() & 0o7777, 0o741);
+}
+
+#[cfg(unix)]
+#[test]
 fn numeric_ids_require_privileges() {
     let dir = tempdir().unwrap();
     let probe = dir.path().join("probe");

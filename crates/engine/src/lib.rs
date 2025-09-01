@@ -1420,43 +1420,29 @@ impl Receiver {
             let chown_uid = self.opts.chown.and_then(|(u, _)| u);
             let chown_gid = self.opts.chown.and_then(|(_, g)| g);
 
-            let uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> =
+            let uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> = if self.opts.owner {
                 if let Some(ref map) = self.opts.uid_map {
                     Some(map.0.clone())
                 } else if let Some(uid) = chown_uid {
                     Some(Arc::new(move |_| uid))
-                } else if self.opts.numeric_ids {
-                    None
                 } else {
-                    Some(Arc::new(|uid: u32| {
-                        use nix::unistd::{Uid, User};
-                        if let Ok(Some(u)) = User::from_uid(Uid::from_raw(uid)) {
-                            if let Ok(Some(local)) = User::from_name(&u.name) {
-                                return local.uid.as_raw();
-                            }
-                        }
-                        uid
-                    }))
-                };
+                    None
+                }
+            } else {
+                None
+            };
 
-            let gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> =
+            let gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> = if self.opts.group {
                 if let Some(ref map) = self.opts.gid_map {
                     Some(map.0.clone())
                 } else if let Some(gid) = chown_gid {
                     Some(Arc::new(move |_| gid))
-                } else if self.opts.numeric_ids {
-                    None
                 } else {
-                    Some(Arc::new(|gid: u32| {
-                        use nix::unistd::{Gid, Group};
-                        if let Ok(Some(g)) = Group::from_gid(Gid::from_raw(gid)) {
-                            if let Ok(Some(local)) = Group::from_name(&g.name) {
-                                return local.gid.as_raw();
-                            }
-                        }
-                        gid
-                    }))
-                };
+                    None
+                }
+            } else {
+                None
+            };
 
             #[cfg(feature = "xattr")]
             let m1 = self.matcher.clone();
