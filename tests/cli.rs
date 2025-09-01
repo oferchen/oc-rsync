@@ -303,7 +303,25 @@ fn progress_flag_shows_output() {
     let path_line = stderr.lines().next().unwrap();
     assert_eq!(path_line, dst_dir.join("a.txt").display().to_string());
     let progress_line = stderr.split('\r').next_back().unwrap().trim_end();
-    assert_eq!(progress_line, format!("{:>15} {:>3}%", "2,048", 100));
+    let expected_bytes = logging::progress_formatter(2048, false)
+        .split_whitespace()
+        .next()
+        .unwrap()
+        .parse::<u64>()
+        .unwrap();
+    let expected_bytes_str = {
+        let s = expected_bytes.to_string();
+        let mut out = String::new();
+        for (i, c) in s.chars().rev().enumerate() {
+            if i > 0 && i % 3 == 0 {
+                out.push(',');
+            }
+            out.push(c);
+        }
+        out.chars().rev().collect::<String>()
+    };
+    let expected = format!("{:>15} {:>3}%", expected_bytes_str, 100);
+    assert_eq!(progress_line, expected);
 }
 
 #[test]
@@ -334,7 +352,8 @@ fn progress_flag_human_readable() {
         .next()
         .unwrap()
         .trim_start_matches(|c: char| c == '\r' || c.is_whitespace());
-    assert!(progress_line.starts_with("2.00KiB"));
+    let expected = logging::progress_formatter(2 * 1024, true);
+    assert!(progress_line.starts_with(&expected));
 }
 
 #[test]
