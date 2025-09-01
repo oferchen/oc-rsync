@@ -523,10 +523,21 @@ fn destination_is_replaced_atomically() {
         .spawn()
         .unwrap();
 
-    thread::sleep(Duration::from_millis(500));
-    let out = std::fs::read(&dst_file).unwrap();
-    assert_eq!(out, b"old");
-    assert!(dst_dir.join("a.tmp").exists());
+    let tmp_file = dst_dir.join("a.tmp");
+    let mut found = false;
+    for _ in 0..50 {
+        if tmp_file.exists() {
+            let out = std::fs::read(&dst_file).unwrap();
+            assert_eq!(out, b"old");
+            found = true;
+            break;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    assert!(
+        found,
+        "temp file not created in destination during transfer"
+    );
 
     child.wait().unwrap();
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
