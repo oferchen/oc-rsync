@@ -1108,6 +1108,53 @@ fn checksum_forces_transfer_cli() {
     assert_eq!(std::fs::read(&dst_file).unwrap(), b"aaaa");
 }
 
+#[test]
+fn delete_non_empty_dir_without_force_fails() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(dst.join("sub")).unwrap();
+    std::fs::write(dst.join("sub/file.txt"), b"hi").unwrap();
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--delete",
+            &format!("{}/", src.display()),
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .failure();
+
+    assert!(dst.join("sub/file.txt").exists());
+}
+
+#[test]
+fn force_allows_non_empty_dir_deletion() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(dst.join("sub")).unwrap();
+    std::fs::write(dst.join("sub/file.txt"), b"hi").unwrap();
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--delete",
+            "--force",
+            &format!("{}/", src.display()),
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("sub").exists());
+}
+
 #[cfg(unix)]
 #[test]
 #[serial]

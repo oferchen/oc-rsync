@@ -248,7 +248,12 @@ fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
 }
 
 fn remove_dir_all_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
-    match fs::remove_dir_all(path) {
+    let res = if opts.force {
+        fs::remove_dir_all(path)
+    } else {
+        fs::remove_dir(path)
+    };
+    match res {
         Ok(_) => Ok(()),
         Err(e) => {
             let e = io_context(path, e);
@@ -1541,6 +1546,7 @@ pub struct SyncOptions {
     pub delete_missing_args: bool,
     pub remove_source_files: bool,
     pub ignore_errors: bool,
+    pub force: bool,
     pub max_delete: Option<usize>,
     pub max_alloc: usize,
     pub max_size: Option<u64>,
@@ -1634,6 +1640,7 @@ impl Default for SyncOptions {
             delete_missing_args: false,
             remove_source_files: false,
             ignore_errors: false,
+            force: false,
             max_delete: None,
             max_alloc: 1 << 30,
             max_size: None,
@@ -1765,15 +1772,14 @@ fn delete_extraneous(
     opts: &SyncOptions,
     stats: &mut Stats,
 ) -> Result<()> {
-    let walker = walk(
+    let mut walker = walk(
         dst,
-        1024,
+        1,
         opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
     );
     let mut state = String::new();
-
     let mut first_err: Option<EngineError> = None;
-    for batch in walker {
+    while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
             let path = entry.apply(&mut state);
@@ -1783,7 +1789,49 @@ fn delete_extraneous(
                     .is_included_for_delete(rel)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
                 let src_exists = src.join(rel).exists();
-                if (included && !src_exists) || (!included && opts.delete_excluded) {
+                if file_type.is_dir() {
+                    if (included && !src_exists) || (!included && opts.delete_excluded) {
+                        if let Some(max) = opts.max_delete {
+                            if stats.files_deleted >= max {
+                                return Err(EngineError::Other("max-delete limit exceeded".into()));
+                            }
+                        }
+                        let res = if opts.backup {
+                            let backup_path = if let Some(ref dir) = opts.backup_dir {
+                                dir.join(rel)
+                            } else {
+                                let name = path
+                                    .file_name()
+                                    .map(|n| format!("{}~", n.to_string_lossy()))
+                                    .unwrap_or_else(|| "~".to_string());
+                                path.with_file_name(name)
+                            };
+                            let dir_res = if let Some(parent) = backup_path.parent() {
+                                fs::create_dir_all(parent).map_err(|e| io_context(parent, e))
+                            } else {
+                                Ok(())
+                            };
+                            dir_res
+                                .and_then(|_| atomic_rename(&path, &backup_path))
+                                .err()
+                        } else {
+                            remove_dir_all_opts(&path, opts).err()
+                        };
+                        walker.skip_current_dir();
+                        match res {
+                            None => {
+                                stats.files_deleted += 1;
+                            }
+                            Some(e) => {
+                                if first_err.is_none() {
+                                    first_err = Some(e);
+                                }
+                            }
+                        }
+                    } else if !included {
+                        walker.skip_current_dir();
+                    }
+                } else if (included && !src_exists) || (!included && opts.delete_excluded) {
                     if let Some(max) = opts.max_delete {
                         if stats.files_deleted >= max {
                             return Err(EngineError::Other("max-delete limit exceeded".into()));
@@ -1807,8 +1855,6 @@ fn delete_extraneous(
                         dir_res
                             .and_then(|_| atomic_rename(&path, &backup_path))
                             .err()
-                    } else if file_type.is_dir() {
-                        remove_dir_all_opts(&path, opts).err()
                     } else {
                         remove_file_opts(&path, opts).err()
                     };
