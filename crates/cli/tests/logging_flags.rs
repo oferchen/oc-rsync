@@ -66,6 +66,38 @@ fn info_flag_enables_progress() {
 }
 
 #[test]
+fn info_flag_enables_progress2() {
+    let matches = cli_command()
+        .try_get_matches_from(["oc-rsync", "--info=progress2", "src", "dst"])
+        .unwrap();
+    let (info, _) = parse_logging_flags(&matches);
+    assert!(info.contains(&logging::InfoFlag::Progress2));
+    let sub = logging::subscriber(logging::LogFormat::Text, 0, &info, &[], false, None);
+    with_default(sub, || {
+        assert!(tracing::enabled!(
+            target: logging::InfoFlag::Progress.target(),
+            Level::INFO
+        ));
+    });
+}
+
+#[test]
+fn info_flag_enables_stats3() {
+    let matches = cli_command()
+        .try_get_matches_from(["oc-rsync", "--info=stats3", "src", "dst"])
+        .unwrap();
+    let (info, _) = parse_logging_flags(&matches);
+    assert!(info.contains(&logging::InfoFlag::Stats3));
+    let sub = logging::subscriber(logging::LogFormat::Text, 0, &info, &[], false, None);
+    with_default(sub, || {
+        assert!(tracing::enabled!(
+            target: logging::InfoFlag::Stats.target(),
+            Level::INFO
+        ));
+    });
+}
+
+#[test]
 fn debug_flag_enables_flist() {
     let matches = cli_command()
         .try_get_matches_from(["oc-rsync", "--debug=flist", "src", "dst"])
