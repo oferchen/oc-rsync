@@ -101,6 +101,54 @@ fn server_handshake_succeeds() {
 }
 
 #[test]
+fn server_handshake_parses_args() {
+    let exe = cargo_bin("oc-rsync");
+    let mut child = Command::new(exe)
+        .arg("--server")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = child.stdin.take().unwrap();
+    let mut stdout = child.stdout.take().unwrap();
+
+    let mut transcript = Vec::new();
+
+    stdin.write_all(b"--foo\0bar\0\0").unwrap();
+    stdin.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+
+    let mut ver_buf = [0u8; 4];
+    stdout.read_exact(&mut ver_buf).unwrap();
+    transcript.extend_from_slice(&ver_buf);
+
+    stdin.write_all(&CAP_CODECS.to_be_bytes()).unwrap();
+    let mut cap_buf = [0u8; 4];
+    stdout.read_exact(&mut cap_buf).unwrap();
+    transcript.extend_from_slice(&cap_buf);
+
+    let codecs = available_codecs();
+    let payload = encode_codecs(&codecs);
+    let frame = Message::Codecs(payload).to_frame(0);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    stdin.write_all(&buf).unwrap();
+
+    let mut hdr = [0u8; 8];
+    stdout.read_exact(&mut hdr).unwrap();
+    transcript.extend_from_slice(&hdr);
+    let len = u32::from_be_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
+    let mut payload = vec![0u8; len];
+    stdout.read_exact(&mut payload).unwrap();
+    transcript.extend_from_slice(&payload);
+
+    let expected = fs::read("tests/fixtures/server_handshake_success.bin").unwrap();
+    assert_eq!(transcript, expected);
+
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
 fn server_rejects_unsupported_version() {
     let exe = cargo_bin("oc-rsync");
     let mut child = Command::new(exe)
