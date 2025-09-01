@@ -99,13 +99,14 @@ fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
 }
 
 #[cfg(unix)]
+#[allow(clippy::useless_conversion)]
 fn default_umask() -> u32 {
     static UMASK: OnceLock<u32> = OnceLock::new();
     *UMASK.get_or_init(|| {
         use nix::sys::stat::{umask, Mode};
         let old = umask(Mode::from_bits_truncate(0));
         umask(old);
-        old.bits()
+        u32::from(old.bits())
     })
 }
 
