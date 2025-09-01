@@ -60,13 +60,11 @@ impl<R: Read, W: Write> Server<R, W> {
         self.writer.flush()?;
         self.version = ver;
 
-        self.reader.read_exact(&mut buf)?;
-        let peer_caps = u32::from_be_bytes(buf);
-
-        let negotiated = peer_caps & caps;
-        self.caps = negotiated;
         self.writer.write_all(&caps.to_be_bytes())?;
         self.writer.flush()?;
+        self.reader.read_exact(&mut buf)?;
+        let peer_caps = u32::from_be_bytes(buf);
+        self.caps = peer_caps & caps;
 
         let mut peer_codecs = vec![Codec::Zlib];
         if self.caps & CAP_CODECS != 0 {
