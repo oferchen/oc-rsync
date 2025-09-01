@@ -405,6 +405,10 @@ fn acls_roundtrip() {
     acl.set(Qualifier::User(12345), ACL_READ);
     acl.write_acl(&file).unwrap();
 
+    let mut dacl = PosixACL::read_default_acl(&src).unwrap();
+    dacl.set(Qualifier::User(12345), ACL_READ);
+    dacl.write_default_acl(&src).unwrap();
+
     sync(
         &src,
         &dst,
@@ -420,6 +424,10 @@ fn acls_roundtrip() {
     let acl_src = PosixACL::read_acl(&file).unwrap();
     let acl_dst = PosixACL::read_acl(&dst.join("file")).unwrap();
     assert_eq!(acl_src.entries(), acl_dst.entries());
+
+    let dacl_src = PosixACL::read_default_acl(&src).unwrap();
+    let dacl_dst = PosixACL::read_default_acl(&dst).unwrap();
+    assert_eq!(dacl_src.entries(), dacl_dst.entries());
 }
 
 #[test]

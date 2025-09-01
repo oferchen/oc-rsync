@@ -173,6 +173,7 @@ fn roundtrip_acl() -> std::io::Result<()> {
     let applied = Metadata::from_path(&dst, opts)?;
 
     assert_eq!(meta.acl, applied.acl);
+    assert_eq!(meta.default_acl, applied.default_acl);
     Ok(())
 }
 

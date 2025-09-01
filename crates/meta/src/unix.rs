@@ -109,6 +109,8 @@ pub struct Metadata {
     pub xattrs: Vec<(OsString, Vec<u8>)>,
     #[cfg(feature = "acl")]
     pub acl: Vec<posix_acl::ACLEntry>,
+    #[cfg(feature = "acl")]
+    pub default_acl: Vec<posix_acl::ACLEntry>,
 }
 
 impl Metadata {
@@ -177,12 +179,24 @@ impl Metadata {
             Vec::new()
         };
 
+        let _is_dir = SFlag::from_bits_truncate(st.st_mode).contains(SFlag::S_IFDIR);
+
         #[cfg(feature = "acl")]
-        let acl = if opts.acl {
+        let is_dir = _is_dir;
+
+        #[cfg(feature = "acl")]
+        let (acl, default_acl) = if opts.acl {
             let acl = posix_acl::PosixACL::read_acl(path).map_err(acl_to_io)?;
-            acl.entries()
+            let acl_entries = acl.entries();
+            let default_acl = if is_dir {
+                let dacl = posix_acl::PosixACL::read_default_acl(path).map_err(acl_to_io)?;
+                dacl.entries()
+            } else {
+                Vec::new()
+            };
+            (acl_entries, default_acl)
         } else {
-            Vec::new()
+            (Vec::new(), Vec::new())
         };
 
         Ok(Metadata {
@@ -196,6 +210,8 @@ impl Metadata {
             xattrs,
             #[cfg(feature = "acl")]
             acl,
+            #[cfg(feature = "acl")]
+            default_acl,
         })
     }
 
@@ -341,11 +357,30 @@ impl Metadata {
 
         #[cfg(feature = "acl")]
         if opts.acl {
-            let mut acl = posix_acl::PosixACL::empty();
-            for entry in &self.acl {
-                acl.set(entry.qual, entry.perm);
+            {
+                let mut acl = posix_acl::PosixACL::empty();
+                for entry in &self.acl {
+                    acl.set(entry.qual, entry.perm);
+                }
+                acl.write_acl(path).map_err(acl_to_io)?;
             }
-            acl.write_acl(path).map_err(acl_to_io)?;
+            if is_dir {
+                if self.default_acl.is_empty() {
+                    if let Err(err) = remove_default_acl(path) {
+                        match err.raw_os_error() {
+                            Some(libc::EPERM) | Some(libc::EACCES) | Some(libc::ENOSYS)
+                            | Some(libc::EINVAL) => {}
+                            _ => return Err(err),
+                        }
+                    }
+                } else {
+                    let mut dacl = posix_acl::PosixACL::empty();
+                    for entry in &self.default_acl {
+                        dacl.set(entry.qual, entry.perm);
+                    }
+                    dacl.write_default_acl(path).map_err(acl_to_io)?;
+                }
+            }
         }
 
         Ok(())
@@ -386,6 +421,24 @@ fn acl_to_io(err: posix_acl::ACLError) -> io::Error {
         }
     } else {
         io::Error::other(err)
+    }
+}
+
+#[cfg(feature = "acl")]
+fn remove_default_acl(path: &Path) -> io::Result<()> {
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+
+    extern "C" {
+        fn acl_delete_def_file(path_p: *const libc::c_char) -> libc::c_int;
+    }
+
+    let c_path = CString::new(path.as_os_str().as_bytes())?;
+    let ret = unsafe { acl_delete_def_file(c_path.as_ptr()) };
+    if ret == 0 {
+        Ok(())
+    } else {
+        Err(io::Error::last_os_error())
     }
 }
 
