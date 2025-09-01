@@ -104,7 +104,7 @@ cargo run -p oc-rsync-bin -- "<SRC>" "<DEST>"
 Release tarballs include sample files under `packaging/` to help run the
 daemon:
 
-- `packaging/rsyncd.conf.example` – example configuration file
+- `packaging/oc-rsyncd.conf` – example configuration file
 - `packaging/systemd/oc-rsyncd.service` – systemd service unit
 
 ## Milestone Roadmap

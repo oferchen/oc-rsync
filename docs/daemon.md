@@ -12,17 +12,21 @@ listener to IPv4 or IPv6 addresses respectively. These can be combined with
 Sample files for running the daemon are provided under `packaging/` and are
 included in release artifacts:
 
-- `packaging/rsyncd.conf.example` – example configuration file
+- `packaging/oc-rsyncd.conf` – example configuration file
 - `packaging/systemd/oc-rsyncd.service` – systemd service unit
 
 ### systemd hardening
 
 The bundled `oc-rsyncd.service` applies systemd sandboxing features to reduce
-attack surface. It enables `NoNewPrivileges=yes` and mounts the host filesystem
-read-only with `ProtectSystem=strict`. The unit grants only the
+attack surface. It enables `NoNewPrivileges=yes`, mounts the host filesystem
+read-only with `ProtectSystem=strict`, hides user home directories via
+`ProtectHome=true`, and restarts on failure after a short delay with
+`Restart=on-failure` and `RestartSec=2s`. The unit grants only the
 `CAP_NET_BIND_SERVICE` capability via `CapabilityBoundingSet`/`AmbientCapabilities`
-and creates an isolated state directory with `StateDirectory=oc-rsyncd`.
-These settings may be relaxed if the daemon requires additional privileges.
+and creates isolated runtime, log, state, and configuration directories with
+`RuntimeDirectory=oc-rsyncd`, `LogsDirectory=oc-rsyncd`, `StateDirectory=oc-rsyncd`,
+and `ConfigurationDirectory=oc-rsyncd`. These settings may be relaxed if the
+daemon requires additional privileges.
 
 ## Module setup
 
