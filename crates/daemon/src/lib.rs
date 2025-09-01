@@ -11,7 +11,7 @@ use std::time::Duration;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use protocol::{negotiate_version, LATEST_VERSION};
+use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
 use sd_notify::{self, NotifyState};
 use transport::{AddressFamily, RateLimitedTransport, TcpTransport, TimeoutTransport, Transport};
 
@@ -485,8 +485,9 @@ pub fn handle_connection<T: Transport>(
         return Ok(());
     }
     let peer_ver = u32::from_be_bytes(buf);
-    transport.send(&LATEST_VERSION.to_be_bytes())?;
-    negotiate_version(LATEST_VERSION, peer_ver).map_err(|e| io::Error::other(e.to_string()))?;
+    let latest = SUPPORTED_PROTOCOLS[0];
+    transport.send(&latest.to_be_bytes())?;
+    negotiate_version(latest, peer_ver).map_err(|e| io::Error::other(e.to_string()))?;
     let (mut token, global_allowed, no_motd) = authenticate(transport, secrets, password)?;
     if !no_motd {
         if let Some(mpath) = motd {

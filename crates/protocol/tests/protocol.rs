@@ -1,6 +1,6 @@
 // crates/protocol/tests/protocol.rs
 use filelist::{Decoder as FDecoder, Encoder as FEncoder, Entry as FEntry};
-use protocol::{negotiate_version, Frame, Message, Msg, Tag, V31, V32};
+use protocol::{negotiate_version, Frame, Message, Msg, Tag, MIN_VERSION, SUPPORTED_PROTOCOLS};
 
 #[test]
 fn frame_roundtrip() {
@@ -39,11 +39,12 @@ fn keepalive_roundtrip() {
 
 #[test]
 fn version_negotiation() {
-    assert_eq!(negotiate_version(V32, V32), Ok(V32));
-    assert_eq!(negotiate_version(V32, V31), Ok(V31));
-    assert_eq!(negotiate_version(V31, V32), Ok(V31));
-    assert_eq!(negotiate_version(V31, V31), Ok(V31));
-    assert!(negotiate_version(V32, 30).is_err());
+    let latest = SUPPORTED_PROTOCOLS[0];
+    for &peer in SUPPORTED_PROTOCOLS {
+        assert_eq!(negotiate_version(latest, peer), Ok(peer));
+        assert_eq!(negotiate_version(peer, latest), Ok(peer));
+    }
+    assert!(negotiate_version(latest, MIN_VERSION - 1).is_err());
 }
 
 #[test]
