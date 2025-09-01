@@ -673,6 +673,40 @@ fn sync_preserves_hard_links_with_link_dest() {
 
 #[cfg(unix)]
 #[test]
+fn sync_preserves_hard_links_across_dirs() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("a")).unwrap();
+    fs::create_dir_all(src.join("b")).unwrap();
+    fs::create_dir_all(src.join("c")).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+
+    let f1 = src.join("a/f1");
+    fs::write(&f1, b"hi").unwrap();
+    let f2 = src.join("b/f2");
+    fs::hard_link(&f1, &f2).unwrap();
+    let f3 = src.join("c/f3");
+    fs::hard_link(&f1, &f3).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--hard-links", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let ino1 = fs::metadata(dst.join("a/f1")).unwrap().ino();
+    let ino2 = fs::metadata(dst.join("b/f2")).unwrap().ino();
+    let ino3 = fs::metadata(dst.join("c/f3")).unwrap().ino();
+    assert_eq!(ino1, ino2);
+    assert_eq!(ino1, ino3);
+}
+
+#[cfg(unix)]
+#[test]
 fn sync_preserves_symlinks() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");

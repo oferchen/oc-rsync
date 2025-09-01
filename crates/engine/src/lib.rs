@@ -1095,9 +1095,7 @@ pub struct Receiver {
     matcher: Matcher,
     delayed: Vec<(PathBuf, PathBuf, PathBuf)>,
     #[cfg(unix)]
-    link_map: HashMap<(u64, u64), PathBuf>,
-    #[cfg(unix)]
-    pending_links: Vec<(PathBuf, PathBuf)>,
+    link_map: HashMap<(u64, u64), Vec<PathBuf>>,
 }
 
 impl Default for Receiver {
@@ -1116,27 +1114,18 @@ impl Receiver {
             delayed: Vec::new(),
             #[cfg(unix)]
             link_map: HashMap::new(),
-            #[cfg(unix)]
-            pending_links: Vec::new(),
         }
     }
 
     #[cfg(unix)]
     fn register_hard_link(&mut self, dev: u64, inode: u64, dest: &Path) -> Result<bool> {
-        if let Some(existing) = self.link_map.get(&(dev, inode)) {
-            if self.opts.delay_updates || self.delayed.iter().any(|(_, _, d)| d == existing) {
-                self.pending_links
-                    .push((existing.clone(), dest.to_path_buf()));
-            } else {
-                if dest.exists() {
-                    fs::remove_file(dest).map_err(|e| io_context(dest, e))?;
-                }
-                fs::hard_link(existing, dest).map_err(|e| io_context(dest, e))?;
-            }
-            Ok(false)
-        } else {
-            self.link_map.insert((dev, inode), dest.to_path_buf());
+        let entry = self.link_map.entry((dev, inode)).or_default();
+        if entry.is_empty() {
+            entry.push(dest.to_path_buf());
             Ok(true)
+        } else {
+            entry.push(dest.to_path_buf());
+            Ok(false)
         }
     }
 
@@ -1567,10 +1556,16 @@ impl Receiver {
         }
         #[cfg(unix)]
         {
-            for (src, dest) in std::mem::take(&mut self.pending_links) {
-                fs::hard_link(&src, &dest).map_err(|e| io_context(&dest, e))?;
+            for (_, paths) in std::mem::take(&mut self.link_map) {
+                if let Some((src, rest)) = paths.split_first() {
+                    for dest in rest {
+                        if dest.exists() {
+                            fs::remove_file(dest).map_err(|e| io_context(dest, e))?;
+                        }
+                        fs::hard_link(src, dest).map_err(|e| io_context(dest, e))?;
+                    }
+                }
             }
-            self.link_map.clear();
         }
         Ok(())
     }
