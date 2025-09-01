@@ -95,7 +95,7 @@ negotiates version 73.
 | `--itemize-changes` | `-i` | ✅ | ✅ | [tests/golden/cli_parity/itemize-changes.sh](../tests/golden/cli_parity/itemize-changes.sh) |  | 3.2 |
 | `--keep-dirlinks` | `-K` | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--link-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
-| `--links` | `-l` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
+| `--links` | `-l` | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) | preserves relative/absolute targets; supports dangling links | ≤3.2 |
 | `--list-only` | — | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--log-file` | — | ✅ | ❌ | [tests/log_file.rs](../tests/log_file.rs) | limited format support | ≤3.2 |
 | `--log-file-format` | — | ✅ | ❌ | [tests/log_file.rs](../tests/log_file.rs) | limited format support | ≤3.2 |

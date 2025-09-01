@@ -162,7 +162,7 @@ fn daemon_inherits_default_acls() {
     assert_eq!(dacl_src.entries(), dacl_dst.entries());
 
     let dacl_src_sub = PosixACL::read_default_acl(&sub).unwrap();
-    let dacl_dst_sub = PosixACL::read_default_acl(&srv.join("sub")).unwrap();
+    let dacl_dst_sub = PosixACL::read_default_acl(srv.join("sub")).unwrap();
     assert_eq!(dacl_src_sub.entries(), dacl_dst_sub.entries());
 
     let acl_src_file = PosixACL::read_acl(&file).unwrap();
