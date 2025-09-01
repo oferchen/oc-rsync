@@ -40,7 +40,7 @@ negotiates version 73.
 | `--zc` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | alias for `--compress-choice` | ≤3.2 |
 | `--zl` | — | ✅ | ✅ | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | alias for `--compress-level` | ≤3.2 |
 | `--config` | — | ✅ | ❌ | [tests/daemon_config.rs](../tests/daemon_config.rs) |  | ≤3.2 |
-| `--contimeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
+| `--contimeout` | — | ✅ | ✅ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
 | `--copy-as` | — | ✅ | ❌ | [tests/copy_as.rs](../tests/copy_as.rs) | requires root or CAP_CHOWN | ≤3.2 |
 | `--copy-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
 | `--copy-devices` | — | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |

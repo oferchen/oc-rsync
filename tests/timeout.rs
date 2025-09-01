@@ -6,7 +6,8 @@ use std::net::TcpListener;
 use std::thread;
 use std::time::Duration;
 
-use protocol::Demux;
+use assert_cmd::Command;
+use protocol::{Demux, ExitCode};
 use transport::{
     rate_limited, ssh::SshStdioTransport, LocalPipeTransport, TcpTransport, TimeoutTransport,
     Transport,
@@ -86,4 +87,24 @@ fn demux_channel_timeout() {
     thread::sleep(Duration::from_millis(200));
     let err = demux.poll().unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::TimedOut);
+}
+
+#[test]
+fn daemon_connection_timeout_exit_code() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--contimeout=1", "rsync://203.0.113.1/test", "."])
+        .assert()
+        .failure()
+        .code(u8::from(ExitCode::ConnTimeout) as i32);
+}
+
+#[test]
+fn ssh_connection_timeout_exit_code() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--contimeout=1", "203.0.113.1:/tmp", "."])
+        .assert()
+        .failure()
+        .code(u8::from(ExitCode::ConnTimeout) as i32);
 }
