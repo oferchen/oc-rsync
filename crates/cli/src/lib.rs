@@ -826,11 +826,13 @@ pub fn spawn_daemon_session(
     } else {
         (host, port.unwrap_or(873))
     };
+    let connect_timeout = contimeout;
     let start = Instant::now();
-    let mut t = TcpTransport::connect(host, port, contimeout, family).map_err(EngineError::from)?;
+    let mut t =
+        TcpTransport::connect(host, port, connect_timeout, family).map_err(EngineError::from)?;
     let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(EngineError::Other)?;
     t.apply_sockopts(&parsed).map_err(EngineError::from)?;
-    let handshake_timeout = contimeout
+    let handshake_timeout = connect_timeout
         .map(|dur| {
             dur.checked_sub(start.elapsed())
                 .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "connection timed out"))
