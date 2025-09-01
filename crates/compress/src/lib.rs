@@ -5,14 +5,6 @@ use std::path::Path;
 #[cfg(feature = "lz4")]
 use lz4::block;
 
-cpufeatures::new!(sse42, "sse4.2");
-cpufeatures::new!(avx2, "avx2");
-cpufeatures::new!(avx512, "avx512f");
-#[cfg(target_arch = "aarch64")]
-cpufeatures::new!(neon, "neon");
-#[cfg(target_arch = "aarch64")]
-cpufeatures::new!(sve, "sve");
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModernCompress {
     Auto,
@@ -52,11 +44,16 @@ impl Codec {
 fn has_zstd_simd() -> bool {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        avx512::get() || avx2::get()
+        #[cfg(feature = "nightly")]
+        if std::arch::is_x86_feature_detected!("avx512f") {
+            return true;
+        }
+        std::arch::is_x86_feature_detected!("avx2") || std::arch::is_x86_feature_detected!("sse4.2")
     }
     #[cfg(target_arch = "aarch64")]
     {
-        neon::get() || sve::get()
+        std::arch::is_aarch64_feature_detected!("sve")
+            || std::arch::is_aarch64_feature_detected!("neon")
     }
     #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
     {
@@ -192,31 +189,37 @@ fn zstd_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "sse4.2")]
 unsafe fn zstd_compress_sse42(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     zstd_compress_scalar(data, level)
 }
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2")]
 unsafe fn zstd_compress_avx2(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     zstd_compress_scalar(data, level)
 }
 
+#[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "avx512f")]
 unsafe fn zstd_compress_avx512(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     zstd_compress_scalar(data, level)
 }
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "sse4.2")]
 unsafe fn zstd_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
     zstd_decompress_scalar(data)
 }
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2")]
 unsafe fn zstd_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
     zstd_decompress_scalar(data)
 }
 
+#[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "avx512f")]
 unsafe fn zstd_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
     zstd_decompress_scalar(data)
@@ -224,29 +227,39 @@ unsafe fn zstd_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
 
 impl Compressor for Zstd {
     fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
-        if avx512::get() {
-            unsafe { zstd_compress_avx512(data, self.level) }
-        } else if avx2::get() {
-            unsafe { zstd_compress_avx2(data, self.level) }
-        } else if sse42::get() {
-            unsafe { zstd_compress_sse42(data, self.level) }
-        } else {
-            zstd_compress_scalar(data, self.level)
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        {
+            #[cfg(feature = "nightly")]
+            if std::arch::is_x86_feature_detected!("avx512f") {
+                return unsafe { zstd_compress_avx512(data, self.level) };
+            }
+            if std::arch::is_x86_feature_detected!("avx2") {
+                return unsafe { zstd_compress_avx2(data, self.level) };
+            }
+            if std::arch::is_x86_feature_detected!("sse4.2") {
+                return unsafe { zstd_compress_sse42(data, self.level) };
+            }
         }
+        zstd_compress_scalar(data, self.level)
     }
 }
 
 impl Decompressor for Zstd {
     fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
-        if avx512::get() {
-            unsafe { zstd_decompress_avx512(data) }
-        } else if avx2::get() {
-            unsafe { zstd_decompress_avx2(data) }
-        } else if sse42::get() {
-            unsafe { zstd_decompress_sse42(data) }
-        } else {
-            zstd_decompress_scalar(data)
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        {
+            #[cfg(feature = "nightly")]
+            if std::arch::is_x86_feature_detected!("avx512f") {
+                return unsafe { zstd_decompress_avx512(data) };
+            }
+            if std::arch::is_x86_feature_detected!("avx2") {
+                return unsafe { zstd_decompress_avx2(data) };
+            }
+            if std::arch::is_x86_feature_detected!("sse4.2") {
+                return unsafe { zstd_decompress_sse42(data) };
+            }
         }
+        zstd_decompress_scalar(data)
     }
 }
 
@@ -256,30 +269,40 @@ pub struct Lz4;
 #[cfg(feature = "lz4")]
 impl Compressor for Lz4 {
     fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
-        if avx512::get() {
-            unsafe { lz4_compress_avx512(data) }
-        } else if avx2::get() {
-            unsafe { lz4_compress_avx2(data) }
-        } else if sse42::get() {
-            unsafe { lz4_compress_sse42(data) }
-        } else {
-            lz4_compress_scalar(data)
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        {
+            #[cfg(feature = "nightly")]
+            if std::arch::is_x86_feature_detected!("avx512f") {
+                return unsafe { lz4_compress_avx512(data) };
+            }
+            if std::arch::is_x86_feature_detected!("avx2") {
+                return unsafe { lz4_compress_avx2(data) };
+            }
+            if std::arch::is_x86_feature_detected!("sse4.2") {
+                return unsafe { lz4_compress_sse42(data) };
+            }
         }
+        lz4_compress_scalar(data)
     }
 }
 
 #[cfg(feature = "lz4")]
 impl Decompressor for Lz4 {
     fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
-        if avx512::get() {
-            unsafe { lz4_decompress_avx512(data) }
-        } else if avx2::get() {
-            unsafe { lz4_decompress_avx2(data) }
-        } else if sse42::get() {
-            unsafe { lz4_decompress_sse42(data) }
-        } else {
-            lz4_decompress_scalar(data)
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        {
+            #[cfg(feature = "nightly")]
+            if std::arch::is_x86_feature_detected!("avx512f") {
+                return unsafe { lz4_decompress_avx512(data) };
+            }
+            if std::arch::is_x86_feature_detected!("avx2") {
+                return unsafe { lz4_decompress_avx2(data) };
+            }
+            if std::arch::is_x86_feature_detected!("sse4.2") {
+                return unsafe { lz4_decompress_sse42(data) };
+            }
         }
+        lz4_decompress_scalar(data)
     }
 }
 
@@ -320,37 +343,45 @@ fn lz4_lib_decompress(data: &[u8]) -> io::Result<Vec<u8>> {
     block::decompress(rest, Some(size)).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-#[cfg(feature = "lz4")]
+#[cfg(all(feature = "lz4", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "sse4.2")]
 unsafe fn lz4_compress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
     lz4_lib_compress(data)
 }
 
-#[cfg(feature = "lz4")]
+#[cfg(all(feature = "lz4", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "avx2")]
 unsafe fn lz4_compress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
     lz4_lib_compress(data)
 }
 
-#[cfg(feature = "lz4")]
+#[cfg(all(
+    feature = "lz4",
+    feature = "nightly",
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 #[target_feature(enable = "avx512f")]
 unsafe fn lz4_compress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
     lz4_lib_compress(data)
 }
 
-#[cfg(feature = "lz4")]
+#[cfg(all(feature = "lz4", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "sse4.2")]
 unsafe fn lz4_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
     lz4_lib_decompress(data)
 }
 
-#[cfg(feature = "lz4")]
+#[cfg(all(feature = "lz4", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "avx2")]
 unsafe fn lz4_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
     lz4_lib_decompress(data)
 }
 
-#[cfg(feature = "lz4")]
+#[cfg(all(
+    feature = "lz4",
+    feature = "nightly",
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 #[target_feature(enable = "avx512f")]
 unsafe fn lz4_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
     lz4_lib_decompress(data)
@@ -384,5 +415,23 @@ mod tests {
             expected.push(c);
         }
         assert_eq!(available_codecs(Some(ModernCompress::Auto)), expected);
+    }
+
+    #[test]
+    fn zstd_simd_matches_scalar() {
+        let data = b"hello world";
+        let level = 0;
+        let scalar_c = zstd_compress_scalar(data, level).unwrap();
+        unsafe {
+            assert_eq!(zstd_compress_sse42(data, level).unwrap(), scalar_c);
+            assert_eq!(zstd_compress_avx2(data, level).unwrap(), scalar_c);
+            #[cfg(feature = "nightly")]
+            assert_eq!(zstd_compress_avx512(data, level).unwrap(), scalar_c);
+            let scalar_d = zstd_decompress_scalar(&scalar_c).unwrap();
+            assert_eq!(zstd_decompress_sse42(&scalar_c).unwrap(), scalar_d);
+            assert_eq!(zstd_decompress_avx2(&scalar_c).unwrap(), scalar_d);
+            #[cfg(feature = "nightly")]
+            assert_eq!(zstd_decompress_avx512(&scalar_c).unwrap(), scalar_d);
+        }
     }
 }

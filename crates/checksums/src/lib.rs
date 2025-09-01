@@ -9,10 +9,6 @@ use sha1::Sha1;
 use xxhash_rust::xxh3::xxh3_128;
 use xxhash_rust::xxh64::xxh64;
 
-cpufeatures::new!(sse42, "sse4.2");
-cpufeatures::new!(avx2, "avx2");
-cpufeatures::new!(avx512, "avx512f");
-
 #[derive(Clone, Copy, Debug)]
 pub enum ModernHash {
     #[cfg(feature = "blake3")]
@@ -151,15 +147,20 @@ pub fn rolling_checksum(data: &[u8]) -> u32 {
 }
 
 pub fn rolling_checksum_seeded(data: &[u8], seed: u32) -> u32 {
-    if avx512::get() {
-        unsafe { rolling_checksum_avx512(data, seed) }
-    } else if avx2::get() {
-        unsafe { rolling_checksum_avx2(data, seed) }
-    } else if sse42::get() {
-        unsafe { rolling_checksum_sse42(data, seed) }
-    } else {
-        rolling_checksum_scalar(data, seed)
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        #[cfg(feature = "nightly")]
+        if std::arch::is_x86_feature_detected!("avx512f") {
+            return unsafe { rolling_checksum_avx512(data, seed) };
+        }
+        if std::arch::is_x86_feature_detected!("avx2") {
+            return unsafe { rolling_checksum_avx2(data, seed) };
+        }
+        if std::arch::is_x86_feature_detected!("sse4.2") {
+            return unsafe { rolling_checksum_sse42(data, seed) };
+        }
     }
+    rolling_checksum_scalar(data, seed)
 }
 
 #[inline]
@@ -176,16 +177,19 @@ fn rolling_checksum_scalar(data: &[u8], seed: u32) -> u32 {
     (s1 & 0xffff) | (s2 << 16)
 }
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "sse4.2")]
 unsafe fn rolling_checksum_sse42(data: &[u8], seed: u32) -> u32 {
     rolling_checksum_scalar(data, seed)
 }
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2")]
 unsafe fn rolling_checksum_avx2(data: &[u8], seed: u32) -> u32 {
     rolling_checksum_scalar(data, seed)
 }
 
+#[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "avx512f")]
 unsafe fn rolling_checksum_avx512(data: &[u8], seed: u32) -> u32 {
     rolling_checksum_scalar(data, seed)
@@ -294,6 +298,18 @@ mod tests {
                 hex::encode(digest_blake3),
                 "861487254e43e2e567ef5177d0c85452f1982ec89c494e8d4a957ff01dd9b421"
             );
+        }
+    }
+
+    #[test]
+    fn simd_equals_scalar() {
+        let data = b"hello world";
+        let scalar = rolling_checksum_scalar(data, 0);
+        unsafe {
+            assert_eq!(rolling_checksum_sse42(data, 0), scalar);
+            assert_eq!(rolling_checksum_avx2(data, 0), scalar);
+            #[cfg(feature = "nightly")]
+            assert_eq!(rolling_checksum_avx512(data, 0), scalar);
         }
     }
 }
