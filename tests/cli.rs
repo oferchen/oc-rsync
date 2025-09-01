@@ -1404,6 +1404,30 @@ fn force_allows_non_empty_dir_deletion() {
     assert!(!dst.join("sub").exists());
 }
 
+#[test]
+fn force_removes_nested_non_empty_dirs() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(dst.join("sub/nested")).unwrap();
+    std::fs::write(dst.join("sub/nested/file.txt"), b"hi").unwrap();
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--delete",
+            "--force",
+            &format!("{}/", src.display()),
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("sub").exists());
+}
+
 #[cfg(unix)]
 #[test]
 #[serial]

@@ -12,9 +12,9 @@ use std::os::fd::AsRawFd;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
-use std::sync::Arc;
 #[cfg(feature = "xattr")]
 use std::rc::Rc;
+use std::sync::Arc;
 #[cfg(unix)]
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -265,7 +265,7 @@ fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
     }
 }
 
-fn remove_dir_all_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
+fn remove_dir_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
     let res = if opts.force {
         fs::remove_dir_all(path)
     } else {
@@ -1848,7 +1848,7 @@ fn delete_extraneous(
                                 .and_then(|_| atomic_rename(&path, &backup_path))
                                 .err()
                         } else {
-                            remove_dir_all_opts(&path, opts).err()
+                            remove_dir_opts(&path, opts).err()
                         };
                         walker.skip_current_dir();
                         match res {
@@ -1957,7 +1957,7 @@ pub fn sync(
                     }
                     atomic_rename(dst, &backup_path).err()
                 } else if meta.file_type().is_dir() {
-                    remove_dir_all_opts(dst, opts).err()
+                    remove_dir_opts(dst, opts).err()
                 } else {
                     remove_file_opts(dst, opts).err()
                 };
@@ -2293,7 +2293,7 @@ pub fn sync(
                         }
                         if let Ok(meta_dest) = fs::symlink_metadata(&dest_path) {
                             if meta_dest.is_dir() {
-                                remove_dir_all_opts(&dest_path, opts)?;
+                                remove_dir_opts(&dest_path, opts)?;
                             } else {
                                 remove_file_opts(&dest_path, opts)?;
                             }
