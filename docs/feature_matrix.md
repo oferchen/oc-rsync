@@ -162,7 +162,7 @@ negotiates version 73.
 | `--suffix` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--super` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--temp-dir` | `-T` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | requires same filesystem for atomic rename | ≤3.2 |
-| `--timeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) |  | ≤3.2 |
+| `--timeout` | — | ✅ | ❌ | [tests/timeout.rs](../tests/timeout.rs) | idle and I/O timeout | ≤3.2 |
 | `--times` | `-t` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) |  | ≤3.2 |
 | `--trust-sender` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--update` | `-u` | ✅ | ❌ | [crates/engine/tests/update.rs](../crates/engine/tests/update.rs) |  | ≤3.2 |

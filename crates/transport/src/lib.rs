@@ -72,17 +72,21 @@ impl<R: Read, W: Write> Transport for LocalPipeTransport<R, W> {
 
 pub struct TimeoutTransport<T> {
     inner: T,
-    timeout: Duration,
+    timeout: Option<Duration>,
     last: Instant,
 }
 
-impl<T> TimeoutTransport<T> {
-    pub fn new(inner: T, timeout: Duration) -> Self {
-        Self {
+impl<T: Transport> TimeoutTransport<T> {
+    pub fn new(mut inner: T, timeout: Option<Duration>) -> io::Result<Self> {
+        if let Some(dur) = timeout {
+            inner.set_read_timeout(Some(dur))?;
+            inner.set_write_timeout(Some(dur))?;
+        }
+        Ok(Self {
             inner,
             timeout,
             last: Instant::now(),
-        }
+        })
     }
 
     pub fn into_inner(self) -> T {
@@ -94,14 +98,15 @@ impl<T> TimeoutTransport<T> {
     }
 
     fn check_timeout(&self) -> io::Result<()> {
-        if self.last.elapsed() > self.timeout {
-            Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "connection timed out",
-            ))
-        } else {
-            Ok(())
+        if let Some(dur) = self.timeout {
+            if self.last.elapsed() > dur {
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "connection timed out",
+                ));
+            }
         }
+        Ok(())
     }
 }
 
@@ -120,6 +125,16 @@ impl<T: Transport> Transport for TimeoutTransport<T> {
             self.refresh();
         }
         Ok(n)
+    }
+
+    fn set_read_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
+        self.inner.set_read_timeout(dur)?;
+        self.timeout = dur;
+        Ok(())
+    }
+
+    fn set_write_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
+        self.inner.set_write_timeout(dur)
     }
 
     fn update_timeout(&mut self) {

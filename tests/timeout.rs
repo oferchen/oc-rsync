@@ -18,8 +18,9 @@ fn connection_inactivity_timeout() {
     let writer = Cursor::new(Vec::new());
     let mut t = TimeoutTransport::new(
         LocalPipeTransport::new(reader, writer),
-        Duration::from_millis(100),
-    );
+        Some(Duration::from_millis(100)),
+    )
+    .unwrap();
     thread::sleep(Duration::from_millis(200));
     let err = t.send(b"ping").err().expect("error");
     assert_eq!(err.kind(), io::ErrorKind::TimedOut);
@@ -31,9 +32,25 @@ fn idle_inactivity_timeout() {
     let writer = Cursor::new(Vec::new());
     let mut t = TimeoutTransport::new(
         LocalPipeTransport::new(reader, writer),
-        Duration::from_millis(100),
-    );
+        Some(Duration::from_millis(100)),
+    )
+    .unwrap();
     t.send(b"ping").unwrap();
+    thread::sleep(Duration::from_millis(200));
+    let err = t.send(b"pong").err().expect("error");
+    assert_eq!(err.kind(), io::ErrorKind::TimedOut);
+}
+
+#[test]
+fn timeout_can_be_updated() {
+    let reader = Cursor::new(Vec::new());
+    let writer = Cursor::new(Vec::new());
+    let mut t = TimeoutTransport::new(LocalPipeTransport::new(reader, writer), None).unwrap();
+    t.send(b"ping").unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(100)))
+        .unwrap();
+    t.set_write_timeout(Some(Duration::from_millis(100)))
+        .unwrap();
     thread::sleep(Duration::from_millis(200));
     let err = t.send(b"pong").err().expect("error");
     assert_eq!(err.kind(), io::ErrorKind::TimedOut);
@@ -45,8 +62,9 @@ fn rate_limited_respects_timeout() {
     let writer = Cursor::new(Vec::new());
     let inner = TimeoutTransport::new(
         LocalPipeTransport::new(reader, writer),
-        Duration::from_millis(50),
-    );
+        Some(Duration::from_millis(50)),
+    )
+    .unwrap();
     let mut t = rate_limited(inner, 10);
     t.send(&[0]).unwrap();
     let res = t.send(&[0]);
