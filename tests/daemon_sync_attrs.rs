@@ -96,6 +96,55 @@ fn daemon_preserves_xattrs() {
     let _ = child.wait();
 }
 
+#[cfg(all(unix, feature = "xattr"))]
+#[test]
+#[ignore]
+#[serial]
+fn daemon_preserves_xattrs_rr_client() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let srv = tmp.path().join("srv");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&srv).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    xattr::set(&file, "user.test", b"val").unwrap();
+    xattr::set(&file, "security.test", b"secret").unwrap();
+
+    let srv_file = srv.join("file");
+    fs::write(&srv_file, b"old").unwrap();
+    xattr::set(&srv_file, "user.old", b"junk").unwrap();
+    xattr::set(&srv_file, "security.keep", b"dest").unwrap();
+
+    let (mut child, port) = spawn_daemon(&srv);
+    wait_for_daemon(port);
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--xattrs",
+            &src_arg,
+            &format!("rsync://127.0.0.1:{port}/mod"),
+        ])
+        .assert()
+        .success();
+
+    let val = xattr::get(srv.join("file"), "user.test").unwrap().unwrap();
+    assert_eq!(&val[..], b"val");
+    assert!(xattr::get(srv.join("file"), "user.old").unwrap().is_none());
+    assert!(xattr::get(srv.join("file"), "security.test")
+        .unwrap()
+        .is_none());
+    let keep = xattr::get(srv.join("file"), "security.keep")
+        .unwrap()
+        .unwrap();
+    assert_eq!(&keep[..], b"dest");
+
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 #[cfg(all(unix, feature = "acl"))]
 #[test]
 #[serial]

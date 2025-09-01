@@ -136,11 +136,36 @@ impl GidTable {
 }
 
 #[cfg(all(unix, feature = "xattr"))]
+pub(crate) fn should_ignore_xattr_error(err: &io::Error) -> bool {
+    matches!(
+        err.raw_os_error(),
+        Some(libc::EPERM)
+            | Some(libc::EACCES)
+            | Some(libc::ENOTSUP)
+            | Some(libc::ENOSYS)
+            | Some(libc::EINVAL)
+            | Some(libc::ENODATA)
+    )
+}
+
+#[cfg(all(unix, feature = "xattr"))]
 pub fn apply_xattrs(path: &Path, xattrs: &[(OsString, Vec<u8>)]) -> io::Result<()> {
-    let mut existing: HashSet<OsString> = xattr::list(path)?.collect();
+    let mut existing: HashSet<OsString> = match xattr::list(path) {
+        Ok(list) => list.collect(),
+        Err(err) => {
+            if should_ignore_xattr_error(&err) {
+                return Ok(());
+            }
+            return Err(err);
+        }
+    };
     for (name, value) in xattrs {
         existing.remove(name);
-        xattr::set(path, name, value)?;
+        if let Err(err) = xattr::set(path, name, value) {
+            if !should_ignore_xattr_error(&err) {
+                return Err(err);
+            }
+        }
     }
     for name in existing {
         if let Some(s) = name.to_str() {
@@ -151,7 +176,11 @@ pub fn apply_xattrs(path: &Path, xattrs: &[(OsString, Vec<u8>)]) -> io::Result<(
                 continue;
             }
         }
-        let _ = xattr::remove(path, &name);
+        if let Err(err) = xattr::remove(path, &name) {
+            if !should_ignore_xattr_error(&err) {
+                return Err(err);
+            }
+        }
     }
     Ok(())
 }

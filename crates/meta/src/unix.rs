@@ -170,20 +170,35 @@ impl Metadata {
         #[cfg(feature = "xattr")]
         let xattrs = if opts.xattrs || opts.fake_super {
             let mut attrs = Vec::new();
-            for attr in xattr::list(path)? {
-                if let Some(name) = attr.to_str() {
-                    if !opts.fake_super && name.starts_with("user.rsync.") {
-                        continue;
-                    }
-                    if name.starts_with("security.")
-                        || name == "system.posix_acl_access"
-                        || name == "system.posix_acl_default"
-                    {
-                        continue;
+            match xattr::list(path) {
+                Ok(list) => {
+                    for attr in list {
+                        if let Some(name) = attr.to_str() {
+                            if !opts.fake_super && name.starts_with("user.rsync.") {
+                                continue;
+                            }
+                            if name.starts_with("security.")
+                                || name == "system.posix_acl_access"
+                                || name == "system.posix_acl_default"
+                            {
+                                continue;
+                            }
+                        }
+                        match xattr::get(path, &attr) {
+                            Ok(Some(value)) => attrs.push((attr, value)),
+                            Ok(None) => {}
+                            Err(err) => {
+                                if !crate::should_ignore_xattr_error(&err) {
+                                    return Err(err);
+                                }
+                            }
+                        }
                     }
                 }
-                if let Some(value) = xattr::get(path, &attr)? {
-                    attrs.push((attr, value));
+                Err(err) => {
+                    if !crate::should_ignore_xattr_error(&err) {
+                        return Err(err);
+                    }
                 }
             }
             attrs
