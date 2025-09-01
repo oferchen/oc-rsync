@@ -200,7 +200,10 @@ impl SshStdioTransport {
         while read < ver_buf.len() {
             let n = transport.receive(&mut ver_buf[read..])?;
             if n == 0 {
-                return Err(io::Error::other("failed to read version"));
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "failed to read version",
+                ));
             }
             read += n;
         }

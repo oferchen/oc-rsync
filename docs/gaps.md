@@ -6,7 +6,6 @@ coverage so progress can be tracked as features land.
 
 ## Protocol
 - `--bwlimit` — rate limiting semantics differ. [transport/src/rate.rs](../crates/transport/src/rate.rs) · [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs)
-- `--contimeout` — connection timeout handling incomplete. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/timeout.rs](../tests/timeout.rs)
 - `--server` — handshake lacks full parity. [protocol/src/server.rs](../crates/protocol/src/server.rs) · [tests/server.rs](../tests/server.rs)
 - `--timeout` — timeout semantics differ. [transport/src/lib.rs](../crates/transport/src/lib.rs) · [tests/timeout.rs](../tests/timeout.rs)
 

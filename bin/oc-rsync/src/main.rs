@@ -1,6 +1,6 @@
 // bin/oc-rsync/src/main.rs
 use logging::{DebugFlag, InfoFlag, LogFormat};
-use std::path::PathBuf;
+use std::{io::ErrorKind, path::PathBuf};
 
 use oc_rsync_cli::{cli_command, EngineError};
 use protocol::ExitCode;
@@ -50,7 +50,18 @@ fn main() {
     );
     if let Err(e) = oc_rsync_cli::run(&matches) {
         eprintln!("{e}");
-        let code = match e {
+        let code = match &e {
+            EngineError::Io(err)
+                if matches!(
+                    err.kind(),
+                    ErrorKind::TimedOut
+                        | ErrorKind::ConnectionRefused
+                        | ErrorKind::AddrNotAvailable
+                        | ErrorKind::NetworkUnreachable
+                ) =>
+            {
+                ExitCode::ConnTimeout
+            }
             EngineError::MaxAlloc => ExitCode::Malloc,
             _ => ExitCode::Protocol,
         };
