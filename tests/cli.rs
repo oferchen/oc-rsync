@@ -327,7 +327,8 @@ fn progress_flag_human_readable() {
         .assert()
         .success();
     let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
-    let path_line = stderr.lines().next().unwrap();
+    let mut lines = stderr.lines();
+    let path_line = lines.next().unwrap();
     assert_eq!(path_line, dst_dir.join("a.txt").display().to_string());
     let progress_line = lines
         .next()

@@ -5,7 +5,8 @@ use compress::{available_codecs, decode_codecs, encode_codecs, ModernCompress};
 use protocol::{Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION, MIN_VERSION};
 use std::convert::TryFrom;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::os::unix::fs::PermissionsExt;
 use std::process::{Command, Stdio};
 use tempfile::tempdir;
 
@@ -227,4 +228,95 @@ fn server_modern_downgrades_version() {
 
     let status = child.wait().unwrap();
     assert!(status.success());
+}
+
+#[cfg(unix)]
+#[test]
+fn stock_rsync_interop_over_ssh() {
+    if Command::new("rsync")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_err()
+    {
+        eprintln!("skipping stock rsync ssh interop test: rsync not found");
+        return;
+    }
+
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src.txt");
+    let dst = dir.path().join("dst.txt");
+    fs::write(&src, b"ssh_interop").unwrap();
+
+    let rsh = dir.path().join("fake_rsh.sh");
+    fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
+    fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let oc = cargo_bin("oc-rsync");
+    let status = Command::new("rsync")
+        .arg("-e")
+        .arg(rsh.to_str().unwrap())
+        .arg(&src)
+        .arg(format!("fake:{}", dst.display()))
+        .arg("--rsync-path")
+        .arg(oc.to_str().unwrap())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    assert_eq!(fs::read(&dst).unwrap(), b"ssh_interop");
+}
+
+#[cfg(unix)]
+#[test]
+fn stock_rsync_interop_daemon() {
+    if Command::new("rsync")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_err()
+    {
+        eprintln!("skipping stock rsync daemon interop test: rsync not found");
+        return;
+    }
+
+    let src_dir = tempdir().unwrap();
+    let file = src_dir.path().join("file.txt");
+    fs::write(&file, b"daemon_interop").unwrap();
+
+    let mut child = Command::new(cargo_bin("oc-rsync"))
+        .args([
+            "--daemon",
+            "--module",
+            &format!("data={}", src_dir.path().display()),
+            "--port",
+            "0",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+
+    let port: u16 = {
+        let mut reader = BufReader::new(child.stdout.take().unwrap());
+        let mut line = String::new();
+        reader.read_line(&mut line).unwrap();
+        line.trim().parse().unwrap()
+    };
+
+    let dst_dir = tempdir().unwrap();
+    let status = Command::new("rsync")
+        .arg(format!("rsync://127.0.0.1:{port}/data/file.txt"))
+        .arg(dst_dir.path().to_str().unwrap())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    assert_eq!(
+        fs::read(dst_dir.path().join("file.txt")).unwrap(),
+        b"daemon_interop"
+    );
+
+    let _ = child.kill();
+    let _ = child.wait();
 }
