@@ -1440,7 +1440,8 @@ fn delete_non_empty_dir_without_force_fails() {
             dst.to_str().unwrap(),
         ])
         .assert()
-        .failure();
+        .failure()
+        .stderr(predicates::str::contains("Directory not empty"));
 
     assert!(dst.join("sub/file.txt").exists());
 }
