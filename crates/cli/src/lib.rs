@@ -140,6 +140,20 @@ struct ClientOpts {
     #[arg(long = "log-format", help_heading = "Output", value_parser = ["text", "json"])]
     log_format: Option<String>,
     #[arg(
+        long = "log-file",
+        value_name = "FILE",
+        help_heading = "Output",
+        id = "client-log-file"
+    )]
+    log_file: Option<PathBuf>,
+    #[arg(
+        long = "log-file-format",
+        value_name = "FMT",
+        help_heading = "Output",
+        id = "client-log-file-format"
+    )]
+    log_file_format: Option<String>,
+    #[arg(
         long,
         value_name = "FLAGS",
         value_delimiter = ',',
@@ -352,6 +366,10 @@ struct ClientOpts {
     progress: bool,
     #[arg(long, help_heading = "Misc")]
     blocking_io: bool,
+    #[arg(long, help_heading = "Misc")]
+    fsync: bool,
+    #[arg(short = 'y', long = "fuzzy", help_heading = "Misc")]
+    fuzzy: bool,
     #[arg(short = 'P', help_heading = "Misc")]
     partial_progress: bool,
     #[arg(long, help_heading = "Misc")]
@@ -586,10 +604,6 @@ struct DaemonOpts {
     hosts_allow: Vec<String>,
     #[arg(long = "hosts-deny", value_delimiter = ',', value_name = "LIST")]
     hosts_deny: Vec<String>,
-    #[arg(long = "log-file", value_name = "FILE")]
-    log_file: Option<PathBuf>,
-    #[arg(long = "log-file-format", value_name = "FMT")]
-    log_file_format: Option<String>,
     #[arg(long = "motd", value_name = "FILE")]
     motd: Option<PathBuf>,
     #[arg(long = "lock-file", value_name = "FILE")]
@@ -1257,6 +1271,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         write_batch: opts.write_batch.clone(),
         copy_devices: opts.copy_devices,
         write_devices: opts.write_devices,
+        fsync: opts.fsync,
+        fuzzy: opts.fuzzy,
         fake_super: opts.fake_super,
         quiet: opts.quiet,
     };
@@ -1851,8 +1867,8 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut secrets = opts.secrets_file.clone();
     let mut hosts_allow = opts.hosts_allow.clone();
     let mut hosts_deny = opts.hosts_deny.clone();
-    let mut log_file = opts.log_file.clone();
-    let log_format = opts.log_file_format.clone();
+    let mut log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
+    let log_format = matches.get_one::<String>("client-log-file-format").cloned();
     let mut motd = opts.motd.clone();
     let lock_file = opts.lock_file.clone();
     let state_dir = opts.state_dir.clone();

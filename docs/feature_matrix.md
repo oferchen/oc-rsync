@@ -69,13 +69,13 @@ negotiates version 73.
 | `--exclude-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--executability` | `-E` | ✅ | ✅ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
 | `--existing` | — | ✅ | ✅ | [tests/filter_corpus.rs](../tests/filter_corpus.rs) |  | ≤3.2 |
-| `--fake-super` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--fake-super` | — | ✅ | ❌ | [tests/fake_super.rs](../tests/fake_super.rs) | requires `xattr` feature | ≤3.2 |
 | `--files-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--filter` | `-f` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
 | `--force` | — | ❌ | — | — | not yet implemented | ≤3.2 |
 | `--from0` | `-0` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
-| `--fsync` | — | ❌ | — | — | not yet implemented | ≤3.2 |
-| `--fuzzy` | `-y` | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--fsync` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
+| `--fuzzy` | `-y` | ✅ | ❌ | [tests/fuzzy.rs](../tests/fuzzy.rs) |  | ≤3.2 |
 | `--group` | `-g` | ✅ | ✅ | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | requires root or CAP_CHOWN | ≤3.2 |
 | `--groupmap` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) | numeric gid mapping only; requires root or CAP_CHOWN | ≤3.2 |
 | `--hard-links` | `-H` | ✅ | ❌ | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) |  | ≤3.2 |
@@ -97,8 +97,8 @@ negotiates version 73.
 | `--link-dest` | — | ✅ | ✅ | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) |  | ≤3.2 |
 | `--links` | `-l` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--list-only` | — | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
-| `--log-file` | — | ❌ | — | — | not yet implemented | ≤3.2 |
-| `--log-file-format` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--log-file` | — | ✅ | ❌ | [tests/log_file.rs](../tests/log_file.rs) | limited format support | ≤3.2 |
+| `--log-file-format` | — | ✅ | ❌ | [tests/log_file.rs](../tests/log_file.rs) | limited format support | ≤3.2 |
 | `--max-alloc` | — | ✅ | ✅ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |
 | `--max-delete` | — | ✅ | ✅ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--max-size` | — | ✅ | ❌ | [tests/perf_limits.rs](../tests/perf_limits.rs) |  | ≤3.2 |

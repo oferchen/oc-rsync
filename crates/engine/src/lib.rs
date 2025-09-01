@@ -208,6 +208,42 @@ fn remove_dir_all_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
     }
 }
 
+fn levenshtein(a: &str, b: &str) -> usize {
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.chars().enumerate() {
+        let mut curr = vec![i + 1];
+        for (j, cb) in b.chars().enumerate() {
+            let cost = if ca == cb { prev[j] } else { prev[j] + 1 };
+            let ins = curr[j] + 1;
+            let del = prev[j + 1] + 1;
+            curr.push(cost.min(ins).min(del));
+        }
+        prev = curr;
+    }
+    prev[b.len()]
+}
+
+fn fuzzy_match(dest: &Path) -> Option<PathBuf> {
+    let parent = dest.parent()?;
+    let stem = dest.file_stem()?.to_string_lossy().to_string();
+    let mut best: Option<(usize, PathBuf)> = None;
+    for entry in fs::read_dir(parent).ok()? {
+        let entry = entry.ok()?;
+        let path = entry.path();
+        if path == dest {
+            continue;
+        }
+        let candidate_stem = path.file_stem()?.to_string_lossy().to_string();
+        let dist = levenshtein(&stem, &candidate_stem);
+        match &mut best {
+            Some((d, _)) if dist < *d => best = Some((dist, path)),
+            None => best = Some((dist, path)),
+            _ => {}
+        }
+    }
+    best.map(|(_, p)| p)
+}
+
 fn files_identical(a: &Path, b: &Path) -> bool {
     if let (Ok(ma), Ok(mb)) = (fs::metadata(a), fs::metadata(b)) {
         if ma.len() != mb.len() {
@@ -854,6 +890,8 @@ impl Sender {
         };
         let basis_path = if self.opts.partial && partial_path.exists() {
             partial_path.clone()
+        } else if self.opts.fuzzy && !dest.exists() {
+            fuzzy_match(dest).unwrap_or_else(|| dest.to_path_buf())
         } else {
             dest.to_path_buf()
         };
@@ -1238,6 +1276,9 @@ impl Receiver {
             let len = out.stream_position()?;
             out.set_len(len)?;
         }
+        if self.opts.fsync {
+            out.sync_all().map_err(|e| io_context(&tmp_dest, e))?;
+        }
         drop(out);
         if needs_rename {
             if self.opts.delay_updates {
@@ -1344,7 +1385,7 @@ impl Receiver {
                     }))
                 };
 
-            let meta_opts = meta::Options {
+            let mut meta_opts = meta::Options {
                 xattrs: {
                     #[cfg(feature = "xattr")]
                     {
@@ -1510,6 +1551,8 @@ pub struct SyncOptions {
     pub hard_links: bool,
     pub devices: bool,
     pub specials: bool,
+    pub fsync: bool,
+    pub fuzzy: bool,
     pub fake_super: bool,
     #[cfg(feature = "xattr")]
     pub xattrs: bool,
@@ -1598,6 +1641,8 @@ impl Default for SyncOptions {
             hard_links: false,
             devices: false,
             specials: false,
+            fsync: false,
+            fuzzy: false,
             fake_super: false,
             #[cfg(feature = "xattr")]
             xattrs: false,
