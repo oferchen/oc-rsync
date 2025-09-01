@@ -45,7 +45,7 @@ coverage so progress can be tracked as features land.
 - `--partial-dir` — remote partial directory handling lacks parity. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*
 
 ## Progress & Exit Codes
-- `--progress` — progress output differs from upstream. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
+- `--progress` — progress output differs from upstream and current progress tests fail to compile. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs#L332](../tests/cli.rs#L332)
 - Exit code propagation across transports lacks coverage. [protocol/src/lib.rs](../crates/protocol/src/lib.rs) · [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs)
 
 ## Error Propagation
