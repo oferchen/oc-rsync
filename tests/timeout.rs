@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use protocol::Demux;
 use transport::{
-    ssh::SshStdioTransport, LocalPipeTransport, TcpTransport, TimeoutTransport, Transport,
+    ssh::SshStdioTransport, rate_limited, LocalPipeTransport, TcpTransport, TimeoutTransport, Transport,
 };
 
 #[test]
@@ -22,6 +22,34 @@ fn connection_inactivity_timeout() {
     thread::sleep(Duration::from_millis(200));
     let err = t.send(b"ping").err().expect("error");
     assert_eq!(err.kind(), io::ErrorKind::TimedOut);
+}
+
+#[test]
+fn idle_inactivity_timeout() {
+    let reader = Cursor::new(Vec::new());
+    let writer = Cursor::new(Vec::new());
+    let mut t = TimeoutTransport::new(
+        LocalPipeTransport::new(reader, writer),
+        Duration::from_millis(100),
+    );
+    t.send(b"ping").unwrap();
+    thread::sleep(Duration::from_millis(200));
+    let err = t.send(b"pong").err().expect("error");
+    assert_eq!(err.kind(), io::ErrorKind::TimedOut);
+}
+
+#[test]
+fn rate_limited_respects_timeout() {
+    let reader = Cursor::new(Vec::new());
+    let writer = Cursor::new(Vec::new());
+    let inner = TimeoutTransport::new(
+        LocalPipeTransport::new(reader, writer),
+        Duration::from_millis(50),
+    );
+    let mut t = rate_limited(inner, 10);
+    t.send(&[0]).unwrap();
+    let res = t.send(&[0]);
+    assert!(res.is_ok());
 }
 
 #[test]

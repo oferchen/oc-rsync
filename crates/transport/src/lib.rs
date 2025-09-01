@@ -32,6 +32,8 @@ pub trait Transport {
     fn set_write_timeout(&mut self, _dur: Option<Duration>) -> io::Result<()> {
         Ok(())
     }
+
+    fn update_timeout(&mut self) {}
 }
 
 pub struct LocalPipeTransport<R, W> {
@@ -87,6 +89,10 @@ impl<T> TimeoutTransport<T> {
         self.inner
     }
 
+    pub fn refresh(&mut self) {
+        self.last = Instant::now();
+    }
+
     fn check_timeout(&self) -> io::Result<()> {
         if self.last.elapsed() > self.timeout {
             Err(io::Error::new(
@@ -103,7 +109,7 @@ impl<T: Transport> Transport for TimeoutTransport<T> {
     fn send(&mut self, data: &[u8]) -> io::Result<()> {
         self.check_timeout()?;
         self.inner.send(data)?;
-        self.last = Instant::now();
+        self.refresh();
         Ok(())
     }
 
@@ -111,9 +117,13 @@ impl<T: Transport> Transport for TimeoutTransport<T> {
         self.check_timeout()?;
         let n = self.inner.receive(buf)?;
         if n > 0 {
-            self.last = Instant::now();
+            self.refresh();
         }
         Ok(n)
+    }
+
+    fn update_timeout(&mut self) {
+        self.refresh();
     }
 }
 

@@ -34,8 +34,10 @@ impl<T> RateLimitedTransport<T> {
     pub fn into_inner(self) -> T {
         self.inner
     }
+}
 
-    fn regulate(&mut self, sent: u64) {
+impl<T: Transport> RateLimitedTransport<T> {
+    fn regulate(&mut self, sent: u64) -> io::Result<()> {
         const ONE_SEC: u64 = 1_000_000;
         const MIN_SLEEP: u64 = ONE_SEC / 10;
 
@@ -50,15 +52,17 @@ impl<T> RateLimitedTransport<T> {
         let sleep_us = self.backlog.saturating_mul(ONE_SEC) / self.bwlimit;
         if sleep_us < MIN_SLEEP {
             self.prior = Some(start);
-            return;
+            return Ok(());
         }
 
         (self.sleeper)(Duration::from_micros(sleep_us));
+        self.inner.update_timeout();
         let after = Instant::now();
         let elapsed_us = after.duration_since(start).as_micros() as u64;
         let leftover = sleep_us.saturating_sub(elapsed_us);
         self.backlog = leftover.saturating_mul(self.bwlimit) / ONE_SEC;
         self.prior = Some(after);
+        Ok(())
     }
 }
 
@@ -68,7 +72,7 @@ impl<T: Transport> Transport for RateLimitedTransport<T> {
         while offset < data.len() {
             let end = std::cmp::min(offset + self.burst, data.len());
             self.inner.send(&data[offset..end])?;
-            self.regulate((end - offset) as u64);
+            self.regulate((end - offset) as u64)?;
             offset = end;
         }
         Ok(())
