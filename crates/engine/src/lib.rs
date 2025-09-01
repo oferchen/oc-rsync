@@ -476,15 +476,83 @@ fn write_sparse(file: &mut File, data: &[u8]) -> Result<()> {
     Ok(())
 }
 
+fn format_number(n: u64) -> String {
+    let mut s = n.to_string();
+    let mut i = s.len() as isize - 3;
+    while i > 0 {
+        s.insert(i as usize, ',');
+        i -= 3;
+    }
+    s
+}
+
+struct Progress<'a> {
+    total: u64,
+    written: u64,
+    last: std::time::Instant,
+    human_readable: bool,
+    #[allow(dead_code)]
+    dest: &'a Path,
+}
+
+impl<'a> Progress<'a> {
+    fn new(dest: &'a Path, total: u64, human_readable: bool, initial: u64) -> Self {
+        eprintln!("{}", dest.display());
+        Self {
+            total,
+            written: initial,
+            last: std::time::Instant::now(),
+            human_readable,
+            dest,
+        }
+    }
+
+    fn add(&mut self, bytes: u64) {
+        self.written += bytes;
+        if self.last.elapsed() >= std::time::Duration::from_secs(1) && self.written < self.total {
+            self.print(false);
+            self.last = std::time::Instant::now();
+        }
+    }
+
+    fn finish(&mut self) {
+        self.print(true);
+    }
+
+    fn print(&self, done: bool) {
+        use std::io::Write as _;
+        let bytes = if self.human_readable {
+            human_bytes(self.written)
+        } else {
+            format_number(self.written)
+        };
+        let percent = if self.total == 0 {
+            100
+        } else {
+            self.written * 100 / self.total
+        };
+        if done {
+            eprintln!("\r{:>11} {:>3}%", bytes, percent);
+        } else {
+            eprint!("\r{:>11} {:>3}%", bytes, percent);
+            let _ = std::io::stderr().flush();
+        }
+    }
+}
+
 fn apply_op_plain<R: Read + Seek, W: Write + Seek>(
     basis: &mut R,
     op: Op,
     out: &mut W,
     buf: &mut [u8],
+    progress: &mut Option<Progress>,
 ) -> Result<()> {
     match op {
         Op::Data(d) => {
             out.write_all(&d)?;
+            if let Some(p) = progress {
+                p.add(d.len() as u64);
+            }
         }
         Op::Copy { offset, len } => {
             basis.seek(SeekFrom::Start(offset as u64))?;
@@ -494,6 +562,9 @@ fn apply_op_plain<R: Read + Seek, W: Write + Seek>(
                 basis.read_exact(&mut buf[..to_read])?;
                 out.write_all(&buf[..to_read])?;
                 remaining -= to_read;
+                if let Some(p) = progress {
+                    p.add(to_read as u64);
+                }
             }
         }
     }
@@ -505,15 +576,22 @@ fn apply_op_inplace<R: Read + Seek>(
     op: Op,
     out: &mut File,
     buf: &mut [u8],
+    progress: &mut Option<Progress>,
 ) -> Result<()> {
     match op {
         Op::Data(d) => {
             out.write_all(&d)?;
+            if let Some(p) = progress {
+                p.add(d.len() as u64);
+            }
         }
         Op::Copy { offset, len } => {
             let pos = out.stream_position()?;
             if offset as u64 == pos {
                 out.seek(SeekFrom::Current(len as i64))?;
+                if let Some(p) = progress {
+                    p.add(len as u64);
+                }
             } else {
                 basis.seek(SeekFrom::Start(offset as u64))?;
                 let mut remaining = len;
@@ -522,6 +600,9 @@ fn apply_op_inplace<R: Read + Seek>(
                     basis.read_exact(&mut buf[..to_read])?;
                     out.write_all(&buf[..to_read])?;
                     remaining -= to_read;
+                    if let Some(p) = progress {
+                        p.add(to_read as u64);
+                    }
                 }
             }
         }
@@ -534,10 +615,14 @@ fn apply_op_sparse<R: Read + Seek>(
     op: Op,
     out: &mut File,
     buf: &mut [u8],
+    progress: &mut Option<Progress>,
 ) -> Result<()> {
     match op {
         Op::Data(d) => {
             write_sparse(out, &d)?;
+            if let Some(p) = progress {
+                p.add(d.len() as u64);
+            }
         }
         Op::Copy { offset, len } => {
             basis.seek(SeekFrom::Start(offset as u64))?;
@@ -547,6 +632,9 @@ fn apply_op_sparse<R: Read + Seek>(
                 basis.read_exact(&mut buf[..to_read])?;
                 write_sparse(out, &buf[..to_read])?;
                 remaining -= to_read;
+                if let Some(p) = progress {
+                    p.add(to_read as u64);
+                }
             }
         }
     }
@@ -559,6 +647,7 @@ fn apply_delta<R: Read + Seek, W: Write + Seek + Any, I>(
     out: &mut W,
     opts: &SyncOptions,
     mut skip: u64,
+    progress: &mut Option<Progress>,
 ) -> Result<()>
 where
     I: IntoIterator<Item = Result<Op>>,
@@ -602,7 +691,7 @@ where
         for op in ops {
             let op = op?;
             if let Some(op) = adjust(op) {
-                apply_op_inplace(basis, op, file, &mut buf)?;
+                apply_op_inplace(basis, op, file, &mut buf, progress)?;
             }
         }
     } else if opts.sparse {
@@ -612,7 +701,7 @@ where
         for op in ops {
             let op = op?;
             if let Some(op) = adjust(op) {
-                apply_op_sparse(basis, op, file, &mut buf)?;
+                apply_op_sparse(basis, op, file, &mut buf, progress)?;
             }
         }
         let pos = file.stream_position()?;
@@ -621,7 +710,7 @@ where
         for op in ops {
             let op = op?;
             if let Some(op) = adjust(op) {
-                apply_op_plain(basis, op, out, &mut buf)?;
+                apply_op_plain(basis, op, out, &mut buf, progress)?;
             }
         }
     }
@@ -882,10 +971,9 @@ impl Sender {
             }
             Ok(op)
         });
-        let write_path = recv.apply(path, dest, rel, ops)?;
+        recv.apply(path, dest, rel, ops)?;
         drop(atime_guard);
         recv.copy_metadata(path, dest)?;
-        recv.progress(&write_path)?;
         Ok(true)
     }
 }
@@ -1095,6 +1183,16 @@ impl Receiver {
         } else {
             None
         };
+        let mut progress = if self.opts.progress {
+            Some(Progress::new(
+                dest,
+                src_len,
+                self.opts.human_readable,
+                resume,
+            ))
+        } else {
+            None
+        };
         let ops = delta.into_iter().map(|op_res| {
             let mut op = op_res?;
             if let Some(codec) = file_codec {
@@ -1117,7 +1215,10 @@ impl Receiver {
             }
             Ok(op)
         });
-        apply_delta(&mut basis, ops, &mut out, &self.opts, 0)?;
+        apply_delta(&mut basis, ops, &mut out, &self.opts, 0, &mut progress)?;
+        if let Some(mut p) = progress {
+            p.finish();
+        }
         if !self.opts.write_devices {
             let len = out.stream_position()?;
             out.set_len(len)?;
@@ -1160,18 +1261,6 @@ impl Receiver {
         } else {
             dest.to_path_buf()
         })
-    }
-
-    pub fn progress(&self, dest: &Path) -> Result<()> {
-        if self.opts.progress {
-            let len = fs::metadata(dest).map_err(|e| io_context(dest, e))?.len();
-            if self.opts.human_readable {
-                eprintln!("{}: {}", dest.display(), human_bytes(len));
-            } else {
-                eprintln!("{}: {} bytes", dest.display(), len);
-            }
-        }
-        Ok(())
     }
 }
 
@@ -2197,7 +2286,16 @@ mod tests {
         .unwrap();
         let mut basis = Cursor::new(b"hello world".to_vec());
         let mut out = Cursor::new(Vec::new());
-        apply_delta(&mut basis, delta, &mut out, &SyncOptions::default(), 0).unwrap();
+        let mut progress = None;
+        apply_delta(
+            &mut basis,
+            delta,
+            &mut out,
+            &SyncOptions::default(),
+            0,
+            &mut progress,
+        )
+        .unwrap();
         assert_eq!(out.into_inner(), b"hello brave new world");
     }
 
@@ -2230,12 +2328,14 @@ mod tests {
         );
         let mut basis_reader = Cursor::new(basis.clone());
         let mut out = Cursor::new(Vec::new());
+        let mut progress = None;
         apply_delta(
             &mut basis_reader,
             delta.into_iter().map(Ok),
             &mut out,
             &SyncOptions::default(),
             0,
+            &mut progress,
         )
         .unwrap();
         assert_eq!(out.into_inner(), basis);
@@ -2426,7 +2526,16 @@ mod tests {
         let after = mem_usage_kb();
         let mut basis = Cursor::new(data.clone());
         let mut out = Cursor::new(Vec::new());
-        apply_delta(&mut basis, delta, &mut out, &SyncOptions::default(), 0).unwrap();
+        let mut progress = None;
+        apply_delta(
+            &mut basis,
+            delta,
+            &mut out,
+            &SyncOptions::default(),
+            0,
+            &mut progress,
+        )
+        .unwrap();
         assert_eq!(out.into_inner(), data);
         let growth = after.saturating_sub(before);
         assert!(growth < 10 * 1024, "memory grew too much: {}KB", growth);
