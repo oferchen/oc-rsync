@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use daemon::{parse_config_file, parse_module, Module};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use clap::parser::ValueSource;
 use clap::{ArgAction, ArgMatches, Args, CommandFactory, FromArgMatches, Parser};
@@ -765,10 +765,21 @@ pub fn spawn_daemon_session(
     } else {
         (host, port.unwrap_or(873))
     };
+    let start = Instant::now();
     let mut t = TcpTransport::connect(host, port, contimeout, family).map_err(EngineError::from)?;
     let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(EngineError::Other)?;
     t.apply_sockopts(&parsed).map_err(EngineError::from)?;
-    t.set_read_timeout(timeout).map_err(EngineError::from)?;
+    let handshake_timeout = contimeout
+        .map(|dur| {
+            dur.checked_sub(start.elapsed())
+                .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "connection timed out"))
+        })
+        .transpose()
+        .map_err(EngineError::from)?;
+    t.set_read_timeout(handshake_timeout)
+        .map_err(EngineError::from)?;
+    t.set_write_timeout(handshake_timeout)
+        .map_err(EngineError::from)?;
     if let Some(p) = early_input {
         if let Ok(data) = fs::read(p) {
             t.send(&data).map_err(EngineError::from)?;
@@ -811,6 +822,8 @@ pub fn spawn_daemon_session(
             line.clear();
         }
     }
+    t.set_read_timeout(timeout).map_err(EngineError::from)?;
+    t.set_write_timeout(timeout).map_err(EngineError::from)?;
 
     let line = format!("{module}\n");
     t.send(line.as_bytes()).map_err(EngineError::from)?;
