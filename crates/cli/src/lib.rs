@@ -844,6 +844,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         .dst
         .take()
         .ok_or_else(|| EngineError::Other("missing DST".into()))?;
+    if opts.archive {
+        opts.recursive = true;
+    }
     let matcher = build_matcher(&opts, matches)?;
     let addr_family = if opts.ipv4 {
         Some(AddressFamily::V4)
