@@ -549,7 +549,7 @@ struct ClientOpts {
     exclude_from: Vec<PathBuf>,
     #[arg(long, value_name = "FILE")]
     files_from: Vec<PathBuf>,
-    #[arg(long)]
+    #[arg(long, short = '0')]
     from0: bool,
 }
 
@@ -1746,11 +1746,10 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("filter_file")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
-            let content = fs::read_to_string(file)?;
-            add_rules(
-                idx,
-                parse_filters(&content).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-            );
+            let data = fs::read(file)?;
+            let rs = filters::parse_from_bytes(&data, opts.from0, &mut HashSet::new(), 0)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+            add_rules(idx, rs);
         }
     }
     if let Some(values) = matches.get_many::<String>("include") {
