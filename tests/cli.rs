@@ -7,6 +7,7 @@ use logging::progress_formatter;
 #[cfg(unix)]
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 use predicates::prelude::PredicateBooleanExt;
+use serial_test::serial;
 use std::fs;
 use std::io::{Seek, SeekFrom, Write};
 #[cfg(unix)]
@@ -916,7 +917,9 @@ fn checksum_forces_transfer_cli() {
 
 #[cfg(unix)]
 #[test]
+#[serial]
 fn perms_flag_preserves_permissions() {
+    use nix::sys::stat::{umask, Mode};
     use std::fs;
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
@@ -932,16 +935,55 @@ fn perms_flag_preserves_permissions() {
     let mtime = FileTime::from_last_modification_time(&fs::metadata(&file).unwrap());
     set_file_mtime(&dst_file, mtime).unwrap();
 
+    let old_umask = umask(Mode::from_bits_truncate(0o077));
+
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args(["--local", "--perms", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
+
+    umask(old_umask);
 
     let mode = fs::metadata(dst_dir.join("a.txt"))
         .unwrap()
         .permissions()
         .mode();
     assert_eq!(mode & 0o7777, 0o741);
+}
+
+#[cfg(unix)]
+#[test]
+#[serial]
+fn default_umask_masks_permissions() {
+    use nix::sys::stat::{umask, Mode};
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("a.sh");
+    fs::write(&file, b"hi").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o754)).unwrap();
+
+    let old_umask = umask(Mode::from_bits_truncate(0o027));
+
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", &src_arg, dst_dir.to_str().unwrap()])
+        .assert()
+        .success();
+
+    umask(old_umask);
+
+    let mode = fs::metadata(dst_dir.join("a.sh"))
+        .unwrap()
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(mode, 0o754 & !0o027);
 }
 
 #[cfg(unix)]
