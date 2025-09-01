@@ -11,7 +11,7 @@ use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
 use std::os::fd::AsRawFd;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use tempfile::NamedTempFile;
@@ -1736,7 +1736,11 @@ fn delete_extraneous(
     opts: &SyncOptions,
     stats: &mut Stats,
 ) -> Result<()> {
-    let walker = walk(dst, 1024, opts.links);
+    let walker = walk(
+        dst,
+        1024,
+        opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
+    );
     let mut state = String::new();
 
     let mut first_err: Option<EngineError> = None;
@@ -1870,7 +1874,11 @@ pub fn sync(
     }
     if opts.list_only {
         let matcher = matcher.clone().with_root(src_root.clone());
-        let walker = walk(&src_root, 1024, opts.links);
+        let walker = walk(
+            &src_root,
+            1024,
+            opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
+        );
         let mut state = String::new();
         for batch in walker {
             let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1940,7 +1948,11 @@ pub fn sync(
     }
     sender.start();
     let mut state = String::new();
-    let mut walker = walk(&src_root, 1024, opts.links);
+    let mut walker = walk(
+        &src_root,
+        1024,
+        opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
+    );
     while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
@@ -2117,10 +2129,10 @@ pub fn sync(
                     } else {
                         src_root.join(&target)
                     };
-                    let is_unsafe = match fs::canonicalize(&target_path) {
-                        Ok(p) => !p.starts_with(&src_root),
-                        Err(_) => true,
-                    };
+                    let is_unsafe = target.is_absolute()
+                        || target
+                            .components()
+                            .any(|c| matches!(c, Component::ParentDir));
                     if opts.safe_links && is_unsafe {
                         continue;
                     }
@@ -2128,9 +2140,8 @@ pub fn sync(
                         continue;
                     }
                     let meta = fs::metadata(&target_path).ok();
-                    if opts.copy_links
-                        || (opts.copy_dirlinks
-                            && meta.as_ref().map(|m| m.is_dir()).unwrap_or(false))
+                    if (opts.copy_dirlinks && meta.as_ref().map(|m| m.is_dir()).unwrap_or(false))
+                        || opts.copy_links
                         || (opts.copy_unsafe_links && is_unsafe)
                     {
                         if let Some(meta) = meta {
@@ -2160,6 +2171,11 @@ pub fn sync(
                             if opts.remove_source_files {
                                 remove_file_opts(&path, opts)?;
                             }
+                        } else {
+                            return Err(EngineError::Other(format!(
+                                "symlink has no referent: {}",
+                                path.display()
+                            )));
                         }
                     } else if opts.links {
                         let created = fs::symlink_metadata(&dest_path).is_err();

@@ -1584,6 +1584,29 @@ fn links_copy_dangling_symlink() {
 
 #[cfg(unix)]
 #[test]
+fn links_preserve_absolute_symlink() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    let file = src.join("file");
+    std::fs::write(&file, b"hi").unwrap();
+    let abs = file.canonicalize().unwrap();
+    symlink(&abs, src.join("abs")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let target = std::fs::read_link(dst.join("abs")).unwrap();
+    assert_eq!(target, abs);
+}
+
+#[cfg(unix)]
+#[test]
 fn links_replace_and_skip_existing() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
@@ -1680,6 +1703,51 @@ fn copy_dirlinks_transforms_directory_symlinks() {
 
 #[cfg(unix)]
 #[test]
+fn copy_links_resolves_relative_and_absolute_targets() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    let file = src.join("file");
+    std::fs::write(&file, b"data").unwrap();
+    symlink("file", src.join("rel")).unwrap();
+    let abs = file.canonicalize().unwrap();
+    symlink(&abs, src.join("abs")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--copy-links", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    assert!(dst.join("rel").is_file());
+    assert_eq!(std::fs::read(dst.join("rel")).unwrap(), b"data");
+    assert!(dst.join("abs").is_file());
+    assert_eq!(std::fs::read(dst.join("abs")).unwrap(), b"data");
+}
+
+#[cfg(unix)]
+#[test]
+fn copy_links_errors_on_dangling_symlink() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    symlink("missing", src.join("dangling")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--copy-links", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("symlink has no referent"));
+    assert!(!dst.join("dangling").exists());
+}
+
+#[cfg(unix)]
+#[test]
 fn safe_links_resolve_source_symlink() {
     let dir = tempdir().unwrap();
     let real = dir.path().join("real");
@@ -1705,6 +1773,34 @@ fn safe_links_resolve_source_symlink() {
 
     let meta = std::fs::symlink_metadata(dst.join("safe")).unwrap();
     assert!(meta.file_type().is_symlink());
+}
+
+#[cfg(unix)]
+#[test]
+fn safe_links_skip_absolute_symlink() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    let file = src.join("file");
+    std::fs::write(&file, b"hi").unwrap();
+    let abs = file.canonicalize().unwrap();
+    symlink(&abs, src.join("abs")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--links",
+            "--safe-links",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("abs").exists());
 }
 
 #[cfg(unix)]
