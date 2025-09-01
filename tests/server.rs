@@ -44,16 +44,20 @@ fn server_handshake_succeeds() {
     let mut stdin = child.stdin.take().unwrap();
     let mut stdout = child.stdout.take().unwrap();
 
+    let mut transcript = Vec::new();
+
     stdin.write_all(&[0]).unwrap();
     stdin.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
 
     let mut ver_buf = [0u8; 4];
     stdout.read_exact(&mut ver_buf).unwrap();
+    transcript.extend_from_slice(&ver_buf);
     assert_eq!(u32::from_be_bytes(ver_buf), 31);
 
     stdin.write_all(&CAP_CODECS.to_be_bytes()).unwrap();
     let mut cap_buf = [0u8; 4];
     stdout.read_exact(&mut cap_buf).unwrap();
+    transcript.extend_from_slice(&cap_buf);
     assert_eq!(u32::from_be_bytes(cap_buf) & CAP_CODECS, CAP_CODECS);
 
     let codecs = available_codecs();
@@ -65,12 +69,14 @@ fn server_handshake_succeeds() {
 
     let mut hdr = [0u8; 8];
     stdout.read_exact(&mut hdr).unwrap();
+    transcript.extend_from_slice(&hdr);
     let channel = u16::from_be_bytes([hdr[0], hdr[1]]);
     let tag = Tag::try_from(hdr[2]).unwrap();
     let msg = Msg::try_from(hdr[3]).unwrap();
     let len = u32::from_be_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
     let mut payload = vec![0u8; len];
     stdout.read_exact(&mut payload).unwrap();
+    transcript.extend_from_slice(&payload);
     let frame = Frame {
         header: FrameHeader {
             channel,
@@ -87,6 +93,9 @@ fn server_handshake_succeeds() {
     };
     assert_eq!(server_codecs, codecs);
 
+    let expected = fs::read("tests/fixtures/server_handshake_success.bin").unwrap();
+    assert_eq!(transcript, expected);
+
     let status = child.wait().unwrap();
     assert!(status.success());
 }
@@ -101,11 +110,17 @@ fn server_rejects_unsupported_version() {
         .spawn()
         .unwrap();
     let mut stdin = child.stdin.take().unwrap();
+    let mut stdout = child.stdout.take().unwrap();
 
     let bad = MIN_VERSION - 1;
     stdin.write_all(&[0]).unwrap();
     stdin.write_all(&bad.to_be_bytes()).unwrap();
     drop(stdin);
+
+    let mut ver_buf = [0u8; 4];
+    stdout.read_exact(&mut ver_buf).unwrap();
+    let expected = fs::read("tests/fixtures/server_handshake_unsupported_version.bin").unwrap();
+    assert_eq!(ver_buf.to_vec(), expected);
 
     let status = child.wait().unwrap();
     assert!(!status.success());
