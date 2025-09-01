@@ -941,6 +941,8 @@ fn daemon_respects_module_host_lists() {
         .set_read_timeout(Some(Duration::from_millis(200)))
         .unwrap();
     stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+    stream.read_exact(&mut buf).unwrap();
+    stream.write_all(b"data\n").unwrap();
     let res = stream.read(&mut buf);
     assert!(res.is_err() || res.unwrap() == 0);
     let _ = child.kill();
