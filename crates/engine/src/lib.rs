@@ -12,9 +12,9 @@ use std::os::fd::AsRawFd;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
-use std::sync::Arc;
 #[cfg(feature = "xattr")]
 use std::rc::Rc;
+use std::sync::Arc;
 #[cfg(unix)]
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -1171,13 +1171,25 @@ impl Receiver {
         } else {
             dest.to_path_buf()
         };
-        let auto_tmp = !self.opts.inplace
+        let mut auto_tmp = !self.opts.inplace
             && !self.opts.partial
             && self.opts.temp_dir.is_none()
             && basis_path == dest
             && !self.opts.write_devices;
         if auto_tmp {
             tmp_dest = dest.with_extension("tmp");
+        }
+        #[cfg(unix)]
+        if self.opts.temp_dir.is_some() {
+            let dest_parent = dest.parent().unwrap_or_else(|| Path::new("."));
+            let tmp_parent = tmp_dest.parent().unwrap_or_else(|| Path::new("."));
+            if let (Ok(d_meta), Ok(t_meta)) = (fs::metadata(dest_parent), fs::metadata(tmp_parent))
+            {
+                if d_meta.dev() != t_meta.dev() {
+                    tmp_dest = dest.with_extension("tmp");
+                    auto_tmp = true;
+                }
+            }
         }
         let mut needs_rename =
             !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some() || auto_tmp);

@@ -618,6 +618,71 @@ fn temp_files_created_in_temp_dir() {
 }
 
 #[test]
+#[cfg(unix)]
+fn temp_dir_cross_filesystem_temp_file_in_dest() {
+    let base = tempdir_in(".").unwrap();
+    let src_dir = base.path().join("src");
+    let dst_dir = base.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    let data = vec![b'x'; 200_000];
+    fs::write(src_dir.join("a.txt"), &data).unwrap();
+
+    let tmp_dir = match Tmpfs::new() {
+        Some(t) => t,
+        None => {
+            eprintln!("skipping cross-filesystem temp-dir test; mount failed");
+            return;
+        }
+    };
+
+    let dst_dev = fs::metadata(&dst_dir).unwrap().dev();
+    let tmp_dev = fs::metadata(tmp_dir.path()).unwrap().dev();
+    assert_ne!(dst_dev, tmp_dev, "devices match");
+
+    let src_arg = format!("{}/", src_dir.display());
+    let mut child = std::process::Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--partial",
+            "--bwlimit",
+            "10240",
+            "--temp-dir",
+            tmp_dir.path().to_str().unwrap(),
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+
+    let tmp_in_dst = dst_dir.join("a.tmp");
+    let tmp_in_tmp = tmp_dir.path().join("a.tmp");
+    let mut found = false;
+    for _ in 0..50 {
+        if tmp_in_dst.exists() {
+            assert!(!tmp_in_tmp.exists());
+            found = true;
+            break;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    assert!(
+        found,
+        "temp file not created in destination during transfer"
+    );
+    assert!(
+        !tmp_in_tmp.exists(),
+        "temp dir used despite differing filesystems"
+    );
+
+    let out = fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out.len(), data.len());
+}
+
+#[test]
 fn destination_is_replaced_atomically() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
