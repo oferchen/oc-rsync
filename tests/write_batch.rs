@@ -1,3 +1,4 @@
+// tests/write_batch.rs
 use assert_cmd::Command;
 use std::fs;
 use tempfile::tempdir;

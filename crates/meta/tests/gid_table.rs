@@ -1,3 +1,4 @@
+// crates/meta/tests/gid_table.rs
 use meta::{parse_chown, parse_id_map, GidTable, IdKind};
 
 #[test]

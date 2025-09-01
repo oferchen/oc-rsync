@@ -1,3 +1,4 @@
+// tests/ignore_missing_args.rs
 use assert_cmd::Command;
 use tempfile::tempdir;
 

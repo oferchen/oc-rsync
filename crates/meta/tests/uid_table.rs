@@ -1,3 +1,4 @@
+// crates/meta/tests/uid_table.rs
 use meta::{parse_chown, parse_id_map, IdKind, UidTable};
 
 #[test]

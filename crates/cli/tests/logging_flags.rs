@@ -1,3 +1,4 @@
+// crates/cli/tests/logging_flags.rs
 use assert_cmd::Command;
 use oc_rsync_cli::cli_command;
 use tempfile::tempdir;
