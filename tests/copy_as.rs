@@ -91,3 +91,40 @@ fn copy_as_uses_default_group() {
     assert_eq!(meta.uid(), 1);
     assert_eq!(meta.gid(), default_gid);
 }
+
+#[cfg(unix)]
+#[test]
+fn copy_as_preserves_mode() {
+    if !can_chown() {
+        return;
+    }
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("file.txt");
+    fs::write(&file, b"hi").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o4755)).unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--copy-as=1:1",
+            "--perms",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let meta = fs::metadata(dst_dir.join("file.txt")).unwrap();
+    assert_eq!(meta.uid(), 1);
+    assert_eq!(meta.gid(), 1);
+    assert_eq!(meta.permissions().mode() & 0o7777, 0o4755);
+}
