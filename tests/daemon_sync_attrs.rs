@@ -65,10 +65,12 @@ fn daemon_preserves_xattrs() {
     let file = src.join("file");
     fs::write(&file, b"hi").unwrap();
     xattr::set(&file, "user.test", b"val").unwrap();
+    xattr::set(&file, "security.test", b"secret").unwrap();
 
     let srv_file = srv.join("file");
     fs::write(&srv_file, b"old").unwrap();
     xattr::set(&srv_file, "user.old", b"junk").unwrap();
+    xattr::set(&srv_file, "security.keep", b"dest").unwrap();
 
     let (mut child, port) = spawn_daemon(&srv);
     wait_for_daemon(port);
@@ -82,6 +84,13 @@ fn daemon_preserves_xattrs() {
     let val = xattr::get(srv.join("file"), "user.test").unwrap().unwrap();
     assert_eq!(&val[..], b"val");
     assert!(xattr::get(srv.join("file"), "user.old").unwrap().is_none());
+    assert!(xattr::get(srv.join("file"), "security.test")
+        .unwrap()
+        .is_none());
+    let keep = xattr::get(srv.join("file"), "security.keep")
+        .unwrap()
+        .unwrap();
+    assert_eq!(&keep[..], b"dest");
 
     let _ = child.kill();
     let _ = child.wait();
