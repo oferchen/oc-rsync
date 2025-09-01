@@ -62,7 +62,7 @@ fn server_handshake_succeeds() {
 
     let codecs = available_codecs();
     let payload = encode_codecs(&codecs);
-    let frame = Message::Codecs(payload).to_frame(0);
+    let frame = Message::Codecs(payload).to_frame(0, None);
     let mut buf = Vec::new();
     frame.encode(&mut buf).unwrap();
     stdin.write_all(&buf).unwrap();
@@ -86,7 +86,7 @@ fn server_handshake_succeeds() {
         },
         payload: payload.clone(),
     };
-    let msg = Message::from_frame(frame).unwrap();
+    let msg = Message::from_frame(frame, None).unwrap();
     let server_codecs = match msg {
         Message::Codecs(data) => decode_codecs(&data).unwrap(),
         _ => panic!("expected codecs message"),
@@ -128,7 +128,7 @@ fn server_handshake_parses_args() {
 
     let codecs = available_codecs();
     let payload = encode_codecs(&codecs);
-    let frame = Message::Codecs(payload).to_frame(0);
+    let frame = Message::Codecs(payload).to_frame(0, None);
     let mut buf = Vec::new();
     frame.encode(&mut buf).unwrap();
     stdin.write_all(&buf).unwrap();
@@ -198,12 +198,12 @@ fn server_exit_code_roundtrip() {
 
     let codecs = available_codecs();
     let payload = encode_codecs(&codecs);
-    let frame = Message::Codecs(payload).to_frame(0);
+    let frame = Message::Codecs(payload).to_frame(0, None);
     let mut buf = Vec::new();
     frame.encode(&mut buf).unwrap();
     stdin.write_all(&buf).unwrap();
 
-    let exit_frame = Message::Data(vec![ExitCode::Partial.into()]).to_frame(0);
+    let exit_frame = Message::Data(vec![ExitCode::Partial.into()]).to_frame(0, None);
     let mut exit_buf = Vec::new();
     exit_frame.encode(&mut exit_buf).unwrap();
     stdin.write_all(&exit_buf).unwrap();
@@ -248,6 +248,42 @@ fn stock_rsync_interop_over_ssh() {
         .unwrap();
     assert!(status.success());
     assert_eq!(fs::read(&dst).unwrap(), b"ssh_interop");
+}
+
+#[cfg(unix)]
+#[test]
+#[ignore]
+fn stock_rsync_server_interop_over_ssh() {
+    if Command::new("rsync")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_err()
+    {
+        eprintln!("skipping stock rsync server interop test: rsync not found");
+        return;
+    }
+
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src.txt");
+    let dst = dir.path().join("dst.txt");
+    fs::write(&src, b"client_interop").unwrap();
+
+    let rsh = dir.path().join("fake_rsh.sh");
+    fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
+    fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let oc = cargo_bin("oc-rsync");
+    let status = Command::new(oc)
+        .arg("-e")
+        .arg(rsh.to_str().unwrap())
+        .arg(&src)
+        .arg(format!("fake:{}", dst.display()))
+        .status()
+        .unwrap();
+    assert!(status.success());
+    assert_eq!(fs::read(&dst).unwrap(), b"client_interop");
 }
 
 #[cfg(unix)]

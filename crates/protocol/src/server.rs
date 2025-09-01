@@ -41,6 +41,7 @@ impl<R: Read, W: Write> Server<R, W> {
         let mut b = [0u8; 1];
         let mut cur = Vec::new();
         let mut in_env = false;
+        let mut saw_nonopt = false;
         loop {
             self.reader.read_exact(&mut b)?;
             if b[0] == 0 {
@@ -58,6 +59,16 @@ impl<R: Read, W: Write> Server<R, W> {
                     let v = parts.next().unwrap_or_default().to_string();
                     self.env.push((k, v));
                 } else {
+                    if s.starts_with('-') {
+                        if saw_nonopt {
+                            return Err(io::Error::new(
+                                io::ErrorKind::InvalidInput,
+                                "option after argument",
+                            ));
+                        }
+                    } else {
+                        saw_nonopt = true;
+                    }
                     self.args.push(s);
                 }
                 cur.clear();
@@ -84,11 +95,11 @@ impl<R: Read, W: Write> Server<R, W> {
         if self.caps & CAP_CODECS != 0 {
             match Frame::decode(&mut self.reader) {
                 Ok(frame) => {
-                    let msg = Message::from_frame(frame.clone())?;
+                    let msg = Message::from_frame(frame.clone(), None)?;
                     if let Message::Codecs(buf) = msg {
                         peer_codecs = decode_codecs(&buf)?;
                         let payload = encode_codecs(codecs);
-                        let frame = Message::Codecs(payload).to_frame(0);
+                        let frame = Message::Codecs(payload).to_frame(0, None);
                         frame.encode(&mut self.writer)?;
                         self.writer.flush()?;
                     } else {

@@ -1,9 +1,31 @@
 // crates/protocol/src/lib.rs
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use encoding_rs::Encoding;
 use filelist::{Decoder as FlistDecoder, Encoder as FlistEncoder, Entry as FlistEntry};
 use std::convert::TryFrom;
 use std::fmt;
 use std::io::{self, Read, Write};
+
+#[derive(Clone)]
+pub struct CharsetConv {
+    remote: &'static Encoding,
+}
+
+impl CharsetConv {
+    pub fn encode_remote(&self, s: &str) -> Vec<u8> {
+        let (res, _, _) = self.remote.encode(s);
+        res.into_owned()
+    }
+
+    pub fn decode_remote(&self, b: &[u8]) -> String {
+        let (res, _, _) = self.remote.decode(b);
+        res.into_owned()
+    }
+
+    pub fn new(remote: &'static Encoding) -> Self {
+        Self { remote }
+    }
+}
 
 pub mod demux;
 pub mod mux;
@@ -281,7 +303,7 @@ pub enum Message {
 }
 
 impl Message {
-    pub fn into_frame(self, channel: u16) -> Frame {
+    pub fn into_frame(self, channel: u16, iconv: Option<&CharsetConv>) -> Frame {
         match self {
             Message::Version(v) => {
                 let mut payload = Vec::new();
@@ -342,7 +364,11 @@ impl Message {
                 Frame { header, payload }
             }
             Message::Error(text) => {
-                let payload = text.into_bytes();
+                let payload = if let Some(cv) = iconv {
+                    cv.encode_remote(&text)
+                } else {
+                    text.into_bytes()
+                };
                 let header = FrameHeader {
                     channel,
                     tag: Tag::Message,
@@ -374,11 +400,11 @@ impl Message {
         }
     }
 
-    pub fn to_frame(&self, channel: u16) -> Frame {
-        self.clone().into_frame(channel)
+    pub fn to_frame(&self, channel: u16, iconv: Option<&CharsetConv>) -> Frame {
+        self.clone().into_frame(channel, iconv)
     }
 
-    pub fn from_frame(f: Frame) -> io::Result<Self> {
+    pub fn from_frame(f: Frame, iconv: Option<&CharsetConv>) -> io::Result<Self> {
         if f.header.len as usize != f.payload.len() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -404,8 +430,12 @@ impl Message {
                 Msg::FileListEntry => Ok(Message::FileListEntry(f.payload)),
                 Msg::Attributes => Ok(Message::Attributes(f.payload)),
                 Msg::Error => {
-                    let text = String::from_utf8(f.payload)
-                        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                    let text = if let Some(cv) = iconv {
+                        cv.decode_remote(&f.payload)
+                    } else {
+                        String::from_utf8(f.payload)
+                            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
+                    };
                     Ok(Message::Error(text))
                 }
                 Msg::Progress => {
@@ -428,15 +458,35 @@ impl Message {
         }
     }
 
-    pub fn from_file_list(entry: &FlistEntry, enc: &mut FlistEncoder) -> Self {
-        Message::FileListEntry(enc.encode_entry(entry))
+    pub fn from_file_list(
+        entry: &FlistEntry,
+        enc: &mut FlistEncoder,
+        iconv: Option<&CharsetConv>,
+    ) -> Self {
+        let mut e = entry.clone();
+        if let Some(cv) = iconv {
+            let s = String::from_utf8_lossy(&e.path);
+            e.path = cv.encode_remote(&s);
+        }
+        Message::FileListEntry(enc.encode_entry(&e))
     }
 
-    pub fn to_file_list(&self, dec: &mut FlistDecoder) -> io::Result<FlistEntry> {
+    pub fn to_file_list(
+        &self,
+        dec: &mut FlistDecoder,
+        iconv: Option<&CharsetConv>,
+    ) -> io::Result<FlistEntry> {
         match self {
-            Message::FileListEntry(bytes) => dec
-                .decode_entry(bytes)
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e)),
+            Message::FileListEntry(bytes) => {
+                let mut e = dec
+                    .decode_entry(bytes)
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                if let Some(cv) = iconv {
+                    let s = cv.decode_remote(&e.path);
+                    e.path = s.into_bytes();
+                }
+                Ok(e)
+            }
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "not a file list entry",
@@ -462,43 +512,43 @@ mod tests {
     #[test]
     fn frame_roundtrip() {
         let msg = Message::Data(b"hello".to_vec());
-        let frame = msg.to_frame(7);
+        let frame = msg.to_frame(7, None);
         let mut buf = Vec::new();
         frame.encode(&mut buf).unwrap();
         let decoded = Frame::decode(&buf[..]).unwrap();
         assert_eq!(decoded, frame);
-        let msg2 = Message::from_frame(decoded).unwrap();
+        let msg2 = Message::from_frame(decoded, None).unwrap();
         assert_eq!(msg2, msg);
 
         let msg4 = Message::Data(b"1234".to_vec());
-        let frame4 = msg4.to_frame(3);
+        let frame4 = msg4.to_frame(3, None);
         let mut buf4 = Vec::new();
         frame4.encode(&mut buf4).unwrap();
         let decoded4 = Frame::decode(&buf4[..]).unwrap();
         assert_eq!(decoded4, frame4);
-        let msg4_round = Message::from_frame(decoded4).unwrap();
+        let msg4_round = Message::from_frame(decoded4, None).unwrap();
         assert_eq!(msg4_round, msg4);
 
         let msgc = Message::Codecs(vec![0, 1]);
-        let framec = msgc.to_frame(1);
+        let framec = msgc.to_frame(1, None);
         let mut bufc = Vec::new();
         framec.encode(&mut bufc).unwrap();
         let decodedc = Frame::decode(&bufc[..]).unwrap();
         assert_eq!(decodedc, framec);
-        let msgc_round = Message::from_frame(decodedc).unwrap();
+        let msgc_round = Message::from_frame(decodedc, None).unwrap();
         assert_eq!(msgc_round, msgc);
     }
 
     #[test]
     fn keepalive_frame() {
         let msg = Message::KeepAlive;
-        let frame = msg.into_frame(0);
+        let frame = msg.into_frame(0, None);
         assert_eq!(frame.header.tag, Tag::KeepAlive);
         assert_eq!(frame.header.msg, Msg::KeepAlive);
         let mut buf = Vec::new();
         frame.encode(&mut buf).unwrap();
         let decoded = Frame::decode(&buf[..]).unwrap();
-        let msg2 = Message::from_frame(decoded).unwrap();
+        let msg2 = Message::from_frame(decoded, None).unwrap();
         assert_eq!(msg2, Message::KeepAlive);
     }
 
@@ -513,7 +563,7 @@ mod tests {
             },
             payload: vec![0; 5],
         };
-        assert!(Message::from_frame(frame).is_err());
+        assert!(Message::from_frame(frame, None).is_err());
     }
 
     #[test]
@@ -527,7 +577,7 @@ mod tests {
             },
             payload: vec![0; 5],
         };
-        assert!(Message::from_frame(frame).is_err());
+        assert!(Message::from_frame(frame, None).is_err());
     }
 
     #[test]

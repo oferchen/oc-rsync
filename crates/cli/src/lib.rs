@@ -21,6 +21,7 @@ use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions}
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
+use protocol::CharsetConv;
 use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
 use shell_words::split as shell_split;
 use transport::{
@@ -106,22 +107,6 @@ pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFla
     (info, debug)
 }
 
-pub struct CharsetConv {
-    remote: &'static Encoding,
-}
-
-impl CharsetConv {
-    fn encode_remote(&self, s: &str) -> Vec<u8> {
-        let (res, _, _) = self.remote.encode(s);
-        res.into_owned()
-    }
-
-    fn decode_remote(&self, b: &[u8]) -> String {
-        let (res, _, _) = self.remote.decode(b);
-        res.into_owned()
-    }
-}
-
 pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
     let mut parts = spec.split(',');
     let remote_label = parts
@@ -135,9 +120,9 @@ pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
             "iconv_open(\"{local_label}\", \"{remote_label}\") failed"
         ));
     }
-    Ok(CharsetConv {
-        remote: Encoding::for_label(remote_label.as_bytes()).unwrap(),
-    })
+    Ok(CharsetConv::new(
+        Encoding::for_label(remote_label.as_bytes()).unwrap(),
+    ))
 }
 
 #[derive(Parser, Debug)]
@@ -668,7 +653,6 @@ struct DaemonOpts {
     state_dir: Option<PathBuf>,
 }
 
-#[allow(dead_code)]
 #[derive(Parser, Debug)]
 struct ProbeOpts {
     #[arg(long)]
@@ -691,6 +675,9 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     }
     let mut opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
+    if opts.server {
+        return run_server(opts);
+    }
     if matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
         if let Ok(val) = env::var("RSYNC_PROTECT_ARGS") {
             if val != "0" {
@@ -1474,6 +1461,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
                 match (src_mod, dst_mod) {
                     (None, None) => {
+                        let connect_timeout = opts.connect_timeout;
                         let mut dst_session = SshStdioTransport::spawn_with_rsh(
                             &dst_host,
                             &dst_path.path,
@@ -1485,7 +1473,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.connect_timeout,
+                            connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
@@ -1500,7 +1488,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.connect_timeout,
+                            connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
@@ -1724,7 +1712,13 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
 fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
-        filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
+        if path == Path::new("-") {
+            let mut buf = Vec::new();
+            io::stdin().read_to_end(&mut buf)?;
+            Ok(filters::parse_list(&buf, from0))
+        } else {
+            filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
+        }
     }
 
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
@@ -1880,7 +1874,6 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     Ok(matcher)
 }
 
-#[allow(dead_code)]
 fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut modules: HashMap<String, Module> = HashMap::new();
     let mut secrets = opts.secrets_file.clone();
@@ -1999,7 +1992,6 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     .map_err(|e| EngineError::Other(format!("daemon failed to bind to port {port}: {e}")))
 }
 
-#[allow(dead_code)]
 fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
     if let Some(addr) = opts.addr {
         let mut stream = TcpStream::connect(&addr)?;
@@ -2024,7 +2016,7 @@ fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
 }
 
 #[allow(dead_code)]
-fn run_server() -> Result<()> {
+fn run_server(opts: ClientOpts) -> Result<()> {
     use protocol::{Server, CAP_CODECS};
     let stdin = io::stdin();
     let stdout = io::stdout();
@@ -2035,8 +2027,9 @@ fn run_server() -> Result<()> {
         .unwrap_or(Duration::from_secs(30));
     let codecs = available_codecs();
     let mut srv = Server::new(stdin.lock(), stdout.lock(), timeout);
+    let version = opts.protocol.unwrap_or(31);
     let _ = srv
-        .handshake(31, CAP_CODECS, &codecs)
+        .handshake(version, CAP_CODECS, &codecs)
         .map_err(|e| EngineError::Other(e.to_string()))?;
     Ok(())
 }

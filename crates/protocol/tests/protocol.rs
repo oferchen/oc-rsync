@@ -1,39 +1,42 @@
 // crates/protocol/tests/protocol.rs
+use encoding_rs::Encoding;
 use filelist::{Decoder as FDecoder, Encoder as FEncoder, Entry as FEntry};
-use protocol::{negotiate_version, Frame, Message, Msg, Tag, MIN_VERSION, SUPPORTED_PROTOCOLS};
+use protocol::{
+    negotiate_version, CharsetConv, Frame, Message, Msg, Tag, MIN_VERSION, SUPPORTED_PROTOCOLS,
+};
 
 #[test]
 fn frame_roundtrip() {
     let msg = Message::Data(b"hello".to_vec());
-    let frame = msg.to_frame(5);
+    let frame = msg.to_frame(5, None);
     let mut buf = Vec::new();
     frame.encode(&mut buf).unwrap();
     let decoded = Frame::decode(&buf[..]).unwrap();
     assert_eq!(decoded, frame);
-    let msg2 = Message::from_frame(decoded).unwrap();
+    let msg2 = Message::from_frame(decoded, None).unwrap();
     assert_eq!(msg2, msg);
 
     let msg4 = Message::Data(b"1234".to_vec());
-    let frame4 = msg4.to_frame(3);
+    let frame4 = msg4.to_frame(3, None);
     let mut buf4 = Vec::new();
     frame4.encode(&mut buf4).unwrap();
     let decoded4 = Frame::decode(&buf4[..]).unwrap();
     assert_eq!(decoded4, frame4);
-    let msg4_round = Message::from_frame(decoded4).unwrap();
+    let msg4_round = Message::from_frame(decoded4, None).unwrap();
     assert_eq!(msg4_round, msg4);
 }
 
 #[test]
 fn keepalive_roundtrip() {
     let msg = Message::KeepAlive;
-    let frame = msg.to_frame(0);
+    let frame = msg.to_frame(0, None);
     assert_eq!(frame.header.tag, Tag::KeepAlive);
     assert_eq!(frame.header.msg, Msg::KeepAlive);
     let mut buf = Vec::new();
     frame.encode(&mut buf).unwrap();
     let decoded = Frame::decode(&buf[..]).unwrap();
     assert_eq!(decoded, frame);
-    let msg2 = Message::from_frame(decoded).unwrap();
+    let msg2 = Message::from_frame(decoded, None).unwrap();
     assert_eq!(msg2, Message::KeepAlive);
 }
 
@@ -50,7 +53,7 @@ fn version_negotiation() {
 #[test]
 fn captured_frames_roundtrip() {
     let entry = FEntry {
-        path: "file.txt".into(),
+        path: b"file.txt".to_vec(),
         uid: 0,
         gid: 0,
     };
@@ -70,27 +73,27 @@ fn captured_frames_roundtrip() {
     .unwrap();
     let frame = Frame::decode(&expected[..]).unwrap();
     assert_eq!(frame.header.msg, Msg::FileListEntry);
-    let msg = Message::from_frame(frame.clone()).unwrap();
+    let msg = Message::from_frame(frame.clone(), None).unwrap();
     assert_eq!(msg, Message::FileListEntry(payload.clone()));
     let mut buf = Vec::new();
     Message::FileListEntry(payload.clone())
-        .into_frame(0)
+        .into_frame(0, None)
         .encode(&mut buf)
         .unwrap();
     assert_eq!(buf, expected);
     let mut fdec = FDecoder::new();
-    assert_eq!(msg.to_file_list(&mut fdec).unwrap(), entry);
+    assert_eq!(msg.to_file_list(&mut fdec, None).unwrap(), entry);
 
     const ATTRS: [u8; 16] = [
         0, 0, 0, 5, 0, 0, 0, 8, b'm', b'o', b'd', b'e', b'=', b'7', b'5', b'5',
     ];
     let frame = Frame::decode(&ATTRS[..]).unwrap();
     assert_eq!(frame.header.msg, Msg::Attributes);
-    let msg = Message::from_frame(frame.clone()).unwrap();
+    let msg = Message::from_frame(frame.clone(), None).unwrap();
     assert_eq!(msg, Message::Attributes(b"mode=755".to_vec()));
     let mut buf = Vec::new();
     Message::Attributes(b"mode=755".to_vec())
-        .into_frame(0)
+        .into_frame(0, None)
         .encode(&mut buf)
         .unwrap();
     assert_eq!(buf, ATTRS);
@@ -98,11 +101,11 @@ fn captured_frames_roundtrip() {
     const ERR: [u8; 12] = [0, 0, 0, 6, 0, 0, 0, 4, b'o', b'o', b'p', b's'];
     let frame = Frame::decode(&ERR[..]).unwrap();
     assert_eq!(frame.header.msg, Msg::Error);
-    let msg = Message::from_frame(frame.clone()).unwrap();
+    let msg = Message::from_frame(frame.clone(), None).unwrap();
     assert_eq!(msg, Message::Error("oops".to_string()));
     let mut buf = Vec::new();
     Message::Error("oops".to_string())
-        .into_frame(0)
+        .into_frame(0, None)
         .encode(&mut buf)
         .unwrap();
     assert_eq!(buf, ERR);
@@ -110,12 +113,36 @@ fn captured_frames_roundtrip() {
     const PROG: [u8; 16] = [0, 0, 0, 7, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0x30, 0x39];
     let frame = Frame::decode(&PROG[..]).unwrap();
     assert_eq!(frame.header.msg, Msg::Progress);
-    let msg = Message::from_frame(frame.clone()).unwrap();
+    let msg = Message::from_frame(frame.clone(), None).unwrap();
     assert_eq!(msg, Message::Progress(0x3039));
     let mut buf = Vec::new();
     Message::Progress(0x3039)
-        .into_frame(0)
+        .into_frame(0, None)
         .encode(&mut buf)
         .unwrap();
     assert_eq!(buf, PROG);
+}
+
+#[test]
+fn error_message_iconv_roundtrip() {
+    let cv = CharsetConv::new(Encoding::for_label(b"latin1").unwrap());
+    let msg = Message::Error("Grüße".into());
+    let frame = msg.to_frame(0, Some(&cv));
+    let decoded = Message::from_frame(frame, Some(&cv)).unwrap();
+    assert_eq!(decoded, msg);
+}
+
+#[test]
+fn filelist_iconv_roundtrip() {
+    let cv = CharsetConv::new(Encoding::for_label(b"latin1").unwrap());
+    let entry = FEntry {
+        path: "Grüße".as_bytes().to_vec(),
+        uid: 0,
+        gid: 0,
+    };
+    let mut enc = FEncoder::new();
+    let msg = Message::from_file_list(&entry, &mut enc, Some(&cv));
+    let mut dec = FDecoder::new();
+    let round = msg.to_file_list(&mut dec, Some(&cv)).unwrap();
+    assert_eq!(round, entry);
 }

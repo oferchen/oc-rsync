@@ -215,17 +215,25 @@ impl SshStdioTransport {
         while read < cap_buf.len() {
             let n = transport.receive(&mut cap_buf[read..])?;
             if n == 0 {
-                return Err(io::Error::other("failed to read capabilities"));
+                if read == 0 {
+                    break;
+                } else {
+                    return Err(io::Error::other("failed to read capabilities"));
+                }
             }
             read += n;
         }
-        let server_caps = u32::from_be_bytes(cap_buf);
+        let server_caps = if read == 4 {
+            u32::from_be_bytes(cap_buf)
+        } else {
+            0
+        };
         let caps = server_caps & local_caps;
 
         let mut peer_codecs = vec![Codec::Zlib];
         if caps & CAP_CODECS != 0 {
             let payload = compress::encode_codecs(&available_codecs());
-            let frame = Message::Codecs(payload).to_frame(0);
+            let frame = Message::Codecs(payload).to_frame(0, None);
             let mut buf = Vec::new();
             frame
                 .encode(&mut buf)
@@ -263,7 +271,8 @@ impl SshStdioTransport {
                 },
                 payload,
             };
-            let msg = Message::from_frame(frame).map_err(|e| io::Error::other(e.to_string()))?;
+            let msg =
+                Message::from_frame(frame, None).map_err(|e| io::Error::other(e.to_string()))?;
             if let Message::Codecs(data) = msg {
                 peer_codecs =
                     compress::decode_codecs(&data).map_err(|e| io::Error::other(e.to_string()))?;
@@ -330,8 +339,8 @@ impl SshStdioTransport {
             } else {
                 cmd.arg("rsync");
             }
-            cmd.args(remote_opts);
             cmd.arg("--server");
+            cmd.args(remote_opts);
             cmd.arg(path.as_os_str());
             Self::spawn_from_command(cmd)
         } else {
@@ -350,8 +359,8 @@ impl SshStdioTransport {
             } else {
                 args.push("rsync".to_string());
             }
-            args.extend_from_slice(remote_opts);
             args.push("--server".to_string());
+            args.extend_from_slice(remote_opts);
             args.push(path.to_string_lossy().into_owned());
             let mut cmd = Command::new(program);
             cmd.args(args);

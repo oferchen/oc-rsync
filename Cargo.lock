@@ -416,6 +416,7 @@ dependencies = [
  "checksums",
  "compress",
  "criterion",
+ "encoding_rs",
  "filelist",
  "filetime",
  "filters",
@@ -425,6 +426,7 @@ dependencies = [
  "meta",
  "nix 0.27.1",
  "posix-acl",
+ "protocol",
  "tempfile",
  "thiserror",
  "walk",
@@ -1074,6 +1076,7 @@ dependencies = [
  "byteorder",
  "checksums",
  "compress",
+ "encoding_rs",
  "filelist",
  "indexmap",
 ]

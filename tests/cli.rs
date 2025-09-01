@@ -656,12 +656,22 @@ fn temp_dir_cross_filesystem_temp_file_in_dest() {
         .spawn()
         .unwrap();
 
-    let tmp_in_dst = dst_dir.join("a.tmp");
-    let tmp_in_tmp = tmp_dir.path().join("a.tmp");
     let mut found = false;
     for _ in 0..50 {
-        if tmp_in_dst.exists() {
-            assert!(!tmp_in_tmp.exists());
+        let tmp_present = fs::read_dir(&dst_dir)
+            .unwrap()
+            .filter_map(|e| {
+                let name = e.ok()?.file_name();
+                let name = name.to_string_lossy();
+                if name.starts_with(".a.txt.") {
+                    Some(e.path())
+                } else {
+                    None
+                }
+            })
+            .next();
+        if tmp_present.is_some() {
+            assert!(fs::read_dir(tmp_dir.path()).unwrap().next().is_none());
             found = true;
             break;
         }
@@ -1985,6 +1995,33 @@ fn include_before_per_dir_merge_allows_file() {
         .success();
 
     assert!(dst.join("skip.txt").exists());
+}
+
+#[test]
+fn exclude_dot_anchor_only_skips_root() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::create_dir_all(src.join("sub")).unwrap();
+    std::fs::write(src.join("root.txt"), b"r").unwrap();
+    std::fs::write(src.join("sub/root.txt"), b"s").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--exclude=./root.txt",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("root.txt").exists());
+    assert!(dst.join("sub/root.txt").exists());
 }
 
 #[test]

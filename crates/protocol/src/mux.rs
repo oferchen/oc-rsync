@@ -79,20 +79,20 @@ impl Mux {
                 Ok(msg) => {
                     ch.last_sent = now;
                     self.next = (idx + 1) % len;
-                    return Some(msg.into_frame(id));
+                    return Some(msg.into_frame(id, None));
                 }
                 Err(TryRecvError::Empty) => {
                     if now.duration_since(ch.last_sent) >= self.keepalive {
                         ch.last_sent = now;
                         self.next = (idx + 1) % len;
-                        return Some(Message::KeepAlive.into_frame(id));
+                        return Some(Message::KeepAlive.into_frame(id, None));
                     }
                 }
                 Err(TryRecvError::Disconnected) => {
                     if now.duration_since(ch.last_sent) >= self.keepalive {
                         ch.last_sent = now;
                         self.next = (idx + 1) % len;
-                        return Some(Message::KeepAlive.into_frame(id));
+                        return Some(Message::KeepAlive.into_frame(id, None));
                     }
                 }
             }
