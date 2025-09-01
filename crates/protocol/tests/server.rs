@@ -10,7 +10,7 @@ use std::time::Duration;
 fn server_negotiates_version() {
     let local = available_codecs();
     let payload = encode_codecs(&local);
-    let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
+    let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0, None);
     let mut codecs_buf = Vec::new();
     codecs_frame.encode(&mut codecs_buf).unwrap();
     let latest = SUPPORTED_PROTOCOLS[0];
@@ -42,7 +42,7 @@ fn server_negotiates_version() {
 fn server_accepts_legacy_version() {
     let legacy = V32;
     let payload = encode_codecs(&available_codecs());
-    let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
+    let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0, None);
     let mut codecs_buf = Vec::new();
     codecs_frame.encode(&mut codecs_buf).unwrap();
     let mut input = Cursor::new({
@@ -76,7 +76,7 @@ fn server_accepts_legacy_version() {
 fn server_classic_versions() {
     let local = available_codecs();
     let payload = encode_codecs(&local);
-    let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
+    let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0, None);
     let mut codecs_buf = Vec::new();
     codecs_frame.encode(&mut codecs_buf).unwrap();
 
@@ -109,7 +109,7 @@ fn server_classic_versions() {
 fn server_negotiates_zstd() {
     let local = vec![Codec::Zstd, Codec::Zlib];
     let payload = encode_codecs(&local);
-    let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
+    let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0, None);
     let mut codecs_buf = Vec::new();
     codecs_frame.encode(&mut codecs_buf).unwrap();
     let latest = SUPPORTED_PROTOCOLS[0];
@@ -132,7 +132,7 @@ fn server_negotiates_zstd() {
 fn server_propagates_handshake_error() {
     let mut buf = Vec::new();
     protocol::Message::Error("fail".into())
-        .to_frame(0)
+        .to_frame(0, None)
         .encode(&mut buf)
         .unwrap();
     let latest = SUPPORTED_PROTOCOLS[0];
@@ -154,7 +154,7 @@ fn server_propagates_handshake_error() {
 fn server_propagates_handshake_exit_code() {
     let mut buf = Vec::new();
     protocol::Message::Data(vec![1])
-        .to_frame(0)
+        .to_frame(0, None)
         .encode(&mut buf)
         .unwrap();
     let latest = SUPPORTED_PROTOCOLS[0];
@@ -179,7 +179,7 @@ fn server_propagates_handshake_exit_code() {
 fn server_parses_args_and_env() {
     let local = available_codecs();
     let payload = encode_codecs(&local);
-    let frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
+    let frame = protocol::Message::Codecs(payload.clone()).to_frame(0, None);
     let mut frame_buf = Vec::new();
     frame.encode(&mut frame_buf).unwrap();
     let latest = SUPPORTED_PROTOCOLS[0];

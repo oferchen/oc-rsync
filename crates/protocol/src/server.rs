@@ -95,11 +95,11 @@ impl<R: Read, W: Write> Server<R, W> {
         if self.caps & CAP_CODECS != 0 {
             match Frame::decode(&mut self.reader) {
                 Ok(frame) => {
-                    let msg = Message::from_frame(frame.clone())?;
+                    let msg = Message::from_frame(frame.clone(), None)?;
                     if let Message::Codecs(buf) = msg {
                         peer_codecs = decode_codecs(&buf)?;
                         let payload = encode_codecs(codecs);
-                        let frame = Message::Codecs(payload).to_frame(0);
+                        let frame = Message::Codecs(payload).to_frame(0, None);
                         frame.encode(&mut self.writer)?;
                         self.writer.flush()?;
                     } else {

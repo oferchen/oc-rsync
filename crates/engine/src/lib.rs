@@ -99,13 +99,14 @@ fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
 }
 
 #[cfg(unix)]
+#[allow(clippy::useless_conversion)]
 fn default_umask() -> u32 {
     static UMASK: OnceLock<u32> = OnceLock::new();
     *UMASK.get_or_init(|| {
         use nix::sys::stat::{umask, Mode};
         let old = umask(Mode::from_bits_truncate(0));
         umask(old);
-        old.bits()
+        u32::from(old.bits())
     })
 }
 
@@ -266,11 +267,15 @@ fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
 }
 
 fn remove_dir_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
-    let res = if opts.force {
-        fs::remove_dir_all(path)
-    } else {
-        fs::remove_dir(path)
-    };
+    use std::io::ErrorKind;
+
+    let res = fs::remove_dir(path).or_else(|e| {
+        if e.kind() == ErrorKind::DirectoryNotEmpty && opts.force {
+            fs::remove_dir_all(path)
+        } else {
+            Err(e)
+        }
+    });
     match res {
         Ok(_) => Ok(()),
         Err(e) => {
@@ -2403,6 +2408,7 @@ pub fn sync(
 mod tests {
     use super::*;
     use checksums::rolling_checksum;
+    use compress::available_codecs;
     use tempfile::tempdir;
 
     #[test]

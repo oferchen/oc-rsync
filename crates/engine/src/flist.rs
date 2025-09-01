@@ -1,13 +1,37 @@
 // crates/engine/src/flist.rs
 
 use filelist::{Decoder, Encoder, Entry};
+use protocol::CharsetConv;
 
-pub fn encode(entries: &[Entry]) -> Vec<Vec<u8>> {
+pub fn encode(entries: &[Entry], iconv: Option<&CharsetConv>) -> Vec<Vec<u8>> {
     let mut enc = Encoder::new();
-    entries.iter().map(|e| enc.encode_entry(e)).collect()
+    entries
+        .iter()
+        .map(|e| {
+            let mut e = e.clone();
+            if let Some(cv) = iconv {
+                let s = String::from_utf8_lossy(&e.path);
+                e.path = cv.encode_remote(&s);
+            }
+            enc.encode_entry(&e)
+        })
+        .collect()
 }
 
-pub fn decode(chunks: &[Vec<u8>]) -> Result<Vec<Entry>, filelist::DecodeError> {
+pub fn decode(
+    chunks: &[Vec<u8>],
+    iconv: Option<&CharsetConv>,
+) -> Result<Vec<Entry>, filelist::DecodeError> {
     let mut dec = Decoder::new();
-    chunks.iter().map(|c| dec.decode_entry(c)).collect()
+    chunks
+        .iter()
+        .map(|c| {
+            let mut e = dec.decode_entry(c)?;
+            if let Some(cv) = iconv {
+                let s = cv.decode_remote(&e.path);
+                e.path = s.into_bytes();
+            }
+            Ok(e)
+        })
+        .collect()
 }

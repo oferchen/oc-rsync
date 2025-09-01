@@ -508,6 +508,50 @@ pub fn store_fake_super(path: &Path, uid: u32, gid: u32, mode: u32) {
     let _ = xattr::set(path, "user.rsync.mode", mode.to_string().as_bytes());
 }
 
+#[cfg(feature = "xattr")]
+pub fn copy_xattrs(
+    src: &Path,
+    dest: &Path,
+    include: Option<&dyn Fn(&OsStr) -> bool>,
+    include_for_delete: Option<&dyn Fn(&OsStr) -> bool>,
+) -> io::Result<()> {
+    let mut attrs = Vec::new();
+    match xattr::list(src) {
+        Ok(list) => {
+            for attr in list {
+                if let Some(name) = attr.to_str() {
+                    if name.starts_with("security.")
+                        || name == "system.posix_acl_access"
+                        || name == "system.posix_acl_default"
+                    {
+                        continue;
+                    }
+                }
+                if let Some(filter) = include {
+                    if !filter(attr.as_os_str()) {
+                        continue;
+                    }
+                }
+                match xattr::get(src, &attr) {
+                    Ok(Some(value)) => attrs.push((attr, value)),
+                    Ok(None) => {}
+                    Err(err) => {
+                        if !crate::should_ignore_xattr_error(&err) {
+                            return Err(err);
+                        }
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            if !crate::should_ignore_xattr_error(&err) {
+                return Err(err);
+            }
+        }
+    }
+    crate::apply_xattrs(dest, &attrs, include, include_for_delete)
+}
+
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub fn mknod(path: &Path, kind: SFlag, perm: Mode, dev: u64) -> io::Result<()> {
     use nix::libc::dev_t;

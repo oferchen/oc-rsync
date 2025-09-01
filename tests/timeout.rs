@@ -175,9 +175,19 @@ fn daemon_handshake_timeout() {
 
 #[test]
 fn daemon_connection_timeout_exit_code() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    thread::spawn(move || {
+        let (_sock, _) = listener.accept().unwrap();
+        thread::sleep(Duration::from_secs(5));
+    });
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--contimeout=1", "rsync://203.0.113.1/test/", "."])
+        .args([
+            "--contimeout=1",
+            &format!("rsync://127.0.0.1:{}/mod/", addr.port()),
+            ".",
+        ])
         .assert()
         .failure()
         .code(u8::from(ExitCode::ConnTimeout) as i32);

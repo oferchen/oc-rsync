@@ -21,6 +21,7 @@ use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions}
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
+use protocol::CharsetConv;
 use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
 use shell_words::split as shell_split;
 use transport::{
@@ -106,22 +107,6 @@ pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFla
     (info, debug)
 }
 
-pub struct CharsetConv {
-    remote: &'static Encoding,
-}
-
-impl CharsetConv {
-    fn encode_remote(&self, s: &str) -> Vec<u8> {
-        let (res, _, _) = self.remote.encode(s);
-        res.into_owned()
-    }
-
-    fn decode_remote(&self, b: &[u8]) -> String {
-        let (res, _, _) = self.remote.decode(b);
-        res.into_owned()
-    }
-}
-
 pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
     let mut parts = spec.split(',');
     let remote_label = parts
@@ -135,9 +120,9 @@ pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
             "iconv_open(\"{local_label}\", \"{remote_label}\") failed"
         ));
     }
-    Ok(CharsetConv {
-        remote: Encoding::for_label(remote_label.as_bytes()).unwrap(),
-    })
+    Ok(CharsetConv::new(
+        Encoding::for_label(remote_label.as_bytes()).unwrap(),
+    ))
 }
 
 #[derive(Parser, Debug)]
@@ -414,7 +399,7 @@ struct ClientOpts {
         value_parser = parse_nonzero_duration,
         help_heading = "Misc"
     )]
-    contimeout: Option<Duration>,
+    connect_timeout: Option<Duration>,
     #[arg(long = "modify-window", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     modify_window: Option<Duration>,
     #[arg(
@@ -633,7 +618,6 @@ pub fn parse_rsync_path(raw: Option<String>) -> Result<Option<RshCommand>> {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Parser, Debug)]
 struct DaemonOpts {
     #[arg(long)]
@@ -650,13 +634,14 @@ struct DaemonOpts {
     hosts_deny: Vec<String>,
     #[arg(long = "motd", value_name = "FILE")]
     motd: Option<PathBuf>,
+    #[arg(long = "pid-file", value_name = "FILE")]
+    pid_file: Option<PathBuf>,
     #[arg(long = "lock-file", value_name = "FILE")]
     lock_file: Option<PathBuf>,
     #[arg(long = "state-dir", value_name = "DIR")]
     state_dir: Option<PathBuf>,
 }
 
-#[allow(dead_code)]
 #[derive(Parser, Debug)]
 struct ProbeOpts {
     #[arg(long)]
@@ -824,7 +809,7 @@ pub fn spawn_daemon_session(
     password_file: Option<&Path>,
     no_motd: bool,
     timeout: Option<Duration>,
-    contimeout: Option<Duration>,
+    connect_timeout: Option<Duration>,
     family: Option<AddressFamily>,
     sockopts: &[String],
     opts: &SyncOptions,
@@ -838,7 +823,6 @@ pub fn spawn_daemon_session(
     } else {
         (host, port.unwrap_or(873))
     };
-    let connect_timeout = contimeout;
     let start = Instant::now();
     let mut t =
         TcpTransport::connect(host, port, connect_timeout, family).map_err(EngineError::from)?;
@@ -1334,7 +1318,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.password_file.as_deref(),
                     opts.no_motd,
                     opts.timeout,
-                    opts.contimeout,
+                    opts.connect_timeout,
                     addr_family,
                     &opts.sockopts,
                     &sync_opts,
@@ -1358,7 +1342,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 },
                 RemoteSpec::Local(dst),
             ) => {
-                let connect_timeout = opts.contimeout;
+                let connect_timeout = opts.connect_timeout;
                 let (session, codecs, _caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &src.path,
@@ -1402,7 +1386,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.password_file.as_deref(),
                     opts.no_motd,
                     opts.timeout,
-                    opts.contimeout,
+                    opts.connect_timeout,
                     addr_family,
                     &opts.sockopts,
                     &sync_opts,
@@ -1426,7 +1410,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     module: None,
                 },
             ) => {
-                let connect_timeout = opts.contimeout;
+                let connect_timeout = opts.connect_timeout;
                 let (session, codecs, _caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &dst.path,
@@ -1489,7 +1473,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
@@ -1504,7 +1488,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
@@ -1564,7 +1548,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.password_file.as_deref(),
                             opts.no_motd,
                             opts.timeout,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -1579,7 +1563,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.password_file.as_deref(),
                             opts.no_motd,
                             opts.timeout,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -1609,7 +1593,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
@@ -1620,7 +1604,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.password_file.as_deref(),
                             opts.no_motd,
                             opts.timeout,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -1665,7 +1649,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.password_file.as_deref(),
                             opts.no_motd,
                             opts.timeout,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -1684,7 +1668,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.contimeout,
+                            opts.connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
@@ -1728,7 +1712,13 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
 fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
-        filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
+        if path == Path::new("-") {
+            let mut buf = Vec::new();
+            io::stdin().read_to_end(&mut buf)?;
+            Ok(filters::parse_list(&buf, from0))
+        } else {
+            filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
+        }
     }
 
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
@@ -1884,7 +1874,6 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     Ok(matcher)
 }
 
-#[allow(dead_code)]
 fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut modules: HashMap<String, Module> = HashMap::new();
     let mut secrets = opts.secrets_file.clone();
@@ -1910,7 +1899,8 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
     let log_format = matches.get_one::<String>("client-log-file-format").cloned();
     let mut motd = opts.motd.clone();
-    let lock_file = opts.lock_file.clone();
+    let mut pid_file = opts.pid_file.clone();
+    let mut lock_file = opts.lock_file.clone();
     let state_dir = opts.state_dir.clone();
     let mut port = matches.get_one::<u16>("port").copied().unwrap_or(873);
     let mut address = opts.address;
@@ -1933,6 +1923,12 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
         }
         if let Some(s) = cfg.secrets_file {
             secrets = Some(s);
+        }
+        if let Some(p) = cfg.pid_file {
+            pid_file = Some(p);
+        }
+        if let Some(l) = cfg.lock_file {
+            lock_file = Some(l);
         }
         if let Some(a) = cfg.address {
             address = Some(a);
@@ -1980,6 +1976,7 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
         log_file,
         log_format,
         motd,
+        pid_file,
         lock_file,
         state_dir,
         timeout,
@@ -1995,7 +1992,6 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     .map_err(|e| EngineError::Other(format!("daemon failed to bind to port {port}: {e}")))
 }
 
-#[allow(dead_code)]
 fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
     if let Some(addr) = opts.addr {
         let mut stream = TcpStream::connect(&addr)?;

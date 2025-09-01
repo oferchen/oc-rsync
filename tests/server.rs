@@ -62,7 +62,7 @@ fn server_handshake_succeeds() {
 
     let codecs = available_codecs();
     let payload = encode_codecs(&codecs);
-    let frame = Message::Codecs(payload).to_frame(0);
+    let frame = Message::Codecs(payload).to_frame(0, None);
     let mut buf = Vec::new();
     frame.encode(&mut buf).unwrap();
     stdin.write_all(&buf).unwrap();
@@ -86,7 +86,7 @@ fn server_handshake_succeeds() {
         },
         payload: payload.clone(),
     };
-    let msg = Message::from_frame(frame).unwrap();
+    let msg = Message::from_frame(frame, None).unwrap();
     let server_codecs = match msg {
         Message::Codecs(data) => decode_codecs(&data).unwrap(),
         _ => panic!("expected codecs message"),
@@ -128,7 +128,7 @@ fn server_handshake_parses_args() {
 
     let codecs = available_codecs();
     let payload = encode_codecs(&codecs);
-    let frame = Message::Codecs(payload).to_frame(0);
+    let frame = Message::Codecs(payload).to_frame(0, None);
     let mut buf = Vec::new();
     frame.encode(&mut buf).unwrap();
     stdin.write_all(&buf).unwrap();
@@ -198,12 +198,12 @@ fn server_exit_code_roundtrip() {
 
     let codecs = available_codecs();
     let payload = encode_codecs(&codecs);
-    let frame = Message::Codecs(payload).to_frame(0);
+    let frame = Message::Codecs(payload).to_frame(0, None);
     let mut buf = Vec::new();
     frame.encode(&mut buf).unwrap();
     stdin.write_all(&buf).unwrap();
 
-    let exit_frame = Message::Data(vec![ExitCode::Partial.into()]).to_frame(0);
+    let exit_frame = Message::Data(vec![ExitCode::Partial.into()]).to_frame(0, None);
     let mut exit_buf = Vec::new();
     exit_frame.encode(&mut exit_buf).unwrap();
     stdin.write_all(&exit_buf).unwrap();

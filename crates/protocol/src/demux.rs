@@ -51,7 +51,7 @@ impl Demux {
 
     pub fn ingest(&mut self, frame: Frame) -> std::io::Result<()> {
         let id = frame.header.channel;
-        let msg = Message::from_frame(frame.clone())?;
+        let msg = Message::from_frame(frame.clone(), None)?;
 
         if let Message::Error(text) = &msg {
             if let Some(ch) = self.channels.get_mut(&id) {

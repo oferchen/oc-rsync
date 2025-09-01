@@ -114,7 +114,7 @@ fn mux_send_exit_code_channel0() {
 #[test]
 fn demux_nonzero_exit_errors() {
     let mut demux = Demux::new(Duration::from_millis(50));
-    let frame = Message::Data(vec![1]).to_frame(0);
+    let frame = Message::Data(vec![1]).to_frame(0, None);
     let err = demux.ingest(frame).unwrap_err();
     assert!(matches!(
         demux.take_exit_code(),
@@ -127,7 +127,7 @@ fn demux_nonzero_exit_errors() {
 fn demux_remote_error_propagates() {
     let mut demux = Demux::new(Duration::from_millis(50));
     let rx = demux.register_channel(5);
-    let frame = Message::Error("oops".into()).to_frame(5);
+    let frame = Message::Error("oops".into()).to_frame(5, None);
     let err = demux.ingest(frame).unwrap_err();
     assert_eq!(err.kind(), std::io::ErrorKind::Other);
     assert_eq!(demux.take_remote_error().as_deref(), Some("oops"));
