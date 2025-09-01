@@ -6,10 +6,11 @@ Wants=network-online.target
 After=network-online.target
 
 [Service]
-Type=simple
+Type=notify
+NotifyAccess=main
 User=oc-rsyncd
 Group=oc-rsyncd
-ExecStart=/usr/bin/oc-rsync --daemon --no-detach --config /etc/oc-rsyncd/rsyncd.conf
+ExecStart=/usr/bin/oc-rsync --daemon --no-detach --config /etc/oc-rsyncd.conf
 Restart=on-failure
 NoNewPrivileges=yes
 ProtectSystem=strict
@@ -36,7 +37,10 @@ MemoryDenyWriteExecute=yes
 SystemCallFilter=@system-service
 SystemCallFilter=~@privileged
 SystemCallFilter=~@resources
+RuntimeDirectory=oc-rsyncd
+LogsDirectory=oc-rsyncd
 StateDirectory=oc-rsyncd
+ConfigurationDirectory=oc-rsyncd
 
 [Install]
 WantedBy=multi-user.target
