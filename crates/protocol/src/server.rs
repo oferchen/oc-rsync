@@ -2,13 +2,7 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
-#[cfg(feature = "blake3")]
-use crate::CAP_BLAKE3;
-use crate::{
-    negotiate_version, Demux, Frame, Message, Mux, CAP_BLAKE2, CAP_CDC, CAP_CODECS, CAP_LZ4,
-    CAP_ZSTD,
-};
-use checksums::StrongHash;
+use crate::{negotiate_version, Demux, Frame, Message, Mux, CAP_CODECS, CAP_ZSTD};
 use compress::{decode_codecs, encode_codecs, negotiate_codec, Codec};
 
 pub struct Server<R: Read, W: Write> {
@@ -86,38 +80,18 @@ impl<R: Read, W: Write> Server<R, W> {
             }
         }
 
-        #[cfg(feature = "blake3")]
-        if self.caps & CAP_BLAKE3 != 0 {
-            self.mux.strong_hash = StrongHash::Blake3;
-            self.demux.strong_hash = StrongHash::Blake3;
-        } else if self.caps & CAP_BLAKE2 != 0 {
-            self.mux.strong_hash = StrongHash::Blake2b;
-            self.demux.strong_hash = StrongHash::Blake2b;
-        }
-        #[cfg(not(feature = "blake3"))]
-        if self.caps & CAP_BLAKE2 != 0 {
-            self.mux.strong_hash = StrongHash::Blake2b;
-            self.demux.strong_hash = StrongHash::Blake2b;
-        }
-
         let mut selected = Codec::Zlib;
         if self.caps & CAP_CODECS != 0 {
             if let Some(codec) = negotiate_codec(codecs, &peer_codecs) {
-                match codec {
-                    Codec::Zstd if self.caps & CAP_ZSTD != 0 => selected = Codec::Zstd,
-                    Codec::Lz4 if self.caps & CAP_LZ4 != 0 => selected = Codec::Lz4,
-                    _ => {}
+                if codec == Codec::Zstd && self.caps & CAP_ZSTD != 0 {
+                    selected = Codec::Zstd;
                 }
             }
         } else if self.caps & CAP_ZSTD != 0 {
             selected = Codec::Zstd;
-        } else if self.caps & CAP_LZ4 != 0 {
-            selected = Codec::Lz4;
         }
         self.mux.compressor = selected;
         self.demux.compressor = selected;
-        self.mux.cdc = self.caps & CAP_CDC != 0;
-        self.demux.cdc = self.caps & CAP_CDC != 0;
 
         Ok((self.caps, peer_codecs))
     }

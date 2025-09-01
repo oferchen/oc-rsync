@@ -25,4 +25,3 @@ assert_cmd = "2"
 default = []
 xattr = ["engine/xattr"]
 acl = ["engine/acl"]
-blake3 = ["engine/blake3"]

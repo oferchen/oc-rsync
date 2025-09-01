@@ -16,21 +16,14 @@ use std::sync::Arc;
 use std::time::Duration;
 use tempfile::NamedTempFile;
 
+pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
-pub use checksums::{ModernHash, StrongHash};
 #[cfg(feature = "lz4")]
 use compress::Lz4;
-use compress::{
-    available_codecs, should_compress, Codec, Compressor, Decompressor, ModernCompress, Zlib, Zstd,
-};
+use compress::{should_compress, Codec, Compressor, Decompressor, ModernCompress, Zlib, Zstd};
 use filters::Matcher;
 use logging::progress_formatter;
 use thiserror::Error;
-
-#[cfg(feature = "blake3")]
-pub mod cdc;
-#[cfg(feature = "blake3")]
-use cdc::{chunk_file, Manifest};
 pub mod flist;
 
 const RSYNC_BLOCK_SIZE: usize = 700;
@@ -1533,13 +1526,6 @@ pub enum DeleteMode {
     After,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ModernCdc {
-    #[cfg(feature = "blake3")]
-    Fastcdc,
-    Off,
-}
-
 #[derive(Debug, Clone)]
 pub struct SyncOptions {
     pub delete: Option<DeleteMode>,
@@ -1556,10 +1542,6 @@ pub struct SyncOptions {
     pub checksum: bool,
     pub compress: bool,
     pub modern_compress: Option<ModernCompress>,
-    pub modern_hash: Option<ModernHash>,
-    pub modern_cdc: ModernCdc,
-    pub modern_cdc_min: usize,
-    pub modern_cdc_max: usize,
     pub dirs: bool,
     pub list_only: bool,
     pub update: bool,
@@ -1654,10 +1636,6 @@ impl Default for SyncOptions {
             checksum: false,
             compress: false,
             modern_compress: None,
-            modern_hash: None,
-            modern_cdc: ModernCdc::Off,
-            modern_cdc_min: 2 * 1024,
-            modern_cdc_max: 16 * 1024,
             perms: false,
             executability: false,
             times: false,
@@ -1764,17 +1742,6 @@ pub struct Stats {
     pub bytes_transferred: u64,
 }
 
-fn cpu_prefers_lz4() -> bool {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    {
-        !std::arch::is_x86_feature_detected!("sse4.2")
-    }
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-    {
-        false
-    }
-}
-
 pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     if !opts.compress || opts.compress_level == Some(0) {
         return None;
@@ -1782,46 +1749,12 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     if let Some(choice) = &opts.compress_choice {
         return choice.iter().copied().find(|c| remote.contains(c));
     }
-    let modern = match opts.modern_compress {
-        Some(m) => m,
-        None => return remote.contains(&Codec::Zlib).then_some(Codec::Zlib),
-    };
-    let local = available_codecs(Some(modern));
-    match modern {
-        ModernCompress::Auto => {
-            let prefer_lz4 = cpu_prefers_lz4();
-            if prefer_lz4 && local.contains(&Codec::Lz4) && remote.contains(&Codec::Lz4) {
-                Some(Codec::Lz4)
-            } else if local.contains(&Codec::Zstd) && remote.contains(&Codec::Zstd) {
-                Some(Codec::Zstd)
-            } else if local.contains(&Codec::Lz4) && remote.contains(&Codec::Lz4) {
-                Some(Codec::Lz4)
-            } else if remote.contains(&Codec::Zlib) {
-                Some(Codec::Zlib)
-            } else {
-                None
-            }
-        }
-        ModernCompress::Zstd => {
-            if remote.contains(&Codec::Zstd) {
-                Some(Codec::Zstd)
-            } else if remote.contains(&Codec::Zlib) {
-                Some(Codec::Zlib)
-            } else {
-                None
-            }
-        }
-        ModernCompress::Lz4 => {
-            if remote.contains(&Codec::Lz4) {
-                Some(Codec::Lz4)
-            } else if remote.contains(&Codec::Zstd) {
-                Some(Codec::Zstd)
-            } else if remote.contains(&Codec::Zlib) {
-                Some(Codec::Zlib)
-            } else {
-                None
-            }
-        }
+    if remote.contains(&Codec::Zstd) {
+        Some(Codec::Zstd)
+    } else if remote.contains(&Codec::Zlib) {
+        Some(Codec::Zlib)
+    } else {
+        None
     }
 }
 
@@ -2030,12 +1963,6 @@ pub fn sync(
     let matcher = matcher.clone().with_root(src_root.clone());
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
     let mut receiver = Receiver::new(codec, opts.clone());
-    #[cfg(feature = "blake3")]
-    let mut manifest = if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
-        Manifest::load()
-    } else {
-        Manifest::default()
-    };
     let mut dir_meta: Vec<(PathBuf, PathBuf)> = Vec::new();
     if matches!(opts.delete, Some(DeleteMode::Before)) {
         delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
@@ -2118,48 +2045,6 @@ pub fn sync(
                         continue;
                     }
                     if !dest_path.exists() && !partial_exists {
-                        #[cfg(feature = "blake3")]
-                        if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
-                            if let Ok(chunks) = chunk_file(
-                                &path,
-                                opts.modern_cdc_min,
-                                (opts.modern_cdc_min + opts.modern_cdc_max) / 2,
-                                opts.modern_cdc_max,
-                            ) {
-                                if !chunks.is_empty() {
-                                    if let Some(existing) =
-                                        manifest.lookup(&chunks[0].hash, &dest_path)
-                                    {
-                                        let all = chunks.iter().all(|c| {
-                                            manifest.lookup(&c.hash, &dest_path).is_some()
-                                        });
-                                        if all {
-                                            if let Some(parent) = dest_path.parent() {
-                                                fs::create_dir_all(parent)
-                                                    .map_err(|e| io_context(parent, e))?;
-                                            }
-                                            fs::copy(&existing, &dest_path)
-                                                .map_err(|e| io_context(&dest_path, e))?;
-                                            stats.files_transferred += 1;
-                                            receiver.copy_metadata(&path, &dest_path)?;
-                                            if let Some(f) = batch_file.as_mut() {
-                                                let _ = writeln!(f, "{}", rel.display());
-                                            }
-                                            if opts.itemize_changes && !opts.quiet {
-                                                println!(">f+++++++++ {}", rel.display());
-                                            }
-                                            for c in &chunks {
-                                                manifest.insert(&c.hash, &dest_path);
-                                            }
-                                            if opts.remove_source_files {
-                                                remove_file_opts(&path, opts)?;
-                                            }
-                                            continue;
-                                        }
-                                    }
-                                }
-                            }
-                        }
                         if let Some(ref link_dir) = opts.link_dest {
                             let link_path = link_dir.join(rel);
                             if files_identical(&path, &link_path) {
@@ -2211,19 +2096,6 @@ pub fn sync(
                         }
                         if opts.itemize_changes && !opts.quiet {
                             println!(">f+++++++++ {}", rel.display());
-                        }
-                        #[cfg(feature = "blake3")]
-                        if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
-                            if let Ok(chunks) = chunk_file(
-                                &dest_path,
-                                opts.modern_cdc_min,
-                                (opts.modern_cdc_min + opts.modern_cdc_max) / 2,
-                                opts.modern_cdc_max,
-                            ) {
-                                for c in &chunks {
-                                    manifest.insert(&c.hash, &dest_path);
-                                }
-                            }
                         }
                     }
                     if opts.remove_source_files {
@@ -2413,10 +2285,6 @@ pub fn sync(
     }
     for (src_dir, dest_dir) in dir_meta.into_iter().rev() {
         receiver.copy_metadata(&src_dir, &dest_dir)?;
-    }
-    #[cfg(feature = "blake3")]
-    if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
-        manifest.save()?;
     }
     if let Some(mut f) = batch_file {
         let _ = writeln!(

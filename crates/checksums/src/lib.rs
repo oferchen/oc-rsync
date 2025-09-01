@@ -1,31 +1,13 @@
 // crates/checksums/src/lib.rs
-use blake2::{Blake2b512, Blake2s256};
-#[cfg(feature = "blake3")]
-use blake3::Hasher as Blake3;
 use md4::Md4;
 use md5::Digest;
 use md5::Md5;
 use sha1::Sha1;
-use xxhash_rust::xxh3::xxh3_128;
-use xxhash_rust::xxh64::xxh64;
-
-#[derive(Clone, Copy, Debug)]
-pub enum ModernHash {
-    #[cfg(feature = "blake3")]
-    Blake3,
-}
-
 #[derive(Clone, Copy, Debug)]
 pub enum StrongHash {
     Md5,
     Sha1,
     Md4,
-    Blake2b,
-    Blake2s,
-    Xxh64,
-    Xxh128,
-    #[cfg(feature = "blake3")]
-    Blake3,
 }
 
 #[derive(Clone, Debug)]
@@ -107,37 +89,6 @@ pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
             hasher.update(&seed.to_le_bytes());
             hasher.update(data);
             hasher.finalize().to_vec()
-        }
-        StrongHash::Blake2b => {
-            let mut hasher = Blake2b512::new();
-            hasher.update(&seed.to_le_bytes());
-            hasher.update(data);
-            hasher.finalize().to_vec()
-        }
-        StrongHash::Blake2s => {
-            let mut hasher = Blake2s256::new();
-            hasher.update(&seed.to_le_bytes());
-            hasher.update(data);
-            hasher.finalize().to_vec()
-        }
-        StrongHash::Xxh64 => {
-            let mut buf = Vec::with_capacity(4 + data.len());
-            buf.extend_from_slice(&seed.to_le_bytes());
-            buf.extend_from_slice(data);
-            xxh64(&buf, 0).to_le_bytes().to_vec()
-        }
-        StrongHash::Xxh128 => {
-            let mut buf = Vec::with_capacity(4 + data.len());
-            buf.extend_from_slice(&seed.to_le_bytes());
-            buf.extend_from_slice(data);
-            xxh3_128(&buf).to_le_bytes().to_vec()
-        }
-        #[cfg(feature = "blake3")]
-        StrongHash::Blake3 => {
-            let mut hasher = Blake3::new();
-            hasher.update(&seed.to_le_bytes());
-            hasher.update(data);
-            hasher.finalize().as_bytes().to_vec()
         }
     }
 }
@@ -441,36 +392,6 @@ mod tests {
 
         let digest_md4 = strong_digest(b"hello world", StrongHash::Md4, 0);
         assert_eq!(hex::encode(digest_md4), "ea91f391e02b5e19f432b43bd87a531d",);
-
-        let digest_blake2b = strong_digest(b"hello world", StrongHash::Blake2b, 0);
-        assert_eq!(
-            hex::encode(digest_blake2b),
-            "d32b7e7c9028b6e0b1ddd7e83799a8b857a0afcaa370985dfaa42dfa59e275097eb75b99e05bb7ef3ac5cf74c957c3b7cad1dfcbb5e3380d56b63780394af8bd",
-        );
-
-        let digest_blake2s = strong_digest(b"hello world", StrongHash::Blake2s, 0);
-        assert_eq!(
-            hex::encode(digest_blake2s),
-            "a2dc531d6048af9ab7cf85108ebcf147632fce6290fbdfcd5ea789a0b31784d0",
-        );
-
-        let digest_xxh64 = strong_digest(b"hello world", StrongHash::Xxh64, 0);
-        assert_eq!(hex::encode(digest_xxh64), "648e94e9d09503e7");
-
-        let digest_xxh128 = strong_digest(b"hello world", StrongHash::Xxh128, 0);
-        assert_eq!(
-            hex::encode(digest_xxh128),
-            "052acb3009ceb7609305f939f85080da",
-        );
-
-        #[cfg(feature = "blake3")]
-        {
-            let digest_blake3 = strong_digest(b"hello world", StrongHash::Blake3, 0);
-            assert_eq!(
-                hex::encode(digest_blake3),
-                "861487254e43e2e567ef5177d0c85452f1982ec89c494e8d4a957ff01dd9b421"
-            );
-        }
     }
 
     #[test]

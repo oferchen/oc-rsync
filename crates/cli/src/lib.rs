@@ -14,11 +14,9 @@ use std::time::Duration;
 
 use clap::parser::ValueSource;
 use clap::{ArgAction, ArgMatches, Args, CommandFactory, FromArgMatches, Parser};
-use compress::{available_codecs, Codec, ModernCompress};
+use compress::{available_codecs, Codec};
 pub use engine::EngineError;
-#[cfg(feature = "blake3")]
-use engine::ModernHash;
-use engine::{sync, DeleteMode, IdMapper, ModernCdc, Result, Stats, StrongHash, SyncOptions};
+use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
@@ -93,26 +91,6 @@ fn parse_file_size(s: &str) -> std::result::Result<u64, String> {
         }
     }
     s.parse::<u64>().map_err(|e| e.to_string())
-}
-
-#[derive(clap::ValueEnum, Clone, Debug)]
-enum ModernCompressArg {
-    Auto,
-    Zstd,
-    Lz4,
-}
-
-#[derive(clap::ValueEnum, Clone, Debug)]
-enum ModernHashArg {
-    #[cfg(feature = "blake3")]
-    Blake3,
-}
-
-#[derive(clap::ValueEnum, Clone, Debug)]
-enum ModernCdcArg {
-    #[cfg(feature = "blake3")]
-    Fastcdc,
-    Off,
 }
 
 #[derive(Parser, Debug)]
@@ -343,26 +321,6 @@ struct ClientOpts {
     )]
     skip_compress: Vec<String>,
 
-    #[arg(long, help_heading = "Compression")]
-    modern: bool,
-    #[arg(long = "modern-compress", value_enum, help_heading = "Compression")]
-    modern_compress: Option<ModernCompressArg>,
-    #[arg(long = "modern-hash", value_enum, help_heading = "Compression")]
-    modern_hash: Option<ModernHashArg>,
-    #[arg(long = "modern-cdc", value_enum, help_heading = "Compression")]
-    modern_cdc: Option<ModernCdcArg>,
-    #[arg(
-        long = "modern-cdc-min",
-        value_name = "BYTES",
-        help_heading = "Compression"
-    )]
-    modern_cdc_min: Option<usize>,
-    #[arg(
-        long = "modern-cdc-max",
-        value_name = "BYTES",
-        help_heading = "Compression"
-    )]
-    modern_cdc_max: Option<usize>,
     #[arg(long, help_heading = "Misc")]
     partial: bool,
     #[arg(long = "partial-dir", value_name = "DIR", help_heading = "Misc")]
@@ -953,67 +911,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         rsync_env.push(("RSYNC_TIMEOUT".into(), to.as_secs().to_string()));
     }
 
-    let modern_compress = if opts.modern || opts.modern_compress.is_some() {
-        Some(
-            match opts.modern_compress.unwrap_or(ModernCompressArg::Auto) {
-                ModernCompressArg::Auto => ModernCompress::Auto,
-                ModernCompressArg::Zstd => ModernCompress::Zstd,
-                ModernCompressArg::Lz4 => ModernCompress::Lz4,
-            },
-        )
-    } else {
-        None
-    };
-    #[cfg(feature = "blake3")]
-    let modern_hash = if opts.modern || matches!(opts.modern_hash, Some(ModernHashArg::Blake3)) {
-        Some(ModernHash::Blake3)
-    } else {
-        None
-    };
-    #[cfg(not(feature = "blake3"))]
-    let modern_hash = None;
-    let modern_cdc_arg = if let Some(arg) = opts.modern_cdc {
-        arg
-    } else if opts.modern || opts.modern_cdc_min.is_some() || opts.modern_cdc_max.is_some() {
-        #[cfg(feature = "blake3")]
-        {
-            ModernCdcArg::Fastcdc
-        }
-        #[cfg(not(feature = "blake3"))]
-        {
-            ModernCdcArg::Off
-        }
-    } else {
-        ModernCdcArg::Off
-    };
-    let modern_cdc = match modern_cdc_arg {
-        #[cfg(feature = "blake3")]
-        ModernCdcArg::Fastcdc => ModernCdc::Fastcdc,
-        _ => ModernCdc::Off,
-    };
-    let modern_enabled = modern_compress.is_some() || modern_hash.is_some() || {
-        #[cfg(feature = "blake3")]
-        {
-            matches!(modern_cdc, ModernCdc::Fastcdc)
-        }
-        #[cfg(not(feature = "blake3"))]
-        {
-            false
-        }
-    };
-
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
-        #[cfg_attr(not(feature = "blake3"), allow(unused_mut))]
-        let mut list = vec!["md5", "sha1", "md4"];
-        #[cfg(feature = "blake3")]
-        if modern_hash.is_some() || matches!(opts.checksum_choice.as_deref(), Some("blake3")) {
-            list.insert(0, "blake3");
-        }
+        let list = ["md5", "sha1", "md4"];
         rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
-    }
-
-    if modern_enabled {
-        rsync_env.push(("RSYNC_MODERN".into(), "1".into()));
     }
 
     let remote_bin_vec = rsync_path_cmd.as_ref().map(|c| c.cmd.clone());
@@ -1024,29 +924,14 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             "md5" => StrongHash::Md5,
             "sha1" => StrongHash::Sha1,
             "md4" => StrongHash::Md4,
-            "blake2" => StrongHash::Blake2b,
-            "xxh64" => StrongHash::Xxh64,
-            "xxh128" => StrongHash::Xxh128,
-            #[cfg(feature = "blake3")]
-            "blake3" => StrongHash::Blake3,
             other => {
                 return Err(EngineError::Other(format!("unknown checksum {other}")));
             }
-        }
-    } else if let Some(h) = modern_hash {
-        match h {
-            #[cfg(feature = "blake3")]
-            ModernHash::Blake3 => StrongHash::Blake3,
         }
     } else if let Ok(list) = env::var("RSYNC_CHECKSUM_LIST") {
         let mut chosen = StrongHash::Md5;
         for name in list.split(',') {
             match name {
-                #[cfg(feature = "blake3")]
-                "blake3" if modern_enabled => {
-                    chosen = StrongHash::Blake3;
-                    break;
-                }
                 "sha1" => {
                     chosen = StrongHash::Sha1;
                     break;
@@ -1057,18 +942,6 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 }
                 "md4" => {
                     chosen = StrongHash::Md4;
-                    break;
-                }
-                "blake2" => {
-                    chosen = StrongHash::Blake2b;
-                    break;
-                }
-                "xxh64" => {
-                    chosen = StrongHash::Xxh64;
-                    break;
-                }
-                "xxh128" => {
-                    chosen = StrongHash::Xxh128;
                     break;
                 }
                 _ => {}
@@ -1121,7 +994,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         return Err(EngineError::Other(format!("unknown codec {other}")));
                     }
                 };
-                if !available_codecs(Some(ModernCompress::Auto)).contains(&codec) {
+                if !available_codecs(None).contains(&codec) {
                     return Err(EngineError::Other(format!(
                         "codec {name} not supported by this build"
                     )));
@@ -1139,10 +1012,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let compress = if opts.compress_choice.as_deref() == Some("none") {
         false
     } else {
-        opts.compress
-            || opts.compress_level.is_some_and(|l| l > 0)
-            || compress_choice.is_some()
-            || modern_compress.is_some()
+        opts.compress || opts.compress_level.is_some_and(|l| l > 0) || compress_choice.is_some()
     };
     let mut delete_mode = if opts.delete_before {
         Some(DeleteMode::Before)
@@ -1213,11 +1083,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         preallocate: opts.preallocate,
         checksum: opts.checksum,
         compress,
-        modern_compress,
-        modern_hash,
-        modern_cdc,
-        modern_cdc_min: opts.modern_cdc_min.unwrap_or(2 * 1024),
-        modern_cdc_max: opts.modern_cdc_max.unwrap_or(16 * 1024),
+        modern_compress: None,
         dirs: opts.dirs,
         list_only: opts.list_only,
         update: opts.update,
@@ -1314,7 +1180,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 &src.path,
                 &dst.path,
                 &matcher,
-                &available_codecs(modern_compress),
+                &available_codecs(None),
                 &sync_opts,
             )?,
             _ => return Err(EngineError::Other("local sync requires local paths".into())),
@@ -1345,15 +1211,14 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     addr_family,
                     &opts.sockopts,
                     &sync_opts,
-                    opts.protocol
-                        .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
+                    opts.protocol.unwrap_or(31),
                     opts.early_input.as_deref(),
                 )?;
                 sync(
                     &src.path,
                     &dst.path,
                     &matcher,
-                    &available_codecs(modern_compress),
+                    &available_codecs(None),
                     &sync_opts,
                 )?
             }
@@ -1379,9 +1244,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.port,
                     opts.contimeout,
                     addr_family,
-                    modern_compress,
-                    opts.protocol
-                        .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
+                    None,
+                    opts.protocol.unwrap_or(31),
                 )
                 .map_err(EngineError::from)?;
                 let (err, _) = session.stderr();
@@ -1409,15 +1273,14 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     addr_family,
                     &opts.sockopts,
                     &sync_opts,
-                    opts.protocol
-                        .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
+                    opts.protocol.unwrap_or(31),
                     opts.early_input.as_deref(),
                 )?;
                 sync(
                     &src.path,
                     &dst.path,
                     &matcher,
-                    &available_codecs(modern_compress),
+                    &available_codecs(None),
                     &sync_opts,
                 )?
             }
@@ -1443,9 +1306,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.port,
                     opts.contimeout,
                     addr_family,
-                    modern_compress,
-                    opts.protocol
-                        .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
+                    None,
+                    opts.protocol.unwrap_or(31),
                 )
                 .map_err(EngineError::from)?;
                 let (err, _) = session.stderr();
@@ -1555,8 +1417,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
-                            opts.protocol
-                                .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
+                            opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
                         )?;
                         let mut src_session = spawn_daemon_session(
@@ -1570,8 +1431,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
-                            opts.protocol
-                                .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
+                            opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
@@ -1611,8 +1471,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
-                            opts.protocol
-                                .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
+                            opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
@@ -1650,8 +1509,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
-                            opts.protocol
-                                .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
+                            opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
                         )?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
@@ -2017,7 +1875,7 @@ fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
 
 #[allow(dead_code)]
 fn run_server() -> Result<()> {
-    use protocol::{Server, CAP_CODECS, LATEST_VERSION, SUPPORTED_CAPS};
+    use protocol::{Server, CAP_CODECS};
     let stdin = io::stdin();
     let stdout = io::stdout();
     let timeout = env::var("RSYNC_TIMEOUT")
@@ -2025,18 +1883,10 @@ fn run_server() -> Result<()> {
         .and_then(|s| s.parse().ok())
         .map(Duration::from_secs)
         .unwrap_or(Duration::from_secs(30));
-    let modern = env::var("RSYNC_MODERN").ok().as_deref() == Some("1");
-    let mc = if modern {
-        Some(ModernCompress::Auto)
-    } else {
-        None
-    };
-    let codecs = available_codecs(mc);
+    let codecs = available_codecs(None);
     let mut srv = Server::new(stdin.lock(), stdout.lock(), timeout);
-    let version = if modern { LATEST_VERSION } else { 31 };
-    let caps = if modern { SUPPORTED_CAPS } else { CAP_CODECS };
     let _ = srv
-        .handshake(version, caps, &codecs)
+        .handshake(31, CAP_CODECS, &codecs)
         .map_err(|e| EngineError::Other(e.to_string()))?;
     Ok(())
 }
@@ -2139,12 +1989,6 @@ mod tests {
         assert_eq!(opts.checksum_choice.as_deref(), Some("sha1"));
         let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "md4", "src", "dst"]);
         assert_eq!(opts.checksum_choice.as_deref(), Some("md4"));
-        let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "blake2", "src", "dst"]);
-        assert_eq!(opts.checksum_choice.as_deref(), Some("blake2"));
-        let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "xxh64", "src", "dst"]);
-        assert_eq!(opts.checksum_choice.as_deref(), Some("xxh64"));
-        let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "xxh128", "src", "dst"]);
-        assert_eq!(opts.checksum_choice.as_deref(), Some("xxh128"));
         let opts = ClientOpts::parse_from(["prog", "--cc", "md5", "src", "dst"]);
         assert_eq!(opts.checksum_choice.as_deref(), Some("md5"));
     }

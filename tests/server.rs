@@ -1,7 +1,7 @@
 // tests/server.rs
 
 use assert_cmd::cargo::cargo_bin;
-use compress::{available_codecs, decode_codecs, encode_codecs, ModernCompress};
+use compress::{available_codecs, decode_codecs, encode_codecs};
 use protocol::{
     ExitCode, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION, MIN_VERSION,
 };
@@ -109,127 +109,6 @@ fn server_rejects_unsupported_version() {
 
     let status = child.wait().unwrap();
     assert!(!status.success());
-}
-
-#[test]
-fn server_modern_handshake_succeeds() {
-    let exe = cargo_bin("oc-rsync");
-    let mut child = Command::new(exe)
-        .arg("--server")
-        .env("RSYNC_MODERN", "1")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut stdin = child.stdin.take().unwrap();
-    let mut stdout = child.stdout.take().unwrap();
-
-    stdin.write_all(&[0]).unwrap();
-    stdin.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
-
-    let mut ver_buf = [0u8; 4];
-    stdout.read_exact(&mut ver_buf).unwrap();
-    assert_eq!(u32::from_be_bytes(ver_buf), LATEST_VERSION);
-
-    stdin.write_all(&CAP_CODECS.to_be_bytes()).unwrap();
-    let mut cap_buf = [0u8; 4];
-    stdout.read_exact(&mut cap_buf).unwrap();
-    assert_eq!(u32::from_be_bytes(cap_buf) & CAP_CODECS, CAP_CODECS);
-
-    let codecs = available_codecs(Some(ModernCompress::Auto));
-    let payload = encode_codecs(&codecs);
-    let frame = Message::Codecs(payload).to_frame(0);
-    let mut buf = Vec::new();
-    frame.encode(&mut buf).unwrap();
-    stdin.write_all(&buf).unwrap();
-
-    let mut hdr = [0u8; 8];
-    stdout.read_exact(&mut hdr).unwrap();
-    let channel = u16::from_be_bytes([hdr[0], hdr[1]]);
-    let tag = Tag::try_from(hdr[2]).unwrap();
-    let msg = Msg::try_from(hdr[3]).unwrap();
-    let len = u32::from_be_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
-    let mut payload = vec![0u8; len];
-    stdout.read_exact(&mut payload).unwrap();
-    let frame = Frame {
-        header: FrameHeader {
-            channel,
-            tag,
-            msg,
-            len: len as u32,
-        },
-        payload: payload.clone(),
-    };
-    let msg = Message::from_frame(frame).unwrap();
-    let server_codecs = match msg {
-        Message::Codecs(data) => decode_codecs(&data).unwrap(),
-        _ => panic!("expected codecs message"),
-    };
-    assert_eq!(server_codecs, codecs);
-
-    let status = child.wait().unwrap();
-    assert!(status.success());
-}
-
-#[test]
-fn server_modern_downgrades_version() {
-    let exe = cargo_bin("oc-rsync");
-    let mut child = Command::new(exe)
-        .arg("--server")
-        .env("RSYNC_MODERN", "1")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut stdin = child.stdin.take().unwrap();
-    let mut stdout = child.stdout.take().unwrap();
-
-    let peer = 40u32;
-    stdin.write_all(&[0]).unwrap();
-    stdin.write_all(&peer.to_be_bytes()).unwrap();
-
-    let mut ver_buf = [0u8; 4];
-    stdout.read_exact(&mut ver_buf).unwrap();
-    assert_eq!(u32::from_be_bytes(ver_buf), peer);
-
-    stdin.write_all(&CAP_CODECS.to_be_bytes()).unwrap();
-    let mut cap_buf = [0u8; 4];
-    stdout.read_exact(&mut cap_buf).unwrap();
-    assert_eq!(u32::from_be_bytes(cap_buf) & CAP_CODECS, CAP_CODECS);
-
-    let codecs = available_codecs(Some(ModernCompress::Auto));
-    let payload = encode_codecs(&codecs);
-    let frame = Message::Codecs(payload).to_frame(0);
-    let mut buf = Vec::new();
-    frame.encode(&mut buf).unwrap();
-    stdin.write_all(&buf).unwrap();
-
-    let mut hdr = [0u8; 8];
-    stdout.read_exact(&mut hdr).unwrap();
-    let channel = u16::from_be_bytes([hdr[0], hdr[1]]);
-    let tag = Tag::try_from(hdr[2]).unwrap();
-    let msg = Msg::try_from(hdr[3]).unwrap();
-    let len = u32::from_be_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
-    let mut payload = vec![0u8; len];
-    stdout.read_exact(&mut payload).unwrap();
-    let frame = Frame {
-        header: FrameHeader {
-            channel,
-            tag,
-            msg,
-            len: len as u32,
-        },
-        payload: payload.clone(),
-    };
-    let msg = Message::from_frame(frame).unwrap();
-    let server_codecs = match msg {
-        Message::Codecs(data) => decode_codecs(&data).unwrap(),
-        _ => panic!("expected codecs message"),
-    };
-    assert_eq!(server_codecs, codecs);
-
-    let status = child.wait().unwrap();
-    assert!(status.success());
 }
 
 #[test]
