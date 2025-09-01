@@ -252,6 +252,42 @@ fn stock_rsync_interop_over_ssh() {
 
 #[cfg(unix)]
 #[test]
+#[ignore]
+fn stock_rsync_server_interop_over_ssh() {
+    if Command::new("rsync")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_err()
+    {
+        eprintln!("skipping stock rsync server interop test: rsync not found");
+        return;
+    }
+
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src.txt");
+    let dst = dir.path().join("dst.txt");
+    fs::write(&src, b"client_interop").unwrap();
+
+    let rsh = dir.path().join("fake_rsh.sh");
+    fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
+    fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let oc = cargo_bin("oc-rsync");
+    let status = Command::new(oc)
+        .arg("-e")
+        .arg(rsh.to_str().unwrap())
+        .arg(&src)
+        .arg(format!("fake:{}", dst.display()))
+        .status()
+        .unwrap();
+    assert!(status.success());
+    assert_eq!(fs::read(&dst).unwrap(), b"client_interop");
+}
+
+#[cfg(unix)]
+#[test]
 fn stock_rsync_interop_daemon() {
     if Command::new("rsync")
         .arg("--version")

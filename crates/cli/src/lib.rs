@@ -679,6 +679,9 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     }
     let mut opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
+    if opts.server {
+        return run_server(opts);
+    }
     if matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
         if let Ok(val) = env::var("RSYNC_PROTECT_ARGS") {
             if val != "0" {
@@ -2017,7 +2020,7 @@ fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
 }
 
 #[allow(dead_code)]
-fn run_server() -> Result<()> {
+fn run_server(opts: ClientOpts) -> Result<()> {
     use protocol::{Server, CAP_CODECS};
     let stdin = io::stdin();
     let stdout = io::stdout();
@@ -2028,8 +2031,9 @@ fn run_server() -> Result<()> {
         .unwrap_or(Duration::from_secs(30));
     let codecs = available_codecs();
     let mut srv = Server::new(stdin.lock(), stdout.lock(), timeout);
+    let version = opts.protocol.unwrap_or(31);
     let _ = srv
-        .handshake(31, CAP_CODECS, &codecs)
+        .handshake(version, CAP_CODECS, &codecs)
         .map_err(|e| EngineError::Other(e.to_string()))?;
     Ok(())
 }

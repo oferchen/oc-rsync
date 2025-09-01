@@ -13,9 +13,9 @@ mod non_unix {
     type XattrFilter = Rc<dyn Fn(&OsStr) -> bool>;
     use std::io;
     use std::path::Path;
-    use std::sync::Arc;
     #[cfg(feature = "xattr")]
     use std::rc::Rc;
+    use std::sync::Arc;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum ChmodTarget {
