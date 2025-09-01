@@ -22,15 +22,24 @@ echo core > "$TMP/src/core"
 echo obj > "$TMP/src/foo.o"
 echo debug > "$TMP/src/debug.log"
 echo info > "$TMP/src/info.log"
+cat > "$TMP/src/.rsync-filter" <<'EOF'
++ keep/tmp/file.tmp
+- *.tmp
+EOF
+cat > "$TMP/src/.gitignore" <<'EOF'
+- *.log
+EOF
+echo info > "$TMP/src/keep/info.log"
 
 # Run reference rsync
 rsync_output=$(rsync --quiet --recursive \
+  --filter=': /.rsync-filter' \
+  --filter=': /.gitignore' \
+  --filter='- .rsync-filter' \
+  --filter='- .gitignore' \
   --filter='+ core' \
   --filter='-C' \
-  --filter='- *.tmp' \
   --filter='S debug.log' \
-  --filter='- *.log' \
-  --filter='+ keep/tmp/file.tmp' \
   --filter='- skip/' \
   --filter='+ keep/***' \
   --filter='+ *.md' \
@@ -40,12 +49,13 @@ rsync_status=$?
 
 # Run oc-rsync
 oc_rsync_raw=$("$OC_RSYNC" --local --recursive \
+  --filter=': /.rsync-filter' \
+  --filter=': /.gitignore' \
+  --filter='- .rsync-filter' \
+  --filter='- .gitignore' \
   --filter='+ core' \
   --filter='-C' \
-  --filter='- *.tmp' \
   --filter='S debug.log' \
-  --filter='- *.log' \
-  --filter='+ keep/tmp/file.tmp' \
   --filter='- skip/' \
   --filter='+ keep/***' \
   --filter='+ *.md' \
