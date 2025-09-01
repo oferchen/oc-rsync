@@ -1,4 +1,5 @@
 // tests/cdc.rs
+#![cfg(feature = "blake3")]
 
 use compress::available_codecs;
 use engine::{sync, ModernCdc, SyncOptions};

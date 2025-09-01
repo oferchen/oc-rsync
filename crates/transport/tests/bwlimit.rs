@@ -128,3 +128,40 @@ fn matches_upstream_trace() {
     assert_eq!(&*counts.borrow(), UPSTREAM_WRITES);
     assert_eq!(&*sleeps.borrow(), UPSTREAM_SLEEPS);
 }
+
+fn upstream_simulation(bwlimit: u64, writes: &[usize]) -> Vec<Duration> {
+    const ONE_SEC: u64 = 1_000_000;
+    const MIN_SLEEP: u64 = ONE_SEC / 10;
+    let mut total = 0u64;
+    let mut sleeps = Vec::new();
+    for &w in writes {
+        total += w as u64;
+        let sleep_us = total * ONE_SEC / bwlimit;
+        if sleep_us >= MIN_SLEEP {
+            sleeps.push(Duration::from_micros(sleep_us));
+            total = 0;
+        }
+    }
+    sleeps
+}
+
+#[test]
+fn parity_with_upstream_reference() {
+    let reader = io::empty();
+    let writer = Vec::new();
+    let inner = LocalPipeTransport::new(reader, writer);
+    let sleeps = Rc::new(RefCell::new(Vec::new()));
+    let rec = sleeps.clone();
+    let sleeper = move |d: Duration| {
+        rec.borrow_mut().push(d);
+        std::thread::sleep(d);
+    };
+    let bw = 4 * 1024;
+    let mut t = RateLimitedTransport::with_sleeper(inner, bw, Box::new(sleeper));
+    let block = vec![0u8; 512];
+    for _ in 0..3 {
+        t.send(&block).unwrap();
+    }
+    let expected = upstream_simulation(bw, &[512, 512, 512]);
+    assert_eq!(&*sleeps.borrow(), &expected);
+}

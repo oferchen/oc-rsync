@@ -6,16 +6,14 @@ coverage so progress can be tracked as features land.
 
 ## Protocol
 - `--contimeout` — connection timeout handling incomplete. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/timeout.rs](../tests/timeout.rs)
+- `--bwlimit` — rate limiting semantics differ. [transport/src/rate.rs](../crates/transport/src/rate.rs) · [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs)
 - `--server` — handshake lacks full parity. [protocol/src/server.rs](../crates/protocol/src/server.rs) · [tests/server.rs](../tests/server.rs)
-- `--timeout` — timeout semantics differ. [transport/src/lib.rs](../crates/transport/src/lib.rs) · [tests/timeout.rs](../tests/timeout.rs)
 
 ### Edge Cases
 - `--bwlimit` — token bucket matches upstream, allowing bursts up to `rate*128` bytes (min 512) with microsecond refills and a global bucket across files. [transport/src/rate.rs](../crates/transport/src/rate.rs) · [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs)
 
 ## Metadata
 - `--acls` — ACL support requires optional feature and lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs)
-- `--atimes` — access time preservation incomplete. [meta/src/lib.rs](../crates/meta/src/lib.rs) · [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs)
-- `--devices` — device file handling lacks parity. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)
 - `--groupmap` — numeric gid mapping only; group names unsupported. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/cli.rs](../tests/cli.rs)
 - `--hard-links` — hard link tracking incomplete. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)
 - `--links` — symlink handling lacks parity. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
@@ -34,7 +32,6 @@ coverage so progress can be tracked as features land.
 
 ## Daemon
 - `--daemon` — daemon mode incomplete. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
-- `--timeout` — connection timeout semantics differ. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
 
 ## Transfer Mechanics
 - `--force` — forced deletion of non-empty dirs unsupported. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*

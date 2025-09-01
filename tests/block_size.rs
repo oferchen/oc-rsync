@@ -2,7 +2,7 @@
 #![allow(clippy::needless_range_loop)]
 
 use checksums::ChecksumConfigBuilder;
-use engine::{cdc, compute_delta, Op, SyncOptions};
+use engine::{block_size, compute_delta, Op, SyncOptions};
 use std::fs;
 use std::process::Command as StdCommand;
 use tempfile::tempdir;
@@ -33,7 +33,7 @@ fn cdc_block_size_heuristics() {
         (1_000_000_000_000, 131_072),
     ];
     for (len, expected) in cases {
-        assert_eq!(cdc::block_size(len), expected, "len={len}");
+        assert_eq!(block_size(len), expected, "len={len}");
     }
 }
 

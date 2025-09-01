@@ -129,6 +129,50 @@ fn daemon_preserves_acls() {
     let _ = child.wait();
 }
 
+#[cfg(all(unix, feature = "acl"))]
+#[test]
+#[serial]
+fn daemon_inherits_default_acls() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let srv = tmp.path().join("srv");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&srv).unwrap();
+
+    let mut dacl = PosixACL::read_default_acl(&src).unwrap();
+    dacl.set(Qualifier::User(12345), ACL_READ);
+    dacl.write_default_acl(&src).unwrap();
+
+    let sub = src.join("sub");
+    fs::create_dir(&sub).unwrap();
+    let file = sub.join("file");
+    fs::write(&file, b"hi").unwrap();
+
+    let (mut child, port) = spawn_daemon(&srv);
+    wait_for_daemon(port);
+
+    let src_arg = format!("{}/", src.display());
+    Command::new("rsync")
+        .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
+        .assert()
+        .success();
+
+    let dacl_src = PosixACL::read_default_acl(&src).unwrap();
+    let dacl_dst = PosixACL::read_default_acl(&srv).unwrap();
+    assert_eq!(dacl_src.entries(), dacl_dst.entries());
+
+    let dacl_src_sub = PosixACL::read_default_acl(&sub).unwrap();
+    let dacl_dst_sub = PosixACL::read_default_acl(srv.join("sub")).unwrap();
+    assert_eq!(dacl_src_sub.entries(), dacl_dst_sub.entries());
+
+    let acl_src_file = PosixACL::read_acl(&file).unwrap();
+    let acl_dst_file = PosixACL::read_acl(srv.join("sub/file")).unwrap();
+    assert_eq!(acl_src_file.entries(), acl_dst_file.entries());
+
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 #[cfg(unix)]
 #[test]
 #[serial]

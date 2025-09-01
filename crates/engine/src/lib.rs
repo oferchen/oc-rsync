@@ -27,9 +27,41 @@ use filters::Matcher;
 use logging::progress_formatter;
 use thiserror::Error;
 
+#[cfg(feature = "blake3")]
 pub mod cdc;
+#[cfg(feature = "blake3")]
 use cdc::{chunk_file, Manifest};
 pub mod flist;
+
+const RSYNC_BLOCK_SIZE: usize = 700;
+const RSYNC_MAX_BLOCK_SIZE: usize = 1 << 17;
+
+pub fn block_size(len: u64) -> usize {
+    if len <= (RSYNC_BLOCK_SIZE * RSYNC_BLOCK_SIZE) as u64 {
+        return RSYNC_BLOCK_SIZE;
+    }
+
+    let mut c: usize = 1;
+    let mut l = len;
+    while l >> 2 > 0 {
+        l >>= 2;
+        c <<= 1;
+    }
+
+    if c >= RSYNC_MAX_BLOCK_SIZE || c == 0 {
+        RSYNC_MAX_BLOCK_SIZE
+    } else {
+        let mut blength: usize = 0;
+        while c >= 8 {
+            blength |= c;
+            if len < (blength as u64).wrapping_mul(blength as u64) {
+                blength &= !c;
+            }
+            c >>= 1;
+        }
+        blength.max(RSYNC_BLOCK_SIZE)
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum EngineError {
@@ -858,7 +890,7 @@ impl Sender {
         let src_len = meta.len();
         ensure_max_alloc(src_len, &self.opts)?;
         let block_size = if self.block_size == 0 {
-            cdc::block_size(src_len)
+            block_size(src_len)
         } else {
             self.block_size
         };
@@ -1127,7 +1159,7 @@ impl Receiver {
             .build();
         let src_len = fs::metadata(src).map(|m| m.len()).unwrap_or(0);
         let block_size = if self.opts.block_size == 0 {
-            cdc::block_size(src_len)
+            block_size(src_len)
         } else {
             self.opts.block_size
         };
@@ -1320,7 +1352,7 @@ impl Receiver {
 impl Receiver {
     fn copy_metadata_now(&self, src: &Path, dest: &Path) -> Result<()> {
         #[cfg(unix)]
-        if self.opts.write_devices {
+        if self.opts.write_devices && !self.opts.devices {
             if let Ok(meta) = fs::symlink_metadata(dest) {
                 let ft = meta.file_type();
                 if ft.is_char_device() || ft.is_block_device() {
@@ -1499,6 +1531,7 @@ pub enum DeleteMode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModernCdc {
+    #[cfg(feature = "blake3")]
     Fastcdc,
     Off,
 }
@@ -1991,6 +2024,7 @@ pub fn sync(
     let matcher = matcher.clone().with_root(src_root.clone());
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
     let mut receiver = Receiver::new(codec, opts.clone());
+    #[cfg(feature = "blake3")]
     let mut manifest = if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
         Manifest::load()
     } else {
@@ -2078,6 +2112,7 @@ pub fn sync(
                         continue;
                     }
                     if !dest_path.exists() && !partial_exists {
+                        #[cfg(feature = "blake3")]
                         if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
                             if let Ok(chunks) = chunk_file(
                                 &path,
@@ -2171,6 +2206,7 @@ pub fn sync(
                         if opts.itemize_changes && !opts.quiet {
                             println!(">f+++++++++ {}", rel.display());
                         }
+                        #[cfg(feature = "blake3")]
                         if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
                             if let Ok(chunks) = chunk_file(
                                 &dest_path,
@@ -2333,7 +2369,7 @@ pub fn sync(
                                 Mode::from_bits_truncate((meta.mode() & 0o777) as libc::mode_t);
                             meta::mknod(&dest_path, kind, perm, meta.rdev())
                                 .map_err(|e| io_context(&dest_path, e))?;
-                            receiver.copy_metadata(&path, &dest_path)?;
+                            receiver.copy_metadata_now(&path, &dest_path)?;
                             if created {
                                 stats.files_transferred += 1;
                                 if opts.itemize_changes && !opts.quiet {
@@ -2367,6 +2403,7 @@ pub fn sync(
     for (src_dir, dest_dir) in dir_meta.into_iter().rev() {
         receiver.copy_metadata(&src_dir, &dest_dir)?;
     }
+    #[cfg(feature = "blake3")]
     if matches!(opts.modern_cdc, ModernCdc::Fastcdc) {
         manifest.save()?;
     }

@@ -8,7 +8,7 @@ use filetime::{self, FileTime};
 use nix::errno::Errno;
 use nix::sys::stat::{self, FchmodatFlags, Mode, SFlag};
 use nix::unistd::{self, FchownatFlags, Gid, Uid};
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::sync::Arc;
 use users::{get_group_by_gid, get_group_by_name, get_user_by_name, get_user_by_uid};
 
@@ -116,17 +116,15 @@ pub struct Metadata {
 
 impl Metadata {
     pub fn from_path(path: &Path, opts: Options) -> io::Result<Self> {
-        let st = stat::lstat(path).map_err(nix_to_io)?;
-        let uid = st.st_uid;
-        let gid = st.st_gid;
-        let mode = normalize_mode(st.st_mode as u32);
-        let mtime = FileTime::from_unix_time(st.st_mtime, st.st_mtime_nsec as u32);
+        let meta = fs::symlink_metadata(path)?;
+        let uid = meta.uid();
+        let gid = meta.gid();
+        let raw_mode = meta.mode();
+        let mode = normalize_mode(raw_mode);
+        let mtime = FileTime::from_last_modification_time(&meta);
 
         let atime = if opts.atimes {
-            Some(FileTime::from_unix_time(
-                st.st_atime,
-                st.st_atime_nsec as u32,
-            ))
+            Some(FileTime::from_last_access_time(&meta))
         } else {
             None
         };
@@ -187,18 +185,42 @@ impl Metadata {
             Vec::new()
         };
 
-        let _is_dir = SFlag::from_bits_truncate(st.st_mode).contains(SFlag::S_IFDIR);
+        let _is_dir = SFlag::from_bits_truncate(raw_mode).contains(SFlag::S_IFDIR);
 
         #[cfg(feature = "acl")]
         let is_dir = _is_dir;
 
         #[cfg(feature = "acl")]
         let (acl, default_acl) = if opts.acl {
-            let acl = posix_acl::PosixACL::read_acl(path).map_err(acl_to_io)?;
-            let acl_entries = acl.entries();
+            let acl_entries = match posix_acl::PosixACL::read_acl(path) {
+                Ok(acl) => acl.entries(),
+                Err(err) => {
+                    if let Some(code) = err.as_io_error().and_then(|e| e.raw_os_error()) {
+                        if matches!(code, libc::ENODATA | libc::ENOTSUP | libc::ENOSYS) {
+                            Vec::new()
+                        } else {
+                            return Err(acl_to_io(err));
+                        }
+                    } else {
+                        return Err(acl_to_io(err));
+                    }
+                }
+            };
             let default_acl = if is_dir {
-                let dacl = posix_acl::PosixACL::read_default_acl(path).map_err(acl_to_io)?;
-                dacl.entries()
+                match posix_acl::PosixACL::read_default_acl(path) {
+                    Ok(dacl) => dacl.entries(),
+                    Err(err) => {
+                        if let Some(code) = err.as_io_error().and_then(|e| e.raw_os_error()) {
+                            if matches!(code, libc::ENODATA | libc::ENOTSUP | libc::ENOSYS) {
+                                Vec::new()
+                            } else {
+                                return Err(acl_to_io(err));
+                            }
+                        } else {
+                            return Err(acl_to_io(err));
+                        }
+                    }
+                }
             } else {
                 Vec::new()
             };
@@ -406,14 +428,18 @@ impl Metadata {
                 for entry in &self.acl {
                     acl.set(entry.qual, entry.perm);
                 }
-                acl.write_acl(path).map_err(acl_to_io)?;
+                if let Err(err) = acl.write_acl(path) {
+                    if !should_ignore_acl_error(&err) {
+                        return Err(acl_to_io(err));
+                    }
+                }
             }
             if is_dir {
                 if self.default_acl.is_empty() {
                     if let Err(err) = remove_default_acl(path) {
                         match err.raw_os_error() {
                             Some(libc::EPERM) | Some(libc::EACCES) | Some(libc::ENOSYS)
-                            | Some(libc::EINVAL) => {}
+                            | Some(libc::EINVAL) | Some(libc::ENOTSUP) => {}
                             _ => return Err(err),
                         }
                     }
@@ -422,7 +448,11 @@ impl Metadata {
                     for entry in &self.default_acl {
                         dacl.set(entry.qual, entry.perm);
                     }
-                    dacl.write_default_acl(path).map_err(acl_to_io)?;
+                    if let Err(err) = dacl.write_default_acl(path) {
+                        if !should_ignore_acl_error(&err) {
+                            return Err(acl_to_io(err));
+                        }
+                    }
                 }
             }
         }
@@ -465,6 +495,18 @@ fn acl_to_io(err: posix_acl::ACLError) -> io::Error {
         }
     } else {
         io::Error::other(err)
+    }
+}
+
+#[cfg(feature = "acl")]
+fn should_ignore_acl_error(err: &posix_acl::ACLError) -> bool {
+    if let Some(code) = err.as_io_error().and_then(|e| e.raw_os_error()) {
+        matches!(
+            code,
+            libc::EPERM | libc::EACCES | libc::ENOSYS | libc::EINVAL | libc::ENOTSUP
+        )
+    } else {
+        false
     }
 }
 

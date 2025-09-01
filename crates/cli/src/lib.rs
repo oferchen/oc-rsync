@@ -40,6 +40,15 @@ fn parse_duration(s: &str) -> std::result::Result<Duration, std::num::ParseIntEr
     Ok(Duration::from_secs(s.parse()?))
 }
 
+fn parse_nonzero_duration(s: &str) -> std::result::Result<Duration, String> {
+    let d = parse_duration(s).map_err(|e| e.to_string())?;
+    if d.as_secs() == 0 {
+        Err("value must be greater than 0".into())
+    } else {
+        Ok(d)
+    }
+}
+
 fn parse_size(s: &str) -> std::result::Result<usize, String> {
     let s = s.trim();
     if s == "0" {
@@ -101,6 +110,7 @@ enum ModernHashArg {
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum ModernCdcArg {
+    #[cfg(feature = "blake3")]
     Fastcdc,
     Off,
 }
@@ -384,7 +394,12 @@ struct ClientOpts {
     bwlimit: Option<u64>,
     #[arg(long = "timeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     timeout: Option<Duration>,
-    #[arg(long = "contimeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
+    #[arg(
+        long = "contimeout",
+        value_name = "SECONDS",
+        value_parser = parse_nonzero_duration,
+        help_heading = "Misc"
+    )]
     contimeout: Option<Duration>,
     #[arg(long = "modify-window", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     modify_window: Option<Duration>,
@@ -790,8 +805,7 @@ pub fn spawn_daemon_session(
     } else {
         (host, port.unwrap_or(873))
     };
-    let mut t = TcpTransport::connect(host, port, contimeout, family)
-        .map_err(|e| EngineError::Other(e.to_string()))?;
+    let mut t = TcpTransport::connect(host, port, contimeout, family).map_err(EngineError::from)?;
     let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(EngineError::Other)?;
     t.apply_sockopts(&parsed).map_err(EngineError::from)?;
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
@@ -959,17 +973,32 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let modern_cdc_arg = if let Some(arg) = opts.modern_cdc {
         arg
     } else if opts.modern || opts.modern_cdc_min.is_some() || opts.modern_cdc_max.is_some() {
-        ModernCdcArg::Fastcdc
+        #[cfg(feature = "blake3")]
+        {
+            ModernCdcArg::Fastcdc
+        }
+        #[cfg(not(feature = "blake3"))]
+        {
+            ModernCdcArg::Off
+        }
     } else {
         ModernCdcArg::Off
     };
     let modern_cdc = match modern_cdc_arg {
+        #[cfg(feature = "blake3")]
         ModernCdcArg::Fastcdc => ModernCdc::Fastcdc,
-        ModernCdcArg::Off => ModernCdc::Off,
+        _ => ModernCdc::Off,
     };
-    let modern_enabled = modern_compress.is_some()
-        || modern_hash.is_some()
-        || matches!(modern_cdc, ModernCdc::Fastcdc);
+    let modern_enabled = modern_compress.is_some() || modern_hash.is_some() || {
+        #[cfg(feature = "blake3")]
+        {
+            matches!(modern_cdc, ModernCdc::Fastcdc)
+        }
+        #[cfg(not(feature = "blake3"))]
+        {
+            false
+        }
+    };
 
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
         #[cfg_attr(not(feature = "blake3"), allow(unused_mut))]
@@ -1353,7 +1382,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.protocol
                         .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                 )
-                .map_err(|e| EngineError::Other(e.to_string()))?;
+                .map_err(EngineError::from)?;
                 let (err, _) = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
@@ -1417,7 +1446,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.protocol
                         .unwrap_or(if opts.modern { LATEST_VERSION } else { 31 }),
                 )
-                .map_err(|e| EngineError::Other(e.to_string()))?;
+                .map_err(EngineError::from)?;
                 let (err, _) = session.stderr();
                 if !err.is_empty() {
                     return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
@@ -1461,7 +1490,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                         )
-                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                        .map_err(EngineError::from)?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
                             &src_path.path,
@@ -1476,7 +1505,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                         )
-                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                        .map_err(EngineError::from)?;
 
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1569,7 +1598,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                         )
-                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                        .map_err(EngineError::from)?;
                         let mut src_session = spawn_daemon_session(
                             &src_host,
                             &sm,
@@ -1638,7 +1667,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.contimeout,
                             addr_family,
                         )
-                        .map_err(|e| EngineError::Other(e.to_string()))?;
+                        .map_err(EngineError::from)?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             pipe_transports(&mut src_session, &mut dst_session)

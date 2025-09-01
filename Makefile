@@ -18,6 +18,7 @@ doc:
 	cargo doc --no-deps --all-features
 
 test:
+	cargo test
 	cargo test --all-features
 
 coverage:
