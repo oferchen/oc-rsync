@@ -2198,6 +2198,35 @@ fn safe_links_skip_absolute_symlink() {
 
 #[cfg(unix)]
 #[test]
+fn safe_links_allow_relative_symlink_within_tree() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(src.join("dir")).unwrap();
+    std::fs::write(src.join("file"), b"hi").unwrap();
+    symlink("../file", src.join("dir/link")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--links",
+            "--safe-links",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let meta = std::fs::symlink_metadata(dst.join("dir/link")).unwrap();
+    assert!(meta.file_type().is_symlink());
+    let target = std::fs::read_link(dst.join("dir/link")).unwrap();
+    assert_eq!(target, std::path::PathBuf::from("../file"));
+}
+
+#[cfg(unix)]
+#[test]
 fn perms_preserve_permissions() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");

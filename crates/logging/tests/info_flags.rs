@@ -45,7 +45,6 @@ impl VecWriter {
 #[test]
 fn each_info_flag_emits_output() {
     for flag in InfoFlag::value_variants() {
-        // Without the flag enabled, nothing should be logged.
         let writer = VecWriter::default();
         let filter = EnvFilter::builder()
             .with_default_directive(LevelFilter::WARN.into())
@@ -57,8 +56,6 @@ fn each_info_flag_emits_output() {
             tracing::info!(target: flag.target(), "{}", flag.as_str());
         });
         assert!(writer.is_empty(), "{} emitted without flag", flag.as_str());
-
-        // Enabling the flag should emit the log line.
         let writer = VecWriter::default();
         let mut filter = EnvFilter::builder()
             .with_default_directive(LevelFilter::WARN.into())

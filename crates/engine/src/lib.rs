@@ -200,6 +200,22 @@ fn outside_size_bounds(len: u64, opts: &SyncOptions) -> bool {
     false
 }
 
+fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for comp in path.as_ref().components() {
+        match comp {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                normalized.pop();
+            }
+            Component::Normal(c) => normalized.push(c),
+            Component::RootDir => normalized.push(Path::new("/")),
+            Component::Prefix(p) => normalized.push(p.as_os_str()),
+        }
+    }
+    normalized
+}
+
 fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
     match fs::rename(src, dst) {
         Ok(_) => Ok(()),
@@ -2198,16 +2214,13 @@ pub fn sync(
                 } else if file_type.is_symlink() {
                     let target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
                     let target_path = if target.is_absolute() {
-                        target.clone()
+                        normalize_path(&target)
                     } else if let Some(parent) = path.parent() {
-                        parent.join(&target)
+                        normalize_path(parent.join(&target))
                     } else {
-                        src_root.join(&target)
+                        normalize_path(src_root.join(&target))
                     };
-                    let is_unsafe = target.is_absolute()
-                        || target
-                            .components()
-                            .any(|c| matches!(c, Component::ParentDir));
+                    let is_unsafe = target.is_absolute() || !target_path.starts_with(&src_root);
                     if opts.safe_links && is_unsafe {
                         continue;
                     }
