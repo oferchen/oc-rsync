@@ -1,0 +1,4 @@
+--filter=': /.rsync-filter'
+--filter=': /.gitignore'
+--filter='- .rsync-filter'
+--filter='- .gitignore'

@@ -23,7 +23,8 @@ fn setup_basic(src: &Path) {
 
 fn setup_perdir(src: &Path) {
     fs::create_dir_all(src.join("sub/nested")).unwrap();
-    fs::write(src.join(".rsync-filter"), "- *.tmp\n").unwrap();
+    fs::write(src.join(".rsync-filter"), "+ keep.tmp\n- *.tmp\n").unwrap();
+    fs::write(src.join(".gitignore"), "- other.txt\n").unwrap();
     fs::write(
         src.join("sub/.rsync-filter"),
         "+ nested/\n+ keep.tmp\n- *\n",
@@ -287,4 +288,55 @@ fn perdir_sign_parity() {
             .unwrap();
         assert!(diff.status.success(), "directory trees differ");
     }
+}
+
+#[test]
+fn perdir_stack_parity() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let rsync_dst = tmp.path().join("rsync");
+    let ours_dst = tmp.path().join("ours");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&rsync_dst).unwrap();
+    fs::create_dir_all(&ours_dst).unwrap();
+    setup_perdir(&src);
+    let src_arg = format!("{}/", src.display());
+
+    let args = [
+        "--filter=: /.rsync-filter",
+        "--filter=: /.gitignore",
+        "--filter=- .rsync-filter",
+        "--filter=- .gitignore",
+    ];
+
+    let mut rsync_cmd = StdCommand::new("rsync");
+    rsync_cmd.args(["-r", "--quiet"]);
+    rsync_cmd.args(args);
+    rsync_cmd.arg(&src_arg);
+    rsync_cmd.arg(&rsync_dst);
+    let rsync_out = rsync_cmd.output().unwrap();
+    assert!(rsync_out.status.success());
+
+    let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
+    ours_cmd.args(["--local", "--recursive"]);
+    ours_cmd.args(args);
+    ours_cmd.arg(&src_arg);
+    ours_cmd.arg(&ours_dst);
+    let ours_out = ours_cmd.output().unwrap();
+    assert!(ours_out.status.success());
+
+    let diff = StdCommand::new("diff")
+        .arg("-r")
+        .arg(&rsync_dst)
+        .arg(&ours_dst)
+        .output()
+        .unwrap();
+    assert!(diff.status.success(), "directory trees differ");
+
+    assert!(ours_dst.join("sub/keep.tmp").exists());
+    assert!(ours_dst.join("sub/nested/keep.tmp").exists());
+    assert!(!ours_dst.join("sub/other.tmp").exists());
+    assert!(!ours_dst.join("sub/other.txt").exists());
+    assert!(!ours_dst.join(".rsync-filter").exists());
+    assert!(!ours_dst.join(".gitignore").exists());
 }

@@ -769,7 +769,7 @@ pub fn parse(
                 rules.push(Rule::DirMerge(PerDir {
                     file: ".rsync-filter".to_string(),
                     anchored: true,
-                    root_only: false,
+                    root_only: true,
                     inherit: true,
                     cvs: false,
                     word_split: false,
@@ -952,7 +952,7 @@ pub fn parse(
             rules.push(Rule::DirMerge(PerDir {
                 file: fname.clone(),
                 anchored,
-                root_only: false,
+                root_only: anchored,
                 inherit: !m.contains('n'),
                 cvs: m.contains('C'),
                 word_split: m.contains('w'),
