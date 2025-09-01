@@ -24,7 +24,7 @@ use compress::{
     available_codecs, should_compress, Codec, Compressor, Decompressor, ModernCompress, Zlib, Zstd,
 };
 use filters::Matcher;
-use logging::human_bytes;
+use logging::progress_formatter;
 use thiserror::Error;
 
 pub mod cdc;
@@ -517,19 +517,10 @@ fn write_sparse(file: &mut File, data: &[u8]) -> Result<()> {
     Ok(())
 }
 
-fn format_number(n: u64) -> String {
-    let mut s = n.to_string();
-    let mut i = s.len() as isize - 3;
-    while i > 0 {
-        s.insert(i as usize, ',');
-        i -= 3;
-    }
-    s
-}
-
 struct Progress<'a> {
     total: u64,
     written: u64,
+    start: std::time::Instant,
     last_print: std::time::Instant,
     human_readable: bool,
     #[allow(dead_code)]
@@ -544,10 +535,12 @@ impl<'a> Progress<'a> {
         if !quiet {
             eprintln!("{}", dest.display());
         }
+        let now = std::time::Instant::now();
         Self {
             total,
             written: initial,
-            last_print: std::time::Instant::now() - PROGRESS_UPDATE_INTERVAL,
+            start: now,
+            last_print: now - PROGRESS_UPDATE_INTERVAL,
             human_readable,
             dest,
             quiet,
@@ -576,20 +569,23 @@ impl<'a> Progress<'a> {
             return;
         }
         use std::io::Write as _;
-        let bytes = if self.human_readable {
-            human_bytes(self.written)
-        } else {
-            format_number(self.written)
-        };
+        let bytes = progress_formatter(self.written, self.human_readable);
         let percent = if self.total == 0 {
             100
         } else {
             self.written * 100 / self.total
         };
-        if done {
-            eprintln!("\r{:>15} {:>3}%", bytes, percent);
+        let elapsed = self.start.elapsed().as_secs().max(1);
+        let rate = self.written / elapsed;
+        let rate = if self.human_readable {
+            format!("{}/s", progress_formatter(rate, true))
         } else {
-            eprint!("\r{:>15} {:>3}%", bytes, percent);
+            format!("{}B/s", progress_formatter(rate, false))
+        };
+        if done {
+            eprintln!("\r{:>15} {:>3}% {:>15}", bytes, percent, rate);
+        } else {
+            eprint!("\r{:>15} {:>3}% {:>15}", bytes, percent, rate);
             let _ = std::io::stderr().flush();
         }
     }
