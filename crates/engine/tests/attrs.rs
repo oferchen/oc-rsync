@@ -388,6 +388,33 @@ fn xattrs_roundtrip() {
     assert_eq!(&val[..], b"val");
 }
 
+#[cfg(feature = "xattr")]
+#[test]
+fn symlink_xattrs_roundtrip() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("file"), b"hi").unwrap();
+    std::os::unix::fs::symlink("file", src.join("link")).unwrap();
+    xattr::set(src.join("link"), "user.test", b"val").unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &SyncOptions {
+            xattrs: true,
+            links: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let val = xattr::get(dst.join("link"), "user.test").unwrap().unwrap();
+    assert_eq!(&val[..], b"val");
+}
+
 #[cfg(feature = "acl")]
 #[test]
 fn acls_roundtrip() {

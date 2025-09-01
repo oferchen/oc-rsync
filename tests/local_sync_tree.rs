@@ -138,6 +138,37 @@ fn sync_preserves_xattrs() {
     assert_eq!(&val[..], b"val");
 }
 
+#[cfg(all(unix, feature = "xattr"))]
+#[test]
+fn sync_preserves_symlink_xattrs() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("file"), b"hi").unwrap();
+    symlink("file", src.join("link")).unwrap();
+    xattr::set(src.join("link"), "user.test", b"val").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--links",
+            "--xattrs",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let val = xattr::get(dst.join("link"), "user.test").unwrap().unwrap();
+    assert_eq!(&val[..], b"val");
+}
+
 #[cfg(all(unix, feature = "acl"))]
 #[test]
 fn sync_preserves_acls() {
@@ -155,6 +186,10 @@ fn sync_preserves_acls() {
     acl.set(Qualifier::User(12345), ACL_READ);
     acl.write_acl(&file).unwrap();
 
+    let mut dacl = PosixACL::read_default_acl(&src).unwrap();
+    dacl.set(Qualifier::User(12345), ACL_READ);
+    dacl.write_default_acl(&src).unwrap();
+
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -167,6 +202,10 @@ fn sync_preserves_acls() {
     let acl_src = PosixACL::read_acl(&file).unwrap();
     let acl_dst = PosixACL::read_acl(dst.join("file")).unwrap();
     assert_eq!(acl_src.entries(), acl_dst.entries());
+
+    let dacl_src = PosixACL::read_default_acl(&src).unwrap();
+    let dacl_dst = PosixACL::read_default_acl(&dst).unwrap();
+    assert_eq!(dacl_src.entries(), dacl_dst.entries());
 }
 
 #[cfg(unix)]
