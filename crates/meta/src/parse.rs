@@ -112,7 +112,7 @@ pub fn parse_chmod(s: &str) -> StdResult<Vec<Chmod>, String> {
 }
 
 #[cfg(unix)]
-use nix::unistd::{Group, User};
+use users::{get_group_by_name, get_user_by_name};
 
 pub fn parse_chown(spec: &str) -> StdResult<(Option<u32>, Option<u32>), String> {
     let (user_part, group_part) = if let Some((u, g)) = spec.split_once(':') {
@@ -145,10 +145,9 @@ fn parse_user(s: &str) -> StdResult<Option<u32>, String> {
     if let Ok(id) = s.parse() {
         return Ok(Some(id));
     }
-    match User::from_name(s) {
-        Ok(Some(u)) => Ok(Some(u.uid.as_raw())),
-        Ok(None) => Err(format!("unknown user '{s}'")),
-        Err(_) => Err(format!("invalid user '{s}'")),
+    match get_user_by_name(s) {
+        Some(u) => Ok(Some(u.uid())),
+        None => Err(format!("unknown user '{s}'")),
     }
 }
 
@@ -163,10 +162,9 @@ fn parse_group(s: &str) -> StdResult<u32, String> {
     if let Ok(id) = s.parse() {
         return Ok(id);
     }
-    match Group::from_name(s) {
-        Ok(Some(g)) => Ok(g.gid.as_raw()),
-        Ok(None) => Err(format!("unknown group '{s}'")),
-        Err(_) => Err(format!("invalid group '{s}'")),
+    match get_group_by_name(s) {
+        Some(g) => Ok(g.gid()),
+        None => Err(format!("unknown group '{s}'")),
     }
 }
 
@@ -175,7 +173,37 @@ fn parse_group(s: &str) -> StdResult<u32, String> {
     s.parse().map_err(|_| format!("invalid gid '{s}'"))
 }
 
-pub fn parse_id_map(spec: &str) -> StdResult<Arc<dyn Fn(u32) -> u32 + Send + Sync>, String> {
+#[derive(Clone, Copy)]
+pub enum IdKind {
+    User,
+    Group,
+}
+
+fn resolve_id(kind: IdKind, s: &str) -> StdResult<u32, String> {
+    if let Ok(id) = s.parse() {
+        return Ok(id);
+    }
+    #[cfg(unix)]
+    {
+        match kind {
+            IdKind::User => get_user_by_name(s)
+                .map(|u| u.uid())
+                .ok_or_else(|| format!("unknown user '{s}'")),
+            IdKind::Group => get_group_by_name(s)
+                .map(|g| g.gid())
+                .ok_or_else(|| format!("unknown group '{s}'")),
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        Err(format!("invalid id '{s}'"))
+    }
+}
+
+pub fn parse_id_map(
+    spec: &str,
+    kind: IdKind,
+) -> StdResult<Arc<dyn Fn(u32) -> u32 + Send + Sync>, String> {
     #[derive(Clone)]
     enum From {
         Any,
@@ -190,20 +218,18 @@ pub fn parse_id_map(spec: &str) -> StdResult<Arc<dyn Fn(u32) -> u32 + Send + Syn
         let (from_s, to_s) = part
             .split_once(':')
             .ok_or_else(|| format!("invalid mapping '{part}'"))?;
-        let to: u32 = to_s.parse().map_err(|_| format!("invalid id '{to_s}'"))?;
+        let to: u32 = resolve_id(kind, to_s)?;
         let from = if from_s == "*" {
             From::Any
         } else if let Some((lo_s, hi_s)) = from_s.split_once('-') {
-            let lo: u32 = lo_s.parse().map_err(|_| format!("invalid id '{lo_s}'"))?;
-            let hi: u32 = hi_s.parse().map_err(|_| format!("invalid id '{hi_s}'"))?;
+            let lo: u32 = resolve_id(kind, lo_s)?;
+            let hi: u32 = resolve_id(kind, hi_s)?;
             if lo > hi {
                 return Err(format!("invalid range '{from_s}'"));
             }
             From::Range(lo, hi)
         } else {
-            let id: u32 = from_s
-                .parse()
-                .map_err(|_| format!("invalid id '{from_s}'"))?;
+            let id: u32 = resolve_id(kind, from_s)?;
             From::Id(id)
         };
         rules.push((from, to));
