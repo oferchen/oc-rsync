@@ -104,6 +104,7 @@ pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFla
         .map(|v| v.copied().collect())
         .unwrap_or_default();
     (info, debug)
+}
 
 pub struct CharsetConv {
     remote: &'static Encoding,
@@ -965,7 +966,11 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         }
     }
     if opts.verbose > 0 && !opts.quiet {
-        tracing::info!("verbose level set to {}", opts.verbose);
+        tracing::info!(
+            target: InfoFlag::Misc.target(),
+            "verbose level set to {}",
+            opts.verbose
+        );
     }
     if opts.recursive && !opts.quiet {
         println!("recursive mode enabled");

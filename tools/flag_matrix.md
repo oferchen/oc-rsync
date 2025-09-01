@@ -66,7 +66,7 @@
 | --ignore-times | Supported |  |
 | --include | Supported |  |
 | --include-from | Supported |  |
-| --info | Ignored |  |
+| --info | Supported |  |
 | --inplace | Supported |  |
 | --ipv4 | Supported |  |
 | --ipv6 | Supported |  |

@@ -125,7 +125,7 @@
 | -h (*) | --help | show this help (* -h is help only on its own) Rsync can also be run as a daemon, in which case the following options are accepted: | no |  | no |
 | -h | --help | show this help (when used with --daemon) | no |  | no |
 |  | --human-readable | output numbers in a human-readable format | no |  | no |
-|  | --info=FLAGS | fine-grained informational verbosity | no |  | no |
+|  | --info=FLAGS | fine-grained informational verbosity | yes |  | no |
 | -i | --itemize-changes | output a change-summary for all updates | no |  | no |
 |  | --list-only | list the files instead of copying them | no |  | no |
 |  | --log-file-format=FMT | log updates using the specified FMT | no |  | no |
