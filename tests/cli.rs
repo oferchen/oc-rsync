@@ -1037,6 +1037,148 @@ fn group_names_are_mapped() {
     assert_eq!(meta.gid(), other_gid);
 }
 
+#[cfg(unix)]
+#[test]
+fn user_name_to_numeric_id_is_mapped() {
+    let uid = get_current_uid();
+    if uid != 0 {
+        eprintln!("skipping user_name_to_numeric_id_is_mapped: requires root or CAP_CHOWN",);
+        return;
+    }
+    {
+        let dir = tempdir().unwrap();
+        let probe = dir.path().join("probe");
+        std::fs::write(&probe, b"probe").unwrap();
+        if let Err(err) = chown(&probe, Some(Uid::from_raw(1)), Some(Gid::from_raw(1))) {
+            match err {
+                nix::errno::Errno::EPERM => {
+                    eprintln!("skipping user_name_to_numeric_id_is_mapped: lacks CAP_CHOWN",);
+                    return;
+                }
+                _ => panic!("unexpected chown error: {err}"),
+            }
+        }
+    }
+
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("id.txt");
+    std::fs::write(&file, b"ids").unwrap();
+
+    let uname = get_user_by_uid(uid)
+        .unwrap()
+        .name()
+        .to_string_lossy()
+        .into_owned();
+    let passwd_data = std::fs::read_to_string("/etc/passwd").unwrap();
+    let other_uid = passwd_data
+        .lines()
+        .find_map(|line| {
+            if line.starts_with('#') || line.trim().is_empty() {
+                return None;
+            }
+            let mut parts = line.split(':');
+            parts.next()?;
+            parts.next();
+            let uid_str = parts.next()?;
+            let uid_val: u32 = uid_str.parse().ok()?;
+            if uid_val != uid {
+                Some(uid_val)
+            } else {
+                None
+            }
+        })
+        .expect("no alternate user id found");
+
+    let usermap = format!("--usermap={uname}:{other_uid}");
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            usermap.as_str(),
+            src_arg.as_str(),
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let meta = std::fs::metadata(dst_dir.join("id.txt")).unwrap();
+    assert_eq!(meta.uid(), other_uid);
+}
+
+#[cfg(unix)]
+#[test]
+fn group_id_to_name_is_mapped() {
+    let uid = get_current_uid();
+    if uid != 0 {
+        eprintln!("skipping group_id_to_name_is_mapped: requires root or CAP_CHOWN");
+        return;
+    }
+    {
+        let dir = tempdir().unwrap();
+        let probe = dir.path().join("probe");
+        std::fs::write(&probe, b"probe").unwrap();
+        if let Err(err) = chown(&probe, Some(Uid::from_raw(1)), Some(Gid::from_raw(1))) {
+            match err {
+                nix::errno::Errno::EPERM => {
+                    eprintln!("skipping group_id_to_name_is_mapped: lacks CAP_CHOWN",);
+                    return;
+                }
+                _ => panic!("unexpected chown error: {err}"),
+            }
+        }
+    }
+
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("id.txt");
+    std::fs::write(&file, b"ids").unwrap();
+
+    let gid = get_current_gid();
+    let group_data = std::fs::read_to_string("/etc/group").unwrap();
+    let (other_name, other_gid) = group_data
+        .lines()
+        .find_map(|line| {
+            if line.starts_with('#') || line.trim().is_empty() {
+                return None;
+            }
+            let mut parts = line.split(':');
+            let name = parts.next()?;
+            parts.next();
+            let gid_str = parts.next()?;
+            let gid_val: u32 = gid_str.parse().ok()?;
+            if gid_val != gid {
+                Some((name.to_string(), gid_val))
+            } else {
+                None
+            }
+        })
+        .expect("no alternate group found");
+
+    let groupmap = format!("--groupmap={gid}:{other_name}");
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            groupmap.as_str(),
+            src_arg.as_str(),
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let meta = std::fs::metadata(dst_dir.join("id.txt")).unwrap();
+    assert_eq!(meta.gid(), other_gid);
+}
+
 #[test]
 fn verbose_flag_increases_logging() {
     let dir = tempdir().unwrap();
