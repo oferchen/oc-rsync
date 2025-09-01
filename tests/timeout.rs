@@ -8,7 +8,8 @@ use std::time::Duration;
 
 use protocol::Demux;
 use transport::{
-    ssh::SshStdioTransport, rate_limited, LocalPipeTransport, TcpTransport, TimeoutTransport, Transport,
+    rate_limited, ssh::SshStdioTransport, LocalPipeTransport, TcpTransport, TimeoutTransport,
+    Transport,
 };
 
 #[test]
