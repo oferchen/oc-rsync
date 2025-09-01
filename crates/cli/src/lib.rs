@@ -15,6 +15,7 @@ use std::time::{Duration, Instant};
 use clap::parser::ValueSource;
 use clap::{ArgAction, ArgMatches, Args, CommandFactory, FromArgMatches, Parser};
 use compress::{available_codecs, Codec};
+use encoding_rs::Encoding;
 pub use engine::EngineError;
 use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse, Matcher, Rule};
@@ -91,6 +92,40 @@ fn parse_file_size(s: &str) -> std::result::Result<u64, String> {
         }
     }
     s.parse::<u64>().map_err(|e| e.to_string())
+}
+
+pub struct CharsetConv {
+    remote: &'static Encoding,
+}
+
+impl CharsetConv {
+    fn encode_remote(&self, s: &str) -> Vec<u8> {
+        let (res, _, _) = self.remote.encode(s);
+        res.into_owned()
+    }
+
+    fn decode_remote(&self, b: &[u8]) -> String {
+        let (res, _, _) = self.remote.decode(b);
+        res.into_owned()
+    }
+}
+
+pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
+    let mut parts = spec.split(',');
+    let remote_label = parts
+        .next()
+        .ok_or_else(|| "invalid iconv spec".to_string())?;
+    let local_label = parts.next().unwrap_or("UTF-8");
+    if Encoding::for_label(remote_label.as_bytes()).is_none()
+        || Encoding::for_label(local_label.as_bytes()).is_none()
+    {
+        return Err(format!(
+            "iconv_open(\"{local_label}\", \"{remote_label}\") failed"
+        ));
+    }
+    Ok(CharsetConv {
+        remote: Encoding::for_label(remote_label.as_bytes()).unwrap(),
+    })
 }
 
 #[derive(Parser, Debug)]
@@ -452,6 +487,13 @@ struct ClientOpts {
         help_heading = "Misc"
     )]
     sockopts: Vec<String>,
+    #[arg(
+        long = "iconv",
+        value_name = "CONVERT_SPEC",
+        help_heading = "Misc",
+        help = "request charset conversion of filenames"
+    )]
+    iconv: Option<String>,
     #[arg(long = "write-batch", value_name = "FILE", help_heading = "Misc")]
     write_batch: Option<PathBuf>,
     #[arg(long = "copy-devices", help_heading = "Misc")]
@@ -758,6 +800,7 @@ pub fn spawn_daemon_session(
     opts: &SyncOptions,
     version: u32,
     early_input: Option<&Path>,
+    iconv: Option<&CharsetConv>,
 ) -> Result<TcpTransport> {
     let (host, port) = if let Some((h, p)) = host.rsplit_once(':') {
         let p = p.parse().unwrap_or(873);
@@ -810,14 +853,17 @@ pub fn spawn_daemon_session(
                 break;
             }
             if !no_motd {
-                if let Ok(s) = String::from_utf8(line.clone()) {
-                    if let Some(msg) = s.strip_prefix("@RSYNCD: ") {
-                        print!("{msg}");
-                    } else {
-                        print!("{s}");
-                    }
-                    let _ = io::stdout().flush();
+                let s = if let Some(cv) = iconv {
+                    cv.decode_remote(&line)
+                } else {
+                    String::from_utf8_lossy(&line).into_owned()
+                };
+                if let Some(msg) = s.strip_prefix("@RSYNCD: ") {
+                    print!("{msg}");
+                } else {
+                    print!("{s}");
                 }
+                let _ = io::stdout().flush();
             }
             line.clear();
         }
@@ -825,11 +871,22 @@ pub fn spawn_daemon_session(
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
     t.set_write_timeout(timeout).map_err(EngineError::from)?;
 
-    let line = format!("{module}\n");
-    t.send(line.as_bytes()).map_err(EngineError::from)?;
-    for opt in &opts.remote_options {
-        let o = format!("{opt}\n");
-        t.send(o.as_bytes()).map_err(EngineError::from)?;
+    if let Some(cv) = iconv {
+        let mut line = cv.encode_remote(module);
+        line.push(b'\n');
+        t.send(&line).map_err(EngineError::from)?;
+        for opt in &opts.remote_options {
+            let mut o = cv.encode_remote(opt);
+            o.push(b'\n');
+            t.send(&o).map_err(EngineError::from)?;
+        }
+    } else {
+        let line = format!("{module}\n");
+        t.send(line.as_bytes()).map_err(EngineError::from)?;
+        for opt in &opts.remote_options {
+            let o = format!("{opt}\n");
+            t.send(o.as_bytes()).map_err(EngineError::from)?;
+        }
     }
     t.send(b"\n").map_err(EngineError::from)?;
     Ok(t)
@@ -858,6 +915,12 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
     parse_sockopts(&opts.sockopts).map_err(EngineError::Other)?;
 
+    let iconv = if let Some(spec) = &opts.iconv {
+        Some(parse_iconv(spec).map_err(EngineError::Other)?)
+    } else {
+        None
+    };
+
     if let Some(pf) = &opts.password_file {
         #[cfg(unix)]
         {
@@ -874,6 +937,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let mut remote_opts = opts.remote_option.clone();
     if opts.secluded_args {
         remote_opts.push("--secluded-args".into());
+    }
+    if let Some(spec) = &opts.iconv {
+        remote_opts.push(format!("--iconv={spec}"));
     }
 
     if let Some(cfg) = &opts.config {
@@ -1219,6 +1285,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &sync_opts,
                     opts.protocol.unwrap_or(31),
                     opts.early_input.as_deref(),
+                    iconv.as_ref(),
                 )?;
                 sync(
                     &src.path,
@@ -1256,7 +1323,12 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 .map_err(EngineError::from)?;
                 let (err, _) = session.stderr();
                 if !err.is_empty() {
-                    return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
+                    let msg = if let Some(cv) = iconv.as_ref() {
+                        cv.decode_remote(&err)
+                    } else {
+                        String::from_utf8_lossy(&err).into_owned()
+                    };
+                    return Err(EngineError::Other(msg));
                 }
                 sync(&src.path, &dst.path, &matcher, &codecs, &sync_opts)?
             }
@@ -1281,6 +1353,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &sync_opts,
                     opts.protocol.unwrap_or(31),
                     opts.early_input.as_deref(),
+                    iconv.as_ref(),
                 )?;
                 sync(
                     &src.path,
@@ -1318,7 +1391,12 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 .map_err(EngineError::from)?;
                 let (err, _) = session.stderr();
                 if !err.is_empty() {
-                    return Err(EngineError::Other(String::from_utf8_lossy(&err).into()));
+                    let msg = if let Some(cv) = iconv.as_ref() {
+                        cv.decode_remote(&err)
+                    } else {
+                        String::from_utf8_lossy(&err).into_owned()
+                    };
+                    return Err(EngineError::Other(msg));
                 }
                 sync(&src.path, &dst.path, &matcher, &codecs, &sync_opts)?
             }
@@ -1382,31 +1460,43 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 .map_err(|e| EngineError::Other(e.to_string()))?;
                             let (src_err, _) = src_session.stderr();
                             if !src_err.is_empty() {
-                                return Err(EngineError::Other(
-                                    String::from_utf8_lossy(&src_err).into(),
-                                ));
+                                let msg = if let Some(cv) = iconv.as_ref() {
+                                    cv.decode_remote(&src_err)
+                                } else {
+                                    String::from_utf8_lossy(&src_err).into_owned()
+                                };
+                                return Err(EngineError::Other(msg));
                             }
                             let dst_session = dst_session.into_inner();
                             let (dst_err, _) = dst_session.stderr();
                             if !dst_err.is_empty() {
-                                return Err(EngineError::Other(
-                                    String::from_utf8_lossy(&dst_err).into(),
-                                ));
+                                let msg = if let Some(cv) = iconv.as_ref() {
+                                    cv.decode_remote(&dst_err)
+                                } else {
+                                    String::from_utf8_lossy(&dst_err).into_owned()
+                                };
+                                return Err(EngineError::Other(msg));
                             }
                         } else {
                             pipe_transports(&mut src_session, &mut dst_session)
                                 .map_err(|e| EngineError::Other(e.to_string()))?;
                             let (src_err, _) = src_session.stderr();
                             if !src_err.is_empty() {
-                                return Err(EngineError::Other(
-                                    String::from_utf8_lossy(&src_err).into(),
-                                ));
+                                let msg = if let Some(cv) = iconv.as_ref() {
+                                    cv.decode_remote(&src_err)
+                                } else {
+                                    String::from_utf8_lossy(&src_err).into_owned()
+                                };
+                                return Err(EngineError::Other(msg));
                             }
                             let (dst_err, _) = dst_session.stderr();
                             if !dst_err.is_empty() {
-                                return Err(EngineError::Other(
-                                    String::from_utf8_lossy(&dst_err).into(),
-                                ));
+                                let msg = if let Some(cv) = iconv.as_ref() {
+                                    cv.decode_remote(&dst_err)
+                                } else {
+                                    String::from_utf8_lossy(&dst_err).into_owned()
+                                };
+                                return Err(EngineError::Other(msg));
                             }
                         }
                         Stats::default()
@@ -1425,6 +1515,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &sync_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
+                            iconv.as_ref(),
                         )?;
                         let mut src_session = spawn_daemon_session(
                             &src_host,
@@ -1439,6 +1530,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &sync_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
+                            iconv.as_ref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1479,6 +1571,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &sync_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
+                            iconv.as_ref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1487,18 +1580,24 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             let dst_session = dst_session.into_inner();
                             let (dst_err, _) = dst_session.stderr();
                             if !dst_err.is_empty() {
-                                return Err(EngineError::Other(
-                                    String::from_utf8_lossy(&dst_err).into(),
-                                ));
+                                let msg = if let Some(cv) = iconv.as_ref() {
+                                    cv.decode_remote(&dst_err)
+                                } else {
+                                    String::from_utf8_lossy(&dst_err).into_owned()
+                                };
+                                return Err(EngineError::Other(msg));
                             }
                         } else {
                             pipe_transports(&mut src_session, &mut dst_session)
                                 .map_err(|e| EngineError::Other(e.to_string()))?;
                             let (dst_err, _) = dst_session.stderr();
                             if !dst_err.is_empty() {
-                                return Err(EngineError::Other(
-                                    String::from_utf8_lossy(&dst_err).into(),
-                                ));
+                                let msg = if let Some(cv) = iconv.as_ref() {
+                                    cv.decode_remote(&dst_err)
+                                } else {
+                                    String::from_utf8_lossy(&dst_err).into_owned()
+                                };
+                                return Err(EngineError::Other(msg));
                             }
                         }
                         Stats::default()
@@ -1517,6 +1616,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &sync_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
+                            iconv.as_ref(),
                         )?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
@@ -1543,9 +1643,12 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         }
                         let (src_err, _) = src_session.stderr();
                         if !src_err.is_empty() {
-                            return Err(EngineError::Other(
-                                String::from_utf8_lossy(&src_err).into(),
-                            ));
+                            let msg = if let Some(cv) = iconv.as_ref() {
+                                cv.decode_remote(&src_err)
+                            } else {
+                                String::from_utf8_lossy(&src_err).into_owned()
+                            };
+                            return Err(EngineError::Other(msg));
                         }
                         Stats::default()
                     }
@@ -2112,6 +2215,7 @@ mod tests {
             &SyncOptions::default(),
             30,
             None,
+            None,
         )
         .unwrap();
         handle.join().unwrap();
@@ -2172,6 +2276,7 @@ mod tests {
             &SyncOptions::default(),
             30,
             Some(&path),
+            None,
         )
         .unwrap();
         handle.join().unwrap();
