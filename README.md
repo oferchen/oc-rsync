@@ -1,15 +1,16 @@
 # oc-rsync
 
-oc-rsync is a modular reimplementation of the classic `rsync` utility in Rust. It develops the protocol, transport and synchronization engine as a collection of reusable crates and aims for eventual compatibility with existing rsync deployments while leveraging Rust's safety and concurrency strengths.
+oc-rsync is a modular reimplementation of the classic `rsync` utility in Rust. It develops the protocol, transport and synchronization engine as a collection of reusable crates and prioritizes absolute compatibility with existing rsync deployments before any enhancements are considered, while leveraging Rust's safety and concurrency strengths.
 
 ## Summary
 
-**Mission**: Implement a pure-Rust rsync replacement compatible with stock rsync v32 over SSH and `rsync://`, with optional support for modern mode 73.
+**Mission**: Implement a pure-Rust rsync replacement compatible with stock rsync v32 over SSH and `rsync://`. Absolute parity with upstream rsync is the priority; enhancements will be explored only after parity is complete.
 
 **Non‑negotiable constraints**: correctness with full metadata fidelity, security, robust I/O with resumable transfers, cross‑platform support, and open‑source dual licensing.
 
 ## Mission
-- Implement a pure-Rust rsync replacement compatible with stock rsync v32 over SSH and `rsync://`, supporting modern mode 73.
+- Implement a pure-Rust rsync replacement compatible with stock rsync v32 over SSH and `rsync://`.
+- Achieve absolute parity with upstream rsync before introducing any enhancements.
 - Deliver fast, reliable file synchronization.
 - Provide a welcoming platform for contributors building the next generation of sync tooling.
 
@@ -109,7 +110,7 @@ daemon:
 ## Milestone Roadmap
 1. **M1—Bootstrap** – repository builds; `walk` and `checksums` crates generate file signatures.
 2. **M2—Delta Engine** – `engine` drives local delta transfers with metadata preservation.
-3. **M3—Remote Protocol** – rsync protocol v32 over SSH and `rsync://` implemented with modern mode 73 support.
+3. **M3—Remote Protocol** – rsync protocol v32 over SSH and `rsync://` implemented.
 4. **M4—Metadata Fidelity** – permissions, symlinks, hard links, sparse files, and xattrs/ACLs handled.
 5. **M5—Filters & Compression** – include/exclude rules and compression negotiation wired through engine and CLI.
 6. **M6—Robust Transfers** – resume partials, verify checksums, and harden I/O against interruptions.
