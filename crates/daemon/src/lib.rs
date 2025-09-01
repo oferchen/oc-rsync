@@ -61,6 +61,82 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
 }
 
 #[derive(Debug, Default, Clone)]
+pub struct DaemonArgs {
+    pub address: Option<IpAddr>,
+    pub port: u16,
+    pub family: Option<AddressFamily>,
+}
+
+pub fn parse_daemon_args<I>(args: I) -> io::Result<DaemonArgs>
+where
+    I: IntoIterator<Item = String>,
+{
+    let mut opts = DaemonArgs {
+        port: 873,
+        ..DaemonArgs::default()
+    };
+    let mut iter = args.into_iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--address" => {
+                let val = iter.next().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "missing value for --address")
+                })?;
+                opts.address = Some(
+                    val.parse()
+                        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?,
+                );
+            }
+            a if a.starts_with("--address=") => {
+                let val = &a[10..];
+                opts.address = Some(
+                    val.parse()
+                        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?,
+                );
+            }
+            "--port" => {
+                let val = iter.next().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "missing value for --port")
+                })?;
+                opts.port = val
+                    .parse()
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            }
+            a if a.starts_with("--port=") => {
+                let val = &a[7..];
+                opts.port = val
+                    .parse()
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            }
+            "--ipv4" | "-4" => {
+                opts.family = Some(AddressFamily::V4);
+            }
+            "--ipv6" | "-6" => {
+                opts.family = Some(AddressFamily::V6);
+            }
+            _ => {}
+        }
+    }
+    if let (Some(ip), Some(AddressFamily::V4)) = (opts.address, opts.family) {
+        if ip.is_ipv6() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "IPv6 address provided with --ipv4",
+            ));
+        }
+    }
+    if let (Some(ip), Some(AddressFamily::V6)) = (opts.address, opts.family) {
+        if ip.is_ipv4() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "IPv4 address provided with --ipv6",
+            ));
+        }
+    }
+    Ok(opts)
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct DaemonConfig {
     pub address: Option<IpAddr>,
     pub address6: Option<IpAddr>,
@@ -507,6 +583,25 @@ pub fn run_daemon(
 
     if let Some(dir) = state_dir {
         let _ = fs::create_dir_all(dir);
+    }
+
+    if let Some(addr) = address {
+        if let Some(AddressFamily::V4) = family {
+            if addr.is_ipv6() {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "IPv6 address provided with --ipv4",
+                ));
+            }
+        }
+        if let Some(AddressFamily::V6) = family {
+            if addr.is_ipv4() {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "IPv4 address provided with --ipv6",
+                ));
+            }
+        }
     }
 
     let (listener, real_port) = TcpTransport::listen(address, port, family)?;
