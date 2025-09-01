@@ -28,7 +28,13 @@ fn resolves_user_names_and_maps() {
     let (u, _) = parse_chown(&format!("{name}:")).expect("parse_chown failed for current user");
     assert_eq!(u, Some(uid));
 
+    let other = unsafe { users::all_users() }
+        .find(|u| u.uid() != uid)
+        .expect("no alternative user found");
+    let other_name = other.name().to_string_lossy().into_owned();
+    let other_uid = other.uid();
+
     let mapper =
-        parse_id_map(&format!("{name}:{}", uid + 1), IdKind::User).expect("parse_id_map failed");
-    assert_eq!(mapper(uid), uid + 1);
+        parse_id_map(&format!("{name}:{other_name}"), IdKind::User).expect("parse_id_map failed");
+    assert_eq!(mapper(uid), other_uid);
 }

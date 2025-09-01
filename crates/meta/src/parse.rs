@@ -197,6 +197,30 @@ pub fn parse_id_map(
         Range(u32, u32),
         Id(u32),
     }
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum IdStyle {
+        Numeric,
+        Name,
+    }
+    let mut style: Option<IdStyle> = None;
+    let mut record_style = |token: &str| -> StdResult<(), String> {
+        if token == "*" {
+            return Ok(());
+        }
+        let token_style = if token.chars().all(|c| c.is_ascii_digit()) {
+            IdStyle::Numeric
+        } else {
+            IdStyle::Name
+        };
+        match style {
+            Some(s) if s != token_style => {
+                return Err("cannot mix numeric and name ids in mapping".into());
+            }
+            None => style = Some(token_style),
+            _ => {}
+        }
+        Ok(())
+    };
     let mut rules: Vec<(From, u32)> = Vec::new();
     for part in spec.split(',') {
         if part.is_empty() {
@@ -205,10 +229,13 @@ pub fn parse_id_map(
         let (from_s, to_s) = part
             .split_once(':')
             .ok_or_else(|| format!("invalid mapping '{part}'"))?;
+        record_style(to_s)?;
         let to: u32 = resolve_id(kind, to_s)?;
         let from = if from_s == "*" {
             From::Any
         } else if let Some((lo_s, hi_s)) = from_s.split_once('-') {
+            record_style(lo_s)?;
+            record_style(hi_s)?;
             let lo: u32 = resolve_id(kind, lo_s)?;
             let hi: u32 = resolve_id(kind, hi_s)?;
             if lo > hi {
@@ -216,6 +243,7 @@ pub fn parse_id_map(
             }
             From::Range(lo, hi)
         } else {
+            record_style(from_s)?;
             let id: u32 = resolve_id(kind, from_s)?;
             From::Id(id)
         };
