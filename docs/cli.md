@@ -231,7 +231,7 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--suffix` | off |  | [matrix](feature_matrix.md#--suffix) |
 |  | `--super` | off |  | [matrix](feature_matrix.md#--super) |
 | `-T` | `--temp-dir` | off |  | [matrix](feature_matrix.md#--temp-dir) |
-|  | `--timeout` | off |  | [matrix](feature_matrix.md#--timeout) |
+|  | `--timeout` | off | set idle and I/O timeout in seconds | [matrix](feature_matrix.md#--timeout) |
 | `-t` | `--times` | off |  | [matrix](feature_matrix.md#--times) |
 |  | `--trust-sender` | off |  | [matrix](feature_matrix.md#--trust-sender) |
 | `-u` | `--update` | off |  | [matrix](feature_matrix.md#--update) |

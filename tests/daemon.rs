@@ -149,6 +149,34 @@ fn spawn_temp_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
     spawn_daemon()
 }
 
+fn spawn_daemon_with_timeout(timeout: u64) -> io::Result<(Child, u16, tempfile::TempDir)> {
+    let dir = tempfile::tempdir().unwrap();
+    let mut child = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            &format!("data={}", dir.path().display()),
+            "--port",
+            "0",
+            "--timeout",
+            &timeout.to_string(),
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let port = match read_port(&mut child) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(e);
+        }
+    };
+    Ok((child, port, dir))
+}
+
 #[test]
 #[serial]
 fn daemon_blocks_path_traversal() {
@@ -212,6 +240,35 @@ fn daemon_drops_privileges_and_restricts_file_access() {
         .unwrap();
     assert!(!output.status.success());
     assert!(!dest.path().join("secret").exists());
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_enforces_timeout() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let (mut child, port, _dir) = match spawn_daemon_with_timeout(1) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    sleep(Duration::from_secs(2));
+    let mut buf = [0u8; 1];
+    match t.receive(&mut buf) {
+        Err(e) => assert!(
+            e.kind() == io::ErrorKind::TimedOut || e.kind() == io::ErrorKind::ConnectionReset
+        ),
+        Ok(0) => (),
+        Ok(_) => panic!("unexpected data"),
+    }
     let _ = child.kill();
     let _ = child.wait();
 }

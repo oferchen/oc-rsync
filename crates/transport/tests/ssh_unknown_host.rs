@@ -1,4 +1,5 @@
 // crates/transport/tests/ssh_unknown_host.rs
+#![allow(clippy::zombie_processes)]
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;

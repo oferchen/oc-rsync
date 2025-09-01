@@ -7,7 +7,6 @@ coverage so progress can be tracked as features land.
 ## Protocol
 - `--bwlimit` — rate limiting semantics differ. [transport/src/rate.rs](../crates/transport/src/rate.rs) · [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs)
 - `--server` — handshake lacks full parity. [protocol/src/server.rs](../crates/protocol/src/server.rs) · [tests/server.rs](../tests/server.rs)
-- `--timeout` — timeout semantics differ. [transport/src/lib.rs](../crates/transport/src/lib.rs) · [tests/timeout.rs](../tests/timeout.rs)
 
 ## Metadata
 - `--acls` — ACL support requires optional feature and lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs)
@@ -30,7 +29,6 @@ coverage so progress can be tracked as features land.
 
 ## Daemon
 - `--daemon` — daemon mode incomplete. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
-- `--timeout` — connection timeout semantics differ. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
 
 ## Transfer Mechanics
 - `--force` — forced deletion of non-empty dirs unsupported. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*
