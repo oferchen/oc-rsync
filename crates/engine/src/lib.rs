@@ -1611,6 +1611,15 @@ impl Default for SyncOptions {
     }
 }
 
+impl SyncOptions {
+    pub fn prepare_remote(&mut self) {
+        if let Some(dir) = &self.partial_dir {
+            self.remote_options
+                .push(format!("--partial-dir={}", dir.display()));
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Stats {
     pub files_transferred: usize,
