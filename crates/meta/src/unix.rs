@@ -8,7 +8,7 @@ use filetime::{self, FileTime};
 use nix::errno::Errno;
 use nix::sys::stat::{self, FchmodatFlags, Mode, SFlag};
 use nix::unistd::{self, FchownatFlags, Gid, Uid};
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::sync::Arc;
 use users::{get_group_by_gid, get_group_by_name, get_user_by_name, get_user_by_uid};
 
@@ -116,17 +116,15 @@ pub struct Metadata {
 
 impl Metadata {
     pub fn from_path(path: &Path, opts: Options) -> io::Result<Self> {
-        let st = stat::lstat(path).map_err(nix_to_io)?;
-        let uid = st.st_uid;
-        let gid = st.st_gid;
-        let mode = normalize_mode(st.st_mode as u32);
-        let mtime = FileTime::from_unix_time(st.st_mtime, st.st_mtime_nsec as u32);
+        let meta = fs::symlink_metadata(path)?;
+        let uid = meta.uid();
+        let gid = meta.gid();
+        let raw_mode = meta.mode();
+        let mode = normalize_mode(raw_mode);
+        let mtime = FileTime::from_last_modification_time(&meta);
 
         let atime = if opts.atimes {
-            Some(FileTime::from_unix_time(
-                st.st_atime,
-                st.st_atime_nsec as u32,
-            ))
+            Some(FileTime::from_last_access_time(&meta))
         } else {
             None
         };
@@ -187,7 +185,7 @@ impl Metadata {
             Vec::new()
         };
 
-        let _is_dir = SFlag::from_bits_truncate(st.st_mode).contains(SFlag::S_IFDIR);
+        let _is_dir = SFlag::from_bits_truncate(raw_mode).contains(SFlag::S_IFDIR);
 
         #[cfg(feature = "acl")]
         let is_dir = _is_dir;

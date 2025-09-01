@@ -210,6 +210,38 @@ fn atimes_roundtrip() {
 }
 
 #[test]
+fn symlink_atimes_roundtrip() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    let link = src.join("link");
+    std::os::unix::fs::symlink("file", &link).unwrap();
+    let atime = FileTime::from_unix_time(1_000_000, 987_654_321);
+    let mtime = FileTime::from_unix_time(1_000_000, 123_456_789);
+    set_symlink_file_times(&link, atime, mtime).unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(None),
+        &SyncOptions {
+            links: true,
+            atimes: true,
+            times: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let meta = fs::symlink_metadata(dst.join("link")).unwrap();
+    let dst_atime = FileTime::from_last_access_time(&meta);
+    assert_eq!(dst_atime, atime);
+}
+
+#[test]
 fn crtimes_roundtrip() {
     use std::time::Duration;
 
