@@ -2012,6 +2012,103 @@ fn include_complex_pattern_allows_files() {
 }
 
 #[test]
+fn include_from_before_exclude_allows_file() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("keep.txt"), b"k").unwrap();
+    fs::write(src.join("skip.txt"), b"s").unwrap();
+    let inc = dir.path().join("inc.lst");
+    fs::write(&inc, "keep.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--include-from",
+            inc.to_str().unwrap(),
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep.txt").exists());
+    assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
+fn exclude_before_include_from_skips_file() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("keep.txt"), b"k").unwrap();
+    fs::write(src.join("skip.txt"), b"s").unwrap();
+    let inc = dir.path().join("inc.lst");
+    fs::write(&inc, "keep.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--exclude",
+            "*",
+            "--include-from",
+            inc.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("keep.txt").exists());
+    assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
+fn rsync_filter_merges_across_directories() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("sub")).unwrap();
+    fs::write(src.join("root.txt"), b"r").unwrap();
+    fs::write(src.join(".rsync-filter"), "- root.txt\n").unwrap();
+    fs::write(src.join("sub/keep.txt"), b"k").unwrap();
+    fs::write(src.join("sub/skip.txt"), b"s").unwrap();
+    fs::write(src.join("sub/.rsync-filter"), "- skip.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--filter",
+            ": .rsync-filter",
+            "--include",
+            "sub/***",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("root.txt").exists());
+    assert!(dst.join("sub/keep.txt").exists());
+    assert!(!dst.join("sub/skip.txt").exists());
+}
+
+#[test]
 fn files_from_zero_separated_list() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");

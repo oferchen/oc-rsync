@@ -1270,22 +1270,27 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
     Ok(out)
 }
 
+fn trim_newlines(mut s: &[u8]) -> &[u8] {
+    while let Some((&last, rest)) = s.split_last() {
+        if last == b'\n' || last == b'\r' {
+            s = rest;
+        } else {
+            break;
+        }
+    }
+    s
+}
+
 pub fn parse_list(input: &[u8], from0: bool) -> Vec<String> {
     if from0 {
         input
             .split(|b| *b == 0)
             .filter_map(|s| {
+                let s = trim_newlines(s);
                 if s.is_empty() {
                     return None;
                 }
-                let mut end = s.len();
-                while end > 0 && (s[end - 1] == b'\n' || s[end - 1] == b'\r') {
-                    end -= 1;
-                }
-                if end == 0 {
-                    return None;
-                }
-                Some(String::from_utf8_lossy(&s[..end]).to_string())
+                Some(String::from_utf8_lossy(s).to_string())
             })
             .collect()
     } else {
@@ -1308,17 +1313,11 @@ pub fn parse_from_bytes(
     if from0 {
         let mut rules = Vec::new();
         for part in input.split(|b| *b == 0) {
+            let part = trim_newlines(part);
             if part.is_empty() {
                 continue;
             }
-            let mut end = part.len();
-            while end > 0 && (part[end - 1] == b'\n' || part[end - 1] == b'\r') {
-                end -= 1;
-            }
-            if end == 0 {
-                continue;
-            }
-            let line = String::from_utf8_lossy(&part[..end]).to_string();
+            let line = String::from_utf8_lossy(part).to_string();
             if line.is_empty() {
                 continue;
             }
