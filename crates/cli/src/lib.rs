@@ -1476,6 +1476,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
                 match (src_mod, dst_mod) {
                     (None, None) => {
+                        let connect_timeout = opts.connect_timeout;
                         let mut dst_session = SshStdioTransport::spawn_with_rsh(
                             &dst_host,
                             &dst_path.path,
@@ -1487,7 +1488,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.connect_timeout,
+                            connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
@@ -1502,7 +1503,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.connect_timeout,
+                            connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
