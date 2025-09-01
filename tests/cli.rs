@@ -745,6 +745,30 @@ fn log_format_json_outputs_structured_logs() {
 }
 
 #[test]
+fn log_file_format_json_outputs_structured_file() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+
+    let log = dir.path().join("log.json");
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--local",
+        "--log-file",
+        log.to_str().unwrap(),
+        "--log-file-format=json",
+        "--verbose",
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+    let contents = std::fs::read_to_string(log).unwrap();
+    assert!(contents.contains("\"message\""));
+}
+
+#[test]
 fn quiet_flag_suppresses_output() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");

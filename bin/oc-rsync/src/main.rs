@@ -35,16 +35,9 @@ fn main() {
             .map(|v| v.copied().collect())
             .unwrap_or_default()
     };
-    let log_format = matches
-        .get_one::<String>("log_format")
-        .map(|f| {
-            if f == "json" {
-                LogFormat::Json
-            } else {
-                LogFormat::Text
-            }
-        })
-        .unwrap_or(LogFormat::Text);
+    let log_format = *matches
+        .get_one::<LogFormat>("log_format")
+        .unwrap_or(&LogFormat::Text);
     let log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
     let log_file_fmt = matches.get_one::<String>("client-log-file-format").cloned();
     logging::init(

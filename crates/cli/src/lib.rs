@@ -20,7 +20,7 @@ pub use engine::EngineError;
 use engine::ModernHash;
 use engine::{sync, DeleteMode, IdMapper, ModernCdc, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse, Matcher, Rule};
-use logging::{human_bytes, DebugFlag, InfoFlag};
+use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map};
 #[cfg(unix)]
 use nix::unistd::{Uid, User};
@@ -137,8 +137,8 @@ struct ClientOpts {
     ignore_times: bool,
     #[arg(short, long, action = ArgAction::Count, help_heading = "Output")]
     verbose: u8,
-    #[arg(long = "log-format", help_heading = "Output", value_parser = ["text", "json"])]
-    log_format: Option<String>,
+    #[arg(long = "log-format", help_heading = "Output", value_enum)]
+    log_format: Option<LogFormat>,
     #[arg(
         long = "log-file",
         value_name = "FILE",
