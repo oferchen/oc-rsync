@@ -12,6 +12,7 @@ use std::time::Duration;
 use std::os::unix::fs::PermissionsExt;
 
 use protocol::{negotiate_version, LATEST_VERSION};
+use sd_notify::{self, NotifyState};
 use transport::{AddressFamily, RateLimitedTransport, TcpTransport, TimeoutTransport, Transport};
 
 fn parse_list(val: &str) -> Vec<String> {
@@ -633,6 +634,9 @@ pub fn run_daemon(
         println!("{}", real_port);
         io::stdout().flush()?;
     }
+    std::thread::spawn(|| {
+        let _ = sd_notify::notify(false, &[NotifyState::Ready]);
+    });
     loop {
         let (stream, addr) = TcpTransport::accept(&listener, &hosts_allow, &hosts_deny)?;
         let peer = addr.ip().to_string();
