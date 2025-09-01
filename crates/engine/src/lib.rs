@@ -13,6 +13,8 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
+#[cfg(unix)]
+use std::sync::OnceLock;
 use std::time::Duration;
 use tempfile::NamedTempFile;
 
@@ -92,6 +94,17 @@ fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
     } else {
         Ok(())
     }
+}
+
+#[cfg(unix)]
+fn default_umask() -> u32 {
+    static UMASK: OnceLock<u32> = OnceLock::new();
+    *UMASK.get_or_init(|| {
+        use nix::sys::stat::{umask, Mode};
+        let old = umask(Mode::from_bits_truncate(0));
+        umask(old);
+        old.bits()
+    })
 }
 
 #[cfg(unix)]
@@ -191,19 +204,31 @@ fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
     match fs::rename(src, dst) {
         Ok(_) => Ok(()),
         Err(e) => {
-            #[cfg(unix)]
-            {
-                if e.raw_os_error() == Some(nix::errno::Errno::EXDEV as i32) {
-                    let parent = dst.parent().unwrap_or_else(|| Path::new("."));
-                    let tmp = NamedTempFile::new_in(parent).map_err(|e| io_context(parent, e))?;
-                    let tmp_path = tmp.into_temp_path();
-                    fs::copy(src, &tmp_path).map_err(|e| io_context(src, e))?;
-                    fs::rename(&tmp_path, dst).map_err(|e| io_context(dst, e))?;
-                    fs::remove_file(src).map_err(|e| io_context(src, e))?;
-                    return Ok(());
+            let cross_device = {
+                #[cfg(unix)]
+                {
+                    e.raw_os_error() == Some(nix::errno::Errno::EXDEV as i32)
                 }
+                #[cfg(windows)]
+                {
+                    matches!(e.raw_os_error(), Some(17))
+                }
+                #[cfg(not(any(unix, windows)))]
+                {
+                    false
+                }
+            };
+            if cross_device {
+                let parent = dst.parent().unwrap_or_else(|| Path::new("."));
+                let tmp = NamedTempFile::new_in(parent).map_err(|e| io_context(parent, e))?;
+                let tmp_path = tmp.into_temp_path();
+                fs::copy(src, &tmp_path).map_err(|e| io_context(src, e))?;
+                fs::rename(&tmp_path, dst).map_err(|e| io_context(dst, e))?;
+                fs::remove_file(src).map_err(|e| io_context(src, e))?;
+                Ok(())
+            } else {
+                Err(io_context(src, e))
             }
-            Err(io_context(src, e))
         }
     }
 }
@@ -223,7 +248,12 @@ fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
 }
 
 fn remove_dir_all_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
-    match fs::remove_dir_all(path) {
+    let res = if opts.force {
+        fs::remove_dir_all(path)
+    } else {
+        fs::remove_dir(path)
+    };
+    match res {
         Ok(_) => Ok(()),
         Err(e) => {
             let e = io_context(path, e);
@@ -1336,10 +1366,13 @@ impl Receiver {
         }
 
         #[cfg(unix)]
-        if self.opts.perms {
+        {
             let src_meta = fs::symlink_metadata(src).map_err(|e| io_context(src, e))?;
             if !src_meta.file_type().is_symlink() {
-                let mode = meta::mode_from_metadata(&src_meta);
+                let mut mode = meta::mode_from_metadata(&src_meta);
+                if !self.opts.perms {
+                    mode &= !default_umask();
+                }
                 fs::set_permissions(dest, fs::Permissions::from_mode(mode))
                     .map_err(|e| io_context(dest, e))?;
             }
@@ -1423,6 +1456,7 @@ impl Receiver {
                 gid_map,
                 fake_super: self.opts.fake_super && !self.opts.super_user,
                 super_user: self.opts.super_user,
+                numeric_ids: self.opts.numeric_ids,
             };
 
             if meta_opts.needs_metadata() {
@@ -1512,6 +1546,7 @@ pub struct SyncOptions {
     pub delete_missing_args: bool,
     pub remove_source_files: bool,
     pub ignore_errors: bool,
+    pub force: bool,
     pub max_delete: Option<usize>,
     pub max_alloc: usize,
     pub max_size: Option<u64>,
@@ -1605,6 +1640,7 @@ impl Default for SyncOptions {
             delete_missing_args: false,
             remove_source_files: false,
             ignore_errors: false,
+            force: false,
             max_delete: None,
             max_alloc: 1 << 30,
             max_size: None,
@@ -1736,15 +1772,14 @@ fn delete_extraneous(
     opts: &SyncOptions,
     stats: &mut Stats,
 ) -> Result<()> {
-    let walker = walk(
+    let mut walker = walk(
         dst,
-        1024,
+        1,
         opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
     );
     let mut state = String::new();
-
     let mut first_err: Option<EngineError> = None;
-    for batch in walker {
+    while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
             let path = entry.apply(&mut state);
@@ -1754,7 +1789,49 @@ fn delete_extraneous(
                     .is_included_for_delete(rel)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
                 let src_exists = src.join(rel).exists();
-                if (included && !src_exists) || (!included && opts.delete_excluded) {
+                if file_type.is_dir() {
+                    if (included && !src_exists) || (!included && opts.delete_excluded) {
+                        if let Some(max) = opts.max_delete {
+                            if stats.files_deleted >= max {
+                                return Err(EngineError::Other("max-delete limit exceeded".into()));
+                            }
+                        }
+                        let res = if opts.backup {
+                            let backup_path = if let Some(ref dir) = opts.backup_dir {
+                                dir.join(rel)
+                            } else {
+                                let name = path
+                                    .file_name()
+                                    .map(|n| format!("{}~", n.to_string_lossy()))
+                                    .unwrap_or_else(|| "~".to_string());
+                                path.with_file_name(name)
+                            };
+                            let dir_res = if let Some(parent) = backup_path.parent() {
+                                fs::create_dir_all(parent).map_err(|e| io_context(parent, e))
+                            } else {
+                                Ok(())
+                            };
+                            dir_res
+                                .and_then(|_| atomic_rename(&path, &backup_path))
+                                .err()
+                        } else {
+                            remove_dir_all_opts(&path, opts).err()
+                        };
+                        walker.skip_current_dir();
+                        match res {
+                            None => {
+                                stats.files_deleted += 1;
+                            }
+                            Some(e) => {
+                                if first_err.is_none() {
+                                    first_err = Some(e);
+                                }
+                            }
+                        }
+                    } else if !included {
+                        walker.skip_current_dir();
+                    }
+                } else if (included && !src_exists) || (!included && opts.delete_excluded) {
                     if let Some(max) = opts.max_delete {
                         if stats.files_deleted >= max {
                             return Err(EngineError::Other("max-delete limit exceeded".into()));
@@ -1778,8 +1855,6 @@ fn delete_extraneous(
                         dir_res
                             .and_then(|_| atomic_rename(&path, &backup_path))
                             .err()
-                    } else if file_type.is_dir() {
-                        remove_dir_all_opts(&path, opts).err()
                     } else {
                         remove_file_opts(&path, opts).err()
                     };

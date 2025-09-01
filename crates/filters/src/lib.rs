@@ -332,12 +332,17 @@ impl Matcher {
         }
 
         let mut per_dirs: Vec<(usize, PerDir)> = Vec::new();
+        let mut ancestors = Vec::new();
         let mut anc = dir.parent();
         while let Some(a) = anc {
-            if let Some(extra) = self.extra_per_dir.borrow().get(a) {
+            ancestors.push(a.to_path_buf());
+            anc = a.parent();
+        }
+        ancestors.reverse();
+        for a in ancestors {
+            if let Some(extra) = self.extra_per_dir.borrow().get(&a) {
                 per_dirs.extend(extra.clone());
             }
-            anc = a.parent();
         }
         per_dirs.extend(self.per_dir.clone());
         per_dirs.sort_by_key(|(idx, _)| *idx);
@@ -704,6 +709,76 @@ enum RuleKind {
     Protect,
 }
 
+fn decode_line(raw: &str) -> Option<String> {
+    let mut out = String::new();
+    let chars = raw.trim_end_matches('\r').chars();
+    let mut escaped = false;
+    let mut started = false;
+    let mut has_data = false;
+    let mut prev_space = false;
+    let mut last_non_space = 0;
+    for c in chars {
+        if escaped {
+            out.push(c);
+            if !c.is_whitespace() {
+                has_data = true;
+                last_non_space = out.len();
+                prev_space = false;
+            } else {
+                last_non_space = out.len();
+                prev_space = true;
+            }
+            escaped = false;
+            started = true;
+            continue;
+        }
+        if !started {
+            if c.is_whitespace() {
+                continue;
+            }
+            if c == '\\' {
+                escaped = true;
+                continue;
+            }
+            if c == '#' {
+                return None;
+            }
+            started = true;
+            out.push(c);
+            if !c.is_whitespace() {
+                has_data = true;
+                last_non_space = out.len();
+                prev_space = false;
+            } else {
+                prev_space = true;
+            }
+        } else if c == '\\' {
+            escaped = true;
+        } else if c == '#' && prev_space && has_data {
+            break;
+        } else {
+            out.push(c);
+            if !c.is_whitespace() {
+                has_data = true;
+                last_non_space = out.len();
+                prev_space = false;
+            } else {
+                prev_space = true;
+            }
+        }
+    }
+    if escaped {
+        out.push('\\');
+        last_non_space = out.len();
+    }
+    out.truncate(last_non_space);
+    if out.is_empty() {
+        None
+    } else {
+        Some(out)
+    }
+}
+
 pub fn parse(
     input: &str,
     visited: &mut HashSet<PathBuf>,
@@ -713,10 +788,14 @@ pub fn parse(
         return Err(ParseError::RecursionLimit);
     }
     fn split_mods<'a>(s: &'a str, allowed: &str) -> (&'a str, &'a str) {
-        if s.chars().next().map(|c| c.is_whitespace()).unwrap_or(true) {
-            return ("", s.trim_start());
+        if let Some(ch) = s.chars().next() {
+            if ch.is_whitespace() {
+                let rest = &s[ch.len_utf8()..];
+                return ("", rest);
+            }
+        } else {
+            return ("", "");
         }
-        let s = s.trim_start();
         let mut idx = 0;
         let bytes = s.as_bytes();
         if bytes.first() == Some(&b',') {
@@ -729,18 +808,22 @@ pub fn parse(
                 break;
             }
         }
-        let mods = &s[..idx];
-        let rest = s[idx..].trim_start();
-        (mods, rest)
+        let rest = &s[idx..];
+        let rest = if rest.starts_with(' ') || rest.starts_with('\t') {
+            &rest[1..]
+        } else {
+            rest
+        };
+        (&s[..idx], rest)
     }
 
     let mut rules = Vec::new();
 
     for raw_line in input.lines() {
-        let line = raw_line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
+        let line = match decode_line(raw_line) {
+            Some(l) => l,
+            None => continue,
+        };
 
         if line == "!" {
             rules.push(Rule::Clear);
@@ -1207,12 +1290,7 @@ pub fn parse_list(input: &[u8], from0: bool) -> Vec<String> {
             .collect()
     } else {
         let s = String::from_utf8_lossy(input);
-        s.lines()
-            .map(|l| l.trim_end_matches('\r'))
-            .map(|l| l.trim())
-            .filter(|l| !l.is_empty() && !l.trim_start().starts_with('#'))
-            .map(|l| l.to_string())
-            .collect()
+        s.lines().filter_map(decode_line).collect()
     }
 }
 

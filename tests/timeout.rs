@@ -162,6 +162,7 @@ fn daemon_handshake_timeout() {
         &SyncOptions::default(),
         31,
         None,
+        None,
     );
     match res {
         Ok(_) => panic!("expected timeout"),
