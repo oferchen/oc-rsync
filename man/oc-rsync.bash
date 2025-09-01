@@ -102,7 +102,7 @@ _oc-rsync() {
                     return 0
                     ;;
                 --modern-compress)
-                    COMPREPLY=($(compgen -W "auto zstd lz4" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "auto zstd" -- "${cur}"))
                     return 0
                     ;;
                 --modern-hash)

@@ -1,7 +1,7 @@
 // crates/engine/tests/compress.rs
 use std::fs;
 
-use compress::{Codec, ModernCompress};
+use compress::Codec;
 use engine::{select_codec, sync, SyncOptions};
 use filters::Matcher;
 use tempfile::tempdir;
@@ -41,30 +41,6 @@ fn zstd_roundtrip() {
         &[Codec::Zstd],
         &SyncOptions {
             compress: true,
-            modern_compress: Some(ModernCompress::Auto),
-            ..Default::default()
-        },
-    )
-    .unwrap();
-    assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
-}
-
-#[cfg(feature = "lz4")]
-#[test]
-fn lz4_roundtrip() {
-    let tmp = tempdir().unwrap();
-    let src = tmp.path().join("src");
-    let dst = tmp.path().join("dst");
-    fs::create_dir_all(&src).unwrap();
-    fs::write(src.join("file.txt"), b"hello world").unwrap();
-    sync(
-        &src,
-        &dst,
-        &Matcher::default(),
-        &[Codec::Lz4],
-        &SyncOptions {
-            compress: true,
-            modern_compress: Some(ModernCompress::Auto),
             ..Default::default()
         },
     )
@@ -73,10 +49,9 @@ fn lz4_roundtrip() {
 }
 
 #[test]
-fn codec_selection_prefers_zstd() {
+fn codec_selection_respects_options() {
     let opts = SyncOptions {
         compress: true,
-        modern_compress: Some(ModernCompress::Auto),
         ..Default::default()
     };
     assert_eq!(
@@ -84,9 +59,19 @@ fn codec_selection_prefers_zstd() {
         Some(Codec::Zstd)
     );
     assert_eq!(select_codec(&[Codec::Zlib], &opts), Some(Codec::Zlib));
+
     let opts = SyncOptions {
         compress: true,
-        modern_compress: Some(ModernCompress::Auto),
+        compress_choice: Some(vec![Codec::Zlib]),
+        ..Default::default()
+    };
+    assert_eq!(
+        select_codec(&[Codec::Zlib, Codec::Zstd], &opts),
+        Some(Codec::Zlib)
+    );
+
+    let opts = SyncOptions {
+        compress: true,
         compress_level: Some(0),
         ..Default::default()
     };

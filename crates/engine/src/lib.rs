@@ -1746,16 +1746,11 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     if !opts.compress || opts.compress_level == Some(0) {
         return None;
     }
-    if let Some(choice) = &opts.compress_choice {
-        return choice.iter().copied().find(|c| remote.contains(c));
-    }
-    if remote.contains(&Codec::Zstd) {
-        Some(Codec::Zstd)
-    } else if remote.contains(&Codec::Zlib) {
-        Some(Codec::Zlib)
-    } else {
-        None
-    }
+    let choices: Vec<Codec> = opts
+        .compress_choice
+        .clone()
+        .unwrap_or_else(|| vec![Codec::Zstd, Codec::Zlib]);
+    choices.into_iter().find(|c| remote.contains(c))
 }
 
 fn delete_extraneous(

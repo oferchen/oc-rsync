@@ -6,7 +6,6 @@ use std::path::Path;
 pub enum ModernCompress {
     Auto,
     Zstd,
-    Lz4,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,60 +37,10 @@ impl Codec {
     }
 }
 
-fn has_zstd_simd() -> bool {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    {
-        #[cfg(feature = "nightly")]
-        if std::arch::is_x86_feature_detected!("avx512f") {
-            return true;
-        }
-        std::arch::is_x86_feature_detected!("avx2") || std::arch::is_x86_feature_detected!("sse4.2")
-    }
-    #[cfg(target_arch = "aarch64")]
-    {
-        std::arch::is_aarch64_feature_detected!("sve")
-            || std::arch::is_aarch64_feature_detected!("neon")
-    }
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
-    {
-        false
-    }
-}
-
-fn auto_codec(has_simd: bool) -> Option<Codec> {
-    if has_simd {
-        Some(Codec::Zstd)
-    } else {
-        #[cfg(feature = "lz4")]
-        {
-            Some(Codec::Lz4)
-        }
-        #[cfg(not(feature = "lz4"))]
-        {
-            None
-        }
-    }
-}
-
 pub fn available_codecs(modern: Option<ModernCompress>) -> Vec<Codec> {
     let mut codecs = vec![Codec::Zlib];
-    if let Some(mode) = modern {
-        match mode {
-            ModernCompress::Auto => {
-                if let Some(codec) = auto_codec(has_zstd_simd()) {
-                    codecs.push(codec);
-                }
-            }
-            ModernCompress::Zstd => {
-                codecs.push(Codec::Zstd);
-            }
-            ModernCompress::Lz4 => {
-                #[cfg(feature = "lz4")]
-                {
-                    codecs.push(Codec::Lz4);
-                }
-            }
-        }
+    if modern.is_some() {
+        codecs.push(Codec::Zstd);
     }
     codecs
 }
@@ -452,31 +401,12 @@ unsafe fn lz4_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn auto_chooses_zstd_when_simd() {
-        assert_eq!(auto_codec(true), Some(Codec::Zstd));
-    }
-
-    #[cfg(feature = "lz4")]
-    #[test]
-    fn auto_falls_back_to_lz4_without_simd() {
-        assert_eq!(auto_codec(false), Some(Codec::Lz4));
-    }
-
-    #[cfg(not(feature = "lz4"))]
-    #[test]
-    fn auto_disables_without_simd() {
-        assert_eq!(auto_codec(false), None);
-    }
-
-    #[test]
-    fn available_codecs_respects_simd_detection() {
-        let mut expected = vec![Codec::Zlib];
-        if let Some(c) = auto_codec(has_zstd_simd()) {
-            expected.push(c);
-        }
-        assert_eq!(available_codecs(Some(ModernCompress::Auto)), expected);
+    fn available_codecs_includes_zstd_when_modern() {
+        assert_eq!(
+            available_codecs(Some(ModernCompress::Auto)),
+            vec![Codec::Zlib, Codec::Zstd]
+        );
     }
 
     #[test]
