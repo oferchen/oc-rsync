@@ -43,6 +43,33 @@ fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
     (child, port)
 }
 
+#[cfg(all(unix, feature = "acl"))]
+fn spawn_rsync_daemon(root: &std::path::Path) -> (Child, u16) {
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let conf = format!(
+        "uid = 0\ngid = 0\nuse chroot = false\n[mod]\n    path = {}\n",
+        root.display()
+    );
+    let conf_path = root.join("rsyncd.conf");
+    fs::write(&conf_path, conf).unwrap();
+    let child = StdCommand::new("rsync")
+        .args([
+            "--daemon",
+            "--no-detach",
+            "--port",
+            &port.to_string(),
+            "--config",
+            conf_path.to_str().unwrap(),
+        ])
+        .spawn()
+        .unwrap();
+    (child, port)
+}
+
 #[cfg(unix)]
 fn wait_for_daemon(port: u16) {
     for _ in 0..20 {
@@ -411,6 +438,58 @@ fn daemon_inherits_default_acls_rr_client() {
 
     let _ = child.kill();
     let _ = child.wait();
+}
+
+#[cfg(all(unix, feature = "acl"))]
+#[test]
+#[serial]
+fn daemon_acls_match_rsync_server() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let srv_oc = tmp.path().join("srv_oc");
+    let srv_rs = tmp.path().join("srv_rs");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&srv_oc).unwrap();
+    fs::create_dir_all(&srv_rs).unwrap();
+
+    let src_file = src.join("file");
+    fs::write(&src_file, b"hi").unwrap();
+
+    let mut acl = PosixACL::read_acl(&src_file).unwrap();
+    acl.set(Qualifier::User(12345), ACL_READ);
+    acl.set(Qualifier::User(23456), ACL_WRITE);
+    acl.write_acl(&src_file).unwrap();
+
+    let mut dacl = PosixACL::new(0o755);
+    dacl.set(Qualifier::User(12345), ACL_READ);
+    dacl.write_default_acl(&src).unwrap();
+
+    let (mut child_oc, port_oc) = spawn_daemon(&srv_oc);
+    wait_for_daemon(port_oc);
+    let src_arg = format!("{}/", src.display());
+    Command::new("rsync")
+        .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_oc}/mod")])
+        .assert()
+        .success();
+    let _ = child_oc.kill();
+    let _ = child_oc.wait();
+
+    let (mut child_rs, port_rs) = spawn_rsync_daemon(&srv_rs);
+    wait_for_daemon(port_rs);
+    Command::new("rsync")
+        .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_rs}/mod")])
+        .assert()
+        .success();
+    let _ = child_rs.kill();
+    let _ = child_rs.wait();
+
+    let acl_oc = PosixACL::read_acl(srv_oc.join("file")).unwrap();
+    let acl_rs = PosixACL::read_acl(srv_rs.join("file")).unwrap();
+    assert_eq!(acl_oc.entries(), acl_rs.entries());
+
+    let dacl_oc = PosixACL::read_default_acl(&srv_oc).unwrap();
+    let dacl_rs = PosixACL::read_default_acl(&srv_rs).unwrap();
+    assert_eq!(dacl_oc.entries(), dacl_rs.entries());
 }
 
 #[cfg(unix)]
