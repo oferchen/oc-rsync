@@ -10,7 +10,7 @@ use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
 #[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
 use std::os::fd::AsRawFd;
 #[cfg(unix)]
-use std::os::unix::fs::{FileTypeExt, MetadataExt};
+use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -1319,6 +1319,15 @@ impl Receiver {
                         gid
                     }))
                 };
+
+            if self.opts.perms {
+                let src_meta = fs::symlink_metadata(src).map_err(|e| io_context(src, e))?;
+                if !src_meta.file_type().is_symlink() {
+                    let mode = meta::mode_from_metadata(&src_meta);
+                    fs::set_permissions(dest, fs::Permissions::from_mode(mode))
+                        .map_err(|e| io_context(dest, e))?;
+                }
+            }
 
             let meta_opts = meta::Options {
                 xattrs: {

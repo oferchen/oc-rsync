@@ -22,6 +22,19 @@ pub const fn normalize_mode(mode: u32) -> u32 {
     mode & 0o7777
 }
 
+#[inline]
+pub fn mode_from_metadata(meta: &std::fs::Metadata) -> u32 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        normalize_mode(meta.permissions().mode())
+    }
+    #[cfg(not(unix))]
+    {
+        0
+    }
+}
+
 impl Options {
     pub fn needs_metadata(&self) -> bool {
         self.xattrs
