@@ -300,16 +300,10 @@ fn progress_flag_shows_output() {
         .assert()
         .success();
     let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
-    let mut lines = stderr.lines();
-    let path_line = lines.next().unwrap();
+    let path_line = stderr.lines().next().unwrap();
     assert_eq!(path_line, dst_dir.join("a.txt").display().to_string());
-    let progress_line = lines.next().unwrap().trim_start_matches('\r');
-    let bytes = progress_line
-        .split_whitespace()
-        .next()
-        .unwrap()
-        .replace(",", "");
-    assert_eq!(bytes.parse::<u64>().unwrap(), 2048);
+    let progress_line = stderr.split('\r').next_back().unwrap().trim_end();
+    assert_eq!(progress_line, format!("{:>15} {:>3}%", "2,048", 100));
 }
 
 #[test]
@@ -333,11 +327,10 @@ fn progress_flag_human_readable() {
         .assert()
         .success();
     let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
-    let mut lines = stderr.lines();
-    let path_line = lines.next().unwrap();
+    let path_line = stderr.lines().next().unwrap();
     assert_eq!(path_line, dst_dir.join("a.txt").display().to_string());
-    let progress_line = lines.next().unwrap().trim_start_matches('\r');
-    assert!(progress_line.starts_with("2.00KiB"));
+    let progress_line = stderr.split('\r').next_back().unwrap().trim_end();
+    assert_eq!(progress_line, format!("{:>15} {:>3}%", "2.00KiB", 100));
 }
 
 #[test]
