@@ -3643,8 +3643,6 @@ The compression options that you may be able to use are:
 .IP \[bu] 2
 \f[V]zstd\f[R]
 .IP \[bu] 2
-\f[V]lz4\f[R]
-.IP \[bu] 2
 \f[V]zlibx\f[R]
 .IP \[bu] 2
 \f[V]zlib\f[R]
@@ -3701,8 +3699,6 @@ Specifying \f[V]--zl=0\f[R] turns compression off, and specifying
 For zstd compression the valid values are from -131072 to 22 with 3
 being the default.
 Specifying 0 chooses the default of 3.
-.PP
-For lz4 compression there are no levels, so the value is always 0.
 .PP
 If you specify a too-large or too-small value, the number is silently
 limited to a valid value.
@@ -3762,7 +3758,7 @@ rsync are:
 .RS
 .PP
 3g2 3gp 7z aac ace apk avi bz2 deb dmg ear f4v flac flv gpg gz iso jar
-jpeg jpg lrz lz lz4 lzma lzo m1a m1v m2a m2ts m2v m4a m4b m4p m4r m4v
+jpeg jpg lrz lz lzma lzo m1a m1v m2a m2ts m2v m4a m4b m4p m4r m4v
 mka mkv mov mp1 mp2 mp3 mp4 mpa mpeg mpg mpv mts odb odf odg odi odm odp
 ods odt oga ogg ogm ogv ogx opus otg oth otp ots ott oxt png qt rar rpm
 rz rzip spx squashfs sxc sxd sxg sxm sxw sz tbz tbz2 tgz tlz ts txz tzo

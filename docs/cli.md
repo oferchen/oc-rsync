@@ -106,8 +106,8 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--chmod` | off |  | [matrix](feature_matrix.md#--chmod) |
 |  | `--chown` | off |  | [matrix](feature_matrix.md#--chown) |
 |  | `--compare-dest` | off |  | [matrix](feature_matrix.md#--compare-dest) |
-| `-z` | `--compress` | off | with `--modern`, negotiates zstd or lz4 when supported by both peers | [matrix](feature_matrix.md#--compress) |
-|  | `--compress-choice` | auto | supports zstd, lz4, and zlib | [matrix](feature_matrix.md#--compress-choice) |
+| `-z` | `--compress` | off | negotiates zstd or zlib | [matrix](feature_matrix.md#--compress) |
+|  | `--compress-choice` | auto | supports zstd and zlib | [matrix](feature_matrix.md#--compress-choice) |
 |  | `--compress-level` | auto | applies to zlib or zstd | [matrix](feature_matrix.md#--compress-level) |
 |  | `--zc` | off | alias for `--compress-choice` | [matrix](feature_matrix.md#--zc) |
 |  | `--zl` | off | alias for `--compress-level` | [matrix](feature_matrix.md#--zl) |
@@ -174,8 +174,8 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--max-size` | off |  | [matrix](feature_matrix.md#--max-size) |
 |  | `--min-size` | off |  | [matrix](feature_matrix.md#--min-size) |
 |  | `--mkpath` | off |  | [matrix](feature_matrix.md#--mkpath) |
-|  | `--modern` | off | oc-rsync only; negotiates zstd or lz4 compression based on CPU features and BLAKE3 checksums; requires `blake3` feature | [matrix](feature_matrix.md#--modern) |
-|  | `--modern-compress` | auto | oc-rsync only; select `auto`, `zstd`, or `lz4` compression | [matrix](feature_matrix.md#--modern-compress) |
+|  | `--modern` | off | oc-rsync only; negotiates zstd compression and BLAKE3 checksums; requires `blake3` feature | [matrix](feature_matrix.md#--modern) |
+|  | `--modern-compress` | auto | oc-rsync only; select `auto` or `zstd` compression | [matrix](feature_matrix.md#--modern-compress) |
 |  | `--modern-hash` | off | oc-rsync only; choose `blake3` strong hash | [matrix](feature_matrix.md#--modern-hash) |
 |  | `--modern-cdc` | off | oc-rsync only; enable `fastcdc` chunking | [matrix](feature_matrix.md#--modern-cdc) |
 |  | `--modern-cdc-min` | 2048 | oc-rsync only; set FastCDC minimum chunk size | [matrix](feature_matrix.md#--modern-cdc-min) |

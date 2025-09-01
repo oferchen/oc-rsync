@@ -15,8 +15,7 @@ complete -c oc-rsync -l compress-choice -l zc -r
 complete -c oc-rsync -l compress-level -l zl -r
 complete -c oc-rsync -l skip-compress -r
 complete -c oc-rsync -l modern-compress -r -f -a "auto\t''
-zstd\t''
-lz4\t''"
+zstd\t''"
 complete -c oc-rsync -l modern-hash -r -f -a ""
 complete -c oc-rsync -l modern-cdc -r -f -a "fastcdc\t''
 off\t''"
@@ -100,7 +99,7 @@ complete -c oc-rsync -l hard-links
 complete -c oc-rsync -l devices
 complete -c oc-rsync -l specials
 complete -c oc-rsync -s z -l compress
-complete -c oc-rsync -l modern -d 'Enable modern compression (zstd or lz4) and BLAKE3 checksums (requires `blake3` feature)'
+complete -c oc-rsync -l modern -d 'Enable modern compression (zstd) and BLAKE3 checksums (requires `blake3` feature)'
 complete -c oc-rsync -l partial
 complete -c oc-rsync -l progress
 complete -c oc-rsync -l blocking-io

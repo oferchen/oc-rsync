@@ -33,7 +33,7 @@ _oc-rsync() {
 '--compress-level=[]:NUM:_default' \
 '--zl=[]:NUM:_default' \
 '*--skip-compress=[]:LIST:_default' \
-'--modern-compress=[]:MODERN_COMPRESS:(auto zstd lz4)' \
+'--modern-compress=[]:MODERN_COMPRESS:(auto zstd)' \
 '--modern-hash=[]:MODERN_HASH:()' \
 '--modern-cdc=[]:MODERN_CDC:(fastcdc off)' \
 '--modern-cdc-min=[]:BYTES:_default' \
@@ -145,7 +145,7 @@ _oc-rsync() {
 '--specials[]' \
 '-z[]' \
 '--compress[]' \
-'--modern[Enable modern compression (zstd or lz4) and BLAKE3 checksums (requires \`blake3\` feature)]' \
+'--modern[Enable modern compression (zstd) and BLAKE3 checksums (requires \`blake3\` feature)]' \
 '--partial[]' \
 '--progress[]' \
 '--blocking-io[]' \
