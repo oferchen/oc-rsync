@@ -247,39 +247,7 @@ impl Metadata {
 
         #[cfg(feature = "acl")]
         let (acl, default_acl) = if opts.acl {
-            let acl_entries = match posix_acl::PosixACL::read_acl(path) {
-                Ok(acl) => acl.entries(),
-                Err(err) => {
-                    if let Some(code) = err.as_io_error().and_then(|e| e.raw_os_error()) {
-                        if matches!(code, libc::ENODATA | libc::ENOTSUP | libc::ENOSYS) {
-                            Vec::new()
-                        } else {
-                            return Err(acl_to_io(err));
-                        }
-                    } else {
-                        return Err(acl_to_io(err));
-                    }
-                }
-            };
-            let default_acl = if is_dir {
-                match posix_acl::PosixACL::read_default_acl(path) {
-                    Ok(dacl) => dacl.entries(),
-                    Err(err) => {
-                        if let Some(code) = err.as_io_error().and_then(|e| e.raw_os_error()) {
-                            if matches!(code, libc::ENODATA | libc::ENOTSUP | libc::ENOSYS) {
-                                Vec::new()
-                            } else {
-                                return Err(acl_to_io(err));
-                            }
-                        } else {
-                            return Err(acl_to_io(err));
-                        }
-                    }
-                }
-            } else {
-                Vec::new()
-            };
-            (acl_entries, default_acl)
+            read_acl_from_path(path, is_dir, opts.fake_super)?
         } else {
             (Vec::new(), Vec::new())
         };
@@ -518,6 +486,15 @@ impl Metadata {
                     }
                 }
             }
+
+            #[cfg(all(feature = "xattr", feature = "acl"))]
+            if opts.fake_super && !opts.super_user {
+                store_fake_super_acl(
+                    path,
+                    &self.acl,
+                    if is_dir { &self.default_acl } else { &[] },
+                );
+            }
         }
 
         Ok(())
@@ -588,6 +565,147 @@ fn remove_default_acl(path: &Path) -> io::Result<()> {
         Ok(())
     } else {
         Err(io::Error::last_os_error())
+    }
+}
+
+#[cfg(feature = "acl")]
+fn read_acl_from_path(
+    path: &Path,
+    is_dir: bool,
+    fake_super: bool,
+) -> io::Result<(Vec<posix_acl::ACLEntry>, Vec<posix_acl::ACLEntry>)> {
+    #[cfg(all(feature = "xattr", feature = "acl"))]
+    if fake_super {
+        let acl = match xattr::get(path, "user.rsync.acl") {
+            Ok(Some(val)) => decode_acl(&val),
+            Ok(None) => Vec::new(),
+            Err(err) => {
+                if crate::should_ignore_xattr_error(&err) {
+                    Vec::new()
+                } else {
+                    return Err(err);
+                }
+            }
+        };
+        let default_acl = if is_dir {
+            match xattr::get(path, "user.rsync.dacl") {
+                Ok(Some(val)) => decode_acl(&val),
+                Ok(None) => Vec::new(),
+                Err(err) => {
+                    if crate::should_ignore_xattr_error(&err) {
+                        Vec::new()
+                    } else {
+                        return Err(err);
+                    }
+                }
+            }
+        } else {
+            Vec::new()
+        };
+        if !acl.is_empty() || !default_acl.is_empty() {
+            return Ok((acl, default_acl));
+        }
+    }
+
+    let acl = match posix_acl::PosixACL::read_acl(path) {
+        Ok(acl) => acl.entries(),
+        Err(err) => {
+            if let Some(code) = err.as_io_error().and_then(|e| e.raw_os_error()) {
+                if matches!(code, libc::ENODATA | libc::ENOTSUP | libc::ENOSYS) {
+                    Vec::new()
+                } else {
+                    return Err(acl_to_io(err));
+                }
+            } else {
+                return Err(acl_to_io(err));
+            }
+        }
+    };
+    let default_acl = if is_dir {
+        match posix_acl::PosixACL::read_default_acl(path) {
+            Ok(dacl) => dacl.entries(),
+            Err(err) => {
+                if let Some(code) = err.as_io_error().and_then(|e| e.raw_os_error()) {
+                    if matches!(code, libc::ENODATA | libc::ENOTSUP | libc::ENOSYS) {
+                        Vec::new()
+                    } else {
+                        return Err(acl_to_io(err));
+                    }
+                } else {
+                    return Err(acl_to_io(err));
+                }
+            }
+        }
+    } else {
+        Vec::new()
+    };
+    Ok((acl, default_acl))
+}
+
+#[cfg(all(feature = "xattr", feature = "acl"))]
+fn encode_acl(entries: &[posix_acl::ACLEntry]) -> Vec<u8> {
+    use posix_acl::Qualifier;
+    let mut out = Vec::with_capacity(entries.len() * 9);
+    for e in entries {
+        let (tag, id) = match e.qual {
+            Qualifier::UserObj => (1u8, 0u32),
+            Qualifier::GroupObj => (2, 0),
+            Qualifier::Other => (3, 0),
+            Qualifier::User(id) => (4, id),
+            Qualifier::Group(id) => (5, id),
+            Qualifier::Mask => (6, 0),
+            Qualifier::Undefined => (0, 0),
+        };
+        out.push(tag);
+        out.extend_from_slice(&id.to_le_bytes());
+        out.extend_from_slice(&e.perm.to_le_bytes());
+    }
+    out
+}
+
+#[cfg(all(feature = "xattr", feature = "acl"))]
+fn decode_acl(data: &[u8]) -> Vec<posix_acl::ACLEntry> {
+    use posix_acl::Qualifier;
+    let mut entries = Vec::new();
+    let mut i = 0;
+    while i + 9 <= data.len() {
+        let tag = data[i];
+        i += 1;
+        let id = u32::from_le_bytes([data[i], data[i + 1], data[i + 2], data[i + 3]]);
+        i += 4;
+        let perm = u32::from_le_bytes([data[i], data[i + 1], data[i + 2], data[i + 3]]);
+        i += 4;
+        let qual = match tag {
+            1 => Qualifier::UserObj,
+            2 => Qualifier::GroupObj,
+            3 => Qualifier::Other,
+            4 => Qualifier::User(id),
+            5 => Qualifier::Group(id),
+            6 => Qualifier::Mask,
+            _ => Qualifier::Undefined,
+        };
+        entries.push(posix_acl::ACLEntry { qual, perm });
+    }
+    entries
+}
+
+#[cfg(all(feature = "xattr", feature = "acl"))]
+fn store_fake_super_acl(
+    path: &Path,
+    acl: &[posix_acl::ACLEntry],
+    default_acl: &[posix_acl::ACLEntry],
+) {
+    if acl.is_empty() {
+        let _ = xattr::remove(path, "user.rsync.acl");
+    } else {
+        let data = encode_acl(acl);
+        let _ = xattr::set(path, "user.rsync.acl", &data);
+    }
+    if default_acl.is_empty() {
+        let _ = xattr::remove(path, "user.rsync.dacl");
+    } else {
+        let data = encode_acl(default_acl);
+        let _ = xattr::set(path, "user.rsync.dacl", &data);
     }
 }
 
