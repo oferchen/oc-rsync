@@ -192,6 +192,12 @@ struct ClientOpts {
     remove_source_files: bool,
     #[arg(long = "ignore-errors", help_heading = "Delete")]
     ignore_errors: bool,
+    #[arg(
+        long,
+        help_heading = "Delete",
+        help = "force deletion of dirs even if not empty"
+    )]
+    force: bool,
     #[arg(long = "max-delete", value_name = "NUM", help_heading = "Delete")]
     max_delete: Option<usize>,
     #[arg(long = "max-alloc", value_name = "SIZE", value_parser = parse_size, help_heading = "Misc")]
@@ -1083,6 +1089,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         delete_missing_args: opts.delete_missing_args,
         remove_source_files: opts.remove_source_files,
         ignore_errors: opts.ignore_errors,
+        force: opts.force,
         max_delete: opts.max_delete,
         max_alloc: opts.max_alloc.unwrap_or(1usize << 30),
         max_size: opts.max_size,

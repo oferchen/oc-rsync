@@ -63,6 +63,10 @@ impl Walk {
         }
     }
 
+    pub fn skip_current_dir(&mut self) {
+        self.iter.skip_current_dir();
+    }
+
     pub fn uids(&self) -> &[u32] {
         &self.uid_table
     }
