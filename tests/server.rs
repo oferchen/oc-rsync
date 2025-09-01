@@ -2,7 +2,9 @@
 
 use assert_cmd::cargo::cargo_bin;
 use compress::{available_codecs, decode_codecs, encode_codecs, ModernCompress};
-use protocol::{Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION, MIN_VERSION};
+use protocol::{
+    ExitCode, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS, LATEST_VERSION, MIN_VERSION,
+};
 use std::convert::TryFrom;
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -228,6 +230,45 @@ fn server_modern_downgrades_version() {
 
     let status = child.wait().unwrap();
     assert!(status.success());
+}
+
+#[test]
+fn server_exit_code_roundtrip() {
+    let exe = cargo_bin("oc-rsync");
+    let mut child = Command::new(exe)
+        .arg("--server")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = child.stdin.take().unwrap();
+    let mut stdout = child.stdout.take().unwrap();
+
+    stdin.write_all(&[0]).unwrap();
+    stdin.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
+
+    let mut ver_buf = [0u8; 4];
+    stdout.read_exact(&mut ver_buf).unwrap();
+
+    stdin.write_all(&CAP_CODECS.to_be_bytes()).unwrap();
+    let mut cap_buf = [0u8; 4];
+    stdout.read_exact(&mut cap_buf).unwrap();
+
+    let codecs = available_codecs(None);
+    let payload = encode_codecs(&codecs);
+    let frame = Message::Codecs(payload).to_frame(0);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    stdin.write_all(&buf).unwrap();
+
+    let exit_frame = Message::Data(vec![ExitCode::Partial.into()]).to_frame(0);
+    let mut exit_buf = Vec::new();
+    exit_frame.encode(&mut exit_buf).unwrap();
+    stdin.write_all(&exit_buf).unwrap();
+    drop(stdin);
+
+    let status = child.wait().unwrap();
+    assert_eq!(status.code(), Some(ExitCode::Partial as i32));
 }
 
 #[cfg(unix)]

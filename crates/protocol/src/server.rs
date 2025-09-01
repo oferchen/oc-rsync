@@ -78,7 +78,7 @@ impl<R: Read, W: Write> Server<R, W> {
                         frame.encode(&mut self.writer)?;
                         self.writer.flush()?;
                     } else {
-                        let _ = self.demux.ingest(frame);
+                        self.demux.ingest(frame)?;
                     }
                 }
                 Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {}

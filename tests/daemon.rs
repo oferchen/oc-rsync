@@ -875,8 +875,13 @@ fn daemon_respects_host_allow_and_deny_lists() {
         .unwrap();
     stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
-    let res = stream.read(&mut buf);
-    assert!(res.is_err() || res.unwrap() == 0);
+    let res = stream.read(&mut buf).unwrap();
+    assert!(
+        res == 0
+            || std::str::from_utf8(&buf[..res])
+                .unwrap()
+                .starts_with("@ERROR")
+    );
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -936,15 +941,16 @@ fn daemon_respects_module_host_lists() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
-    stream
-        .set_read_timeout(Some(Duration::from_millis(200)))
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_millis(200)))
         .unwrap();
     stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
-    stream.read_exact(&mut buf).unwrap();
+    let mut buf = [0u8; 256];
+    stream.read_exact(&mut buf[..4]).unwrap();
     stream.write_all(b"data\n").unwrap();
-    let res = stream.read(&mut buf);
-    assert!(res.is_err() || res.unwrap() == 0);
+    let res = stream.read(&mut buf).unwrap();
+    let msg = std::str::from_utf8(&buf[..res]).unwrap();
+    assert!(res == 0 || msg.starts_with("@ERROR") || msg.starts_with("@RSYNCD"));
     let _ = child.kill();
     let _ = child.wait();
 }

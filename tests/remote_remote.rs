@@ -113,6 +113,37 @@ fn remote_remote_via_ssh_paths() {
 }
 
 #[test]
+fn remote_remote_missing_source_errors() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("nope");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&dst).unwrap();
+
+    let rsh = dir.path().join("fake_rsh.sh");
+    fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
+    fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let src_spec = format!("fake:{}", src.display());
+    let dst_spec = format!("fake:{}", dst.display());
+
+    let rr_bin = cargo_bin("oc-rsync");
+    let rr_dir = rr_bin.parent().unwrap();
+    let path_env = format!("{}:{}", rr_dir.display(), std::env::var("PATH").unwrap());
+    let status = StdCommand::new(&rr_bin)
+        .env("PATH", path_env)
+        .args([
+            "--archive",
+            "--rsh",
+            rsh.to_str().unwrap(),
+            &src_spec,
+            &dst_spec,
+        ])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+}
+
+#[test]
 #[ignore]
 fn remote_remote_via_daemon_paths() {
     let dir = tempdir().unwrap();

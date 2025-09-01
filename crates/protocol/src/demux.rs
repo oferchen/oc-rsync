@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
-use crate::{Frame, Message};
+use crate::{ExitCode, Frame, Message, UnknownExit};
 use checksums::StrongHash;
 use compress::Codec;
 
@@ -53,9 +53,13 @@ impl Demux {
 
     pub fn ingest(&mut self, frame: Frame) -> std::io::Result<()> {
         let id = frame.header.channel;
-        let msg = Message::from_frame(frame)?;
+        let msg = Message::from_frame(frame.clone())?;
 
         if let Message::Error(text) = &msg {
+            if let Some(ch) = self.channels.get_mut(&id) {
+                ch.last_recv = Instant::now();
+                let _ = ch.sender.send(msg.clone());
+            }
             self.remote_error = Some(text.clone());
             return Err(std::io::Error::other(text.clone()));
         }
@@ -90,8 +94,8 @@ impl Demux {
         }
     }
 
-    pub fn take_exit_code(&mut self) -> Option<u8> {
-        self.exit_code.take()
+    pub fn take_exit_code(&mut self) -> Option<Result<ExitCode, UnknownExit>> {
+        self.exit_code.take().map(ExitCode::try_from)
     }
 
     pub fn take_remote_error(&mut self) -> Option<String> {

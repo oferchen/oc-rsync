@@ -516,7 +516,7 @@ pub fn handle_connection<T: Transport>(
             log_format = Some(v.to_string());
         }
     }
-    if let Some(module) = modules.get(&name) {
+    if let Some(module) = mod
         let allowed = if let Some(path) = module.secrets_file.as_deref() {
             match token.as_deref() {
                 Some(tok) => authenticate_token(tok, path)?,
