@@ -14,6 +14,7 @@ use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
+use tempfile::NamedTempFile;
 
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 pub use checksums::{ModernHash, StrongHash};
@@ -170,7 +171,11 @@ fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
             #[cfg(unix)]
             {
                 if e.raw_os_error() == Some(nix::errno::Errno::EXDEV as i32) {
-                    let _ = fs::copy(src, dst).map_err(|e| io_context(src, e))?;
+                    let parent = dst.parent().unwrap_or_else(|| Path::new("."));
+                    let tmp = NamedTempFile::new_in(parent).map_err(|e| io_context(parent, e))?;
+                    let tmp_path = tmp.into_temp_path();
+                    fs::copy(src, &tmp_path).map_err(|e| io_context(src, e))?;
+                    fs::rename(&tmp_path, dst).map_err(|e| io_context(dst, e))?;
                     fs::remove_file(src).map_err(|e| io_context(src, e))?;
                     return Ok(());
                 }

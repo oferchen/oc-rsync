@@ -15,7 +15,7 @@ use std::os::unix::fs::symlink;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::thread;
 use std::time::Duration;
-use tempfile::tempdir;
+use tempfile::{tempdir, tempdir_in};
 #[cfg(unix)]
 use users::{get_current_gid, get_current_uid};
 
@@ -523,6 +523,75 @@ fn destination_is_replaced_atomically() {
     child.wait().unwrap();
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out.len(), 50_000);
+}
+
+#[test]
+#[cfg(unix)]
+fn temp_dir_cross_filesystem_rename() {
+    let base = tempdir_in(".").unwrap();
+    let src_dir = base.path().join("src");
+    let dst_dir = base.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    fs::write(src_dir.join("a.txt"), b"x").unwrap();
+
+    let tmp_dir = tempdir().unwrap();
+    let dst_dev = fs::metadata(&dst_dir).unwrap().dev();
+    let tmp_dev = fs::metadata(tmp_dir.path()).unwrap().dev();
+    if dst_dev == tmp_dev {
+        eprintln!("skipping cross-filesystem rename test; devices match");
+        return;
+    }
+
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--temp-dir",
+            tmp_dir.path().to_str().unwrap(),
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let out = fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, b"x");
+}
+
+#[test]
+#[cfg(unix)]
+fn delay_updates_cross_filesystem_rename() {
+    let base = tempdir_in(".").unwrap();
+    let src_dir = base.path().join("src");
+    let dst_dir = base.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    fs::write(src_dir.join("a.txt"), b"y").unwrap();
+
+    let tmp_dir = tempdir().unwrap();
+    let dst_dev = fs::metadata(&dst_dir).unwrap().dev();
+    let tmp_dev = fs::metadata(tmp_dir.path()).unwrap().dev();
+    if dst_dev == tmp_dev {
+        eprintln!("skipping cross-filesystem rename test; devices match");
+        return;
+    }
+
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--delay-updates",
+            "--temp-dir",
+            tmp_dir.path().to_str().unwrap(),
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let out = fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, b"y");
 }
 
 #[test]
