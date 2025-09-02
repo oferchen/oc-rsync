@@ -69,6 +69,65 @@ impl Tmpfs {
     }
 }
 
+#[test]
+fn files_from_from0_matches_rsync() {
+    use std::process::Command as StdCommand;
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let rsync_dst = tmp.path().join("rsync");
+    let ours_dst = tmp.path().join("ours");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&rsync_dst).unwrap();
+    fs::create_dir_all(&ours_dst).unwrap();
+
+    fs::write(src.join("include_me.txt"), "hi").unwrap();
+    fs::write(src.join("omit.log"), "nope").unwrap();
+
+    let list = tmp.path().join("list");
+    fs::write(&list, b"include_me.txt\0omit.log\0").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+
+    StdCommand::new("rsync")
+        .args([
+            "-r",
+            "--from0",
+            "--files-from",
+            list.to_str().unwrap(),
+            "--exclude",
+            "*.log",
+            &src_arg,
+            rsync_dst.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--from0",
+            "--files-from",
+            list.to_str().unwrap(),
+            "--exclude",
+            "*.log",
+            &src_arg,
+            ours_dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let diff = StdCommand::new("diff")
+        .arg("-r")
+        .arg(&rsync_dst)
+        .arg(&ours_dst)
+        .status()
+        .unwrap();
+    assert!(diff.success(), "directory trees differ");
+}
+
 #[cfg(unix)]
 impl Drop for Tmpfs {
     fn drop(&mut self) {

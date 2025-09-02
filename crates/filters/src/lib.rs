@@ -89,6 +89,7 @@ pub struct Matcher {
     cached: RefCell<HashMap<(PathBuf, Option<char>, bool), Cached>>,
     existing: bool,
     prune_empty_dirs: bool,
+    from0: bool,
 }
 
 impl Matcher {
@@ -115,6 +116,7 @@ impl Matcher {
             cached: RefCell::new(HashMap::new()),
             existing,
             prune_empty_dirs,
+            from0: false,
         }
     }
 
@@ -130,6 +132,11 @@ impl Matcher {
 
     pub fn with_prune_empty_dirs(mut self) -> Self {
         self.prune_empty_dirs = true;
+        self
+    }
+
+    pub fn with_from0(mut self) -> Self {
+        self.from0 = true;
         self
     }
 
@@ -619,7 +626,7 @@ impl Matcher {
             matches!(state, Some(false))
         }
 
-        let parsed = parse(&adjusted, visited, depth + 1)?;
+        let parsed = parse_with_options(&adjusted, self.from0, visited, depth + 1)?;
 
         for r in parsed {
             match r {
@@ -779,8 +786,9 @@ fn decode_line(raw: &str) -> Option<String> {
     }
 }
 
-pub fn parse(
+pub fn parse_with_options(
     input: &str,
+    from0: bool,
     visited: &mut HashSet<PathBuf>,
     depth: usize,
 ) -> Result<Vec<Rule>, ParseError> {
@@ -915,45 +923,78 @@ pub fn parse(
             if !visited.insert(path.clone()) {
                 return Err(ParseError::RecursiveInclude(path));
             }
-            let mut content = fs::read_to_string(&path)
-                .map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
-            if m.contains('C') {
-                let mut buf = String::new();
-                for token in content.split_whitespace() {
-                    if token.starts_with('#') {
-                        continue;
+            let data =
+                fs::read(&path).map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
+            let mut sub = if from0 {
+                if m.contains('C') {
+                    let mut buf = Vec::new();
+                    for token in data.split(|b| *b == 0) {
+                        let token = trim_newlines(token);
+                        if token.is_empty() || token.starts_with(b"#") {
+                            continue;
+                        }
+                        buf.extend_from_slice(b"- ");
+                        buf.extend_from_slice(token);
+                        buf.push(b'\n');
                     }
-                    buf.push_str("- ");
-                    buf.push_str(token);
-                    buf.push('\n');
+                    parse_from_bytes(&buf, false, visited, depth + 1)?
+                } else if m.contains('+') || m.contains('-') {
+                    let sign = if m.contains('+') { b'+' } else { b'-' };
+                    let mut buf = Vec::new();
+                    for token in data.split(|b| *b == 0) {
+                        let token = trim_newlines(token);
+                        if token.is_empty() || token.starts_with(b"#") {
+                            continue;
+                        }
+                        buf.push(sign);
+                        buf.push(b' ');
+                        buf.extend_from_slice(token);
+                        buf.push(b'\n');
+                    }
+                    parse_from_bytes(&buf, false, visited, depth + 1)?
+                } else {
+                    parse_from_bytes(&data, true, visited, depth + 1)?
                 }
-                content = buf;
             } else {
-                if m.contains('w') {
+                let mut content = String::from_utf8_lossy(&data).to_string();
+                if m.contains('C') {
                     let mut buf = String::new();
                     for token in content.split_whitespace() {
+                        if token.starts_with('#') {
+                            continue;
+                        }
+                        buf.push_str("- ");
                         buf.push_str(token);
                         buf.push('\n');
                     }
                     content = buf;
-                }
-                if m.contains('+') || m.contains('-') {
-                    let sign = if m.contains('+') { '+' } else { '-' };
-                    let mut buf = String::new();
-                    for raw in content.lines() {
-                        let line = raw.trim();
-                        if line.is_empty() || line.starts_with('#') {
-                            continue;
+                } else {
+                    if m.contains('w') {
+                        let mut buf = String::new();
+                        for token in content.split_whitespace() {
+                            buf.push_str(token);
+                            buf.push('\n');
                         }
-                        buf.push(sign);
-                        buf.push(' ');
-                        buf.push_str(line);
-                        buf.push('\n');
+                        content = buf;
                     }
-                    content = buf;
+                    if m.contains('+') || m.contains('-') {
+                        let sign = if m.contains('+') { '+' } else { '-' };
+                        let mut buf = String::new();
+                        for raw in content.lines() {
+                            let line = raw.trim();
+                            if line.is_empty() || line.starts_with('#') {
+                                continue;
+                            }
+                            buf.push(sign);
+                            buf.push(' ');
+                            buf.push_str(line);
+                            buf.push('\n');
+                        }
+                        content = buf;
+                    }
                 }
-            }
-            let mut sub = parse(&content, visited, depth + 1)?;
+                parse_with_options(&content, from0, visited, depth + 1)?
+            };
             if m.contains('s') || m.contains('r') || m.contains('p') || m.contains('x') {
                 for rule in &mut sub {
                     if let Rule::Include(ref mut d)
@@ -998,7 +1039,7 @@ pub fn parse(
             }
             let content = fs::read_to_string(&path)
                 .map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
-            rules.extend(parse(&content, visited, depth + 1)?);
+            rules.extend(parse_with_options(&content, from0, visited, depth + 1)?);
             continue;
         } else if let Some(r) = line.strip_prefix(':') {
             let (m, file) = split_mods(r, "-+Cenw/!srpx");
@@ -1086,7 +1127,7 @@ pub fn parse(
                     }
                     let content = fs::read_to_string(&path)
                         .map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
-                    rules.extend(parse(&content, visited, depth + 1)?);
+                    rules.extend(parse_with_options(&content, from0, visited, depth + 1)?);
                     continue;
                 }
                 "dir-merge" => {
@@ -1183,6 +1224,14 @@ pub fn parse(
     }
 
     Ok(rules)
+}
+
+pub fn parse(
+    input: &str,
+    visited: &mut HashSet<PathBuf>,
+    depth: usize,
+) -> Result<Vec<Rule>, ParseError> {
+    parse_with_options(input, false, visited, depth)
 }
 
 pub const CVS_DEFAULTS: &[&str] = &[
@@ -1331,12 +1380,12 @@ pub fn parse_from_bytes(
             }
             let mut buf = line;
             buf.push('\n');
-            rules.extend(parse(&buf, visited, depth)?);
+            rules.extend(parse_with_options(&buf, from0, visited, depth)?);
         }
         Ok(rules)
     } else {
         let s = String::from_utf8_lossy(input);
-        parse(&s, visited, depth)
+        parse_with_options(&s, from0, visited, depth)
     }
 }
 
@@ -1365,7 +1414,7 @@ pub fn parse_rule_list_from_bytes(
         } else {
             format!("{sign} {pat}\n")
         };
-        rules.extend(parse(&line, visited, depth)?);
+        rules.extend(parse_with_options(&line, from0, visited, depth)?);
     }
     Ok(rules)
 }

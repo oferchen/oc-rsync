@@ -18,7 +18,7 @@ use compress::{available_codecs, Codec};
 use encoding_rs::Encoding;
 pub use engine::EngineError;
 use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions};
-use filters::{default_cvs_rules, parse, Matcher, Rule};
+use filters::{default_cvs_rules, parse_with_options, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use protocol::CharsetConv;
@@ -35,9 +35,9 @@ use transport::{
 #[cfg(unix)]
 use users::get_user_by_uid;
 
-fn parse_filters(s: &str) -> std::result::Result<Vec<Rule>, filters::ParseError> {
+fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
-    parse(s, &mut v, 0)
+    parse_with_options(s, from0, &mut v, 0)
 }
 
 fn parse_duration(s: &str) -> std::result::Result<Duration, std::num::ParseIntError> {
@@ -1901,8 +1901,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, val) in idxs.into_iter().zip(values) {
             add_rules(
-                idx,
-                parse_filters(val).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                idx + 1,
+                parse_filters(val, opts.from0)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
             );
         }
     }
@@ -1914,7 +1915,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             let data = fs::read(file)?;
             let rs = filters::parse_from_bytes(&data, opts.from0, &mut HashSet::new(), 0)
                 .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
-            add_rules(idx, rs);
+            add_rules(idx + 1, rs);
         }
     }
     if let Some(values) = matches.get_many::<String>("include") {
@@ -1923,8 +1924,8 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, pat) in idxs.into_iter().zip(values) {
             add_rules(
-                idx,
-                parse_filters(&format!("+ {}", pat))
+                idx + 1,
+                parse_filters(&format!("+ {}", pat), opts.from0)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
             );
         }
@@ -1935,8 +1936,8 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, pat) in idxs.into_iter().zip(values) {
             add_rules(
-                idx,
-                parse_filters(&format!("- {}", pat))
+                idx + 1,
+                parse_filters(&format!("- {}", pat), opts.from0)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
             );
         }
@@ -1949,7 +1950,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             let mut vset = HashSet::new();
             let rs = filters::parse_rule_list_file(file, opts.from0, '+', &mut vset, 0)
                 .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
-            add_rules(idx, rs);
+            add_rules(idx + 1, rs);
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("exclude_from") {
@@ -1960,14 +1961,11 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             let mut vset = HashSet::new();
             let rs = filters::parse_rule_list_file(file, opts.from0, '-', &mut vset, 0)
                 .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
-            add_rules(idx, rs);
+            add_rules(idx + 1, rs);
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("files_from") {
-        let idxs: Vec<_> = matches
-            .indices_of("files_from")
-            .map_or_else(Vec::new, |v| v.collect());
-        for (idx, file) in idxs.into_iter().zip(values) {
+        for file in values {
             for pat in load_patterns(file, opts.from0)? {
                 let anchored = if pat.starts_with('/') {
                     pat.clone()
@@ -1981,8 +1979,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     format!("+ {}", anchored)
                 };
                 add_rules(
-                    idx,
-                    parse_filters(&rule1).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    usize::MAX - 1,
+                    parse_filters(&rule1, opts.from0)
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
 
                 let dir_pat = format!("{}/***", anchored.trim_end_matches('/'));
@@ -1992,8 +1991,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     format!("+ {}", dir_pat)
                 };
                 add_rules(
-                    idx,
-                    parse_filters(&rule2).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    usize::MAX - 1,
+                    parse_filters(&rule2, opts.from0)
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
             }
         }
@@ -2003,20 +2003,24 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             let count = matches.get_count("filter_shorthand");
             let rule_str = if count >= 2 { "-FF" } else { "-F" };
             add_rules(
-                idx,
-                parse_filters(rule_str).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                idx + 1,
+                parse_filters(rule_str, opts.from0)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
             );
         }
     }
     if !opts.files_from.is_empty() {
         add_rules(
             usize::MAX,
-            parse_filters("- *").map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+            parse_filters("- *", opts.from0).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
         );
     }
     if opts.cvs_exclude {
         let mut cvs = default_cvs_rules().map_err(|e| EngineError::Other(format!("{:?}", e)))?;
-        cvs.extend(parse_filters(":C\n").map_err(|e| EngineError::Other(format!("{:?}", e)))?);
+        cvs.extend(
+            parse_filters(":C\n", opts.from0)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+        );
         add_rules(usize::MAX, cvs);
     }
 
@@ -2029,6 +2033,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     });
     let rules: Vec<Rule> = entries.into_iter().map(|(_, _, r)| r).collect();
     let mut matcher = Matcher::new(rules);
+    if opts.from0 {
+        matcher = matcher.with_from0();
+    }
     if opts.existing {
         matcher = matcher.with_existing();
     }
