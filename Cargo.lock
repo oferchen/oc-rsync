@@ -897,6 +897,7 @@ version = "0.1.0"
 dependencies = [
  "assert_cmd",
  "checksums",
+ "clap",
  "clap_complete",
  "compress",
  "daemon",
