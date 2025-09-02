@@ -1,7 +1,8 @@
 # Compatibility
 
 This page summarizes the operating systems and interoperability scenarios that
-have been exercised with `oc-rsync`. For a detailed status matrix see
+have been exercised with `oc-rsync`. Cross-platform tests are now integrated
+into CI, and their results populate the detailed matrix in
 [compat_matrix.md](compat_matrix.md).
 
 ## Protocol versions
@@ -19,6 +20,12 @@ through 32.
 | FreeBSD | cross-compiled in CI |
 | macOS | builds and basic local sync verified |
 | Windows | under active development; path and permission handling incomplete |
+
+## Cross-platform tests
+
+Automated cross-platform tests run in CI and validate transfers between Linux,
+FreeBSD, macOS, and Windows. The [compat_matrix.md](compat_matrix.md) page is
+kept up to date from their results.
 
 ## Supported Protocol Versions
 
