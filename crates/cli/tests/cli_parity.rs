@@ -1,10 +1,27 @@
 // crates/cli/tests/cli_parity.rs
 use oc_rsync_cli::cli_command;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use tempfile::tempdir;
+
+macro_rules! require_rsync {
+    () => {
+        let rsync = Command::new("rsync")
+            .arg("--version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .ok();
+        if rsync.is_none() {
+            eprintln!("skipping test: rsync not installed");
+            return;
+        }
+        assert!(rsync.is_some());
+    };
+}
 
 #[test]
 fn archive_flag_matches_upstream() {
+    require_rsync!();
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
     let src_path = src.path();
@@ -15,7 +32,7 @@ fn archive_flag_matches_upstream() {
         .arg(src_path)
         .arg(dst_path)
         .status()
-        .expect("rsync not installed");
+        .unwrap();
     assert!(status.success());
 
     let matches = cli_command()
@@ -34,7 +51,7 @@ fn archive_flag_matches_upstream() {
         .arg(src_path)
         .arg(dst_path)
         .status()
-        .expect("rsync not installed");
+        .unwrap();
     assert!(status.success());
 
     let matches = cli_command()
@@ -51,6 +68,7 @@ fn archive_flag_matches_upstream() {
 
 #[test]
 fn combined_flags_match_upstream() {
+    require_rsync!();
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
     let src_path = src.path();
@@ -61,7 +79,7 @@ fn combined_flags_match_upstream() {
         .arg(src_path)
         .arg(dst_path)
         .status()
-        .expect("rsync not installed");
+        .unwrap();
     assert!(status.success());
 
     let matches = cli_command()
@@ -82,7 +100,7 @@ fn combined_flags_match_upstream() {
         .arg(src_path)
         .arg(dst_path)
         .status()
-        .expect("rsync not installed");
+        .unwrap();
     assert!(status.success());
 
     let matches = cli_command()
@@ -103,6 +121,7 @@ fn combined_flags_match_upstream() {
 
 #[test]
 fn partial_progress_alias_matches_upstream() {
+    require_rsync!();
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
     let src_path = src.path();
@@ -113,7 +132,7 @@ fn partial_progress_alias_matches_upstream() {
         .arg(src_path)
         .arg(dst_path)
         .status()
-        .expect("rsync not installed");
+        .unwrap();
     assert!(status.success());
 
     let matches = cli_command()
@@ -132,7 +151,7 @@ fn partial_progress_alias_matches_upstream() {
         .arg(src_path)
         .arg(dst_path)
         .status()
-        .expect("rsync not installed");
+        .unwrap();
     assert!(status.success());
 
     let matches = cli_command()
