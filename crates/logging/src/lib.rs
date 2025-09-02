@@ -1,10 +1,15 @@
 // crates/logging/src/lib.rs
+use std::fmt;
 use std::fs::OpenOptions;
+#[cfg(unix)]
+use std::os::unix::net::UnixDatagram;
 use std::path::{Path, PathBuf};
+use tracing::field::{Field, Visit};
 use tracing::level_filters::LevelFilter;
+use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::{
-    fmt,
-    layer::{Layer as _, SubscriberExt},
+    fmt as tracing_fmt,
+    layer::{Context, Layer, SubscriberExt},
     util::SubscriberInitExt,
     EnvFilter,
 };
@@ -177,6 +182,120 @@ impl DebugFlag {
     }
 }
 
+#[cfg(unix)]
+struct MessageVisitor {
+    msg: String,
+}
+
+#[cfg(unix)]
+impl Visit for MessageVisitor {
+    fn record_str(&mut self, field: &Field, value: &str) {
+        if !self.msg.is_empty() {
+            self.msg.push(' ');
+        }
+        self.msg.push_str(field.name());
+        self.msg.push('=');
+        self.msg.push_str(value);
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        if !self.msg.is_empty() {
+            self.msg.push(' ');
+        }
+        self.msg.push_str(field.name());
+        self.msg.push('=');
+        self.msg.push_str(&format!("{value:?}"));
+    }
+}
+
+#[cfg(unix)]
+struct SyslogLayer {
+    sock: UnixDatagram,
+}
+
+#[cfg(unix)]
+impl SyslogLayer {
+    fn new() -> std::io::Result<Self> {
+        let path = std::env::var_os("OC_RSYNC_SYSLOG_PATH")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("/dev/log"));
+        let sock = UnixDatagram::unbound()?;
+        sock.connect(path)?;
+        Ok(Self { sock })
+    }
+}
+
+#[cfg(unix)]
+fn syslog_severity(level: Level) -> u8 {
+    match level {
+        Level::ERROR => 3,
+        Level::WARN => 4,
+        Level::INFO => 6,
+        Level::DEBUG | Level::TRACE => 7,
+    }
+}
+
+#[cfg(unix)]
+impl<S> Layer<S> for SyslogLayer
+where
+    S: Subscriber,
+{
+    fn on_event(&self, event: &Event, _ctx: Context<S>) {
+        let mut v = MessageVisitor { msg: String::new() };
+        event.record(&mut v);
+        if v.msg.is_empty() {
+            v.msg.push_str(event.metadata().target());
+        }
+        let pri = 8 + syslog_severity(*event.metadata().level());
+        let data = format!("<{pri}>{}", v.msg);
+        let _ = self.sock.send(data.as_bytes());
+    }
+}
+
+#[cfg(unix)]
+struct JournaldLayer {
+    sock: UnixDatagram,
+}
+
+#[cfg(unix)]
+impl JournaldLayer {
+    fn new() -> std::io::Result<Self> {
+        let path = std::env::var_os("OC_RSYNC_JOURNALD_PATH")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("/run/systemd/journal/socket"));
+        let sock = UnixDatagram::unbound()?;
+        sock.connect(path)?;
+        Ok(Self { sock })
+    }
+}
+
+#[cfg(unix)]
+fn journald_priority(level: Level) -> u8 {
+    match level {
+        Level::ERROR => 3,
+        Level::WARN => 4,
+        Level::INFO => 6,
+        Level::DEBUG | Level::TRACE => 7,
+    }
+}
+
+#[cfg(unix)]
+impl<S> Layer<S> for JournaldLayer
+where
+    S: Subscriber,
+{
+    fn on_event(&self, event: &Event, _ctx: Context<S>) {
+        let mut v = MessageVisitor { msg: String::new() };
+        event.record(&mut v);
+        if v.msg.is_empty() {
+            v.msg.push_str(event.metadata().target());
+        }
+        let prio = journald_priority(*event.metadata().level());
+        let data = format!("PRIORITY={prio}\nMESSAGE={}\n", v.msg);
+        let _ = self.sock.send(data.as_bytes());
+    }
+}
+
 pub fn subscriber(
     format: LogFormat,
     verbose: u8,
@@ -184,6 +303,8 @@ pub fn subscriber(
     debug: &[DebugFlag],
     quiet: bool,
     log_file: Option<(PathBuf, Option<String>)>,
+    syslog: bool,
+    journald: bool,
 ) -> Box<dyn tracing::Subscriber + Send + Sync> {
     let level = if quiet {
         LevelFilter::ERROR
@@ -213,29 +334,54 @@ pub fn subscriber(
         }
     }
 
-    let fmt_layer = fmt::layer();
+    let fmt_layer = tracing_fmt::layer();
     let fmt_layer = match format {
         LogFormat::Json => fmt_layer.json().boxed(),
         LogFormat::Text => fmt_layer.boxed(),
     };
-    let registry = tracing_subscriber::registry().with(filter).with(fmt_layer);
-    if let Some((path, fmt)) = log_file {
+
+    #[cfg(unix)]
+    let syslog_layer = if syslog {
+        SyslogLayer::new().ok()
+    } else {
+        None
+    };
+    #[cfg(unix)]
+    let journald_layer = if journald {
+        JournaldLayer::new().ok()
+    } else {
+        None
+    };
+
+    #[cfg(unix)]
+    let registry = tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt_layer)
+        .with(syslog_layer)
+        .with(journald_layer);
+
+    #[cfg(not(unix))]
+    let registry = {
+        let _ = (syslog, journald);
+        tracing_subscriber::registry().with(filter).with(fmt_layer)
+    };
+
+    let file_layer = log_file.map(|(path, fmt)| {
         let file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(path)
             .expect("failed to open log file");
-        let base = fmt::layer()
+        let base = tracing_fmt::layer()
             .with_writer(move || file.try_clone().unwrap())
             .with_ansi(false);
-        let file_layer = match fmt.as_deref() {
+        match fmt.as_deref() {
             Some("json") => base.json().boxed(),
             _ => base.boxed(),
-        };
-        Box::new(registry.with(file_layer))
-    } else {
-        Box::new(registry)
-    }
+        }
+    });
+    let registry = registry.with(file_layer);
+    Box::new(registry)
 }
 
 pub fn init(
@@ -245,8 +391,13 @@ pub fn init(
     debug: &[DebugFlag],
     quiet: bool,
     log_file: Option<(PathBuf, Option<String>)>,
+    syslog: bool,
+    journald: bool,
 ) {
-    subscriber(format, verbose, info, debug, quiet, log_file).init();
+    subscriber(
+        format, verbose, info, debug, quiet, log_file, syslog, journald,
+    )
+    .init();
 }
 
 pub fn human_bytes(bytes: u64) -> String {

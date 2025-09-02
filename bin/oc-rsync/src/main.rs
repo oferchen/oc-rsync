@@ -68,6 +68,8 @@ fn main() {
         .unwrap_or(&LogFormat::Text);
     let log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
     let log_file_fmt = matches.get_one::<String>("client-log-file-format").cloned();
+    let log_syslog = matches.get_flag("syslog");
+    let log_journald = matches.get_flag("journald");
     logging::init(
         log_format,
         verbose,
@@ -75,6 +77,8 @@ fn main() {
         &debug,
         quiet,
         log_file.map(|p| (p, log_file_fmt)),
+        log_syslog,
+        log_journald,
     );
     if let Err(e) = oc_rsync_cli::run(&matches) {
         eprintln!("{e}");
