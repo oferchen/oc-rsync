@@ -83,7 +83,7 @@ impl Demux {
 
         if let Some(ch) = self.channels.get_mut(&id) {
             ch.last_recv = Instant::now();
-            if msg != Message::KeepAlive {
+            if msg != Message::KeepAlive && msg != Message::Noop {
                 ch.sender.send(msg).map_err(|_| {
                     std::io::Error::new(std::io::ErrorKind::BrokenPipe, "channel closed")
                 })?;

@@ -182,6 +182,55 @@ fn extra_messages_roundtrip() {
 }
 
 #[test]
+fn log_messages_roundtrip() {
+    let texts = [
+        (Message::ErrorXfer("a".into()), Msg::ErrorXfer),
+        (Message::Info("b".into()), Msg::Info),
+        (Message::Warning("c".into()), Msg::Warning),
+        (Message::ErrorSocket("d".into()), Msg::ErrorSocket),
+        (Message::Log("e".into()), Msg::Log),
+        (Message::Client("f".into()), Msg::Client),
+        (Message::ErrorUtf8("g".into()), Msg::ErrorUtf8),
+    ];
+    for (msg, code) in texts.into_iter() {
+        let frame = msg.to_frame(0, None);
+        let mut buf = Vec::new();
+        frame.encode(&mut buf).unwrap();
+        let decoded = Frame::decode(&buf[..]).unwrap();
+        assert_eq!(decoded.header.msg, code);
+        let round = Message::from_frame(decoded, None).unwrap();
+        assert_eq!(round, msg);
+    }
+
+    let msg = Message::IoError(123);
+    let frame = msg.to_frame(0, None);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    let decoded = Frame::decode(&buf[..]).unwrap();
+    assert_eq!(decoded.header.msg, Msg::IoError);
+    let msg2 = Message::from_frame(decoded, None).unwrap();
+    assert_eq!(msg2, msg);
+
+    let msg = Message::IoTimeout(456);
+    let frame = msg.to_frame(0, None);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    let decoded = Frame::decode(&buf[..]).unwrap();
+    assert_eq!(decoded.header.msg, Msg::IoTimeout);
+    let msg2 = Message::from_frame(decoded, None).unwrap();
+    assert_eq!(msg2, msg);
+
+    let msg = Message::Noop;
+    let frame = msg.to_frame(0, None);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    let decoded = Frame::decode(&buf[..]).unwrap();
+    assert_eq!(decoded.header.msg, Msg::Noop);
+    let msg2 = Message::from_frame(decoded, None).unwrap();
+    assert_eq!(msg2, msg);
+}
+
+#[test]
 fn error_message_iconv_roundtrip() {
     let cv = CharsetConv::new(
         Encoding::for_label(b"latin1").unwrap(),
