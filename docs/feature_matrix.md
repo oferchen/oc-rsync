@@ -1,7 +1,7 @@
 # Feature Matrix
 
 This table tracks the implementation status of rsync 3.4.x command-line options.
-Behavioral differences from upstream rsync are tracked in [differences.md](differences.md) (currently none) and outstanding parity gaps appear in [gaps.md](gaps.md).
+Behavioral differences from upstream rsync are tracked in [differences.md](differences.md) and outstanding parity gaps appear in [gaps.md](gaps.md).
 
 Classic `rsync` protocol versions 31–32 are supported.
 
@@ -14,11 +14,11 @@ Classic `rsync` protocol versions 31–32 are supported.
 | Option | Supported | Parity (Y/N) | Tests | Source | Notes |
 | --- | --- | --- | --- | --- | --- |
 | `--8-bit-output` | ✅ | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--acls` | ✅ | Y | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires `acl` feature |
+| `--acls` | ✅ | N | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires `acl` feature; lacks parity |
 | `--address` | ✅ | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--append` | ✅ | Y | [tests/resume.rs](../tests/resume.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--append-verify` | ✅ | Y | [tests/resume.rs](../tests/resume.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--archive` | ✅ | Y | [tests/archive.rs](../tests/archive.rs)<br>[tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--archive` | ✅ | N | [tests/archive.rs](../tests/archive.rs)<br>[tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | composite flag; underlying gaps |
 | `--atimes` | ✅ | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--backup` | ✅ | Y | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | uses `~` suffix without `--backup-dir` |
 | `--backup-dir` | ✅ | Y | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | implies `--backup` |
@@ -164,4 +164,4 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--whole-file` | ✅ | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--write-batch` | ✅ | Y | [tests/write_batch.rs](../tests/write_batch.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--write-devices` | ✅ | Y | [tests/write_devices.rs](../tests/write_devices.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | writes to existing devices |
-| `--xattrs` | ✅ | Y | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires `xattr` feature |
+| `--xattrs` | ✅ | N | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires `xattr` feature; lacks parity |
