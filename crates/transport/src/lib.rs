@@ -14,6 +14,22 @@ pub fn rate_limited<T: Transport>(inner: T, bwlimit: u64) -> RateLimitedTranspor
     RateLimitedTransport::new(inner, bwlimit)
 }
 
+pub fn pipe<S, D>(src: &mut S, dst: &mut D) -> io::Result<()>
+where
+    S: Transport,
+    D: Transport,
+{
+    let mut buf = [0u8; 8192];
+    loop {
+        let n = src.receive(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        dst.send(&buf[..n])?;
+    }
+    Ok(())
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum AddressFamily {
     V4,
