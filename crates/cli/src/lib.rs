@@ -385,6 +385,8 @@ struct ClientOpts {
     copy_unsafe_links: bool,
     #[arg(long, help_heading = "Attributes")]
     safe_links: bool,
+    #[arg(long, help_heading = "Attributes")]
+    munge_links: bool,
     #[arg(long = "hard-links", help_heading = "Attributes")]
     hard_links: bool,
     #[arg(long, help_heading = "Attributes")]
@@ -1329,6 +1331,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         keep_dirlinks: opts.keep_dirlinks,
         copy_unsafe_links: opts.copy_unsafe_links,
         safe_links: opts.safe_links,
+        munge_links: opts.munge_links,
         hard_links: opts.hard_links,
         devices: opts.devices || opts.archive || opts.devices_specials,
         specials: opts.specials || opts.archive || opts.devices_specials,

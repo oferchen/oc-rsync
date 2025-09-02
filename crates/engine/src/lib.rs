@@ -1683,6 +1683,7 @@ pub struct SyncOptions {
     pub keep_dirlinks: bool,
     pub copy_unsafe_links: bool,
     pub safe_links: bool,
+    pub munge_links: bool,
     pub hard_links: bool,
     pub devices: bool,
     pub specials: bool,
@@ -1770,6 +1771,7 @@ impl Default for SyncOptions {
             keep_dirlinks: false,
             copy_unsafe_links: false,
             safe_links: false,
+            munge_links: false,
             hard_links: false,
             devices: false,
             specials: false,
@@ -2342,7 +2344,7 @@ pub fn sync(
                     }
                     dir_meta.push((path.clone(), dest_path.clone()));
                 } else if file_type.is_symlink() {
-                    let target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
+                    let mut target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
                     let target_path = if target.is_absolute() {
                         normalize_path(&target)
                     } else if let Some(parent) = path.parent() {
@@ -2396,6 +2398,13 @@ pub fn sync(
                             )));
                         }
                     } else if opts.links {
+                        if opts.munge_links {
+                            if let Ok(stripped) = target.strip_prefix("/") {
+                                target = PathBuf::from("/rsyncd-munged").join(stripped);
+                            } else {
+                                target = PathBuf::from("/rsyncd-munged").join(&target);
+                            }
+                        }
                         let created = fs::symlink_metadata(&dest_path).is_err();
                         if let Some(parent) = dest_path.parent() {
                             fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
