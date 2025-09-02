@@ -1,16 +1,17 @@
 # oc-rsync
 
-oc-rsync is a modular reimplementation of the classic `rsync` utility in Rust. It develops the protocol, transport and synchronization engine as a collection of reusable crates and prioritizes absolute compatibility with existing rsync deployments before any enhancements are considered, while leveraging Rust's safety and concurrency strengths.
+oc-rsync is a modular reimplementation of the classic `rsync` utility in Rust. It targets protocol compatibility with rsync 3.4.1 (protocol version 32) and prioritizes absolute compatibility with existing deployments before any enhancements are considered. Differences from upstream are limited to internal, compatibility-neutral optimizations while leveraging Rust's safety and concurrency strengths.
 
 ## Summary
 
-**Mission**: Implement a pure-Rust rsync replacement compatible with stock rsync v32 over SSH and `rsync://`. Absolute parity with upstream rsync is the priority; enhancements will be explored only after parity is complete.
+**Mission**: Implement a pure-Rust rsync replacement compatible with stock rsync 3.4.1 (protocol 32) over SSH and `rsync://`. Absolute parity with upstream rsync is the priority; any differences are confined to internal, compatibility-neutral optimizations.
 
 **Non‑negotiable constraints**: correctness with full metadata fidelity, security, robust I/O with resumable transfers, cross‑platform support, and open‑source dual licensing.
 
 ## Mission
-- Implement a pure-Rust rsync replacement compatible with stock rsync v32 over SSH and `rsync://`.
+- Implement a pure-Rust rsync replacement compatible with stock rsync 3.4.1 (protocol 32) over SSH and `rsync://`.
 - Achieve absolute parity with upstream rsync before introducing any enhancements.
+- Limit differences from upstream to internal, compatibility-neutral optimizations.
 - Deliver fast, reliable file synchronization.
 - Provide a welcoming platform for contributors building the next generation of sync tooling.
 
@@ -29,7 +30,7 @@ An overview of tested operating systems and interoperability notes lives in
 [docs/feature_matrix.md](docs/feature_matrix.md).
 
 ## Specifications
-The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.x are bundled in [docs/spec](docs/spec) and serve as the project's authoritative specification. See [docs/spec/rsync.1](docs/spec/rsync.1) and [docs/spec/rsyncd.conf.5](docs/spec/rsyncd.conf.5).
+The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.1 are bundled in [docs/spec](docs/spec) and serve as the project's authoritative specification. See [docs/spec/rsync.1](docs/spec/rsync.1) and [docs/spec/rsyncd.conf.5](docs/spec/rsyncd.conf.5).
 
 ## In-Scope Features
 - Local and remote file synchronization over SSH and `rsync://`.
@@ -184,12 +185,6 @@ tooling and running the fuzzers.
 Performance benchmarks and CPU feature detection details are documented in
 [docs/perf.md](docs/perf.md).
 
-## Manifest
-
-Content-defined chunking persists a manifest of seen chunks to
-`~/.oc-rsync/manifest`. Users upgrading from earlier releases should
-manually move any existing manifest from `~/.rsync-rs/manifest` to this
-path.
 
 ## License
 This project is dual-licensed under the terms of the [MIT](LICENSE-MIT) and [Apache-2.0](LICENSE-APACHE) licenses.
