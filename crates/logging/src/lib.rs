@@ -468,13 +468,13 @@ pub fn subscriber(cfg: SubscriberConfig) -> Box<dyn tracing::Subscriber + Send +
     let fmt_layer = if timestamps {
         match format {
             LogFormat::Json => base.json().boxed(),
-            LogFormat::Text => base.event_format(RsyncFormatter).boxed(),
+            LogFormat::Text => base.event_format(RsyncFormatter::new(None)).boxed(),
         }
     } else {
         let base = base.without_time();
         match format {
             LogFormat::Json => base.json().boxed(),
-            LogFormat::Text => base.event_format(RsyncFormatter).boxed(),
+            LogFormat::Text => base.event_format(RsyncFormatter::new(None)).boxed(),
         }
     };
 
@@ -525,7 +525,10 @@ pub fn subscriber(cfg: SubscriberConfig) -> Box<dyn tracing::Subscriber + Send +
             .with_ansi(false);
         match fmt.as_deref() {
             Some("json") => base.json().boxed(),
-            _ => base.boxed(),
+            Some(spec) => base
+                .event_format(RsyncFormatter::new(Some(spec.to_string())))
+                .boxed(),
+            None => base.event_format(RsyncFormatter::new(None)).boxed(),
         }
     });
     let registry = registry.with(file_layer);

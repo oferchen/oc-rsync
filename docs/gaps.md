@@ -80,7 +80,7 @@ when available.
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
 | Comprehensive flag parsing via `clap` | ✅ | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| `--log-file-format` (limited subset) | ⚠️ | [tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| `--log-file-format` | ✅ | [tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | `--munge-links` option | ✅ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 
 ## Logging
