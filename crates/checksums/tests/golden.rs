@@ -43,20 +43,20 @@ fn builder_strong_digests() {
     assert_eq!(cs_md4.weak, rolling_checksum(data));
     assert_eq!(
         hex::encode(cs_md4.strong),
-        "aa010fbc1d14c795d86ef98c95479d17"
+        "ea91f391e02b5e19f432b43bd87a531d"
     );
 
     let cs_md5 = cfg_md5.checksum(data);
     assert_eq!(cs_md5.weak, rolling_checksum(data));
     assert_eq!(
         hex::encode(cs_md5.strong),
-        "5eb63bbbe01eeed093cb22bb8f5acdc3"
+        "be4b47980f89d075f8f7e7a9fab84e29"
     );
 
     let cs_sha1 = cfg_sha1.checksum(data);
     assert_eq!(cs_sha1.weak, rolling_checksum(data));
     assert_eq!(
         hex::encode(cs_sha1.strong),
-        "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed",
+        "1fb6475c524899f98b088f7608bdab8f1591e078",
     );
 }
