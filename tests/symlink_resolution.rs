@@ -128,3 +128,55 @@ fn safe_links_resolve_source_symlink() {
         .file_type()
         .is_symlink());
 }
+
+#[cfg(unix)]
+#[test]
+fn munge_links_prefixes_target() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("file"), b"hi").unwrap();
+    symlink("file", src.join("link"));
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--links",
+            "--munge-links",
+            &format!("{}/", src.display()),
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert_eq!(
+        fs::read_link(dst.join("link")).unwrap(),
+        Path::new("/rsyncd-munged/file")
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn munge_links_off_preserves_target() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("file"), b"hi").unwrap();
+    symlink("file", src.join("link"));
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--links",
+            &format!("{}/", src.display()),
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert_eq!(fs::read_link(dst.join("link")).unwrap(), Path::new("file"));
+}
