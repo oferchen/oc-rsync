@@ -758,13 +758,30 @@ pub fn chroot_and_drop_privileges(
     use_chroot: bool,
 ) -> io::Result<()> {
     use nix::unistd::{chdir, chroot, getegid, geteuid};
-    let canon = fs::canonicalize(path)?;
-    if !fs::metadata(&canon)?.is_dir() {
+    let canon = fs::canonicalize(path).map_err(|e| {
+        if e.kind() == io::ErrorKind::NotFound {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("path does not exist: {}", path.display()),
+            )
+        } else {
+            io::Error::new(
+                e.kind(),
+                format!("failed to canonicalize {}: {e}", path.display()),
+            )
+        }
+    })?;
+
+    let meta = fs::metadata(&canon).map_err(|e| {
+        io::Error::new(e.kind(), format!("failed to stat {}: {e}", canon.display()))
+    })?;
+    if !meta.is_dir() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
-            "path is not a directory",
+            format!("path is not a directory: {}", canon.display()),
         ));
     }
+
     let euid = geteuid().as_raw();
     let egid = getegid().as_raw();
     if use_chroot && euid != 0 {
@@ -780,10 +797,12 @@ pub fn chroot_and_drop_privileges(
         ));
     }
     if use_chroot {
-        chroot(&canon).map_err(io::Error::other)?;
-        chdir("/").map_err(io::Error::other)?;
+        chroot(&canon)
+            .map_err(|e| io::Error::other(format!("chroot to {} failed: {e}", canon.display())))?;
+        chdir("/").map_err(|e| io::Error::other(format!("chdir failed: {e}")))?;
     } else {
-        chdir(&canon).map_err(io::Error::other)?;
+        chdir(&canon)
+            .map_err(|e| io::Error::other(format!("chdir to {} failed: {e}", canon.display())))?;
     }
     drop_privileges(uid, gid)?;
     Ok(())
