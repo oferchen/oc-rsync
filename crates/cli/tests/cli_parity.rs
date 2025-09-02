@@ -167,3 +167,53 @@ fn partial_progress_alias_matches_upstream() {
     assert!(matches.get_flag("partial"));
     assert!(matches.get_flag("progress"));
 }
+
+#[test]
+fn dparam_flag_matches_upstream() {
+    require_rsync!();
+    let status = Command::new("rsync")
+        .args(["--daemon", "--dparam=pidfile=/dev/null", "--help"])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let matches = cli_command()
+        .try_get_matches_from(["oc-rsync", "--daemon", "--dparam=pidfile=/dev/null"])
+        .unwrap();
+    let params: Vec<(String, String)> = matches
+        .get_many::<(String, String)>("dparam")
+        .unwrap()
+        .cloned()
+        .collect();
+    assert!(params.contains(&("pidfile".into(), "/dev/null".into())));
+}
+
+#[test]
+fn no_option_alias_matches_upstream() {
+    require_rsync!();
+    let src = tempdir().unwrap();
+    let dst = tempdir().unwrap();
+    let src_path = src.path();
+    let dst_path = dst.path();
+
+    let status = Command::new("rsync")
+        .args(["-a", "--no-perms", "-n"])
+        .arg(src_path)
+        .arg(dst_path)
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let matches = cli_command()
+        .try_get_matches_from([
+            "oc-rsync",
+            "-a",
+            "--no-perms",
+            "-n",
+            src_path.to_str().unwrap(),
+            dst_path.to_str().unwrap(),
+        ])
+        .unwrap();
+    assert!(matches.get_flag("archive"));
+    assert!(matches.get_flag("no-perms"));
+}

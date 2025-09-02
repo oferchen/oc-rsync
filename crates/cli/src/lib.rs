@@ -89,6 +89,27 @@ where
     parse_suffixed(s, SIZE_SUFFIXES)
 }
 
+fn parse_dparam(s: &str) -> std::result::Result<(String, String), String> {
+    let mut parts = s.splitn(2, '=');
+    let name = parts
+        .next()
+        .ok_or_else(|| "invalid dparam".to_string())?
+        .to_string();
+    let value = parts
+        .next()
+        .ok_or_else(|| "invalid dparam".to_string())?
+        .to_string();
+    Ok((name, value))
+}
+
+fn parse_bool(s: &str) -> std::result::Result<bool, String> {
+    match s {
+        "0" | "false" | "no" => Ok(false),
+        "1" | "true" | "yes" => Ok(true),
+        _ => Err("invalid boolean".to_string()),
+    }
+}
+
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let info = matches
         .get_many::<InfoFlag>("info")
@@ -340,8 +361,19 @@ struct ClientOpts {
         help = "set block/file checksum seed (advanced)"
     )]
     checksum_seed: Option<u32>,
-    #[arg(short = 'p', long, help_heading = "Attributes")]
+    #[arg(
+        short = 'p',
+        long,
+        help_heading = "Attributes",
+        overrides_with = "no_perms"
+    )]
     perms: bool,
+    #[arg(
+        long = "no-perms",
+        help_heading = "Attributes",
+        overrides_with = "perms"
+    )]
+    no_perms: bool,
     #[arg(short = 'E', long, help_heading = "Attributes")]
     executability: bool,
     #[arg(long = "chmod", value_name = "CHMOD", help_heading = "Attributes")]
@@ -368,8 +400,19 @@ struct ClientOpts {
         help_heading = "Attributes"
     )]
     groupmap: Vec<String>,
-    #[arg(short = 't', long, help_heading = "Attributes")]
+    #[arg(
+        short = 't',
+        long,
+        help_heading = "Attributes",
+        overrides_with = "no_times"
+    )]
     times: bool,
+    #[arg(
+        long = "no-times",
+        help_heading = "Attributes",
+        overrides_with = "times"
+    )]
+    no_times: bool,
     #[arg(short = 'U', long, help_heading = "Attributes")]
     atimes: bool,
     #[arg(short = 'N', long, help_heading = "Attributes")]
@@ -378,12 +421,45 @@ struct ClientOpts {
     omit_dir_times: bool,
     #[arg(short = 'J', long, help_heading = "Attributes")]
     omit_link_times: bool,
-    #[arg(short = 'o', long, help_heading = "Attributes")]
+    #[arg(
+        short = 'o',
+        long,
+        help_heading = "Attributes",
+        overrides_with = "no_owner"
+    )]
     owner: bool,
-    #[arg(short = 'g', long, help_heading = "Attributes")]
+    #[arg(
+        long = "no-owner",
+        help_heading = "Attributes",
+        overrides_with = "owner"
+    )]
+    no_owner: bool,
+    #[arg(
+        short = 'g',
+        long,
+        help_heading = "Attributes",
+        overrides_with = "no_group"
+    )]
     group: bool,
-    #[arg(short = 'l', long, help_heading = "Attributes")]
+    #[arg(
+        long = "no-group",
+        help_heading = "Attributes",
+        overrides_with = "group"
+    )]
+    no_group: bool,
+    #[arg(
+        short = 'l',
+        long,
+        help_heading = "Attributes",
+        overrides_with = "no_links"
+    )]
     links: bool,
+    #[arg(
+        long = "no-links",
+        help_heading = "Attributes",
+        overrides_with = "links"
+    )]
+    no_links: bool,
     #[arg(short = 'L', long, help_heading = "Attributes")]
     copy_links: bool,
     #[arg(short = 'k', long, help_heading = "Attributes")]
@@ -398,10 +474,22 @@ struct ClientOpts {
     munge_links: bool,
     #[arg(long = "hard-links", help_heading = "Attributes")]
     hard_links: bool,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(long, help_heading = "Attributes", overrides_with = "no_devices")]
     devices: bool,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(
+        long = "no-devices",
+        help_heading = "Attributes",
+        overrides_with = "devices"
+    )]
+    no_devices: bool,
+    #[arg(long, help_heading = "Attributes", overrides_with = "no_specials")]
     specials: bool,
+    #[arg(
+        long = "no-specials",
+        help_heading = "Attributes",
+        overrides_with = "specials"
+    )]
+    no_specials: bool,
     #[arg(short = 'D', help_heading = "Attributes")]
     devices_specials: bool,
     #[cfg(feature = "xattr")]
@@ -730,6 +818,8 @@ struct DaemonOpts {
     lock_file: Option<PathBuf>,
     #[arg(long = "state-dir", value_name = "DIR")]
     state_dir: Option<PathBuf>,
+    #[arg(long = "dparam", value_name = "NAME=VALUE", value_parser = parse_dparam)]
+    dparam: Vec<(String, String)>,
 }
 
 #[derive(Parser, Debug)]
@@ -1019,7 +1109,17 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
     #[cfg(unix)]
     {
-        if opts.owner || opts.group || opts.chown.is_some() {
+        let need_owner = if opts.no_owner {
+            false
+        } else {
+            opts.owner || opts.archive
+        };
+        let need_group = if opts.no_group {
+            false
+        } else {
+            opts.group || opts.archive
+        };
+        if need_owner || need_group || opts.chown.is_some() {
             use nix::unistd::Uid;
             if !Uid::effective().is_root() {
                 #[cfg(target_os = "linux")]
@@ -1319,31 +1419,51 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         ignore_existing: opts.ignore_existing,
         size_only: opts.size_only,
         ignore_times: opts.ignore_times,
-        perms: opts.perms || opts.archive || {
-            #[cfg(feature = "acl")]
-            {
-                opts.acls
-            }
-            #[cfg(not(feature = "acl"))]
-            {
-                false
+        perms: if opts.no_perms {
+            false
+        } else {
+            opts.perms || opts.archive || {
+                #[cfg(feature = "acl")]
+                {
+                    opts.acls
+                }
+                #[cfg(not(feature = "acl"))]
+                {
+                    false
+                }
             }
         },
         executability: opts.executability,
-        times: opts.times || opts.archive,
+        times: if opts.no_times {
+            false
+        } else {
+            opts.times || opts.archive
+        },
         atimes: opts.atimes,
         crtimes: opts.crtimes,
         omit_dir_times: opts.omit_dir_times,
         omit_link_times: opts.omit_link_times,
-        owner: opts.owner
-            || opts.archive
-            || chown_ids.is_some_and(|(u, _)| u.is_some())
-            || uid_map.is_some(),
-        group: opts.group
-            || opts.archive
-            || chown_ids.is_some_and(|(_, g)| g.is_some())
-            || gid_map.is_some(),
-        links: opts.links || opts.archive,
+        owner: if opts.no_owner {
+            false
+        } else {
+            opts.owner
+                || opts.archive
+                || chown_ids.is_some_and(|(u, _)| u.is_some())
+                || uid_map.is_some()
+        },
+        group: if opts.no_group {
+            false
+        } else {
+            opts.group
+                || opts.archive
+                || chown_ids.is_some_and(|(_, g)| g.is_some())
+                || gid_map.is_some()
+        },
+        links: if opts.no_links {
+            false
+        } else {
+            opts.links || opts.archive
+        },
         copy_links: opts.copy_links,
         copy_dirlinks: opts.copy_dirlinks,
         keep_dirlinks: opts.keep_dirlinks,
@@ -1351,8 +1471,16 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         safe_links: opts.safe_links,
         munge_links: opts.munge_links,
         hard_links: opts.hard_links,
-        devices: opts.devices || opts.archive || opts.devices_specials,
-        specials: opts.specials || opts.archive || opts.devices_specials,
+        devices: if opts.no_devices {
+            false
+        } else {
+            opts.devices || opts.archive || opts.devices_specials
+        },
+        specials: if opts.no_specials {
+            false
+        } else {
+            opts.specials || opts.archive || opts.devices_specials
+        },
         #[cfg(feature = "xattr")]
         xattrs: opts.xattrs || (opts.fake_super && !opts.super_user),
         #[cfg(feature = "acl")]
@@ -2142,7 +2270,7 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut motd = opts.motd.clone();
     let mut pid_file = opts.pid_file.clone();
     let mut lock_file = opts.lock_file.clone();
-    let state_dir = opts.state_dir.clone();
+    let mut state_dir = opts.state_dir.clone();
     let mut port = matches.get_one::<u16>("port").copied().unwrap_or(873);
     let mut address = opts.address;
     let timeout = matches.get_one::<Duration>("timeout").copied();
@@ -2205,6 +2333,65 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
 
     for m in opts.module {
         modules.insert(m.name.clone(), m);
+    }
+
+    for (name, value) in opts.dparam {
+        match name.as_str() {
+            "motdfile" => motd = Some(PathBuf::from(value)),
+            "pidfile" => pid_file = Some(PathBuf::from(value)),
+            "logfile" => log_file = Some(PathBuf::from(value)),
+            "lockfile" => lock_file = Some(PathBuf::from(value)),
+            "statedir" => state_dir = Some(PathBuf::from(value)),
+            "secretsfile" => secrets = Some(PathBuf::from(value)),
+            "address" => {
+                address = Some(
+                    value
+                        .parse::<IpAddr>()
+                        .map_err(|e| EngineError::Other(e.to_string()))?,
+                )
+            }
+            "port" => {
+                port = value
+                    .parse::<u16>()
+                    .map_err(|e| EngineError::Other(e.to_string()))?
+            }
+            "numericids" => {
+                let val = parse_bool(&value).map_err(EngineError::Other)?;
+                for m in modules.values_mut() {
+                    m.numeric_ids = val;
+                }
+            }
+            "read only" | "read_only" => {
+                let val = parse_bool(&value).map_err(EngineError::Other)?;
+                for m in modules.values_mut() {
+                    m.read_only = val;
+                }
+            }
+            "list" => {
+                list = parse_bool(&value).map_err(EngineError::Other)?;
+            }
+            "max connections" | "maxconnections" => {
+                max_conn = Some(
+                    value
+                        .parse::<usize>()
+                        .map_err(|e| EngineError::Other(e.to_string()))?,
+                );
+            }
+            "hosts allow" | "hostsallow" => {
+                hosts_allow = value.split_whitespace().map(|s| s.to_string()).collect();
+            }
+            "hosts deny" | "hostsdeny" => {
+                hosts_deny = value.split_whitespace().map(|s| s.to_string()).collect();
+            }
+            "refuse options" | "refuseoptions" => {
+                refuse = value.split_whitespace().map(|s| s.to_string()).collect();
+            }
+            _ => {
+                return Err(EngineError::Other(format!(
+                    "unknown daemon parameter: {name}"
+                )));
+            }
+        }
     }
 
     if numeric_ids_flag {

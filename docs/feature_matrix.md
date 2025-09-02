@@ -60,7 +60,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--delete-missing-args` | ✅ | Y | [tests/delete_policy.rs](../tests/delete_policy.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--devices` | ✅ | Y | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--dirs` | ✅ | Y | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--dparam` | ❌ | N | — | — | not yet implemented |
+| `--dparam` | ✅ | Y | [crates/cli/tests/cli_parity.rs](../crates/cli/tests/cli_parity.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | override global daemon config parameter |
 | `--dry-run` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--early-input` | ✅ | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--exclude` | ✅ | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
@@ -109,7 +109,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--munge-links` | ❌ | N | — | — | not yet implemented |
 | `--no-detach` | ❌ | N | — | — | not yet implemented |
 | `--no-D` | ❌ | N | [gaps.md](gaps.md) | — | alias for `--no-devices --no-specials` |
-| `--no-OPTION` | ❌ | N | — | — | not yet implemented |
+| `--no-OPTION` | ✅ | Y | [crates/cli/tests/cli_parity.rs](../crates/cli/tests/cli_parity.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | disable default option |
 | `--no-implied-dirs` | ✅ | Y | [tests/no_implied_dirs.rs](../tests/no_implied_dirs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | preserves existing symlinked directories |
 | `--no-motd` | ✅ | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--numeric-ids` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
