@@ -70,8 +70,7 @@ impl ChecksumConfig {
 
 #[allow(clippy::needless_borrows_for_generic_args)]
 pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
-    let mut prefix = [0u8; 4];
-    prefix.copy_from_slice(&seed.to_le_bytes());
+    let prefix = seed.to_le_bytes();
     match alg {
         StrongHash::Md4 => {
             let mut hasher = Md4::new();
@@ -383,15 +382,15 @@ mod tests {
     #[test]
     fn strong_digests() {
         let digest_md4 = strong_digest(b"hello world", StrongHash::Md4, 0);
-        assert_eq!(hex::encode(digest_md4), "aa010fbc1d14c795d86ef98c95479d17");
+        assert_eq!(hex::encode(digest_md4), "ea91f391e02b5e19f432b43bd87a531d",);
 
         let digest_md5 = strong_digest(b"hello world", StrongHash::Md5, 0);
-        assert_eq!(hex::encode(digest_md5), "5eb63bbbe01eeed093cb22bb8f5acdc3");
+        assert_eq!(hex::encode(digest_md5), "be4b47980f89d075f8f7e7a9fab84e29",);
 
         let digest_sha1 = strong_digest(b"hello world", StrongHash::Sha1, 0);
         assert_eq!(
             hex::encode(digest_sha1),
-            "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed"
+            "1fb6475c524899f98b088f7608bdab8f1591e078",
         );
     }
 
