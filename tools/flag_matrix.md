@@ -1,7 +1,7 @@
 | flag | status | notes |
 | --- | --- | --- |
 | --8-bit-output | Supported |  |
-| --acls | Ignored |  |
+| --acls | Supported | requires `acl` feature |
 | --address | Supported |  |
 | --append | Supported |  |
 | --append-verify | Supported |  |

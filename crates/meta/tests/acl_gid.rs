@@ -1,0 +1,46 @@
+#![cfg(feature = "acl")]
+// crates/meta/tests/acl_gid.rs
+use meta::{Metadata, Options};
+use nix::unistd::{chown, Gid};
+use posix_acl::{PosixACL, Qualifier, ACL_READ};
+use std::fs;
+use tempfile::tempdir;
+
+fn acl_to_io(err: posix_acl::ACLError) -> std::io::Error {
+    if let Some(ioe) = err.as_io_error() {
+        if let Some(code) = ioe.raw_os_error() {
+            std::io::Error::from_raw_os_error(code)
+        } else {
+            std::io::Error::new(ioe.kind(), ioe.to_string())
+        }
+    } else {
+        std::io::Error::other(err)
+    }
+}
+
+#[test]
+fn roundtrip_acl_and_gid() -> std::io::Result<()> {
+    let dir = tempdir()?;
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::write(&src, b"hello")?;
+    fs::write(&dst, b"world")?;
+
+    chown(&src, None, Some(Gid::from_raw(12345)))?;
+    let mut acl = PosixACL::read_acl(&src).map_err(acl_to_io)?;
+    acl.set(Qualifier::User(12345), ACL_READ);
+    acl.write_acl(&src).map_err(acl_to_io)?;
+
+    let opts = Options {
+        acl: true,
+        group: true,
+        ..Default::default()
+    };
+    let meta = Metadata::from_path(&src, opts.clone())?;
+    meta.apply(&dst, opts.clone())?;
+    let applied = Metadata::from_path(&dst, opts)?;
+
+    assert_eq!(meta.gid, applied.gid);
+    assert_eq!(meta.acl, applied.acl);
+    Ok(())
+}

@@ -55,7 +55,7 @@ impl Encoder {
         out.extend_from_slice(&encode_id(entry.gid, &mut self.gid_table));
         if let Some(group) = entry.group {
             out.push(1);
-            out.extend_from_slice(&group.to_le_bytes());
+            out.extend_from_slice(&encode_id(group, &mut self.gid_table));
         } else {
             out.push(0);
         }
@@ -105,13 +105,9 @@ impl Decoder {
             let tag = rest[0];
             rest = &rest[1..];
             if tag == 1 {
-                if rest.len() < 4 {
-                    return Err(DecodeError::ShortInput);
-                }
-                let mut buf = [0u8; 4];
-                buf.copy_from_slice(&rest[..4]);
-                rest = &rest[4..];
-                Some(u32::from_le_bytes(buf))
+                let (g, r) = decode_id(rest, &mut self.gid_table, false)?;
+                rest = r;
+                Some(g)
             } else {
                 None
             }
@@ -249,7 +245,7 @@ mod tests {
                 path: b"dir/file2".to_vec(),
                 uid: 1000,
                 gid: 1001,
-                group: None,
+                group: Some(2000),
                 xattrs: Vec::new(),
                 acl: Vec::new(),
                 default_acl: vec![1, 0, 0, 0, 0, 7, 0, 0, 0],
@@ -258,7 +254,7 @@ mod tests {
                 path: b"other".to_vec(),
                 uid: 1002,
                 gid: 1001,
-                group: None,
+                group: Some(2000),
                 xattrs: Vec::new(),
                 acl: Vec::new(),
                 default_acl: Vec::new(),
