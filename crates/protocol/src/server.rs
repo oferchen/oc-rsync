@@ -191,4 +191,12 @@ impl<R: Read, W: Write> Server<R, W> {
     pub fn take_clients(&mut self) -> Vec<String> {
         self.demux.take_clients()
     }
+
+    pub fn take_progress(&mut self) -> Vec<u64> {
+        self.demux.take_progress()
+    }
+
+    pub fn take_stats(&mut self) -> Vec<Vec<u8>> {
+        self.demux.take_stats()
+    }
 }

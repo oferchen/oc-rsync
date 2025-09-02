@@ -1916,6 +1916,12 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         } else {
             println!("bytes transferred: {}", stats.bytes_transferred);
         }
+        tracing::info!(
+            target: InfoFlag::Stats.target(),
+            files_transferred = stats.files_transferred,
+            files_deleted = stats.files_deleted,
+            bytes = stats.bytes_transferred
+        );
     }
     Ok(())
 }

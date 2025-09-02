@@ -699,6 +699,13 @@ impl Progress {
         let elapsed = self.start.elapsed().as_secs().max(1);
         let rate = self.written / elapsed;
         let rate = format!("{}/s", progress_formatter(rate, true));
+        tracing::info!(
+            target: InfoFlag::Progress.target(),
+            written = self.written,
+            total = self.total,
+            percent,
+            rate = rate.as_str()
+        );
         if done {
             eprintln!("\r{:>15} {:>3}% {:>15}", bytes, percent, rate);
         } else {

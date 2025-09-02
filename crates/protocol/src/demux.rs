@@ -26,6 +26,8 @@ pub struct Demux {
     warnings: Vec<String>,
     logs: Vec<String>,
     clients: Vec<String>,
+    progress: Vec<u64>,
+    stats: Vec<Vec<u8>>,
 }
 
 impl Demux {
@@ -44,6 +46,8 @@ impl Demux {
             warnings: Vec::new(),
             logs: Vec::new(),
             clients: Vec::new(),
+            progress: Vec::new(),
+            stats: Vec::new(),
         }
     }
 
@@ -113,6 +117,12 @@ impl Demux {
                 Message::Client(text) => {
                     self.clients.push(text.clone());
                 }
+                Message::Progress(val) => {
+                    self.progress.push(*val);
+                }
+                Message::Stats(data) => {
+                    self.stats.push(data.clone());
+                }
                 _ => {}
             }
         }
@@ -167,6 +177,14 @@ impl Demux {
 
     pub fn take_clients(&mut self) -> Vec<String> {
         std::mem::take(&mut self.clients)
+    }
+
+    pub fn take_progress(&mut self) -> Vec<u64> {
+        std::mem::take(&mut self.progress)
+    }
+
+    pub fn take_stats(&mut self) -> Vec<Vec<u8>> {
+        std::mem::take(&mut self.stats)
     }
 
     pub fn poll(&mut self) -> std::io::Result<()> {

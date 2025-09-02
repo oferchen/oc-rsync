@@ -159,3 +159,29 @@ fn collect_log_messages() {
     assert_eq!(demux.take_logs(), vec!["log".to_string()]);
     assert_eq!(demux.take_clients(), vec!["client".to_string()]);
 }
+
+#[test]
+fn collect_progress_and_stats_messages() {
+    let mut mux = Mux::new(Duration::from_millis(50));
+    let mut demux = Demux::new(Duration::from_millis(50));
+
+    mux.register_channel(0);
+    demux.register_channel(0);
+
+    mux.send_progress(0, 123).unwrap();
+    mux.send_stats(0, vec![1, 2, 3]).unwrap();
+
+    let mut frames = Vec::new();
+    while frames.len() < 2 {
+        if let Some(frame) = mux.poll() {
+            frames.push(frame);
+        }
+    }
+
+    for frame in frames {
+        demux.ingest(frame).unwrap();
+    }
+
+    assert_eq!(demux.take_progress(), vec![123]);
+    assert_eq!(demux.take_stats(), vec![vec![1, 2, 3]]);
+}
