@@ -1,0 +1,35 @@
+name: Nightly Upstream Sync
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Build oc-rsync
+        run: cargo build --bin oc-rsync
+      - name: Fetch upstream rsync
+        run: scripts/fetch-rsync.sh
+      - name: Generate oc-rsync manpages
+        run: scripts/generate-manpages.sh
+      - name: Version diff
+        run: |
+          rsync --version > upstream_version.txt
+          cargo run --quiet --bin oc-rsync -- --version > oc_rsync_version.txt
+          diff -u upstream_version.txt oc_rsync_version.txt || true
+      - name: Manpage diff
+        run: |
+          diff -u rsync-3.4.1/rsync.1 man/oc-rsync.1 || true
+          diff -u rsync-3.4.1/rsyncd.conf.5 man/oc-rsyncd.conf.5 || true
+

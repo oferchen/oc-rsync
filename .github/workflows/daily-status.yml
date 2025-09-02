@@ -1,0 +1,25 @@
+name: Daily Status
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate status report
+        run: |
+          DATE=$(date -u +%F)
+          mkdir -p reports
+          echo "# Daily status for $DATE" > reports/daily_estimate.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daily-status
+          path: reports/daily_estimate.md
+
