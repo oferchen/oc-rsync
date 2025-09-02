@@ -5,7 +5,7 @@ use std::path::Path;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Codec {
     Zlib,
-    ZlibX,
+    Zlibx,
     Zstd,
 }
 
@@ -13,7 +13,7 @@ impl Codec {
     pub fn to_byte(self) -> u8 {
         match self {
             Codec::Zlib => 1,
-            Codec::ZlibX => 2,
+            Codec::Zlibx => 2,
             Codec::Zstd => 4,
         }
     }
@@ -21,7 +21,7 @@ impl Codec {
     pub fn from_byte(b: u8) -> io::Result<Self> {
         match b {
             1 => Ok(Codec::Zlib),
-            2 => Ok(Codec::ZlibX),
+            2 => Ok(Codec::Zlibx),
             4 => Ok(Codec::Zstd),
             other => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -32,7 +32,7 @@ impl Codec {
 }
 
 pub fn available_codecs() -> Vec<Codec> {
-    vec![Codec::Zstd, Codec::ZlibX, Codec::Zlib]
+    vec![Codec::Zstd, Codec::Zlibx, Codec::Zlib]
 }
 
 pub trait Compressor {
@@ -101,23 +101,23 @@ impl Decompressor for Zlib {
     }
 }
 
-pub struct ZlibX {
+pub struct Zlibx {
     level: i32,
 }
 
-impl ZlibX {
+impl Zlibx {
     pub fn new(level: i32) -> Self {
         Self { level }
     }
 }
 
-impl Default for ZlibX {
+impl Default for Zlibx {
     fn default() -> Self {
         Self { level: 6 }
     }
 }
 
-impl Compressor for ZlibX {
+impl Compressor for Zlibx {
     fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         let mut encoder = flate2::write::ZlibEncoder::new(
             Vec::new(),
@@ -128,7 +128,7 @@ impl Compressor for ZlibX {
     }
 }
 
-impl Decompressor for ZlibX {
+impl Decompressor for Zlibx {
     fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         let mut decoder = flate2::read::ZlibDecoder::new(data);
         let mut out = Vec::new();
@@ -301,7 +301,7 @@ mod tests {
     fn available_codecs_returns_all_codecs() {
         assert_eq!(
             available_codecs(),
-            vec![Codec::Zstd, Codec::ZlibX, Codec::Zlib]
+            vec![Codec::Zstd, Codec::Zlibx, Codec::Zlib]
         );
     }
 }

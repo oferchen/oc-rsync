@@ -1182,6 +1182,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             for name in s.split(',') {
                 let codec = match name {
                     "zlib" => Codec::Zlib,
+                    "zlibx" => Codec::Zlibx,
                     "zstd" => Codec::Zstd,
                     other => {
                         return Err(EngineError::Other(format!("unknown codec {other}")));
