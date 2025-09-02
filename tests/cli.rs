@@ -10,7 +10,7 @@ use logging::progress_formatter;
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 use oc_rsync_cli::{parse_iconv, spawn_daemon_session};
 use predicates::prelude::PredicateBooleanExt;
-use protocol::SUPPORTED_PROTOCOLS;
+use protocol::{ExitCode, SUPPORTED_PROTOCOLS};
 use serial_test::serial;
 use std::fs;
 use std::io::{Seek, SeekFrom, Write};
@@ -984,7 +984,9 @@ fn owner_requires_privileges() {
         .unwrap()
         .args(["--local", "--owner", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
-        .failure();
+        .failure()
+        .code(u8::from(ExitCode::Protocol) as i32)
+        .stderr(predicates::str::contains("requires root or CAP_CHOWN"));
 }
 
 #[cfg(unix)]
