@@ -4,7 +4,9 @@ use assert_cmd::Command;
 #[cfg(unix)]
 use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
-use nix::sys::stat::{makedev, mknod, Mode, SFlag};
+use meta::makedev;
+#[cfg(unix)]
+use nix::sys::stat::{mknod, Mode, SFlag};
 #[cfg(unix)]
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 #[cfg(unix)]

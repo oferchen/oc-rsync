@@ -10,8 +10,8 @@ use compress::available_codecs;
 use engine::{sync, IdMapper, SyncOptions};
 use filetime::{set_file_atime, set_file_mtime, set_symlink_file_times, FileTime};
 use filters::Matcher;
-use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
-use nix::sys::stat::{makedev, mknod, Mode, SFlag};
+use meta::{makedev, parse_chmod, parse_chown, parse_id_map, IdKind};
+use nix::sys::stat::{mknod, Mode, SFlag};
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 #[cfg(feature = "acl")]
 use posix_acl::{PosixACL, Qualifier, ACL_READ, ACL_WRITE};
