@@ -42,7 +42,6 @@ impl<R: Read, W: Write> Server<R, W> {
         let mut cur = Vec::new();
         let mut saw_nonopt = false;
 
-        // Parse command-line arguments until an empty string terminator.
         loop {
             self.reader.read_exact(&mut b)?;
             if b[0] == 0 {
@@ -68,7 +67,6 @@ impl<R: Read, W: Write> Server<R, W> {
             }
         }
 
-        // Parse environment variables until another empty terminator.
         loop {
             self.reader.read_exact(&mut b)?;
             if b[0] == 0 {
