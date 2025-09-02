@@ -78,13 +78,13 @@ fn unregister_channel_rejects_frames() {
     let mut demux = Demux::new(Duration::from_millis(100));
 
     let rx = demux.register_channel(1);
-    let frame = Message::Data(b"msg".to_vec()).into_frame(1);
+    let frame = Message::Data(b"msg".to_vec()).into_frame(1, None);
     demux.ingest(frame).unwrap();
     assert_eq!(rx.try_recv().unwrap(), Message::Data(b"msg".to_vec()));
 
     demux.unregister_channel(1);
     assert!(rx.try_recv().is_err());
 
-    let frame = Message::Data(b"other".to_vec()).into_frame(1);
+    let frame = Message::Data(b"other".to_vec()).into_frame(1, None);
     assert!(demux.ingest(frame).is_err());
 }

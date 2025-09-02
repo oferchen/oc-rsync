@@ -6,21 +6,22 @@ use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {
-    pub path: String,
+    pub path: Vec<u8>,
     pub uid: u32,
     pub gid: u32,
+    pub group: Option<u32>,
 }
 
 #[derive(Debug, Default)]
 pub struct Encoder {
-    prev_path: String,
+    prev_path: Vec<u8>,
     uid_table: HashMap<u32, u8>,
     gid_table: HashMap<u32, u8>,
 }
 
 #[derive(Debug, Default)]
 pub struct Decoder {
-    prev_path: String,
+    prev_path: Vec<u8>,
     uid_table: Vec<u32>,
     gid_table: Vec<u32>,
 }
@@ -29,8 +30,6 @@ pub struct Decoder {
 pub enum DecodeError {
     #[error("input too short")]
     ShortInput,
-    #[error("invalid utf8")]
-    Utf8,
     #[error("unknown uid index {0}")]
     BadUid(u8),
     #[error("unknown gid index {0}")]
@@ -48,9 +47,15 @@ impl Encoder {
         let suffix = &entry.path[common as usize..];
         out.push(common);
         out.push(suffix.len() as u8);
-        out.extend_from_slice(suffix.as_bytes());
+        out.extend_from_slice(suffix);
         out.extend_from_slice(&encode_id(entry.uid, &mut self.uid_table));
         out.extend_from_slice(&encode_id(entry.gid, &mut self.gid_table));
+        if let Some(group) = entry.group {
+            out.push(1);
+            out.extend_from_slice(&group.to_le_bytes());
+        } else {
+            out.push(0);
+        }
         self.prev_path = entry.path.clone();
         out
     }
@@ -73,22 +78,43 @@ impl Decoder {
         }
         let suffix = &input[..suff_len];
         input = &input[suff_len..];
-        let path_bytes: Vec<u8> = self.prev_path.as_bytes()[..common]
+        let path: Vec<u8> = self.prev_path[..common]
             .iter()
             .copied()
             .chain(suffix.iter().copied())
             .collect();
-        let path = String::from_utf8(path_bytes).map_err(|_| DecodeError::Utf8)?;
         let (uid, rest) = decode_id(input, &mut self.uid_table, true)?;
-        let (gid, rest) = decode_id(rest, &mut self.gid_table, false)?;
+        let (gid, mut rest) = decode_id(rest, &mut self.gid_table, false)?;
+        let group = if rest.is_empty() {
+            None
+        } else {
+            let tag = rest[0];
+            rest = &rest[1..];
+            if tag == 1 {
+                if rest.len() < 4 {
+                    return Err(DecodeError::ShortInput);
+                }
+                let mut buf = [0u8; 4];
+                buf.copy_from_slice(&rest[..4]);
+                rest = &rest[4..];
+                Some(u32::from_le_bytes(buf))
+            } else {
+                None
+            }
+        };
         debug_assert!(rest.is_empty());
         self.prev_path = path.clone();
-        Ok(Entry { path, uid, gid })
+        Ok(Entry {
+            path,
+            uid,
+            gid,
+            group,
+        })
     }
 }
 
-fn common_prefix(a: &str, b: &str) -> usize {
-    a.bytes().zip(b.bytes()).take_while(|(x, y)| x == y).count()
+fn common_prefix(a: &[u8], b: &[u8]) -> usize {
+    a.iter().zip(b.iter()).take_while(|(x, y)| x == y).count()
 }
 
 fn encode_id(id: u32, table: &mut HashMap<u32, u8>) -> Vec<u8> {
@@ -145,19 +171,22 @@ mod tests {
     fn roundtrip_paths_and_ids() {
         let entries = vec![
             Entry {
-                path: "dir/file1".into(),
+                path: b"dir/file1".to_vec(),
                 uid: 1000,
                 gid: 1000,
+                group: None,
             },
             Entry {
-                path: "dir/file2".into(),
+                path: b"dir/file2".to_vec(),
                 uid: 1000,
                 gid: 1001,
+                group: None,
             },
             Entry {
-                path: "other".into(),
+                path: b"other".to_vec(),
                 uid: 1002,
                 gid: 1001,
+                group: None,
             },
         ];
         let mut enc = Encoder::new();

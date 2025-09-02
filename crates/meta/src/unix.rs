@@ -279,11 +279,27 @@ impl Metadata {
         if opts.owner || opts.group {
             let uid = if let Some(ref map) = opts.uid_map {
                 map(self.uid)
+            } else if !opts.numeric_ids {
+                if let Some(u) = get_user_by_uid(self.uid) {
+                    get_user_by_name(u.name())
+                        .map(|u| u.uid())
+                        .unwrap_or(self.uid)
+                } else {
+                    self.uid
+                }
             } else {
                 self.uid
             };
             let gid = if let Some(ref map) = opts.gid_map {
                 map(self.gid)
+            } else if !opts.numeric_ids {
+                if let Some(g) = get_group_by_gid(self.gid) {
+                    get_group_by_name(g.name())
+                        .map(|g| g.gid())
+                        .unwrap_or(self.gid)
+                } else {
+                    self.gid
+                }
             } else {
                 self.gid
             };
@@ -508,6 +524,50 @@ pub fn store_fake_super(path: &Path, uid: u32, gid: u32, mode: u32) {
     let _ = xattr::set(path, "user.rsync.mode", mode.to_string().as_bytes());
 }
 
+#[cfg(feature = "xattr")]
+pub fn copy_xattrs(
+    src: &Path,
+    dest: &Path,
+    include: Option<&dyn Fn(&OsStr) -> bool>,
+    include_for_delete: Option<&dyn Fn(&OsStr) -> bool>,
+) -> io::Result<()> {
+    let mut attrs = Vec::new();
+    match xattr::list(src) {
+        Ok(list) => {
+            for attr in list {
+                if let Some(name) = attr.to_str() {
+                    if name.starts_with("security.")
+                        || name == "system.posix_acl_access"
+                        || name == "system.posix_acl_default"
+                    {
+                        continue;
+                    }
+                }
+                if let Some(filter) = include {
+                    if !filter(attr.as_os_str()) {
+                        continue;
+                    }
+                }
+                match xattr::get(src, &attr) {
+                    Ok(Some(value)) => attrs.push((attr, value)),
+                    Ok(None) => {}
+                    Err(err) => {
+                        if !crate::should_ignore_xattr_error(&err) {
+                            return Err(err);
+                        }
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            if !crate::should_ignore_xattr_error(&err) {
+                return Err(err);
+            }
+        }
+    }
+    crate::apply_xattrs(dest, &attrs, include, include_for_delete)
+}
+
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub fn mknod(path: &Path, kind: SFlag, perm: Mode, dev: u64) -> io::Result<()> {
     use nix::libc::dev_t;
@@ -610,12 +670,8 @@ fn read_acl_from_path(
     let acl = match posix_acl::PosixACL::read_acl(path) {
         Ok(acl) => acl.entries(),
         Err(err) => {
-            if let Some(code) = err.as_io_error().and_then(|e| e.raw_os_error()) {
-                if matches!(code, libc::ENODATA | libc::ENOTSUP | libc::ENOSYS) {
-                    Vec::new()
-                } else {
-                    return Err(acl_to_io(err));
-                }
+            if should_ignore_acl_error(&err) {
+                Vec::new()
             } else {
                 return Err(acl_to_io(err));
             }
@@ -625,12 +681,8 @@ fn read_acl_from_path(
         match posix_acl::PosixACL::read_default_acl(path) {
             Ok(dacl) => dacl.entries(),
             Err(err) => {
-                if let Some(code) = err.as_io_error().and_then(|e| e.raw_os_error()) {
-                    if matches!(code, libc::ENODATA | libc::ENOTSUP | libc::ENOSYS) {
-                        Vec::new()
-                    } else {
-                        return Err(acl_to_io(err));
-                    }
+                if should_ignore_acl_error(&err) {
+                    Vec::new()
                 } else {
                     return Err(acl_to_io(err));
                 }
@@ -810,43 +862,11 @@ fn set_file_crtime(_path: &Path, _crtime: FileTime) -> io::Result<()> {
 }
 
 pub fn uid_from_name(name: &str) -> Option<u32> {
-    get_user_by_name(name).map(|u| u.uid()).or_else(|| {
-        fs::read_to_string("/etc/passwd").ok().and_then(|data| {
-            data.lines().find_map(|line| {
-                if line.starts_with('#') {
-                    return None;
-                }
-                let mut parts = line.split(':');
-                let user_name = parts.next()?;
-                if user_name != name {
-                    return None;
-                }
-                parts.next();
-                let uid_str = parts.next()?;
-                uid_str.parse().ok()
-            })
-        })
-    })
+    get_user_by_name(name).map(|u| u.uid())
 }
 
 pub fn gid_from_name(name: &str) -> Option<u32> {
-    get_group_by_name(name).map(|g| g.gid()).or_else(|| {
-        fs::read_to_string("/etc/group").ok().and_then(|data| {
-            data.lines().find_map(|line| {
-                if line.starts_with('#') {
-                    return None;
-                }
-                let mut parts = line.split(':');
-                let group_name = parts.next()?;
-                if group_name != name {
-                    return None;
-                }
-                parts.next();
-                let gid_str = parts.next()?;
-                gid_str.parse().ok()
-            })
-        })
-    })
+    get_group_by_name(name).map(|g| g.gid())
 }
 
 pub fn uid_from_name_or_id(spec: &str) -> Option<u32> {
@@ -860,47 +880,11 @@ pub fn gid_from_name_or_id(spec: &str) -> Option<u32> {
 }
 
 pub fn uid_to_name(uid: u32) -> Option<String> {
-    get_user_by_uid(uid)
-        .map(|u| u.name().to_string_lossy().into_owned())
-        .or_else(|| {
-            fs::read_to_string("/etc/passwd").ok().and_then(|data| {
-                data.lines().find_map(|line| {
-                    if line.starts_with('#') {
-                        return None;
-                    }
-                    let mut parts = line.split(':');
-                    let name = parts.next()?;
-                    parts.next();
-                    let uid_str = parts.next()?;
-                    match uid_str.parse::<u32>() {
-                        Ok(u) if u == uid => Some(name.to_string()),
-                        _ => None,
-                    }
-                })
-            })
-        })
+    get_user_by_uid(uid).map(|u| u.name().to_string_lossy().into_owned())
 }
 
 pub fn gid_to_name(gid: u32) -> Option<String> {
-    get_group_by_gid(gid)
-        .map(|g| g.name().to_string_lossy().into_owned())
-        .or_else(|| {
-            fs::read_to_string("/etc/group").ok().and_then(|data| {
-                data.lines().find_map(|line| {
-                    if line.starts_with('#') {
-                        return None;
-                    }
-                    let mut parts = line.split(':');
-                    let name = parts.next()?;
-                    parts.next();
-                    let gid_str = parts.next()?;
-                    match gid_str.parse::<u32>() {
-                        Ok(g) if g == gid => Some(name.to_string()),
-                        _ => None,
-                    }
-                })
-            })
-        })
+    get_group_by_gid(gid).map(|g| g.name().to_string_lossy().into_owned())
 }
 
 #[cfg(all(test, feature = "xattr"))]

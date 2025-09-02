@@ -158,3 +158,29 @@ fn ignore_errors_allows_deletion_failure() {
 
     fs::set_permissions(&dst, fs::Permissions::from_mode(0o755)).unwrap();
 }
+
+#[test]
+fn force_deletes_non_empty_dirs() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(dst.join("sub")).unwrap();
+    fs::write(dst.join("sub/file.txt"), b"hi").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--delete",
+            "--force",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("sub").exists());
+}

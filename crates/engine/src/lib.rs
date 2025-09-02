@@ -18,7 +18,7 @@ use std::sync::Arc;
 #[cfg(unix)]
 use std::sync::OnceLock;
 use std::time::Duration;
-use tempfile::NamedTempFile;
+use tempfile::{Builder, NamedTempFile};
 
 pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
@@ -593,21 +593,19 @@ fn write_sparse(file: &mut File, data: &[u8]) -> Result<()> {
     Ok(())
 }
 
-struct Progress<'a> {
+struct Progress {
     total: u64,
     written: u64,
     start: std::time::Instant,
     last_print: std::time::Instant,
     human_readable: bool,
-    #[allow(dead_code)]
-    dest: &'a Path,
     quiet: bool,
 }
 
 const PROGRESS_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
-impl<'a> Progress<'a> {
-    fn new(dest: &'a Path, total: u64, human_readable: bool, initial: u64, quiet: bool) -> Self {
+impl Progress {
+    fn new(dest: &Path, total: u64, human_readable: bool, initial: u64, quiet: bool) -> Self {
         if !quiet {
             eprintln!("{}", dest.display());
         }
@@ -618,7 +616,6 @@ impl<'a> Progress<'a> {
             start: now,
             last_print: now - PROGRESS_UPDATE_INTERVAL,
             human_readable,
-            dest,
             quiet,
         }
     }
@@ -1100,7 +1097,7 @@ pub struct Receiver {
     matcher: Matcher,
     delayed: Vec<(PathBuf, PathBuf, PathBuf)>,
     #[cfg(unix)]
-    link_map: HashMap<(u64, u64), Vec<PathBuf>>,
+    link_map: HashMap<u64, Vec<PathBuf>>,
 }
 
 impl Default for Receiver {
@@ -1123,8 +1120,8 @@ impl Receiver {
     }
 
     #[cfg(unix)]
-    fn register_hard_link(&mut self, dev: u64, inode: u64, dest: &Path) -> Result<bool> {
-        let entry = self.link_map.entry((dev, inode)).or_default();
+    fn register_hard_link(&mut self, group: u64, dest: &Path) -> Result<bool> {
+        let entry = self.link_map.entry(group).or_default();
         if entry.is_empty() {
             entry.push(dest.to_path_buf());
             Ok(true)
@@ -1180,7 +1177,18 @@ impl Receiver {
             if let (Ok(d_meta), Ok(t_meta)) = (fs::metadata(dest_parent), fs::metadata(tmp_parent))
             {
                 if d_meta.dev() != t_meta.dev() {
-                    tmp_dest = dest.with_extension("tmp");
+                    let prefix = dest
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|n| format!(".{n}."))
+                        .unwrap_or_else(|| String::from(".tmp."));
+                    tmp_dest = Builder::new()
+                        .prefix(&prefix)
+                        .tempfile_in(dest_parent)
+                        .map_err(|e| io_context(dest_parent, e))?
+                        .into_temp_path()
+                        .keep()
+                        .map_err(|e| io_context(dest_parent, e.error))?;
                     auto_tmp = true;
                 }
             }
@@ -1409,43 +1417,29 @@ impl Receiver {
             let chown_uid = self.opts.chown.and_then(|(u, _)| u);
             let chown_gid = self.opts.chown.and_then(|(_, g)| g);
 
-            let uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> =
+            let uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> = if self.opts.owner {
                 if let Some(ref map) = self.opts.uid_map {
                     Some(map.0.clone())
                 } else if let Some(uid) = chown_uid {
                     Some(Arc::new(move |_| uid))
-                } else if self.opts.numeric_ids {
-                    None
                 } else {
-                    Some(Arc::new(|uid: u32| {
-                        use nix::unistd::{Uid, User};
-                        if let Ok(Some(u)) = User::from_uid(Uid::from_raw(uid)) {
-                            if let Ok(Some(local)) = User::from_name(&u.name) {
-                                return local.uid.as_raw();
-                            }
-                        }
-                        uid
-                    }))
-                };
+                    None
+                }
+            } else {
+                None
+            };
 
-            let gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> =
+            let gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>> = if self.opts.group {
                 if let Some(ref map) = self.opts.gid_map {
                     Some(map.0.clone())
                 } else if let Some(gid) = chown_gid {
                     Some(Arc::new(move |_| gid))
-                } else if self.opts.numeric_ids {
-                    None
                 } else {
-                    Some(Arc::new(|gid: u32| {
-                        use nix::unistd::{Gid, Group};
-                        if let Ok(Some(g)) = Group::from_gid(Gid::from_raw(gid)) {
-                            if let Ok(Some(local)) = Group::from_name(&g.name) {
-                                return local.gid.as_raw();
-                            }
-                        }
-                        gid
-                    }))
-                };
+                    None
+                }
+            } else {
+                None
+            };
 
             #[cfg(feature = "xattr")]
             let m1 = self.matcher.clone();
@@ -2074,6 +2068,10 @@ pub fn sync(
         1024,
         opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
     );
+    #[cfg(unix)]
+    let mut link_groups: HashMap<(u64, u64), u64> = HashMap::new();
+    #[cfg(unix)]
+    let mut next_group: u64 = 0;
     while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
@@ -2118,17 +2116,20 @@ pub fn sync(
                         }
                     }
                     #[cfg(unix)]
-                    if opts.hard_links
-                        && !receiver.register_hard_link(
-                            walker.devs()[entry.dev],
-                            walker.inodes()[entry.inode],
-                            &dest_path,
-                        )?
-                    {
-                        if let Some(parent) = dest_path.parent() {
-                            fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
+                    if opts.hard_links && src_meta.nlink() > 1 {
+                        let dev = walker.devs()[entry.dev];
+                        let ino = walker.inodes()[entry.inode];
+                        let group = *link_groups.entry((dev, ino)).or_insert_with(|| {
+                            let id = next_group;
+                            next_group += 1;
+                            id
+                        });
+                        if !receiver.register_hard_link(group, &dest_path)? {
+                            if let Some(parent) = dest_path.parent() {
+                                fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
+                            }
+                            continue;
                         }
-                        continue;
                     }
                     let partial_exists = if opts.partial {
                         let partial_path = if let Some(ref dir) = opts.partial_dir {
@@ -2220,7 +2221,20 @@ pub fn sync(
                     let mut created = dest_meta.is_none();
                     if dest_is_symlink {
                         if opts.keep_dirlinks {
-                            created = false;
+                            let link_target =
+                                fs::read_link(&dest_path).map_err(|e| io_context(&dest_path, e))?;
+                            let target_path = if link_target.is_absolute() {
+                                normalize_path(&link_target)
+                            } else if let Some(parent) = dest_path.parent() {
+                                normalize_path(parent.join(&link_target))
+                            } else {
+                                normalize_path(&link_target)
+                            };
+                            if !target_path.exists() {
+                                created = true;
+                            }
+                            fs::create_dir_all(&target_path)
+                                .map_err(|e| io_context(&target_path, e))?;
                         } else {
                             remove_file_opts(&dest_path, opts)?;
                             fs::create_dir_all(&dest_path)
@@ -2228,6 +2242,9 @@ pub fn sync(
                             created = true;
                         }
                     } else {
+                        if !dest_path.exists() {
+                            created = true;
+                        }
                         fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
                     }
                     if created {
@@ -2241,9 +2258,7 @@ pub fn sync(
                             println!("cd+++++++++ {}/", rel.display());
                         }
                     }
-                    if !(dest_is_symlink && opts.keep_dirlinks) {
-                        dir_meta.push((path.clone(), dest_path.clone()));
-                    }
+                    dir_meta.push((path.clone(), dest_path.clone()));
                 } else if file_type.is_symlink() {
                     let target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
                     let target_path = if target.is_absolute() {

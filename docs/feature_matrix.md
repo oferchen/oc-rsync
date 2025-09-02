@@ -70,7 +70,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--fake-super` | — | ✅ | ❌ | [tests/fake_super.rs](../tests/fake_super.rs) | requires `xattr` feature | ≤3.2 |
 | `--files-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--filter` | `-f` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
-| `--force` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--force` | — | ✅ | ✅ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--from0` | `-0` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--fsync` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--fuzzy` | `-y` | ✅ | ❌ | [tests/fuzzy.rs](../tests/fuzzy.rs) |  | ≤3.2 |
@@ -141,7 +141,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--safe-links` | — | ✅ | ❌ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) |  | ≤3.2 |
 | `--secluded-args` | `-s` | ✅ | ❌ | [tests/secluded_args.rs](../tests/secluded_args.rs) |  | ≤3.2 |
 | `--secrets-file` | — | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
-| `--server` | — | ✅ | ❌ | [tests/server.rs](../tests/server.rs) | negotiates protocol version and codecs | ≤3.2 |
+| `--server` | — | ✅ | ❌ | [crates/protocol/tests/server.rs](../crates/protocol/tests/server.rs) | negotiates protocol version and codecs | ≤3.2 |
 | `--size-only` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--skip-compress` | — | ✅ | ✅ | [tests/skip_compress.rs](../tests/skip_compress.rs) | comma-separated list of file suffixes to avoid compressing | ≤3.2 |
 | `--sockopts` | — | ✅ | ❌ | [tests/sockopts.rs](../tests/sockopts.rs)<br>[crates/transport/tests/sockopts.rs](../crates/transport/tests/sockopts.rs) | supports `SO_*` and `ip:ttl`/`ip:tos` | ≤3.2 |

@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 use assert_cmd::Command;
 use engine::{EngineError, SyncOptions};
 use oc_rsync_cli::spawn_daemon_session;
+use predicates::str::contains;
 use protocol::{Demux, ExitCode};
 use transport::{
     rate_limited, ssh::SshStdioTransport, LocalPipeTransport, TcpTransport, TimeoutTransport,
@@ -190,7 +191,8 @@ fn daemon_connection_timeout_exit_code() {
         ])
         .assert()
         .failure()
-        .code(u8::from(ExitCode::ConnTimeout) as i32);
+        .code(u8::from(ExitCode::ConnTimeout) as i32)
+        .stderr(contains("operation timed out"));
 }
 
 #[test]
@@ -200,5 +202,6 @@ fn ssh_connection_timeout_exit_code() {
         .args(["--contimeout=1", "203.0.113.1:/tmp", "."])
         .assert()
         .failure()
-        .code(u8::from(ExitCode::ConnTimeout) as i32);
+        .code(u8::from(ExitCode::ConnTimeout) as i32)
+        .stderr(contains("failed to read version"));
 }

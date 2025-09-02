@@ -666,12 +666,23 @@ fn temp_dir_cross_filesystem_temp_file_in_dest() {
         .spawn()
         .unwrap();
 
-    let tmp_in_dst = dst_dir.join("a.tmp");
-    let tmp_in_tmp = tmp_dir.path().join("a.tmp");
     let mut found = false;
     for _ in 0..50 {
-        if tmp_in_dst.exists() {
-            assert!(!tmp_in_tmp.exists());
+        let tmp_present = fs::read_dir(&dst_dir)
+            .unwrap()
+            .filter_map(|e| {
+                let entry = e.ok()?;
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                if name.starts_with(".a.txt.") {
+                    Some(entry.path())
+                } else {
+                    None
+                }
+            })
+            .next();
+        if tmp_present.is_some() {
+            assert!(fs::read_dir(tmp_dir.path()).unwrap().next().is_none());
             found = true;
             break;
         }
@@ -682,10 +693,6 @@ fn temp_dir_cross_filesystem_temp_file_in_dest() {
     assert!(
         found,
         "temp file not created in destination during transfer"
-    );
-    assert!(
-        !tmp_in_tmp.exists(),
-        "temp dir used despite differing filesystems"
     );
 
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
@@ -865,6 +872,50 @@ fn numeric_ids_are_preserved() {
         assert_eq!(meta.uid(), uid.as_raw());
         assert_eq!(meta.gid(), gid.as_raw());
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn owner_group_and_mode_preserved() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("a.txt");
+    std::fs::write(&file, b"ids").unwrap();
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o741)).unwrap();
+
+    let dst_file = dst_dir.join("a.txt");
+    std::fs::copy(&file, &dst_file).unwrap();
+    let uid = get_current_uid();
+    let gid = get_current_gid();
+    let new_uid = if uid == 0 { 1 } else { 0 };
+    let new_gid = if gid == 0 { 1 } else { 0 };
+    let _ = chown(
+        &dst_file,
+        Some(Uid::from_raw(new_uid)),
+        Some(Gid::from_raw(new_gid)),
+    );
+    std::fs::set_permissions(&dst_file, std::fs::Permissions::from_mode(0o600)).unwrap();
+
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--local",
+        "--owner",
+        "--group",
+        "--perms",
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    let meta = std::fs::metadata(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(meta.uid(), uid);
+    assert_eq!(meta.gid(), gid);
+    assert_eq!(meta.permissions().mode() & 0o7777, 0o741);
 }
 
 #[cfg(unix)]
@@ -1138,6 +1189,44 @@ fn group_names_are_mapped() {
 
     let meta = std::fs::metadata(dst_dir.join("id.txt")).unwrap();
     assert_eq!(meta.gid(), other_gid);
+}
+
+#[cfg(unix)]
+#[test]
+fn parse_usermap_accepts_numeric_and_name() {
+    use meta::{parse_id_map, IdKind};
+    use users::get_user_by_uid;
+
+    let numeric = parse_id_map("0:1", IdKind::User).unwrap();
+    assert_eq!(numeric(0), 1);
+
+    let root_name = get_user_by_uid(0)
+        .unwrap()
+        .name()
+        .to_string_lossy()
+        .into_owned();
+    let spec = format!("{root_name}:{root_name}");
+    let name_map = parse_id_map(&spec, IdKind::User).unwrap();
+    assert_eq!(name_map(0), 0);
+}
+
+#[cfg(unix)]
+#[test]
+fn parse_groupmap_accepts_numeric_and_name() {
+    use meta::{parse_id_map, IdKind};
+    use users::get_group_by_gid;
+
+    let numeric = parse_id_map("0:1", IdKind::Group).unwrap();
+    assert_eq!(numeric(0), 1);
+
+    let root_gname = get_group_by_gid(0)
+        .unwrap()
+        .name()
+        .to_string_lossy()
+        .into_owned();
+    let spec = format!("{root_gname}:{root_gname}");
+    let name_map = parse_id_map(&spec, IdKind::Group).unwrap();
+    assert_eq!(name_map(0), 0);
 }
 
 #[cfg(unix)]
@@ -2049,6 +2138,103 @@ fn include_complex_pattern_allows_files() {
 }
 
 #[test]
+fn include_from_before_exclude_allows_file() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("keep.txt"), b"k").unwrap();
+    fs::write(src.join("skip.txt"), b"s").unwrap();
+    let inc = dir.path().join("inc.lst");
+    fs::write(&inc, "keep.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--include-from",
+            inc.to_str().unwrap(),
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep.txt").exists());
+    assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
+fn exclude_before_include_from_skips_file() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("keep.txt"), b"k").unwrap();
+    fs::write(src.join("skip.txt"), b"s").unwrap();
+    let inc = dir.path().join("inc.lst");
+    fs::write(&inc, "keep.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--exclude",
+            "*",
+            "--include-from",
+            inc.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("keep.txt").exists());
+    assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
+fn rsync_filter_merges_across_directories() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("sub")).unwrap();
+    fs::write(src.join("root.txt"), b"r").unwrap();
+    fs::write(src.join(".rsync-filter"), "- root.txt\n").unwrap();
+    fs::write(src.join("sub/keep.txt"), b"k").unwrap();
+    fs::write(src.join("sub/skip.txt"), b"s").unwrap();
+    fs::write(src.join("sub/.rsync-filter"), "- skip.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--filter",
+            ": .rsync-filter",
+            "--include",
+            "sub/***",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("root.txt").exists());
+    assert!(dst.join("sub/keep.txt").exists());
+    assert!(!dst.join("sub/skip.txt").exists());
+}
+
+#[test]
 fn files_from_zero_separated_list() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
@@ -2481,6 +2667,42 @@ fn copy_dirlinks_transforms_directory_symlinks() {
     assert!(dst.join("dirlink").is_dir());
     let meta = std::fs::symlink_metadata(dst.join("filelink")).unwrap();
     assert!(meta.file_type().is_symlink());
+}
+
+#[cfg(unix)]
+#[test]
+fn keep_dirlinks_handles_nested_symlinks() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    let target = dir.path().join("target");
+    let nested = dir.path().join("nested");
+
+    std::fs::create_dir_all(src.join("a/b")).unwrap();
+    std::fs::write(src.join("a/b/file"), b"hi").unwrap();
+
+    std::fs::create_dir_all(&dst).unwrap();
+    std::fs::create_dir_all(&target).unwrap();
+    symlink(&target, dst.join("a")).unwrap();
+    symlink(&nested, target.join("b")).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--keep-dirlinks",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let meta = std::fs::symlink_metadata(dst.join("a")).unwrap();
+    assert!(meta.file_type().is_symlink());
+    let nested_meta = std::fs::symlink_metadata(target.join("b")).unwrap();
+    assert!(nested_meta.file_type().is_symlink());
+    assert!(nested.join("file").exists());
 }
 
 #[cfg(unix)]

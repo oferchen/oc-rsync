@@ -21,6 +21,7 @@ use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions}
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
+use protocol::CharsetConv;
 use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
 use shell_words::split as shell_split;
 use transport::{
@@ -158,6 +159,8 @@ pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
 struct ClientOpts {
     #[arg(long)]
     local: bool,
+    #[command(flatten)]
+    daemon: DaemonOpts,
     #[arg(short = 'a', long, help_heading = "Selection")]
     archive: bool,
     #[arg(short, long, help_heading = "Selection")]
@@ -578,7 +581,7 @@ struct ClientOpts {
     exclude_from: Vec<PathBuf>,
     #[arg(long, value_name = "FILE")]
     files_from: Vec<PathBuf>,
-    #[arg(long)]
+    #[arg(long, short = '0')]
     from0: bool,
 }
 
@@ -647,8 +650,17 @@ pub fn parse_rsync_path(raw: Option<String>) -> Result<Option<RshCommand>> {
     }
 }
 
-#[allow(dead_code)]
-#[derive(Parser, Debug)]
+fn parse_name_map(specs: &[String], kind: IdKind) -> Result<Option<IdMapper>> {
+    if specs.is_empty() {
+        Ok(None)
+    } else {
+        let spec = specs.join(",");
+        let mapper = parse_id_map(&spec, kind).map_err(EngineError::Other)?;
+        Ok(Some(IdMapper(mapper)))
+    }
+}
+
+#[derive(Args, Debug)]
 struct DaemonOpts {
     #[arg(long)]
     daemon: bool,
@@ -672,7 +684,6 @@ struct DaemonOpts {
     state_dir: Option<PathBuf>,
 }
 
-#[allow(dead_code)]
 #[derive(Parser, Debug)]
 struct ProbeOpts {
     #[arg(long)]
@@ -683,10 +694,10 @@ struct ProbeOpts {
 }
 
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
-    let daemon_opts =
-        DaemonOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
-    if daemon_opts.daemon {
-        return run_daemon(daemon_opts, matches);
+    let mut opts =
+        ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
+    if opts.daemon.daemon {
+        return run_daemon(opts.daemon, matches);
     }
     let probe_opts =
         ProbeOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
@@ -707,7 +718,6 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
 
 pub fn cli_command() -> clap::Command {
     let cmd = ClientOpts::command();
-    let cmd = DaemonOpts::augment_args(cmd);
     ProbeOpts::augment_args(cmd)
 }
 
@@ -1194,20 +1204,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     } else {
         None
     };
-    let uid_map = if !opts.usermap.is_empty() {
-        let spec = opts.usermap.join(",");
-        let mapper = parse_id_map(&spec, IdKind::User).map_err(EngineError::Other)?;
-        Some(IdMapper(mapper))
-    } else {
-        None
-    };
-    let gid_map = if !opts.groupmap.is_empty() {
-        let spec = opts.groupmap.join(",");
-        let mapper = parse_id_map(&spec, IdKind::Group).map_err(EngineError::Other)?;
-        Some(IdMapper(mapper))
-    } else {
-        None
-    };
+    let uid_map = parse_name_map(&opts.usermap, IdKind::User)?;
+    let gid_map = parse_name_map(&opts.groupmap, IdKind::Group)?;
     let mut sync_opts = SyncOptions {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
@@ -1490,6 +1488,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
                 match (src_mod, dst_mod) {
                     (None, None) => {
+                        let connect_timeout = opts.connect_timeout;
                         let mut dst_session = SshStdioTransport::spawn_with_rsh(
                             &dst_host,
                             &dst_path.path,
@@ -1501,7 +1500,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.connect_timeout,
+                            connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
@@ -1516,7 +1515,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             known_hosts.as_deref(),
                             strict_host_key_checking,
                             opts.port,
-                            opts.connect_timeout,
+                            connect_timeout,
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
@@ -1774,11 +1773,10 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("filter_file")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
-            let content = fs::read_to_string(file)?;
-            add_rules(
-                idx,
-                parse_filters(&content).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-            );
+            let data = fs::read(file)?;
+            let rs = filters::parse_from_bytes(&data, opts.from0, &mut HashSet::new(), 0)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+            add_rules(idx, rs);
         }
     }
     if let Some(values) = matches.get_many::<String>("include") {
@@ -1902,7 +1900,6 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     Ok(matcher)
 }
 
-#[allow(dead_code)]
 fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut modules: HashMap<String, Module> = HashMap::new();
     let mut secrets = opts.secrets_file.clone();
@@ -2021,7 +2018,6 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     .map_err(|e| EngineError::Other(format!("daemon failed to bind to port {port}: {e}")))
 }
 
-#[allow(dead_code)]
 fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
     if let Some(addr) = opts.addr {
         let mut stream = TcpStream::connect(&addr)?;
@@ -2043,24 +2039,6 @@ fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
         }
         Ok(())
     }
-}
-
-#[allow(dead_code)]
-fn run_server() -> Result<()> {
-    use protocol::{Server, CAP_CODECS};
-    let stdin = io::stdin();
-    let stdout = io::stdout();
-    let timeout = env::var("RSYNC_TIMEOUT")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .map(Duration::from_secs)
-        .unwrap_or(Duration::from_secs(30));
-    let codecs = available_codecs();
-    let mut srv = Server::new(stdin.lock(), stdout.lock(), timeout);
-    let _ = srv
-        .handshake(31, CAP_CODECS, &codecs)
-        .map_err(|e| EngineError::Other(e.to_string()))?;
-    Ok(())
 }
 
 #[cfg(test)]

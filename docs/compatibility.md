@@ -28,7 +28,7 @@ through 32.
 | 28 | [proto-28 wire log](../tests/interop/wire/proto-28.log) |
 | 29 | [version negotiation test](../crates/protocol/tests/protocol.rs#L40-L45) |
 | 30 | [protocol override test](../crates/cli/src/lib.rs#L1958-L2030) |
-| 31 | [server handshake test](../tests/server.rs#L34-L85) |
+| 31 | [server handshake test](../crates/protocol/tests/server.rs#L1-L80) |
 | 32 | [rsync 3.3.0 transcript](../tests/interop/wire/rsync-3.3.0.log) |
 
 ## Interoperability caveats
