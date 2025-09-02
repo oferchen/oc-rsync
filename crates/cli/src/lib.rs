@@ -140,6 +140,10 @@ pub fn version_banner() -> String {
     )
 }
 
+pub fn version_string() -> String {
+    version_banner()
+}
+
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")
@@ -599,6 +603,10 @@ struct ClientOpts {
         help_heading = "Misc"
     )]
     connect_timeout: Option<Duration>,
+    #[arg(long = "retries", value_name = "NUM", value_parser = clap::value_parser!(u32), help_heading = "Misc")]
+    retries: Option<u32>,
+    #[arg(long = "retry-delay", value_name = "SECONDS", value_parser = parse_nonzero_duration, help_heading = "Misc")]
+    retry_delay: Option<Duration>,
     #[arg(long = "modify-window", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     modify_window: Option<Duration>,
     #[arg(
@@ -1013,7 +1021,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn spawn_daemon_session(
+pub fn spawn_daemon_session_with_retry(
     host: &str,
     module: &str,
     port: Option<u16>,
@@ -1021,6 +1029,8 @@ pub fn spawn_daemon_session(
     no_motd: bool,
     timeout: Option<Duration>,
     connect_timeout: Option<Duration>,
+    retries: u32,
+    retry_delay: Duration,
     family: Option<AddressFamily>,
     sockopts: &[String],
     opts: &SyncOptions,
@@ -1036,7 +1046,8 @@ pub fn spawn_daemon_session(
     };
     let start = Instant::now();
     let mut t =
-        TcpTransport::connect(host, port, connect_timeout, family).map_err(EngineError::from)?;
+        TcpTransport::connect_with_retry(host, port, connect_timeout, family, retries, retry_delay)
+            .map_err(EngineError::from)?;
     let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(EngineError::Other)?;
     t.apply_sockopts(&parsed).map_err(EngineError::from)?;
     let handshake_timeout = connect_timeout
@@ -1119,6 +1130,41 @@ pub fn spawn_daemon_session(
     Ok(t)
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_daemon_session(
+    host: &str,
+    module: &str,
+    port: Option<u16>,
+    password_file: Option<&Path>,
+    no_motd: bool,
+    timeout: Option<Duration>,
+    connect_timeout: Option<Duration>,
+    family: Option<AddressFamily>,
+    sockopts: &[String],
+    opts: &SyncOptions,
+    version: u32,
+    early_input: Option<&Path>,
+    iconv: Option<&CharsetConv>,
+) -> Result<TcpTransport> {
+    spawn_daemon_session_with_retry(
+        host,
+        module,
+        port,
+        password_file,
+        no_motd,
+        timeout,
+        connect_timeout,
+        0,
+        Duration::from_secs(0),
+        family,
+        sockopts,
+        opts,
+        version,
+        early_input,
+        iconv,
+    )
+}
+
 fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let src_arg = opts
         .src
@@ -1141,6 +1187,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     };
 
     parse_sockopts(&opts.sockopts).map_err(EngineError::Other)?;
+
+    let retries = opts.retries.unwrap_or(0);
+    let retry_delay = opts.retry_delay.unwrap_or_else(|| Duration::from_secs(1));
 
     #[cfg(unix)]
     {
@@ -1603,7 +1652,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 },
                 RemoteSpec::Local(dst),
             ) => {
-                let mut _session = spawn_daemon_session(
+                let mut _session = spawn_daemon_session_with_retry(
                     &host,
                     &module,
                     opts.port,
@@ -1611,6 +1660,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.no_motd,
                     opts.timeout,
                     opts.connect_timeout,
+                    retries,
+                    retry_delay,
                     addr_family,
                     &opts.sockopts,
                     &sync_opts,
@@ -1711,7 +1762,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     module: Some(module),
                 },
             ) => {
-                let mut _session = spawn_daemon_session(
+                let mut _session = spawn_daemon_session_with_retry(
                     &host,
                     &module,
                     opts.port,
@@ -1719,6 +1770,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.no_motd,
                     opts.timeout,
                     opts.connect_timeout,
+                    retries,
+                    retry_delay,
                     addr_family,
                     &opts.sockopts,
                     &sync_opts,
@@ -1914,7 +1967,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         Stats::default()
                     }
                     (Some(sm), Some(dm)) => {
-                        let mut dst_session = spawn_daemon_session(
+                        let mut dst_session = spawn_daemon_session_with_retry(
                             &dst_host,
                             &dm,
                             opts.port,
@@ -1922,6 +1975,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.no_motd,
                             opts.timeout,
                             opts.connect_timeout,
+                            retries,
+                            retry_delay,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -1929,7 +1984,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
                         )?;
-                        let mut src_session = spawn_daemon_session(
+                        let mut src_session = spawn_daemon_session_with_retry(
                             &src_host,
                             &sm,
                             opts.port,
@@ -1937,6 +1992,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.no_motd,
                             opts.timeout,
                             opts.connect_timeout,
+                            retries,
+                            retry_delay,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -1970,7 +2027,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
-                        let mut src_session = spawn_daemon_session(
+                        let mut src_session = spawn_daemon_session_with_retry(
                             &src_host,
                             &sm,
                             opts.port,
@@ -1978,6 +2035,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.no_motd,
                             opts.timeout,
                             opts.connect_timeout,
+                            retries,
+                            retry_delay,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -2015,7 +2074,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         Stats::default()
                     }
                     (None, Some(dm)) => {
-                        let mut dst_session = spawn_daemon_session(
+                        let mut dst_session = spawn_daemon_session_with_retry(
                             &dst_host,
                             &dm,
                             opts.port,
@@ -2023,6 +2082,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.no_motd,
                             opts.timeout,
                             opts.connect_timeout,
+                            retries,
+                            retry_delay,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
