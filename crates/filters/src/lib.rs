@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 const MAX_PARSE_DEPTH: usize = 64;
@@ -885,7 +886,7 @@ pub fn parse_with_options(
                 rules.push(Rule::DirMerge(PerDir {
                     file: ".rsync-filter".to_string(),
                     anchored: true,
-                    root_only: true,
+                    root_only: false,
                     inherit: true,
                     cvs: false,
                     word_split: false,
@@ -1430,7 +1431,13 @@ pub fn parse_list(input: &[u8], from0: bool) -> Vec<String> {
 }
 
 pub fn parse_list_file(path: &Path, from0: bool) -> Result<Vec<String>, ParseError> {
-    let data = fs::read(path)?;
+    let data = if path == Path::new("-") {
+        let mut buf = Vec::new();
+        std::io::stdin().read_to_end(&mut buf)?;
+        buf
+    } else {
+        fs::read(path)?
+    };
     Ok(parse_list(&data, from0))
 }
 
@@ -1468,7 +1475,13 @@ pub fn parse_file(
     visited: &mut HashSet<PathBuf>,
     depth: usize,
 ) -> Result<Vec<Rule>, ParseError> {
-    let data = fs::read(path)?;
+    let data = if path == Path::new("-") {
+        let mut buf = Vec::new();
+        std::io::stdin().read_to_end(&mut buf)?;
+        buf
+    } else {
+        fs::read(path)?
+    };
     parse_from_bytes(&data, from0, visited, depth)
 }
 
@@ -1499,6 +1512,12 @@ pub fn parse_rule_list_file(
     visited: &mut HashSet<PathBuf>,
     depth: usize,
 ) -> Result<Vec<Rule>, ParseError> {
-    let data = fs::read(path)?;
+    let data = if path == Path::new("-") {
+        let mut buf = Vec::new();
+        std::io::stdin().read_to_end(&mut buf)?;
+        buf
+    } else {
+        fs::read(path)?
+    };
     parse_rule_list_from_bytes(&data, from0, sign, visited, depth)
 }
