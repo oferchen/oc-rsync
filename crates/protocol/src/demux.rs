@@ -19,6 +19,10 @@ pub struct Demux {
     pub compressor: Codec,
     exit_code: Option<u8>,
     remote_error: Option<String>,
+    error_xfers: Vec<String>,
+    errors: Vec<String>,
+    error_sockets: Vec<String>,
+    error_utf8s: Vec<String>,
     successes: Vec<u32>,
     deletions: Vec<u32>,
     nosends: Vec<u32>,
@@ -39,6 +43,10 @@ impl Demux {
             compressor: Codec::Zlib,
             exit_code: None,
             remote_error: None,
+            error_xfers: Vec::new(),
+            errors: Vec::new(),
+            error_sockets: Vec::new(),
+            error_utf8s: Vec::new(),
             successes: Vec::new(),
             deletions: Vec::new(),
             nosends: Vec::new(),
@@ -71,14 +79,32 @@ impl Demux {
         let id = frame.header.channel;
         let msg = Message::from_frame(frame.clone(), None)?;
 
-        if let Some(text) = msg.error_text() {
-            if let Some(ch) = self.channels.get_mut(&id) {
-                ch.last_recv = Instant::now();
-                let _ = ch.sender.send(msg.clone());
+        match &msg {
+            Message::ErrorXfer(text) => {
+                self.error_xfers.push(text.clone());
+                if self.remote_error.is_none() {
+                    self.remote_error = Some(text.clone());
+                }
             }
-            let err = text.to_string();
-            self.remote_error = Some(err.clone());
-            return Err(std::io::Error::other(err));
+            Message::Error(text) => {
+                self.errors.push(text.clone());
+                if self.remote_error.is_none() {
+                    self.remote_error = Some(text.clone());
+                }
+            }
+            Message::ErrorSocket(text) => {
+                self.error_sockets.push(text.clone());
+                if self.remote_error.is_none() {
+                    self.remote_error = Some(text.clone());
+                }
+            }
+            Message::ErrorUtf8(text) => {
+                self.error_utf8s.push(text.clone());
+                if self.remote_error.is_none() {
+                    self.remote_error = Some(text.clone());
+                }
+            }
+            _ => {}
         }
 
         if id == 0 {
@@ -149,6 +175,22 @@ impl Demux {
 
     pub fn take_remote_error(&mut self) -> Option<String> {
         self.remote_error.take()
+    }
+
+    pub fn take_error_xfers(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.error_xfers)
+    }
+
+    pub fn take_errors(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.errors)
+    }
+
+    pub fn take_error_sockets(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.error_sockets)
+    }
+
+    pub fn take_error_utf8s(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.error_utf8s)
     }
 
     pub fn take_successes(&mut self) -> Vec<u32> {

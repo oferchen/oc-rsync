@@ -147,7 +147,7 @@ fn server_propagates_handshake_error() {
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
     let err = srv.handshake(latest, SUPPORTED_CAPS, &[]).unwrap_err();
-    assert_eq!(err.kind(), std::io::ErrorKind::Other);
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
     assert_eq!(srv.demux.take_remote_error().as_deref(), Some("fail"));
 }
 
@@ -302,7 +302,7 @@ fn server_surfaces_progress_and_stats() {
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
 
-    srv.demux.register_channel(0);
+    let _rx = srv.demux.register_channel(0);
 
     let prog = protocol::Message::Progress(42).to_frame(0, None);
     let stats = protocol::Message::Stats(vec![1, 2, 3]).to_frame(0, None);
