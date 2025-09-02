@@ -20,7 +20,7 @@ mod formatter;
 use compress::{available_codecs, Codec};
 use encoding_rs::Encoding;
 pub use engine::EngineError;
-use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions};
+use engine::{pipe_sessions, sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse_with_options, Matcher, Rule};
 pub use formatter::render_help;
 use logging::{
@@ -1071,20 +1071,26 @@ pub fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
     }))
 }
 
-fn pipe_transports<S, D>(src: &mut S, dst: &mut D) -> io::Result<()>
-where
-    S: Transport,
-    D: Transport,
-{
-    let mut buf = [0u8; 8192];
-    loop {
-        let n = src.receive(&mut buf)?;
-        if n == 0 {
-            break;
+pub fn parse_remote_specs(src: &str, dst: &str) -> Result<(RemoteSpec, RemoteSpec)> {
+    let src_spec = parse_remote_spec(src)?;
+    let dst_spec = parse_remote_spec(dst)?;
+    if let (
+        RemoteSpec::Remote {
+            host: sh, path: sp, ..
+        },
+        RemoteSpec::Remote {
+            host: dh, path: dp, ..
+        },
+    ) = (&src_spec, &dst_spec)
+    {
+        if sh.is_empty() || dh.is_empty() {
+            return Err(EngineError::Other("remote host missing".into()));
         }
-        dst.send(&buf[..n])?;
+        if sp.path.as_os_str().is_empty() || dp.path.as_os_str().is_empty() {
+            return Err(EngineError::Other("remote path missing".into()));
+        }
     }
-    Ok(())
+    Ok((src_spec, dst_spec))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1341,8 +1347,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     if opts.recursive && !opts.quiet {
         println!("recursive mode enabled");
     }
-    let src = parse_remote_spec(&src_arg)?;
-    let mut dst = parse_remote_spec(&dst_arg)?;
+    let (src, mut dst) = parse_remote_specs(&src_arg, &dst_arg)?;
     if opts.mkpath {
         match &dst {
             RemoteSpec::Local(ps) => {
@@ -1985,8 +1990,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            pipe_transports(&mut src_session, &mut dst_session)
-                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            pipe_sessions(&mut src_session, &mut dst_session)?;
                             let (src_err, _) = src_session.stderr();
                             if !src_err.is_empty() {
                                 let msg = if let Some(cv) = iconv.as_ref() {
@@ -2007,8 +2011,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 return Err(EngineError::Other(msg));
                             }
                         } else {
-                            pipe_transports(&mut src_session, &mut dst_session)
-                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            pipe_sessions(&mut src_session, &mut dst_session)?;
                             let (src_err, _) = src_session.stderr();
                             if !src_err.is_empty() {
                                 let msg = if let Some(cv) = iconv.as_ref() {
@@ -2063,11 +2066,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            pipe_transports(&mut src_session, &mut dst_session)
-                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            pipe_sessions(&mut src_session, &mut dst_session)?;
                         } else {
-                            pipe_transports(&mut src_session, &mut dst_session)
-                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            pipe_sessions(&mut src_session, &mut dst_session)?;
                         }
                         Stats::default()
                     }
@@ -2104,8 +2105,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            pipe_transports(&mut src_session, &mut dst_session)
-                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            pipe_sessions(&mut src_session, &mut dst_session)?;
                             let dst_session = dst_session.into_inner();
                             let (dst_err, _) = dst_session.stderr();
                             if !dst_err.is_empty() {
@@ -2117,8 +2117,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 return Err(EngineError::Other(msg));
                             }
                         } else {
-                            pipe_transports(&mut src_session, &mut dst_session)
-                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            pipe_sessions(&mut src_session, &mut dst_session)?;
                             let (dst_err, _) = dst_session.stderr();
                             if !dst_err.is_empty() {
                                 let msg = if let Some(cv) = iconv.as_ref() {
@@ -2164,11 +2163,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         .map_err(EngineError::from)?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            pipe_transports(&mut src_session, &mut dst_session)
-                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            pipe_sessions(&mut src_session, &mut dst_session)?;
                         } else {
-                            pipe_transports(&mut src_session, &mut dst_session)
-                                .map_err(|e| EngineError::Other(e.to_string()))?;
+                            pipe_sessions(&mut src_session, &mut dst_session)?;
                         }
                         let (src_err, _) = src_session.stderr();
                         if !src_err.is_empty() {

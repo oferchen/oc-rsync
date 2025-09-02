@@ -19,6 +19,7 @@ use std::sync::OnceLock;
 #[cfg(unix)]
 use std::time::Duration;
 use tempfile::{Builder, NamedTempFile};
+use transport::{pipe, Transport};
 
 pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
@@ -1969,6 +1970,15 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
         .clone()
         .unwrap_or_else(|| vec![Codec::Zstd, Codec::Zlibx, Codec::Zlib]);
     choices.into_iter().find(|c| remote.contains(c))
+}
+
+pub fn pipe_sessions<S, D>(src: &mut S, dst: &mut D) -> Result<Stats>
+where
+    S: Transport,
+    D: Transport,
+{
+    pipe(src, dst).map_err(|e| EngineError::Other(e.to_string()))?;
+    Ok(Stats::default())
 }
 
 fn unescape_rsync(path: &str) -> String {
