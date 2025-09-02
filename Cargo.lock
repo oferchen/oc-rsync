@@ -878,6 +878,7 @@ dependencies = [
  "clap_complete",
  "compress",
  "daemon",
+ "encoding_rs",
  "engine",
  "filetime",
  "filters",

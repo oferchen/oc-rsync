@@ -107,39 +107,7 @@ pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFla
     (info, debug)
 }
 
-pub struct CliCharsetConv {
-    conv: CharsetConv,
-    local: &'static Encoding,
-}
-
-impl CliCharsetConv {
-    pub fn encode_remote(&self, s: &str) -> Vec<u8> {
-        self.conv.encode_remote(s)
-    }
-
-    pub fn decode_remote(&self, b: &[u8]) -> String {
-        self.conv.decode_remote(b)
-    }
-
-    pub fn local_to_remote(&self, b: &[u8]) -> Vec<u8> {
-        let (s, _, _) = self.local.decode(b);
-        self.conv.encode_remote(&s)
-    }
-
-    pub fn remote_to_local(&self, b: &[u8]) -> Vec<u8> {
-        let s = self.conv.decode_remote(b);
-        let (res, _, _) = self.local.encode(&s);
-        res.into_owned()
-    }
-}
-
-impl AsRef<CharsetConv> for CliCharsetConv {
-    fn as_ref(&self) -> &CharsetConv {
-        &self.conv
-    }
-}
-
-pub fn parse_iconv(spec: &str) -> std::result::Result<CliCharsetConv, String> {
+pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
     let mut parts = spec.split(',');
     let remote_label = parts
         .next()
@@ -151,13 +119,10 @@ pub fn parse_iconv(spec: &str) -> std::result::Result<CliCharsetConv, String> {
 
     let remote_enc = remote_enc
         .ok_or_else(|| format!("iconv_open(\"{local_label}\", \"{remote_label}\") failed"))?;
-    let local_enc = local_enc
+    let _ = local_enc
         .ok_or_else(|| format!("iconv_open(\"{local_label}\", \"{remote_label}\") failed"))?;
 
-    Ok(CliCharsetConv {
-        conv: CharsetConv::new(remote_enc),
-        local: local_enc,
-    })
+    Ok(CharsetConv::new(remote_enc))
 }
 
 #[derive(Parser, Debug)]
@@ -1355,7 +1320,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &sync_opts,
                     opts.protocol.unwrap_or(31),
                     opts.early_input.as_deref(),
-                    iconv.as_ref().map(|cv| cv.as_ref()),
+                    iconv.as_ref(),
                 )?;
                 sync(
                     &src.path,
@@ -1423,7 +1388,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &sync_opts,
                     opts.protocol.unwrap_or(31),
                     opts.early_input.as_deref(),
-                    iconv.as_ref().map(|cv| cv.as_ref()),
+                    iconv.as_ref(),
                 )?;
                 sync(
                     &src.path,
@@ -1586,7 +1551,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &sync_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
-                            iconv.as_ref().map(|cv| cv.as_ref()),
+                            iconv.as_ref(),
                         )?;
                         let mut src_session = spawn_daemon_session(
                             &src_host,
@@ -1601,7 +1566,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &sync_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
-                            iconv.as_ref().map(|cv| cv.as_ref()),
+                            iconv.as_ref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1642,7 +1607,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &sync_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
-                            iconv.as_ref().map(|cv| cv.as_ref()),
+                            iconv.as_ref(),
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1687,7 +1652,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &sync_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
-                            iconv.as_ref().map(|cv| cv.as_ref()),
+                            iconv.as_ref(),
                         )?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
