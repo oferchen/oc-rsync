@@ -140,6 +140,14 @@ pub fn version_banner() -> String {
     )
 }
 
+pub fn version_string() -> String {
+    format!(
+        "rsync  version {}  protocol version {}\n",
+        env!("CARGO_PKG_VERSION"),
+        env!("UPSTREAM_VERSION")
+    )
+}
+
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")
@@ -707,6 +715,8 @@ struct ClientOpts {
     iconv: Option<String>,
     #[arg(long = "write-batch", value_name = "FILE", help_heading = "Misc")]
     write_batch: Option<PathBuf>,
+    #[arg(long = "read-batch", value_name = "FILE", help_heading = "Misc")]
+    read_batch: Option<PathBuf>,
     #[arg(long = "copy-devices", help_heading = "Misc")]
     copy_devices: bool,
     #[arg(
@@ -1568,6 +1578,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         sockopts: opts.sockopts.clone(),
         remote_options: remote_opts.clone(),
         write_batch: opts.write_batch.clone(),
+        read_batch: opts.read_batch.clone(),
         copy_devices: opts.copy_devices,
         write_devices: opts.write_devices,
         fsync: opts.fsync,
