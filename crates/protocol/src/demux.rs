@@ -26,7 +26,7 @@ impl Demux {
         Demux {
             timeout,
             channels: IndexMap::new(),
-            strong_hash: StrongHash::Md5,
+            strong_hash: StrongHash::Md4,
             compressor: Codec::Zlib,
             exit_code: None,
             remote_error: None,
