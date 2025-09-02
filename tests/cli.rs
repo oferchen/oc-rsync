@@ -18,7 +18,7 @@ use logging::progress_formatter;
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 use oc_rsync_cli::{parse_iconv, spawn_daemon_session};
 use predicates::prelude::PredicateBooleanExt;
-use protocol::SUPPORTED_PROTOCOLS;
+use protocol::{ExitCode, SUPPORTED_PROTOCOLS};
 use serial_test::serial;
 use std::fs;
 use std::io::{Seek, SeekFrom, Write};
