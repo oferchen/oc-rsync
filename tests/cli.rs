@@ -1990,7 +1990,14 @@ fn archive_implies_recursive() {
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_root.display());
-    cmd.args(["--local", "-a", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.args([
+        "--local",
+        "-a",
+        "--no-o",
+        "--no-g",
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
     cmd.assert().success();
     assert!(dst_dir.join("a/b/file.txt").exists());
 }
