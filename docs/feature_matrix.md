@@ -81,7 +81,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--hosts-allow` | ✅ | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--hosts-deny` | ✅ | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--human-readable` | ✅ | Y | [tests/golden/cli_parity/human-readable.sh](../tests/golden/cli_parity/human-readable.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--iconv` | ❌ | N | — | — | not yet implemented |
+| `--iconv` | ✅ | Y | [crates/cli/tests/iconv.rs](../crates/cli/tests/iconv.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | request charset conversion of filenames |
 | `--ignore-errors` | ✅ | N | [tests/delete_policy.rs](../tests/delete_policy.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--ignore-existing` | ✅ | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--ignore-missing-args` | ✅ | N | [tests/ignore_missing_args.rs](../tests/ignore_missing_args.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |

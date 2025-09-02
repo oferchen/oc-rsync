@@ -143,7 +143,7 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 | `-H` | `--hard-links` | off |  | [matrix](feature_matrix.md#--hard-links) |
 | `-h (*)` | `--help` | off |  | [matrix](feature_matrix.md#--help) |
 |  | `--human-readable` | off |  | [matrix](feature_matrix.md#--human-readable) |
-|  | `--iconv` | off |  | [matrix](feature_matrix.md#--iconv) |
+|  | `--iconv` | off | request charset conversion of filenames | [matrix](feature_matrix.md#--iconv) |
 |  | `--ignore-errors` | off |  | [matrix](feature_matrix.md#--ignore-errors) |
 |  | `--ignore-existing` | off |  | [matrix](feature_matrix.md#--ignore-existing) |
 |  | `--ignore-missing-args` | off |  | [matrix](feature_matrix.md#--ignore-missing-args) |

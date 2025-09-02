@@ -185,7 +185,7 @@ fn iconv_invalid_charset_fails() {
         .assert()
         .failure()
         .stderr(predicates::str::contains(
-            "iconv_open(\"UTF-8\", \"FOO\") failed",
+            "iconv_open(\"FOO\", \"UTF-8\") failed",
         ));
 }
 
@@ -267,9 +267,9 @@ fn iconv_option_sent_to_daemon() {
 fn iconv_transcodes_filenames() {
     let spec = "utf8,latin1";
     let cv = parse_iconv(spec).unwrap();
-    let remote = b"f\xC3\xB8o";
+    let remote = b"f\xF8o";
     let local = cv.to_local(remote);
-    assert_eq!(local, b"f\xF8o");
+    assert_eq!(local, b"f\xC3\xB8o");
     let roundtrip = cv.to_remote(&local);
     assert_eq!(roundtrip, remote);
 }

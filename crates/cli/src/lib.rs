@@ -101,19 +101,41 @@ pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFla
     (info, debug)
 }
 
+fn locale_charset() -> Option<String> {
+    for var in ["LC_ALL", "LC_CTYPE", "LANG"] {
+        if let Ok(val) = env::var(var) {
+            if let Some(enc) = val.split('.').nth(1) {
+                return Some(enc.to_string());
+            }
+        }
+    }
+    None
+}
+
 pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
     let mut parts = spec.split(',');
-    let remote_label = parts
+    let local_label = parts
         .next()
         .ok_or_else(|| "invalid iconv spec".to_string())?;
-    let local_label = parts.next().unwrap_or("UTF-8");
+    let remote_label = parts.next().unwrap_or("UTF-8");
 
-    let remote_enc = Encoding::for_label(remote_label.as_bytes());
+    let local_label = if local_label == "." {
+        locale_charset().ok_or_else(|| "failed to determine locale charset".to_string())?
+    } else {
+        local_label.to_string()
+    };
+    let remote_label = if remote_label == "." {
+        locale_charset().ok_or_else(|| "failed to determine locale charset".to_string())?
+    } else {
+        remote_label.to_string()
+    };
+
     let local_enc = Encoding::for_label(local_label.as_bytes());
+    let remote_enc = Encoding::for_label(remote_label.as_bytes());
 
-    let remote_enc = remote_enc
-        .ok_or_else(|| format!("iconv_open(\"{local_label}\", \"{remote_label}\") failed"))?;
     let local_enc = local_enc
+        .ok_or_else(|| format!("iconv_open(\"{local_label}\", \"{remote_label}\") failed"))?;
+    let remote_enc = remote_enc
         .ok_or_else(|| format!("iconv_open(\"{local_label}\", \"{remote_label}\") failed"))?;
 
     Ok(CharsetConv::new(remote_enc, local_enc))
