@@ -18,10 +18,10 @@ jobs:
       with:
         toolchain: stable
         override: true
-    - name: Build
-      run: make build
-    - name: Run tests
-      run: cargo test --verbose
+    - name: Build (release profile)
+      run: cargo build --profile release --workspace --bins
+    - name: Run tests (release profile)
+      run: cargo test --profile release --verbose
     - name: Validate interop matrix docs
       run: scripts/check-run-matrix-docs.sh
       

@@ -1,0 +1,33 @@
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+panic = "abort"
+strip = "symbols"
+
+debug = false
+overflow-checks = false
+incremental = false
+
+[profile.maxspeed]
+inherits = "release"
+
+[build]
+rustflags = ["-Ctarget-cpu=native"]
+
+[target.aarch64-apple-darwin]
+linker = "clang"
+rustflags = ["-Ctarget-cpu=apple-m1"]
+
+[target.x86_64-apple-darwin]
+linker = "clang"
+rustflags = ["-Ctarget-cpu=x86-64-v2"]
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-Ctarget-cpu=x86-64-v2"]
+
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"
+ar = "x86_64-w64-mingw32-gcc-ar"
+rustflags = ["-Ctarget-cpu=x86-64-v2"]
+
