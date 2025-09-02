@@ -183,7 +183,10 @@ fn extra_messages_roundtrip() {
 
 #[test]
 fn error_message_iconv_roundtrip() {
-    let cv = CharsetConv::new(Encoding::for_label(b"latin1").unwrap());
+    let cv = CharsetConv::new(
+        Encoding::for_label(b"latin1").unwrap(),
+        Encoding::for_label(b"utf-8").unwrap(),
+    );
     let msg = Message::Error("Grüße".into());
     let frame = msg.to_frame(0, Some(&cv));
     let decoded = Message::from_frame(frame, Some(&cv)).unwrap();
@@ -192,7 +195,10 @@ fn error_message_iconv_roundtrip() {
 
 #[test]
 fn filelist_iconv_roundtrip() {
-    let cv = CharsetConv::new(Encoding::for_label(b"latin1").unwrap());
+    let cv = CharsetConv::new(
+        Encoding::for_label(b"latin1").unwrap(),
+        Encoding::for_label(b"utf-8").unwrap(),
+    );
     let entry = FEntry {
         path: "Grüße".as_bytes().to_vec(),
         uid: 0,

@@ -33,11 +33,32 @@ fn roundtrip() {
 
 #[test]
 fn iconv_roundtrip() {
-    let cv = CharsetConv::new(Encoding::for_label(b"latin1").unwrap());
+    let cv = CharsetConv::new(
+        Encoding::for_label(b"latin1").unwrap(),
+        Encoding::for_label(b"utf-8").unwrap(),
+    );
     let entries = vec![Entry {
         path: "Grüße".as_bytes().to_vec(),
         uid: 0,
         gid: 0,
+        group: None,
+    }];
+    let payloads = flist::encode(&entries, Some(&cv));
+    let decoded = flist::decode(&payloads, Some(&cv)).unwrap();
+    assert_eq!(decoded, entries);
+}
+
+#[test]
+fn iconv_non_utf8_local_roundtrip() {
+    let cv = CharsetConv::new(
+        Encoding::for_label(b"utf-8").unwrap(),
+        Encoding::for_label(b"latin1").unwrap(),
+    );
+    let entries = vec![Entry {
+        path: b"f\xF8o".to_vec(),
+        uid: 0,
+        gid: 0,
+        group: None,
     }];
     let payloads = flist::encode(&entries, Some(&cv));
     let decoded = flist::decode(&payloads, Some(&cv)).unwrap();

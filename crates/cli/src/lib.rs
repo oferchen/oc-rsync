@@ -109,10 +109,10 @@ pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
 
     let remote_enc = remote_enc
         .ok_or_else(|| format!("iconv_open(\"{local_label}\", \"{remote_label}\") failed"))?;
-    let _ = local_enc
+    let local_enc = local_enc
         .ok_or_else(|| format!("iconv_open(\"{local_label}\", \"{remote_label}\") failed"))?;
 
-    Ok(CharsetConv::new(remote_enc))
+    Ok(CharsetConv::new(remote_enc, local_enc))
 }
 
 #[derive(Parser, Debug)]

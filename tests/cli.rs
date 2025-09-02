@@ -1,9 +1,7 @@
 // tests/cli.rs
 
-
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
-use encoding_rs::Encoding;
 use engine::SyncOptions;
 use filetime::{set_file_mtime, FileTime};
 use logging::progress_formatter;
@@ -195,12 +193,9 @@ fn iconv_transcodes_filenames() {
     let spec = "utf8,latin1";
     let cv = parse_iconv(spec).unwrap();
     let remote = b"f\xC3\xB8o";
-    let decoded = cv.decode_remote(remote);
-    let local_enc = Encoding::for_label(b"latin1").unwrap();
-    let (local, _, _) = local_enc.encode(&decoded);
-    assert_eq!(local.as_ref(), b"f\xF8o");
-    let (round_dec, _, _) = local_enc.decode(&local);
-    let roundtrip = cv.encode_remote(&round_dec);
+    let local = cv.to_local(remote);
+    assert_eq!(local, b"f\xF8o");
+    let roundtrip = cv.to_remote(&local);
     assert_eq!(roundtrip, remote);
 }
 
