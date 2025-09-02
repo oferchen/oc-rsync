@@ -5,7 +5,7 @@ This page enumerates known gaps between **oc-rsync** and upstream
 coverage so progress can be tracked as features land.
 
 ## Protocol
-- Feature negotiation covers only a subset of rsync protocol capabilities; ACL and other optional bits are not yet exchanged. [crates/protocol/src/lib.rs](../crates/protocol/src/lib.rs) · [crates/protocol/tests/protocol.rs](../crates/protocol/tests/protocol.rs)
+No known gaps.
 
 ## Compression
 No known gaps.

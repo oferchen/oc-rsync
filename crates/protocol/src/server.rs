@@ -2,7 +2,7 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
-use crate::{negotiate_version, Demux, Frame, Message, Mux, CAP_CODECS, CAP_ZSTD};
+use crate::{negotiate_caps, negotiate_version, Demux, Frame, Message, Mux, CAP_CODECS, CAP_ZSTD};
 use compress::{decode_codecs, encode_codecs, negotiate_codec, Codec};
 
 pub struct Server<R: Read, W: Write> {
@@ -103,7 +103,7 @@ impl<R: Read, W: Write> Server<R, W> {
         let peer_caps = u32::from_be_bytes(buf);
         self.writer.write_all(&caps.to_be_bytes())?;
         self.writer.flush()?;
-        self.caps = peer_caps & caps;
+        self.caps = negotiate_caps(caps, peer_caps);
 
         let mut peer_codecs = vec![Codec::Zlib];
         if self.caps & CAP_CODECS != 0 {
