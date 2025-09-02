@@ -13,13 +13,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - run: cargo install cargo-llvm-cov
+      - run: mkdir -p reports && cargo llvm-cov --workspace --json --summary-only --output-path reports/coverage.json
+      - run: cargo run --package xtask --bin status
+
       - name: Generate status report
         run: |
           DATE=$(date -u +%F)
           mkdir -p reports
           echo "# Daily status for $DATE" > reports/daily_estimate.md
+
       - uses: actions/upload-artifact@v4
         with:
           name: daily-status
           path: reports/daily_estimate.md
-
