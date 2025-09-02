@@ -31,6 +31,7 @@ pub mod flist;
 
 const RSYNC_BLOCK_SIZE: usize = 700;
 const RSYNC_MAX_BLOCK_SIZE: usize = 1 << 17;
+const MUNGE_PREFIX: &str = "/rsyncd-munged";
 
 pub fn block_size(len: u64) -> usize {
     if len <= (RSYNC_BLOCK_SIZE * RSYNC_BLOCK_SIZE) as u64 {
@@ -2371,6 +2372,11 @@ pub fn sync(
                     dir_meta.push((path.clone(), dest_path.clone()));
                 } else if file_type.is_symlink() {
                     let mut target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
+                    if opts.munge_links {
+                        if let Ok(stripped) = target.strip_prefix(MUNGE_PREFIX) {
+                            target = stripped.to_path_buf();
+                        }
+                    }
                     let target_path = if target.is_absolute() {
                         normalize_path(&target)
                     } else if let Some(parent) = path.parent() {
@@ -2426,9 +2432,9 @@ pub fn sync(
                     } else if opts.links {
                         if opts.munge_links {
                             if let Ok(stripped) = target.strip_prefix("/") {
-                                target = PathBuf::from("/rsyncd-munged").join(stripped);
+                                target = PathBuf::from(MUNGE_PREFIX).join(stripped);
                             } else {
-                                target = PathBuf::from("/rsyncd-munged").join(&target);
+                                target = PathBuf::from(MUNGE_PREFIX).join(&target);
                             }
                         }
                         let created = fs::symlink_metadata(&dest_path).is_err();
