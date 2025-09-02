@@ -128,6 +128,121 @@ fn files_from_from0_matches_rsync() {
     assert!(diff.success(), "directory trees differ");
 }
 
+#[test]
+fn include_from_from0_matches_rsync() {
+    use std::process::Command as StdCommand;
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let rsync_dst = tmp.path().join("rsync");
+    let ours_dst = tmp.path().join("ours");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&rsync_dst).unwrap();
+    fs::create_dir_all(&ours_dst).unwrap();
+
+    fs::write(src.join("a.txt"), "hi").unwrap();
+    fs::write(src.join("b.log"), "nope").unwrap();
+    fs::write(src.join("c.txt"), "hi").unwrap();
+
+    let list = tmp.path().join("list");
+    fs::write(&list, b"a.txt\0c.txt\0").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+
+    StdCommand::new("rsync")
+        .args([
+            "-r",
+            "--from0",
+            "--include-from",
+            list.to_str().unwrap(),
+            "--exclude",
+            "*",
+            &src_arg,
+            rsync_dst.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--from0",
+            "--include-from",
+            list.to_str().unwrap(),
+            "--exclude",
+            "*",
+            &src_arg,
+            ours_dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let diff = StdCommand::new("diff")
+        .arg("-r")
+        .arg(&rsync_dst)
+        .arg(&ours_dst)
+        .status()
+        .unwrap();
+    assert!(diff.success(), "directory trees differ");
+}
+
+#[test]
+fn exclude_from_from0_matches_rsync() {
+    use std::process::Command as StdCommand;
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let rsync_dst = tmp.path().join("rsync");
+    let ours_dst = tmp.path().join("ours");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&rsync_dst).unwrap();
+    fs::create_dir_all(&ours_dst).unwrap();
+
+    fs::write(src.join("keep.txt"), "hi").unwrap();
+    fs::write(src.join("drop.txt"), "nope").unwrap();
+
+    let list = tmp.path().join("list");
+    fs::write(&list, b"drop.txt\0").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+
+    StdCommand::new("rsync")
+        .args([
+            "-r",
+            "--from0",
+            "--exclude-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            rsync_dst.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--from0",
+            "--exclude-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            ours_dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let diff = StdCommand::new("diff")
+        .arg("-r")
+        .arg(&rsync_dst)
+        .arg(&ours_dst)
+        .status()
+        .unwrap();
+    assert!(diff.success(), "directory trees differ");
+}
+
 #[cfg(unix)]
 impl Drop for Tmpfs {
     fn drop(&mut self) {
