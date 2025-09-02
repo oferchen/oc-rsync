@@ -7,6 +7,27 @@ The default listener binds to all IPv4 interfaces on port 873. Supply
 listener to IPv4 or IPv6 addresses respectively. These can be combined with
 `--address` to bind a specific interface.
 
+## Configuration file
+
+`oc-rsync` understands a configuration file that mirrors
+[`rsyncd.conf(5)`](https://download.samba.org/pub/rsync/rsyncd.conf.html).
+Pass `--config /path/to/rsyncd.conf` to the daemon and declare global options
+and modules inside. Keys are case insensitive and accept spaces, dashes, or
+underscores interchangeably:
+
+```
+port = 8730
+motd-file = /etc/oc-rsyncd.motd
+
+[data]
+    path = /srv/export
+    hosts-allow = 192.0.2.1
+```
+
+Each module requires a `path` directive which is resolved and canonicalised at
+startup. Unknown directives are ignored for now but using the canonical names
+from `rsyncd.conf(5)` ensures forward compatibility.
+
 ## Example packaging
 
 Sample files for running the daemon are provided under `packaging/` and are
