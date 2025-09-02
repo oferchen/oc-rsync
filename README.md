@@ -49,8 +49,8 @@ The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.x are bundled 
 
 ## CLI
 Documentation for invoking the command line interface, available flags, and
-configuration precedence lives in [docs/cli.md](docs/cli.md). Any differences from
-classic `rsync` are tracked in [docs/differences.md](docs/differences.md) (currently none).
+configuration precedence lives in [docs/cli.md](docs/cli.md). Behavioral differences from
+classic `rsync` are tracked in [docs/differences.md](docs/differences.md).
 
 Quick links:
 
