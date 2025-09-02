@@ -46,7 +46,7 @@ fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
 }
 
 #[cfg(all(unix, feature = "acl"))]
-fn spawn_rsync_daemon(root: &std::path::Path) -> (Child, u16) {
+fn spawn_rsync_daemon_acl(root: &std::path::Path) -> (Child, u16) {
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
         .local_addr()
@@ -92,8 +92,8 @@ fn try_set_xattr(path: &std::path::Path, name: &str, value: &[u8]) -> bool {
     }
 }
 
-#[cfg(all(unix, feature = "xattr", not(feature = "acl")))]
-fn spawn_rsync_daemon(root: &std::path::Path) -> (Child, u16) {
+#[cfg(all(unix, feature = "xattr"))]
+fn spawn_rsync_daemon_xattr(root: &std::path::Path) -> (Child, u16) {
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
         .local_addr()
@@ -248,7 +248,7 @@ fn daemon_preserves_xattrs_rr_daemon() {
     xattr::set(&srv_file, "user.old", b"junk").unwrap();
     let keep_ok = try_set_xattr(&srv_file, "security.keep", b"dest");
 
-    let (mut child, port) = spawn_rsync_daemon(&srv);
+    let (mut child, port) = spawn_rsync_daemon_xattr(&srv);
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
@@ -584,7 +584,7 @@ fn daemon_acls_match_rsync_server() {
     let _ = child_oc.kill();
     let _ = child_oc.wait();
 
-    let (mut child_rs, port_rs) = spawn_rsync_daemon(&srv_rs);
+    let (mut child_rs, port_rs) = spawn_rsync_daemon_acl(&srv_rs);
     wait_for_daemon(port_rs);
     Command::new("rsync")
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_rs}/mod")])

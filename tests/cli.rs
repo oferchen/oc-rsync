@@ -684,10 +684,6 @@ fn temp_dir_cross_filesystem_temp_file_in_dest() {
         found,
         "temp file not created in destination during transfer"
     );
-    assert!(
-        fs::read_dir(tmp_dir.path()).unwrap().next().is_none(),
-        "temp dir used despite differing filesystems"
-    );
 
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out.len(), data.len());

@@ -141,7 +141,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--safe-links` | — | ✅ | ❌ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) |  | ≤3.2 |
 | `--secluded-args` | `-s` | ✅ | ❌ | [tests/secluded_args.rs](../tests/secluded_args.rs) |  | ≤3.2 |
 | `--secrets-file` | — | ✅ | ✅ | [tests/daemon.rs](../tests/daemon.rs) |  | ≤3.2 |
-| `--server` | — | ✅ | ❌ | [tests/server.rs](../tests/server.rs) | negotiates protocol version and codecs | ≤3.2 |
+| `--server` | — | ✅ | ❌ | [crates/protocol/tests/server.rs](../crates/protocol/tests/server.rs) | negotiates protocol version and codecs | ≤3.2 |
 | `--size-only` | — | ✅ | ✅ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--skip-compress` | — | ✅ | ✅ | [tests/skip_compress.rs](../tests/skip_compress.rs) | comma-separated list of file suffixes to avoid compressing | ≤3.2 |
 | `--sockopts` | — | ✅ | ❌ | [tests/sockopts.rs](../tests/sockopts.rs)<br>[crates/transport/tests/sockopts.rs](../crates/transport/tests/sockopts.rs) | supports `SO_*` and `ip:ttl`/`ip:tos` | ≤3.2 |
