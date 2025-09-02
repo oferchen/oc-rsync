@@ -759,9 +759,10 @@ fn progress_flag_shows_output() {
         .assert()
         .success();
     let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
-    let path_line = stderr.lines().next().unwrap();
-    assert_eq!(path_line, dst_dir.join("a.txt").display().to_string());
-    let progress_line = stderr.split('\r').next_back().unwrap().trim_end();
+    let mut lines = stderr.lines();
+    assert_eq!(lines.next().unwrap(), "sending incremental file list");
+    assert_eq!(lines.next().unwrap(), "a.txt");
+    let progress_line = lines.next().unwrap().trim_start_matches('\r').trim_end();
     let bytes = progress_formatter(2048, false);
     let expected_prefix = format!("{:>15} {:>3}%", bytes, 100);
     assert!(progress_line.starts_with(&expected_prefix));
@@ -789,8 +790,8 @@ fn progress_flag_human_readable() {
         .success();
     let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
     let mut lines = stderr.lines();
-    let path_line = lines.next().unwrap();
-    assert_eq!(path_line, dst_dir.join("a.txt").display().to_string());
+    assert_eq!(lines.next().unwrap(), "sending incremental file list");
+    assert_eq!(lines.next().unwrap(), "a.txt");
     let progress_line = lines.next().unwrap().trim_start_matches('\r').trim_end();
     let bytes = progress_formatter(2 * 1024, true);
     let expected_prefix = format!("{:>15} {:>3}%", bytes, 100);
@@ -2298,11 +2299,9 @@ fn stats_are_printed() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args(["--local", "--stats", &src_arg, dst_dir.to_str().unwrap()]);
-    cmd.assert()
-        .success()
-        .stdout(predicates::str::contains(
-            "Number of regular files transferred",
-        ));
+    cmd.assert().success().stdout(predicates::str::contains(
+        "Number of regular files transferred",
+    ));
 }
 
 #[test]

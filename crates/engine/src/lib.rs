@@ -15,8 +15,8 @@ use std::path::{Component, Path, PathBuf};
 #[cfg(feature = "xattr")]
 use std::rc::Rc;
 use std::sync::Arc;
-#[cfg(unix)]
 use std::sync::OnceLock;
+#[cfg(unix)]
 use std::time::Duration;
 use tempfile::{Builder, NamedTempFile};
 
@@ -649,6 +649,8 @@ fn write_sparse(file: &mut File, data: &[u8]) -> Result<()> {
     Ok(())
 }
 
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
 struct Progress {
     total: u64,
     written: u64,
@@ -656,16 +658,29 @@ struct Progress {
     last_print: std::time::Instant,
     human_readable: bool,
     quiet: bool,
+    file_idx: usize,
 }
+
+static TOTAL_FILES: AtomicUsize = AtomicUsize::new(0);
+static FILE_COUNTER: AtomicUsize = AtomicUsize::new(0);
+static PROGRESS_HEADER: AtomicBool = AtomicBool::new(false);
 
 const PROGRESS_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 impl Progress {
     fn new(dest: &Path, total: u64, human_readable: bool, initial: u64, quiet: bool) -> Self {
         if !quiet {
-            eprintln!("{}", dest.display());
+            if !PROGRESS_HEADER.swap(true, Ordering::SeqCst) {
+                eprintln!("sending incremental file list");
+            }
+            if let Some(name) = dest.file_name() {
+                eprintln!("{}", name.to_string_lossy());
+            } else {
+                eprintln!("{}", dest.display());
+            }
         }
         let now = std::time::Instant::now();
+        let idx = FILE_COUNTER.fetch_add(1, Ordering::SeqCst) + 1;
         Self {
             total,
             written: initial,
@@ -673,6 +688,7 @@ impl Progress {
             last_print: now - PROGRESS_UPDATE_INTERVAL,
             human_readable,
             quiet,
+            file_idx: idx,
         }
     }
 
@@ -704,8 +720,20 @@ impl Progress {
         } else {
             self.written * 100 / self.total
         };
-        let elapsed = self.start.elapsed().as_secs_f64().max(1.0);
-        let rate = rate_formatter(self.written as f64 / elapsed);
+        let elapsed = self.start.elapsed().as_secs_f64();
+        let rate_val = if elapsed >= 1.0 {
+            self.written as f64 / elapsed
+        } else {
+            0.0
+        };
+        let rate = rate_formatter(rate_val);
+        let secs = self.start.elapsed().as_secs();
+        let h = secs / 3600;
+        let m = (secs % 3600) / 60;
+        let s = secs % 60;
+        let time = format!("{}:{:02}:{:02}", h, m, s);
+        let total_files = TOTAL_FILES.load(Ordering::SeqCst);
+        let remaining = total_files.saturating_sub(self.file_idx);
         tracing::info!(
             target: InfoFlag::Progress.target(),
             written = self.written,
@@ -713,10 +741,14 @@ impl Progress {
             percent,
             rate = rate.as_str()
         );
+        let line = format!(
+            "\r{:>15} {:>3}% {:>13} {:>11} (xfr#{}, to-chk={}/{})",
+            bytes, percent, rate, time, self.file_idx, remaining, total_files
+        );
         if done {
-            eprintln!("\r{:>15} {:>3}% {}", bytes, percent, rate);
+            eprintln!("{line}");
         } else {
-            eprint!("\r{:>15} {:>3}% {}", bytes, percent, rate);
+            eprint!("{line}");
             let _ = std::io::stderr().flush();
         }
     }
@@ -1906,6 +1938,28 @@ pub struct Stats {
     pub bytes_transferred: u64,
 }
 
+fn count_files(src_root: &Path, matcher: &Matcher, opts: &SyncOptions) -> usize {
+    let walker = walk(
+        src_root,
+        1024,
+        opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
+        opts.one_file_system,
+    );
+    let mut state = String::new();
+    let mut total = 0usize;
+    for batch in walker.flatten() {
+        for entry in batch {
+            let path = entry.apply(&mut state);
+            if let Ok(rel) = path.strip_prefix(src_root) {
+                if matcher.is_included(rel).unwrap_or(true) && entry.file_type.is_file() {
+                    total += 1;
+                }
+            }
+        }
+    }
+    total
+}
+
 pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     if !opts.compress || opts.compress_level == Some(0) {
         return None;
@@ -2194,6 +2248,12 @@ pub fn sync(
 
     let codec = select_codec(remote, opts);
     let matcher = matcher.clone().with_root(src_root.clone());
+    if opts.progress {
+        FILE_COUNTER.store(0, Ordering::SeqCst);
+        PROGRESS_HEADER.store(false, Ordering::SeqCst);
+        let total = count_files(&src_root, &matcher, opts);
+        TOTAL_FILES.store(total, Ordering::SeqCst);
+    }
     if opts.dry_run {
         if opts.delete.is_some() {
             delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;

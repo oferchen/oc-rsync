@@ -69,20 +69,25 @@ impl ChecksumConfig {
 }
 
 #[allow(clippy::needless_borrows_for_generic_args)]
-pub fn strong_digest(data: &[u8], alg: StrongHash, _seed: u32) -> Vec<u8> {
+pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
+    let mut prefix = [0u8; 4];
+    prefix.copy_from_slice(&seed.to_le_bytes());
     match alg {
         StrongHash::Md4 => {
             let mut hasher = Md4::new();
+            hasher.update(&prefix);
             hasher.update(data);
             hasher.finalize().to_vec()
         }
         StrongHash::Md5 => {
             let mut hasher = Md5::new();
+            hasher.update(&prefix);
             hasher.update(data);
             hasher.finalize().to_vec()
         }
         StrongHash::Sha1 => {
             let mut hasher = Sha1::new();
+            hasher.update(&prefix);
             hasher.update(data);
             hasher.finalize().to_vec()
         }
