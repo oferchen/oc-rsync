@@ -1687,6 +1687,7 @@ pub struct SyncOptions {
     pub update: bool,
     pub existing: bool,
     pub ignore_existing: bool,
+    pub one_file_system: bool,
     pub size_only: bool,
     pub ignore_times: bool,
     pub perms: bool,
@@ -1814,6 +1815,7 @@ impl Default for SyncOptions {
             update: false,
             existing: false,
             ignore_existing: false,
+            one_file_system: false,
             size_only: false,
             ignore_times: false,
             strong: StrongHash::Md4,
@@ -1881,6 +1883,9 @@ impl SyncOptions {
             self.remote_options
                 .push(format!("--partial-dir={}", dir.display()));
         }
+        if self.one_file_system {
+            self.remote_options.push("--one-file-system".into());
+        }
     }
 }
 
@@ -1913,6 +1918,7 @@ fn delete_extraneous(
         dst,
         1,
         opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
+        opts.one_file_system,
     );
     let mut state = String::new();
     let mut first_err: Option<EngineError> = None;
@@ -2092,6 +2098,7 @@ pub fn sync(
             &src_root,
             1024,
             opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
+            opts.one_file_system,
         );
         let mut state = String::new();
         for batch in walker {
@@ -2199,6 +2206,7 @@ pub fn sync(
         &src_root,
         1024,
         opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
+        opts.one_file_system,
     );
     while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
