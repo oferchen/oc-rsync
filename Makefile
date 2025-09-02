@@ -1,4 +1,4 @@
-.PHONY: verify-comments lint coverage interop test-golden fmt clippy doc test build build-maxspeed version
+.PHONY: verify-comments lint coverage interop test-golden fmt clippy doc test build build-maxspeed version clean build-all package release
 
 # Optional compatibility mapping:
 # If user passes UPSTREAM/OFFICIAL, map them to RSYNC_UPSTREAM_VER/OFFICIAL_BUILD unless already set.
@@ -83,4 +83,12 @@ build-maxspeed-%:
 version: build
 	./target/release/oc-rsync --version
 	./target/release/oc-rsyncd --version
+
+clean: ; @env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" cargo clean; rm -rf dist; rm -f oc-rsync-* oc-rsyncd-*
+
+build-all: ; set -e; for target in $(TARGETS); do echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD) target=$$target"; env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" cargo build -p oc-rsync-bin --bin oc-rsync --bin oc-rsyncd --release --target $$target; done
+
+package: ; env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" bash -c 'set -e; mkdir -p dist; for target in $(TARGETS); do for bin in oc-rsync oc-rsyncd; do ext=tar.gz; exe=$$bin; case $$target in *windows*) ext=zip; exe=$$bin.exe ;; esac; archive="dist/$$bin-$$target-$(RSYNC_UPSTREAM_VER)-$(BUILD_REVISION).$$ext"; if [ $$ext = zip ]; then (cd target/$$target/release && zip -j "../../../$$archive" $$exe); else tar -C target/$$target/release -czf $$archive $$exe; fi; sha256sum $$archive > $$archive.sha256; cargo sbom --output $$archive.sbom 2>/dev/null || true; done; done'
+
+release: ; env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" $(MAKE) lint; env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" $(MAKE) test; env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" $(MAKE) coverage; env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" $(MAKE) build-all; env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" $(MAKE) package
 
