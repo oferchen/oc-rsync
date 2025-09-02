@@ -1,3 +1,4 @@
+// bin/oc-rsyncd/build.rs
 use std::{env, fs, path::Path};
 
 fn main() {
@@ -9,14 +10,13 @@ fn main() {
     println!("cargo:rustc-env=BUILD_REVISION={revision}");
     println!("cargo:rustc-env=OFFICIAL_BUILD={official}");
 
-    let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir");
-    let docs_dir = Path::new(&manifest_dir).join("../../docs");
-    let _ = fs::create_dir_all(&docs_dir);
-    let info_path = docs_dir.join("build_info.md");
+    let out_dir = env::var("OUT_DIR").expect("missing OUT_DIR");
+    let info_path = Path::new(&out_dir).join("build_info.md");
     let contents = format!(
         "rsync upstream version: {upstream}\nbuild revision: {revision}\nofficial build: {official}\n"
     );
-    fs::write(info_path, contents).expect("failed to write build_info.md");
+    fs::write(&info_path, contents).expect("failed to write build_info.md");
+    println!("cargo:rustc-env=BUILD_INFO_PATH={}", info_path.display());
 
     println!("cargo:rerun-if-env-changed=RSYNC_UPSTREAM_VER");
     println!("cargo:rerun-if-env-changed=BUILD_REVISION");

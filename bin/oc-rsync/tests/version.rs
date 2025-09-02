@@ -41,7 +41,7 @@ fn exit_code_is_zero() {
 
 #[test]
 fn build_info_file_has_expected_values() {
-    let info = std::fs::read_to_string("../../docs/build_info.md").unwrap();
+    let info = std::fs::read_to_string(env!("BUILD_INFO_PATH")).unwrap();
     assert!(info.contains(env!("RSYNC_UPSTREAM_VER")));
     assert!(info.contains(env!("BUILD_REVISION")));
     assert!(info.contains(env!("OFFICIAL_BUILD")));

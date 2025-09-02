@@ -1,5 +1,3 @@
-.SHELLFLAGS := -eu -o pipefail -c
-
 .PHONY: verify-comments lint coverage interop test-golden fmt clippy doc test build build-maxspeed version
 
 # Optional compatibility mapping:
