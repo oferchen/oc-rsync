@@ -41,6 +41,7 @@ pub enum InfoFlag {
     Stats2,
     Stats3,
     Symsafe,
+    Filter,
 }
 
 impl InfoFlag {
@@ -66,6 +67,7 @@ impl InfoFlag {
             InfoFlag::Stats2 => "stats2",
             InfoFlag::Stats3 => "stats3",
             InfoFlag::Symsafe => "symsafe",
+            InfoFlag::Filter => "filter",
         }
     }
 
@@ -84,6 +86,7 @@ impl InfoFlag {
             InfoFlag::Skip | InfoFlag::Skip2 => "info::skip",
             InfoFlag::Stats | InfoFlag::Stats2 | InfoFlag::Stats3 => "info::stats",
             InfoFlag::Symsafe => "info::symsafe",
+            InfoFlag::Filter => "info::filter",
         }
     }
 }
