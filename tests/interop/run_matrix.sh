@@ -30,12 +30,19 @@ SCENARIOS=(
   "append_verify --append-verify"
   "partial --partial"
   "inplace --inplace"
-  "progress --progress"
-  "progress2 --info=progress2"
-  "resume --partial"
-  "resume_progress --partial --progress"
-  "resume_progress2 --partial --info=progress2"
 )
+
+# Base resume scenario and progress/resume combinations.
+SCENARIOS+=("resume --partial")
+# Generate progress scenarios and their resume counterparts.
+for flag in --progress --info=progress2; do
+  case "$flag" in
+    --progress) name="progress" ;;
+    --info=progress2) name="progress2" ;;
+  esac
+  SCENARIOS+=("$name $flag")
+  SCENARIOS+=("resume_${name} --partial $flag")
+done
 
 # Options used for all transfers. -a implies -rtgoD, we add -A and -X for ACLs
 # and xattrs.
