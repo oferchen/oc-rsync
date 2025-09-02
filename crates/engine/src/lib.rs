@@ -2137,10 +2137,20 @@ pub fn sync(
         } else if opts.ignore_missing_args {
             return Ok(stats);
         } else {
-            return Err(EngineError::Other(format!(
-                "source path missing: {}",
-                src.display()
-            )));
+            let abs = if src.is_absolute() {
+                src.to_path_buf()
+            } else {
+                std::env::current_dir()
+                    .map_err(|e| EngineError::Other(e.to_string()))?
+                    .join(src)
+            };
+            return Err(EngineError::Exit(
+                ExitCode::Partial,
+                format!(
+                    "rsync: [sender] link_stat \"{}\" failed: No such file or directory (2)\nrsync error: some files/attrs were not transferred (see previous errors) (code 23)",
+                    abs.display(),
+                ),
+            ));
         }
     }
     if opts.list_only {
