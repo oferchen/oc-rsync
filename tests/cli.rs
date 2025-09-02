@@ -1566,7 +1566,11 @@ fn numeric_ids_falls_back_when_unprivileged() {
     std::fs::write(&probe, b"probe").unwrap();
     let current_uid = get_current_uid();
     let current_gid = get_current_gid();
-    let target_uid = if current_uid == 0 { 1 } else { current_uid + 1 };
+    if Uid::effective().is_root() {
+        eprintln!("skipping numeric_ids_falls_back_when_unprivileged: requires non-root");
+        return;
+    }
+    let target_uid = current_uid + 1;
     if chown(&probe, Some(Uid::from_raw(target_uid)), None).is_ok() {
         eprintln!("skipping numeric_ids_falls_back_when_unprivileged: has CAP_CHOWN");
         return;

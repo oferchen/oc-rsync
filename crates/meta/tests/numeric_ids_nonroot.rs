@@ -1,18 +1,16 @@
 // crates/meta/tests/numeric_ids_nonroot.rs
+
 use std::fs::{self, Permissions};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::process::Command;
 
 use meta::{Metadata, Options};
-use nix::unistd::{chown, setgid, setuid, Gid, Uid};
+use nix::unistd::{setgid, setuid, Gid, Uid};
 use tempfile::tempdir;
 use users::get_user_by_name;
 
 #[test]
 fn numeric_ids_chown_permission_denied_matches_rsync() -> std::io::Result<()> {
-    if !Uid::effective().is_root() {
-        return Ok(());
-    }
     let dir = tempdir()?;
     let src = dir.path().join("src");
     let rsync_dest = dir.path().join("rsync");
@@ -28,18 +26,21 @@ fn numeric_ids_chown_permission_denied_matches_rsync() -> std::io::Result<()> {
 
     let src_file = src.join("file");
     fs::write(&src_file, b"data")?;
-    chown(&src_file, Some(Uid::from_raw(1)), Some(Gid::from_raw(1)))?;
-    let meta = Metadata::from_path(&src_file, Options::default())?;
+    let mut meta = Metadata::from_path(&src_file, Options::default())?;
+    meta.uid = 1;
+    meta.gid = 1;
 
-    if let Some(nobody) = get_user_by_name("nobody") {
-        setgid(Gid::from_raw(nobody.primary_group_id()))?;
-        setuid(Uid::from_raw(nobody.uid()))?;
+    if Uid::effective().is_root() {
+        if let Some(nobody) = get_user_by_name("nobody") {
+            setgid(Gid::from_raw(nobody.primary_group_id()))?;
+            setuid(Uid::from_raw(nobody.uid()))?;
+        }
     }
 
     let status = Command::new("rsync")
         .args([
             "--numeric-ids",
-            "-og",
+            "--chown=1:1",
             src_file.to_str().unwrap(),
             rsync_dest.to_str().unwrap(),
         ])
