@@ -24,7 +24,7 @@ fn server_negotiates_version() {
     });
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
-    let (caps, peer_codecs) = srv.handshake(latest, SUPPORTED_CAPS, &local).unwrap();
+    let (caps, peer_codecs) = srv.handshake(latest, SUPPORTED_CAPS, &local, None).unwrap();
     assert_eq!(srv.version, latest);
     assert_eq!(caps, SUPPORTED_CAPS);
     assert_eq!(peer_codecs, local);
@@ -57,7 +57,7 @@ fn server_accepts_legacy_version() {
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
     let latest = SUPPORTED_PROTOCOLS[0];
     let (caps, peer_codecs) = srv
-        .handshake(latest, SUPPORTED_CAPS, &available_codecs())
+        .handshake(latest, SUPPORTED_CAPS, &available_codecs(), None)
         .unwrap();
     assert_eq!(srv.version, legacy);
     assert_eq!(caps & CAP_CODECS, CAP_CODECS);
@@ -92,7 +92,7 @@ fn server_classic_versions() {
         let mut output = Vec::new();
         let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
         let latest = SUPPORTED_PROTOCOLS[0];
-        srv.handshake(latest, SUPPORTED_CAPS, &local).unwrap();
+        srv.handshake(latest, SUPPORTED_CAPS, &local, None).unwrap();
         assert_eq!(srv.version, ver);
         let expected = {
             let mut v = latest.to_be_bytes().to_vec();
@@ -123,7 +123,7 @@ fn server_negotiates_zstd() {
     });
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
-    let (caps, _) = srv.handshake(latest, SUPPORTED_CAPS, &local).unwrap();
+    let (caps, _) = srv.handshake(latest, SUPPORTED_CAPS, &local, None).unwrap();
     assert_eq!(caps & CAP_ZSTD, CAP_ZSTD);
     assert_eq!(srv.mux.compressor, Codec::Zstd);
     assert_eq!(srv.demux.compressor, Codec::Zstd);
@@ -146,7 +146,9 @@ fn server_propagates_handshake_error() {
     });
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
-    let err = srv.handshake(latest, SUPPORTED_CAPS, &[]).unwrap_err();
+    let err = srv
+        .handshake(latest, SUPPORTED_CAPS, &[], None)
+        .unwrap_err();
     assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
     assert_eq!(srv.demux.take_remote_error().as_deref(), Some("fail"));
 }
@@ -168,7 +170,9 @@ fn server_propagates_handshake_exit_code() {
     });
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
-    let err = srv.handshake(latest, SUPPORTED_CAPS, &[]).unwrap_err();
+    let err = srv
+        .handshake(latest, SUPPORTED_CAPS, &[], None)
+        .unwrap_err();
     assert_eq!(err.kind(), std::io::ErrorKind::Other);
     assert!(matches!(
         srv.demux.take_exit_code(),
@@ -195,7 +199,7 @@ fn server_parses_args_and_env() {
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
     let _ = srv
-        .handshake(latest, SUPPORTED_CAPS, &local)
+        .handshake(latest, SUPPORTED_CAPS, &local, None)
         .expect("handshake");
     assert_eq!(srv.args, vec!["--foo", "bar"]);
     assert_eq!(srv.env, vec![("X".into(), "1".into())]);
@@ -213,7 +217,7 @@ fn server_negotiates_optional_features() {
     });
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
-    let (caps, peer_codecs) = srv.handshake(latest, SUPPORTED_CAPS, &[]).unwrap();
+    let (caps, peer_codecs) = srv.handshake(latest, SUPPORTED_CAPS, &[], None).unwrap();
     assert_eq!(caps & (CAP_ACLS | CAP_XATTRS), CAP_ACLS | CAP_XATTRS);
     assert_eq!(peer_codecs, vec![Codec::Zlib]);
     let expected = {
@@ -242,7 +246,7 @@ fn server_accepts_equals_in_arg() {
     });
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
-    srv.handshake(latest, SUPPORTED_CAPS, &local)
+    srv.handshake(latest, SUPPORTED_CAPS, &local, None)
         .expect("handshake");
     assert_eq!(srv.args, vec!["--opt=foo=bar"]);
     assert!(srv.env.is_empty());
@@ -267,7 +271,7 @@ fn server_rejects_invalid_env() {
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
     let err = srv
-        .handshake(latest, SUPPORTED_CAPS, &local)
+        .handshake(latest, SUPPORTED_CAPS, &local, None)
         .expect_err("handshake should fail");
     assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
 }
@@ -291,7 +295,7 @@ fn server_rejects_option_after_arg() {
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
     let err = srv
-        .handshake(latest, SUPPORTED_CAPS, &local)
+        .handshake(latest, SUPPORTED_CAPS, &local, None)
         .expect_err("handshake should fail");
     assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
 }
