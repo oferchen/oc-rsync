@@ -1058,8 +1058,8 @@ impl Sender {
             } else {
                 let name = dest
                     .file_name()
-                    .map(|n| format!("{}~", n.to_string_lossy()))
-                    .unwrap_or_else(|| "~".to_string());
+                    .map(|n| format!("{}{}", n.to_string_lossy(), &self.opts.backup_suffix))
+                    .unwrap_or_else(|| self.opts.backup_suffix.clone());
                 dest.with_file_name(name)
             };
             if let Some(parent) = backup_path.parent() {
@@ -1722,6 +1722,7 @@ pub struct SyncOptions {
     pub compare_dest: Option<PathBuf>,
     pub backup: bool,
     pub backup_dir: Option<PathBuf>,
+    pub backup_suffix: String,
     pub chmod: Option<Vec<meta::Chmod>>,
     pub chown: Option<(Option<u32>, Option<u32>)>,
     pub copy_as: Option<(u32, Option<u32>)>,
@@ -1817,6 +1818,7 @@ impl Default for SyncOptions {
             compare_dest: None,
             backup: false,
             backup_dir: None,
+            backup_suffix: "~".into(),
             chmod: None,
             chown: None,
             copy_as: None,
@@ -1912,8 +1914,10 @@ fn delete_extraneous(
                             } else {
                                 let name = path
                                     .file_name()
-                                    .map(|n| format!("{}~", n.to_string_lossy()))
-                                    .unwrap_or_else(|| "~".to_string());
+                                    .map(|n| {
+                                        format!("{}{}", n.to_string_lossy(), &opts.backup_suffix)
+                                    })
+                                    .unwrap_or_else(|| opts.backup_suffix.clone());
                                 path.with_file_name(name)
                             };
                             let dir_res = if let Some(parent) = backup_path.parent() {
@@ -1953,8 +1957,8 @@ fn delete_extraneous(
                         } else {
                             let name = path
                                 .file_name()
-                                .map(|n| format!("{}~", n.to_string_lossy()))
-                                .unwrap_or_else(|| "~".to_string());
+                                .map(|n| format!("{}{}", n.to_string_lossy(), &opts.backup_suffix))
+                                .unwrap_or_else(|| opts.backup_suffix.clone());
                             path.with_file_name(name)
                         };
                         let dir_res = if let Some(parent) = backup_path.parent() {
@@ -2025,8 +2029,8 @@ pub fn sync(
                     } else {
                         let name = dst
                             .file_name()
-                            .map(|n| format!("{}~", n.to_string_lossy()))
-                            .unwrap_or_else(|| "~".to_string());
+                            .map(|n| format!("{}{}", n.to_string_lossy(), &opts.backup_suffix))
+                            .unwrap_or_else(|| opts.backup_suffix.clone());
                         dst.with_file_name(name)
                     };
                     if let Some(parent) = backup_path.parent() {
