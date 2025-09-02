@@ -5,7 +5,7 @@ This page enumerates known gaps between **oc-rsync** and upstream
 coverage so progress can be tracked as features land.
 
 ## Protocol
-- `--server` — handshake lacks full parity. [protocol/src/server.rs](../crates/protocol/src/server.rs) · [crates/protocol/tests/server.rs](../crates/protocol/tests/server.rs)
+No known gaps.
 
 ## Compression
 - `--compress` — zlib and zstd supported; `zlibx` not implemented. [compress/src/lib.rs](../crates/compress/src/lib.rs) · [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs)

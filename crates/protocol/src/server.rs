@@ -40,8 +40,9 @@ impl<R: Read, W: Write> Server<R, W> {
         self.env.clear();
         let mut b = [0u8; 1];
         let mut cur = Vec::new();
-        let mut in_env = false;
         let mut saw_nonopt = false;
+
+        // Parse command-line arguments until an empty string terminator.
         loop {
             self.reader.read_exact(&mut b)?;
             if b[0] == 0 {
@@ -50,27 +51,42 @@ impl<R: Read, W: Write> Server<R, W> {
                 }
                 let s = String::from_utf8(cur.clone())
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-                if !in_env && s.contains('=') && !s.starts_with('-') {
-                    in_env = true;
-                }
-                if in_env {
-                    let mut parts = s.splitn(2, '=');
-                    let k = parts.next().unwrap_or_default().to_string();
-                    let v = parts.next().unwrap_or_default().to_string();
-                    self.env.push((k, v));
-                } else {
-                    if s.starts_with('-') {
-                        if saw_nonopt {
-                            return Err(io::Error::new(
-                                io::ErrorKind::InvalidInput,
-                                "option after argument",
-                            ));
-                        }
-                    } else {
-                        saw_nonopt = true;
+                if s.starts_with('-') {
+                    if saw_nonopt {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            "option after argument",
+                        ));
                     }
-                    self.args.push(s);
+                } else {
+                    saw_nonopt = true;
                 }
+                self.args.push(s);
+                cur.clear();
+            } else {
+                cur.push(b[0]);
+            }
+        }
+
+        // Parse environment variables until another empty terminator.
+        loop {
+            self.reader.read_exact(&mut b)?;
+            if b[0] == 0 {
+                if cur.is_empty() {
+                    break;
+                }
+                let s = String::from_utf8(cur.clone())
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                if !s.contains('=') || s.starts_with('=') {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "invalid environment variable",
+                    ));
+                }
+                let mut parts = s.splitn(2, '=');
+                let k = parts.next().unwrap_or_default().to_string();
+                let v = parts.next().unwrap_or_default().to_string();
+                self.env.push((k, v));
                 cur.clear();
             } else {
                 cur.push(b[0]);

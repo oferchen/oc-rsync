@@ -74,6 +74,7 @@ fn round_robin_fairness() {
     assert_eq!(order, vec![1, 2, 1, 2]);
 }
 
+#[test]
 fn unregister_channel_rejects_frames() {
     let mut demux = Demux::new(Duration::from_millis(100));
 
