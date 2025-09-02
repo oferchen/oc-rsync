@@ -124,8 +124,9 @@ daemon:
 
 ## oc-rsyncd
 
-A dedicated `oc-rsyncd` binary starts the daemon directly and accepts the same
-flags as `oc-rsync --daemon`.
+The `oc-rsyncd` binary is a thin wrapper around `oc-rsync --daemon` that
+forwards all arguments.  Its `--help` and `--version` output therefore match the
+daemon mode of `oc-rsync` byte-for-byte.
 
 ```bash
 oc-rsyncd --module 'data=/srv/export'
