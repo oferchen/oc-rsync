@@ -8,10 +8,6 @@ build = "build.rs"
 name = "oc-rsync"
 path = "src/main.rs"
 
-[[bin]]
-name = "oc-rsyncd"
-path = "src/daemon.rs"
-
 [dependencies]
 oc-rsync-cli = { path = "../../crates/cli" }
 engine = { path = "../../crates/engine" }

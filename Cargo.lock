@@ -1008,19 +1008,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "oc-rsyncd-bin"
-version = "0.1.0"
-dependencies = [
- "assert_cmd",
- "clap",
- "daemon",
- "logging",
- "oc-rsync-cli",
- "protocol",
- "transport",
-]
-
-[[package]]
 name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
