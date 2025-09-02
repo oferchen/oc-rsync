@@ -12,7 +12,6 @@ members = [
     "crates/daemon",
     "crates/cli",
     "bin/oc-rsync",
-    "bin/oc-rsyncd",
     "crates/logging",
     "xtask",
 ]
@@ -63,6 +62,10 @@ insta = { version = "1", features = ["json"] }
 [[bin]]
 name = "oc-rsync"
 path = "bin/oc-rsync/src/main.rs"
+
+[[bin]]
+name = "oc-rsyncd"
+path = "src/bin/oc-rsyncd.rs"
 
 [[bin]]
 name = "flag_matrix"
