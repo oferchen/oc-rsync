@@ -1,12 +1,12 @@
 // crates/cli/tests/iconv.rs
 use assert_cmd::Command;
-use oc_rsync_cli::{cli_command, parse_iconv};
+use oc_rsync_cli::{cli_command, parse_iconv, render_help};
 use std::path::Path;
 use tempfile::tempdir;
 
 #[test]
 fn iconv_help_matches_upstream() {
-    let ours = cli_command().render_help().to_string();
+    let ours = render_help(&cli_command());
     let our_line = ours.lines().find(|l| l.contains("--iconv")).unwrap().trim();
 
     let help = std::fs::read_to_string(
