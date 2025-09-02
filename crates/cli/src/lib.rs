@@ -108,16 +108,29 @@ pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFla
 
 pub struct CharsetConv {
     remote: &'static Encoding,
+    local: &'static Encoding,
 }
 
 impl CharsetConv {
-    fn encode_remote(&self, s: &str) -> Vec<u8> {
+    pub fn encode_remote(&self, s: &str) -> Vec<u8> {
         let (res, _, _) = self.remote.encode(s);
         res.into_owned()
     }
 
-    fn decode_remote(&self, b: &[u8]) -> String {
+    pub fn decode_remote(&self, b: &[u8]) -> String {
         let (res, _, _) = self.remote.decode(b);
+        res.into_owned()
+    }
+
+    pub fn local_to_remote(&self, b: &[u8]) -> Vec<u8> {
+        let (s, _, _) = self.local.decode(b);
+        let (res, _, _) = self.remote.encode(&s);
+        res.into_owned()
+    }
+
+    pub fn remote_to_local(&self, b: &[u8]) -> Vec<u8> {
+        let (s, _, _) = self.remote.decode(b);
+        let (res, _, _) = self.local.encode(&s);
         res.into_owned()
     }
 }
@@ -137,6 +150,7 @@ pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
     }
     Ok(CharsetConv {
         remote: Encoding::for_label(remote_label.as_bytes()).unwrap(),
+        local: Encoding::for_label(local_label.as_bytes()).unwrap(),
     })
 }
 
