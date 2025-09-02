@@ -92,7 +92,7 @@ fn try_set_xattr(path: &std::path::Path, name: &str, value: &[u8]) -> bool {
     }
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(all(unix, feature = "xattr", not(feature = "acl")))]
 fn spawn_rsync_daemon(root: &std::path::Path) -> (Child, u16) {
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
