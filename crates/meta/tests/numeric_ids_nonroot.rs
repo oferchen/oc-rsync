@@ -11,7 +11,6 @@ use users::get_user_by_name;
 #[test]
 fn numeric_ids_chown_permission_denied_matches_rsync() -> std::io::Result<()> {
     if !Uid::effective().is_root() {
-        // The test requires root to set up differing numeric IDs.
         return Ok(());
     }
     let dir = tempdir()?;
@@ -29,7 +28,6 @@ fn numeric_ids_chown_permission_denied_matches_rsync() -> std::io::Result<()> {
 
     let src_file = src.join("file");
     fs::write(&src_file, b"data")?;
-    // Assign a uid/gid that will not match the running user.
     chown(&src_file, Some(Uid::from_raw(1)), Some(Gid::from_raw(1)))?;
     let meta = Metadata::from_path(&src_file, Options::default())?;
 
