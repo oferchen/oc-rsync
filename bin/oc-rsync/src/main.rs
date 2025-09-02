@@ -2,6 +2,7 @@
 use oc_rsync_cli::version;
 use oc_rsync_cli::{cli_command, EngineError};
 use protocol::ExitCode;
+use std::ffi::OsString;
 use std::io::ErrorKind;
 
 fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
@@ -27,8 +28,12 @@ fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
 }
 
 fn main() {
-    if std::env::args().any(|a| a == "--version" || a == "-V") {
-        if !std::env::args().any(|a| a == "--quiet" || a == "-q") {
+    let version = OsString::from("--version");
+    let version_short = OsString::from("-V");
+    let quiet = OsString::from("--quiet");
+    let quiet_short = OsString::from("-q");
+    if std::env::args_os().any(|a| a == version || a == version_short) {
+        if !std::env::args_os().any(|a| a == quiet || a == quiet_short) {
             println!("{}", version::render_version_lines().join("\n"));
         }
         return;
