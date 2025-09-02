@@ -12,12 +12,12 @@ fn banner_is_static() {
         ),
         format!(
             "rsync {}",
-            option_env!("OC_RSYNC_UPSTREAM").unwrap_or("unknown")
+            option_env!("RSYNC_UPSTREAM_VER").unwrap_or("unknown")
         ),
         format!(
             "{} {}",
-            option_env!("OC_RSYNC_GIT").unwrap_or("unknown"),
-            option_env!("OC_RSYNC_OFFICIAL").unwrap_or("unofficial"),
+            option_env!("BUILD_REVISION").unwrap_or("unknown"),
+            option_env!("OFFICIAL_BUILD").unwrap_or("unofficial"),
         ),
     ];
     assert_eq!(version::render_version_lines(), expected);

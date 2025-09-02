@@ -72,6 +72,13 @@ oc-rsync [OPTIONS] "<SRC>" "<DEST>"
   ```sh
   oc-rsync --version
   ```
+  which prints three lines:
+
+  ```text
+  oc-rsync <pkg-version> (protocol <protocol>)
+  rsync <upstream-version>
+  <build-revision> <official|unofficial>
+  ```
 
 ### Trailing slash semantics
 

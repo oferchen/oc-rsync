@@ -7,7 +7,7 @@ pub const RSYNC_PROTOCOL: u32 = SUPPORTED_PROTOCOLS[0];
 ///
 /// Line 1: "oc-rsync <pkg-version> (protocol <RSYNC_PROTOCOL>)"
 /// Line 2: "rsync <upstream-version>"
-/// Line 3: "<git-hash> <official-flag>"
+/// Line 3: "<build-revision> <official-flag>"
 pub fn render_version_lines() -> Vec<String> {
     vec![
         format!(
@@ -17,12 +17,12 @@ pub fn render_version_lines() -> Vec<String> {
         ),
         format!(
             "rsync {}",
-            option_env!("OC_RSYNC_UPSTREAM").unwrap_or("unknown")
+            option_env!("RSYNC_UPSTREAM_VER").unwrap_or("unknown")
         ),
         format!(
             "{} {}",
-            option_env!("OC_RSYNC_GIT").unwrap_or("unknown"),
-            option_env!("OC_RSYNC_OFFICIAL").unwrap_or("unofficial")
+            option_env!("BUILD_REVISION").unwrap_or("unknown"),
+            option_env!("OFFICIAL_BUILD").unwrap_or("unofficial")
         ),
     ]
 }
