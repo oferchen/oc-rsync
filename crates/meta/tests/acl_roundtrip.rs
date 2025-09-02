@@ -1,5 +1,5 @@
-#![cfg(feature = "acl")]
 // crates/meta/tests/acl_roundtrip.rs
+#![cfg(feature = "acl")]
 
 use meta::{read_acl, write_acl};
 use posix_acl::{PosixACL, Qualifier, ACL_READ};

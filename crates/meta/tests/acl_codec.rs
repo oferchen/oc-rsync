@@ -1,5 +1,5 @@
-#![cfg(feature = "acl")]
 // crates/meta/tests/acl_codec.rs
+#![cfg(feature = "acl")]
 
 use meta::{decode_acl, encode_acl, Metadata, Options};
 use posix_acl::{PosixACL, Qualifier, ACL_READ};

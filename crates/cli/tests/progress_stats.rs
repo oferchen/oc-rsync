@@ -36,7 +36,12 @@ fn progress_parity() {
         .unwrap();
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--progress", src.join("a.txt").to_str().unwrap(), dst_ours.to_str().unwrap()])
+        .args([
+            "--local",
+            "--progress",
+            src.join("a.txt").to_str().unwrap(),
+            dst_ours.to_str().unwrap(),
+        ])
         .output()
         .unwrap();
 
@@ -70,16 +75,23 @@ fn stats_parity() {
         .unwrap();
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--stats", format!("{}/", src.display()).as_str(), dst_ours.to_str().unwrap()])
+        .args([
+            "--local",
+            "--stats",
+            format!("{}/", src.display()).as_str(),
+            dst_ours.to_str().unwrap(),
+        ])
         .output()
         .unwrap();
 
     let up_stdout = String::from_utf8_lossy(&up.stdout);
     let up_stats: Vec<&str> = up_stdout
         .lines()
-        .filter(|l| l.starts_with("Number of regular files transferred")
-            || l.starts_with("Number of deleted files")
-            || l.starts_with("Total transferred file size"))
+        .filter(|l| {
+            l.starts_with("Number of regular files transferred")
+                || l.starts_with("Number of deleted files")
+                || l.starts_with("Total transferred file size")
+        })
         .collect();
 
     let our_stdout = String::from_utf8_lossy(&ours.stdout);

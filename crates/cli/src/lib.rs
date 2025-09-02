@@ -22,7 +22,9 @@ pub use engine::EngineError;
 use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse_with_options, Matcher, Rule};
 pub use formatter::render_help;
-use logging::{parse_escapes, progress_formatter, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
+use logging::{
+    parse_escapes, progress_formatter, DebugFlag, InfoFlag, LogFormat, SubscriberConfig,
+};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use protocol::CharsetConv;
 #[cfg(feature = "acl")]

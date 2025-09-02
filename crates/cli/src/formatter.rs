@@ -11,7 +11,6 @@ const HELP_PREFIX: &str = "rsync comes with ABSOLUTELY NO WARRANTY.  This is fre
 
 const HELP_SUFFIX: &str = "\nUse \"rsync --daemon --help\" to see the daemon-mode command-line options.\nPlease see the rsync(1) and rsyncd.conf(5) manpages for full documentation.\nSee https://rsync.samba.org/ for updates, bug reports, and answers\n";
 
-// Ordered list of argument IDs mirroring upstream `rsync --help`
 const ARG_ORDER: &[&str] = &[
     "verbose",
     "info",

@@ -537,8 +537,6 @@ pub fn init(cfg: SubscriberConfig) {
 }
 
 pub fn human_bytes(bytes: u64) -> String {
-    // Follow rsync's human-readable formatting using decimal (1000) units and
-    // single-letter suffixes.
     const UNITS: [&str; 9] = ["", "K", "M", "G", "T", "P", "E", "Z", "Y"];
     let mut size = bytes as f64;
     let mut unit = 0usize;
