@@ -10,6 +10,21 @@ fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     use clap::error::ErrorKind::*;
     match kind {
         UnknownArgument => ExitCode::Unsupported,
+        InvalidValue
+        | InvalidSubcommand
+        | NoEquals
+        | ValueValidation
+        | TooManyValues
+        | TooFewValues
+        | WrongNumberOfValues
+        | ArgumentConflict
+        | MissingRequiredArgument
+        | MissingSubcommand
+        | InvalidUtf8
+        | DisplayHelp
+        | DisplayHelpOnMissingArgumentOrSubcommand
+        | DisplayVersion => ExitCode::SyntaxOrUsage,
+        Io | Format => ExitCode::FileIo,
         _ => ExitCode::SyntaxOrUsage,
     }
 }
