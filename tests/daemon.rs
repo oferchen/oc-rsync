@@ -4,8 +4,8 @@
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
 use daemon::{
-    chroot_and_drop_privileges, handle_connection, parse_config, parse_daemon_args, parse_module,
-    Handler, Module,
+    chroot_and_drop_privileges, drop_privileges, handle_connection, parse_config,
+    parse_daemon_args, parse_module, Handler, Module,
 };
 use protocol::LATEST_VERSION;
 use serial_test::serial;
@@ -213,6 +213,8 @@ fn module_authentication_and_hosts_enforced() {
         None,
         None,
         None,
+        true,
+        &[],
         "127.0.0.1",
         0,
         0,
@@ -229,6 +231,8 @@ fn module_authentication_and_hosts_enforced() {
         None,
         None,
         None,
+        true,
+        &[],
         "127.0.0.1",
         0,
         0,
@@ -245,6 +249,8 @@ fn module_authentication_and_hosts_enforced() {
         None,
         None,
         None,
+        true,
+        &[],
         "10.0.0.1",
         0,
         0,
@@ -252,6 +258,96 @@ fn module_authentication_and_hosts_enforced() {
     )
     .unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+}
+
+#[test]
+fn host_deny_blocks_connection() {
+    let module = Module {
+        name: "data".into(),
+        path: std::env::current_dir().unwrap(),
+        hosts_deny: vec!["127.0.0.1".into()],
+        use_chroot: false,
+        ..Module::default()
+    };
+    let mut modules = HashMap::new();
+    modules.insert(module.name.clone(), module);
+    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let mut t = pipe_transport("", "data");
+    let err = handle_connection(
+        &mut t,
+        &modules,
+        None,
+        None,
+        None,
+        None,
+        None,
+        true,
+        &[],
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+    )
+    .unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+}
+
+#[test]
+fn rejects_missing_token() {
+    let dir = tempdir().unwrap();
+    let auth = dir.path().join("auth");
+    fs::write(&auth, "tok data\n").unwrap();
+    #[cfg(unix)]
+    fs::set_permissions(&auth, fs::Permissions::from_mode(0o600)).unwrap();
+    let module = Module {
+        name: "data".into(),
+        path: std::env::current_dir().unwrap(),
+        secrets_file: Some(auth.clone()),
+        use_chroot: false,
+        ..Module::default()
+    };
+    let mut modules = HashMap::new();
+    modules.insert(module.name.clone(), module);
+    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let mut t = pipe_transport("", "data");
+    let err = handle_connection(
+        &mut t,
+        &modules,
+        None,
+        None,
+        None,
+        None,
+        None,
+        true,
+        &[],
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+    )
+    .unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+}
+
+#[cfg(unix)]
+#[test]
+#[serial]
+fn drop_privileges_changes_ids() {
+    use nix::sys::wait::waitpid;
+    use nix::unistd::{fork, getegid, geteuid, ForkResult};
+    match unsafe { fork() } {
+        Ok(ForkResult::Parent { child }) => {
+            let status = waitpid(child, None).unwrap();
+            assert!(matches!(status, nix::sys::wait::WaitStatus::Exited(_, 0)));
+        }
+        Ok(ForkResult::Child) => {
+            drop_privileges(1, 1).unwrap();
+            assert_eq!(geteuid().as_raw(), 1);
+            assert_eq!(getegid().as_raw(), 1);
+            std::process::exit(0);
+        }
+        Err(_) => panic!("fork failed"),
+    }
 }
 
 fn read_port(child: &mut Child) -> io::Result<u16> {

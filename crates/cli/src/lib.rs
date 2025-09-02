@@ -2122,6 +2122,10 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let timeout = matches.get_one::<Duration>("timeout").copied();
     let bwlimit = matches.get_one::<u64>("bwlimit").copied();
     let numeric_ids_flag = matches.get_flag("numeric_ids");
+    let mut list = true;
+    let mut refuse = Vec::new();
+    let mut max_conn = None;
+    let mut read_only = None;
     if let Some(cfg_path) = matches.get_one::<PathBuf>("config") {
         let cfg = parse_config_file(cfg_path).map_err(|e| EngineError::Other(e.to_string()))?;
         for m in cfg.modules {
@@ -2159,6 +2163,18 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
                 m.numeric_ids = val;
             }
         }
+        if let Some(val) = cfg.read_only {
+            read_only = Some(val);
+        }
+        if let Some(val) = cfg.list {
+            list = val;
+        }
+        if let Some(val) = cfg.max_connections {
+            max_conn = Some(val);
+        }
+        if !cfg.refuse_options.is_empty() {
+            refuse = cfg.refuse_options;
+        }
     }
 
     for m in opts.module {
@@ -2168,6 +2184,16 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     if numeric_ids_flag {
         for m in modules.values_mut() {
             m.numeric_ids = true;
+        }
+    }
+    if let Some(val) = read_only {
+        for m in modules.values_mut() {
+            m.read_only = val;
+        }
+    }
+    if !refuse.is_empty() {
+        for m in modules.values_mut() {
+            m.refuse_options = refuse.clone();
         }
     }
 
@@ -2196,6 +2222,9 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
         state_dir,
         timeout,
         bwlimit,
+        max_conn,
+        refuse,
+        list,
         port,
         address,
         addr_family,

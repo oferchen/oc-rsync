@@ -5,7 +5,7 @@ use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{atomic::AtomicUsize, atomic::Ordering, Arc};
 use std::time::Duration;
 
 #[cfg(unix)]
@@ -69,7 +69,7 @@ fn parse_gid(val: &str) -> io::Result<u32> {
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct Module {
     pub name: String,
     pub path: PathBuf,
@@ -82,6 +82,34 @@ pub struct Module {
     pub numeric_ids: bool,
     pub uid: Option<u32>,
     pub gid: Option<u32>,
+    pub read_only: bool,
+    pub list: bool,
+    pub max_connections: Option<usize>,
+    pub refuse_options: Vec<String>,
+    pub connections: Arc<AtomicUsize>,
+}
+
+impl Clone for Module {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            path: self.path.clone(),
+            hosts_allow: self.hosts_allow.clone(),
+            hosts_deny: self.hosts_deny.clone(),
+            auth_users: self.auth_users.clone(),
+            secrets_file: self.secrets_file.clone(),
+            timeout: self.timeout,
+            use_chroot: self.use_chroot,
+            numeric_ids: self.numeric_ids,
+            uid: self.uid,
+            gid: self.gid,
+            read_only: self.read_only,
+            list: self.list,
+            max_connections: self.max_connections,
+            refuse_options: self.refuse_options.clone(),
+            connections: Arc::clone(&self.connections),
+        }
+    }
 }
 
 impl Default for Module {
@@ -98,6 +126,11 @@ impl Default for Module {
             numeric_ids: false,
             uid: None,
             gid: None,
+            read_only: true,
+            list: true,
+            max_connections: None,
+            refuse_options: Vec::new(),
+            connections: Arc::new(AtomicUsize::new(0)),
         }
     }
 }
@@ -166,6 +199,15 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
             "numeric_ids" => module.numeric_ids = parse_bool(val).map_err(|e| e.to_string())?,
             "uid" => module.uid = Some(parse_uid(val).map_err(|e| e.to_string())?),
             "gid" => module.gid = Some(parse_gid(val).map_err(|e| e.to_string())?),
+            "read_only" => module.read_only = parse_bool(val).map_err(|e| e.to_string())?,
+            "list" => module.list = parse_bool(val).map_err(|e| e.to_string())?,
+            "max_connections" => {
+                let max = val
+                    .parse::<usize>()
+                    .map_err(|e| format!("invalid max connections: {e}"))?;
+                module.max_connections = Some(max);
+            }
+            "refuse_options" => module.refuse_options = parse_list(val),
             _ => return Err(format!("unknown option: {key}")),
         }
     }
@@ -266,6 +308,10 @@ pub struct DaemonConfig {
     pub numeric_ids: Option<bool>,
     pub uid: Option<u32>,
     pub gid: Option<u32>,
+    pub read_only: Option<bool>,
+    pub list: Option<bool>,
+    pub max_connections: Option<usize>,
+    pub refuse_options: Vec<String>,
     pub modules: Vec<Module>,
 }
 
@@ -374,6 +420,21 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             (false, "gid") => {
                 cfg.gid = Some(parse_gid(&val)?);
             }
+            (false, "read only") => {
+                cfg.read_only = Some(parse_bool(&val)?);
+            }
+            (false, "list") => {
+                cfg.list = Some(parse_bool(&val)?);
+            }
+            (false, "max connections") => {
+                let max = val
+                    .parse::<usize>()
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                cfg.max_connections = Some(max);
+            }
+            (false, "refuse options") => {
+                cfg.refuse_options = parse_list(&val);
+            }
             (true, "path") => {
                 if let Some(m) = current.as_mut() {
                     let raw = PathBuf::from(&val);
@@ -436,6 +497,29 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             (true, "gid") => {
                 if let Some(m) = current.as_mut() {
                     m.gid = Some(parse_gid(&val)?);
+                }
+            }
+            (true, "read only") => {
+                if let Some(m) = current.as_mut() {
+                    m.read_only = parse_bool(&val)?;
+                }
+            }
+            (true, "list") => {
+                if let Some(m) = current.as_mut() {
+                    m.list = parse_bool(&val)?;
+                }
+            }
+            (true, "max connections") => {
+                if let Some(m) = current.as_mut() {
+                    let max = val
+                        .parse::<usize>()
+                        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                    m.max_connections = Some(max);
+                }
+            }
+            (true, "refuse options") => {
+                if let Some(m) = current.as_mut() {
+                    m.refuse_options = parse_list(&val);
                 }
             }
             _ => {}
@@ -680,6 +764,8 @@ pub fn handle_connection<T: Transport>(
     log_file: Option<&Path>,
     log_format: Option<&str>,
     motd: Option<&Path>,
+    list: bool,
+    refuse: &[String],
     peer: &str,
     uid: u32,
     gid: u32,
@@ -714,6 +800,16 @@ pub fn handle_connection<T: Transport>(
         let n = transport.receive(&mut name_buf)?;
         String::from_utf8_lossy(&name_buf[..n]).trim().to_string()
     };
+    if name.is_empty() {
+        if list {
+            for m in modules.values().filter(|m| m.list) {
+                let line = format!("{}\n", m.name);
+                transport.send(line.as_bytes())?;
+            }
+        }
+        transport.send(b"\n")?;
+        return Ok(());
+    }
     if let Some(module) = modules.get(&name) {
         if let Ok(ip) = peer.parse::<IpAddr>() {
             if !host_allowed(&ip, &module.hosts_allow, &module.hosts_deny) {
@@ -756,19 +852,50 @@ pub fn handle_connection<T: Transport>(
                 }
             }
         }
+        if let Some(max) = module.max_connections {
+            if module.connections.load(Ordering::SeqCst) >= max {
+                let _ = transport.send(b"@ERROR: max connections reached");
+                return Err(io::Error::other("max connections reached"));
+            }
+            module.connections.fetch_add(1, Ordering::SeqCst);
+        }
         transport.send(b"@RSYNCD: OK\n")?;
         let mut opt_buf = [0u8; 256];
+        let mut is_sender = false;
+        let mut saw_server = false;
         loop {
             let n = transport.receive(&mut opt_buf)?;
             let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
             if opt.is_empty() {
                 break;
             }
+            if opt == "--sender" {
+                is_sender = true;
+            }
+            if opt == "--server" {
+                saw_server = true;
+            }
             if let Some(v) = opt.strip_prefix("--log-file=") {
                 log_file = Some(PathBuf::from(v));
             } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
                 log_format = Some(v.to_string());
             }
+            if refuse.iter().any(|r| opt.contains(r))
+                || module.refuse_options.iter().any(|r| opt.contains(r))
+            {
+                let _ = transport.send(b"@ERROR: option refused");
+                return Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "option refused",
+                ));
+            }
+        }
+        if module.read_only && saw_server && !is_sender {
+            let _ = transport.send(b"@ERROR: read only");
+            if module.max_connections.is_some() {
+                module.connections.fetch_sub(1, Ordering::SeqCst);
+            }
+            return Err(io::Error::new(io::ErrorKind::PermissionDenied, "read only"));
         }
         if let Some(dur) = module.timeout {
             transport.set_read_timeout(Some(dur))?;
@@ -776,7 +903,7 @@ pub fn handle_connection<T: Transport>(
         }
         let m_uid = module.uid.unwrap_or(uid);
         let m_gid = module.gid.unwrap_or(gid);
-        serve_module(
+        let res = serve_module(
             transport,
             module,
             peer,
@@ -784,7 +911,11 @@ pub fn handle_connection<T: Transport>(
             log_format.as_deref(),
             m_uid,
             m_gid,
-        )?;
+        );
+        if module.max_connections.is_some() {
+            module.connections.fetch_sub(1, Ordering::SeqCst);
+        }
+        res?;
         handler(transport)
     } else {
         let _ = transport.send(b"@ERROR: unknown module");
@@ -807,6 +938,9 @@ pub fn run_daemon(
     state_dir: Option<PathBuf>,
     timeout: Option<Duration>,
     bwlimit: Option<u64>,
+    max_connections: Option<usize>,
+    refuse_options: Vec<String>,
+    list: bool,
     port: u16,
     address: Option<IpAddr>,
     family: Option<AddressFamily>,
@@ -878,8 +1012,15 @@ pub fn run_daemon(
     std::thread::spawn(|| {
         let _ = sd_notify::notify(false, &[NotifyState::Ready]);
     });
+    let active = Arc::new(AtomicUsize::new(0));
     loop {
         let (stream, addr) = TcpTransport::accept(&listener, &hosts_allow, &hosts_deny)?;
+        if let Some(max) = max_connections {
+            if active.load(Ordering::SeqCst) >= max {
+                continue;
+            }
+            active.fetch_add(1, Ordering::SeqCst);
+        }
         let peer = addr.ip().to_string();
         let modules = modules.clone();
         let secrets = secrets.clone();
@@ -888,6 +1029,8 @@ pub fn run_daemon(
         let log_format = log_format.clone();
         let motd = motd.clone();
         let handler = handler.clone();
+        let refuse = refuse_options.clone();
+        let active_conn = active.clone();
         std::thread::spawn(move || {
             let transport = TcpTransport::from_stream(stream);
             let res = (|| -> io::Result<()> {
@@ -902,6 +1045,8 @@ pub fn run_daemon(
                         log_file.as_deref(),
                         log_format.as_deref(),
                         motd.as_deref(),
+                        list,
+                        &refuse,
                         &peer,
                         uid,
                         gid,
@@ -917,6 +1062,8 @@ pub fn run_daemon(
                         log_file.as_deref(),
                         log_format.as_deref(),
                         motd.as_deref(),
+                        list,
+                        &refuse,
                         &peer,
                         uid,
                         gid,
@@ -924,6 +1071,9 @@ pub fn run_daemon(
                     )
                 }
             })();
+            if max_connections.is_some() {
+                active_conn.fetch_sub(1, Ordering::SeqCst);
+            }
             if let Err(e) = res {
                 if !quiet {
                     eprintln!("connection error: {}", e);
