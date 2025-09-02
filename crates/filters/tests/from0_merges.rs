@@ -1,8 +1,9 @@
 // crates/filters/tests/from0_merges.rs
-use filters::{parse, parse_list, Matcher};
+use filters::{parse, parse_list, parse_with_options, Matcher};
 use proptest::prelude::*;
 use std::collections::HashSet;
 use std::fs;
+use std::path::PathBuf;
 use tempfile::tempdir;
 
 proptest! {
@@ -21,6 +22,20 @@ proptest! {
         let parsed_nl = parse_list(joined.as_bytes(), false);
         prop_assert_eq!(parsed0, parsed_nl);
     }
+}
+
+#[test]
+fn merge_word_split_from0() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path();
+    let list = root.join("rules");
+    fs::write(&list, b"-foo\0+bar\0").unwrap();
+    let spec = format!(": merge,w {}\n", list.display());
+    let mut v: HashSet<PathBuf> = HashSet::new();
+    let rules = parse_with_options(&spec, true, &mut v, 0).unwrap();
+    let matcher = Matcher::new(rules);
+    assert!(!matcher.is_included("foo").unwrap());
+    assert!(matcher.is_included("bar").unwrap());
 }
 
 proptest! {
