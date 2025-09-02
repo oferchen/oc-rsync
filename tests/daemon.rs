@@ -3,9 +3,10 @@
 
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
-use daemon::{parse_daemon_args, parse_module};
+use daemon::{handle_connection, parse_daemon_args, parse_module, Handler, Module};
 use protocol::LATEST_VERSION;
 use serial_test::serial;
+use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -14,10 +15,11 @@ use std::os::unix::fs::PermissionsExt;
 #[allow(unused_imports)]
 use std::path::PathBuf;
 use std::process::{Child, Command as StdCommand, Stdio};
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
-use transport::{AddressFamily, TcpTransport, Transport};
+use tempfile::tempdir;
+use transport::{AddressFamily, LocalPipeTransport, TcpTransport, Transport};
 use wait_timeout::ChildExt;
 
 struct Skip;
@@ -82,6 +84,114 @@ fn parse_module_parses_options() {
     assert_eq!(module.timeout, Some(Duration::from_secs(1)));
     assert!(!module.use_chroot);
     assert!(module.numeric_ids);
+}
+
+struct MultiReader {
+    parts: Vec<Vec<u8>>,
+    idx: usize,
+    pos: usize,
+}
+
+impl Read for MultiReader {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if self.idx >= self.parts.len() {
+            return Ok(0);
+        }
+        let part = &self.parts[self.idx];
+        let remaining = &part[self.pos..];
+        let len = remaining.len().min(buf.len());
+        buf[..len].copy_from_slice(&remaining[..len]);
+        self.pos += len;
+        if self.pos >= part.len() {
+            self.idx += 1;
+            self.pos = 0;
+        }
+        Ok(len)
+    }
+}
+
+fn pipe_transport(token: &str, module: &str) -> LocalPipeTransport<MultiReader, Vec<u8>> {
+    let parts = vec![
+        LATEST_VERSION.to_be_bytes().to_vec(),
+        format!("{token}\n").into_bytes(),
+        format!("{module}\n\n").into_bytes(),
+    ];
+    let reader = MultiReader {
+        parts,
+        idx: 0,
+        pos: 0,
+    };
+    let writer = Vec::new();
+    LocalPipeTransport::new(reader, writer)
+}
+
+#[test]
+#[serial]
+fn module_authentication_and_hosts_enforced() {
+    let dir = tempdir().unwrap();
+    let auth = dir.path().join("auth");
+    fs::write(&auth, "alice data\n").unwrap();
+    #[cfg(unix)]
+    fs::set_permissions(&auth, fs::Permissions::from_mode(0o600)).unwrap();
+    let module = Module {
+        name: "data".to_string(),
+        path: std::env::current_dir().unwrap(),
+        auth_users: vec!["alice".to_string()],
+        hosts_allow: vec!["127.0.0.1".to_string()],
+        use_chroot: false,
+        ..Module::default()
+    };
+    let mut modules = HashMap::new();
+    modules.insert(module.name.clone(), module);
+    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let mut ok_t = pipe_transport("alice", "data");
+    handle_connection(
+        &mut ok_t,
+        &modules,
+        Some(&auth),
+        None,
+        None,
+        None,
+        None,
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+    )
+    .unwrap();
+
+    let mut bad_user = pipe_transport("bob", "data");
+    let err = handle_connection(
+        &mut bad_user,
+        &modules,
+        Some(&auth),
+        None,
+        None,
+        None,
+        None,
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+    )
+    .unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+    let mut bad_host = pipe_transport("", "data");
+    let err = handle_connection(
+        &mut bad_host,
+        &modules,
+        None,
+        None,
+        None,
+        None,
+        None,
+        "10.0.0.1",
+        0,
+        0,
+        &handler,
+    )
+    .unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
 }
 
 fn read_port(child: &mut Child) -> io::Result<u16> {
