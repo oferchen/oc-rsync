@@ -140,6 +140,10 @@ pub fn version_banner() -> String {
     )
 }
 
+pub fn version_string() -> String {
+    version_banner()
+}
+
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")
@@ -223,6 +227,8 @@ struct ClientOpts {
     existing: bool,
     #[arg(long, help_heading = "Misc")]
     ignore_existing: bool,
+    #[arg(short = 'x', long = "one-file-system", help_heading = "Selection")]
+    one_file_system: bool,
     #[arg(short = 'm', long = "prune-empty-dirs", help_heading = "Misc")]
     prune_empty_dirs: bool,
     #[arg(long = "size-only", help_heading = "Misc")]
@@ -1452,6 +1458,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         update: opts.update,
         existing: opts.existing,
         ignore_existing: opts.ignore_existing,
+        one_file_system: opts.one_file_system,
         size_only: opts.size_only,
         ignore_times: opts.ignore_times,
         perms: if opts.no_perms {

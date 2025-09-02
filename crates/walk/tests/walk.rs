@@ -23,7 +23,7 @@ fn walk_includes_files_dirs_and_symlinks() {
 
     let mut entries = Vec::new();
     let mut state = String::new();
-    for batch in walk(root, 10, true) {
+    for batch in walk(root, 10, true, false) {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
@@ -58,7 +58,7 @@ fn walk_preserves_order_and_bounds_batches() {
 
     let mut paths = Vec::new();
     let mut state = String::new();
-    let mut walker = walk(root, 2, false);
+    let mut walker = walk(root, 2, false, false);
     while let Some(batch) = walker.next() {
         let batch = batch.unwrap();
         assert!(batch.len() <= 2);
@@ -89,7 +89,7 @@ fn walk_skips_files_over_threshold() {
 
     let mut paths = Vec::new();
     let mut state = String::new();
-    for batch in walk_with_max_size(root, 10, 1024, false) {
+    for batch in walk_with_max_size(root, 10, 1024, false, false) {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
@@ -100,4 +100,40 @@ fn walk_skips_files_over_threshold() {
     assert!(paths.contains(&root.to_path_buf()));
     assert!(paths.contains(&root.join("small.txt")));
     assert!(!paths.contains(&root.join("big.txt")));
+}
+
+#[cfg(unix)]
+#[test]
+fn walk_skips_cross_device_entries() {
+    use std::path::Path;
+
+    let root = Path::new("/dev");
+
+    let mut state = String::new();
+    let mut found_pts = false;
+    let mut walker = walk(root, 100, false, false);
+    while let Some(batch) = walker.next() {
+        let batch = batch.unwrap();
+        for e in batch {
+            let path = e.apply(&mut state);
+            if path.starts_with("/dev/pts") {
+                found_pts = true;
+                break;
+            }
+        }
+        if found_pts {
+            break;
+        }
+    }
+    assert!(found_pts, "expected to see /dev/pts without restriction");
+
+    let mut walker = walk(root, 100, false, true);
+    state.clear();
+    while let Some(batch) = walker.next() {
+        let batch = batch.unwrap();
+        for e in batch {
+            let path = e.apply(&mut state);
+            assert!(!path.starts_with("/dev/pts"));
+        }
+    }
 }

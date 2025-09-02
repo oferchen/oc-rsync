@@ -45,7 +45,7 @@ when available.
 | --- | --- | --- | --- |
 | Batched filesystem traversal | ✅ | [crates/walk/tests/walk.rs](../crates/walk/tests/walk.rs) | [crates/walk/src/lib.rs](../crates/walk/src/lib.rs) |
 | Maximum file-size filtering | ✅ | [crates/walk/tests/walk.rs](../crates/walk/tests/walk.rs) | [crates/walk/src/lib.rs](../crates/walk/src/lib.rs) |
-| `--one-file-system` device boundary | ❌ | — | — |
+| `--one-file-system` device boundary | ✅ | [crates/walk/tests/walk.rs](../crates/walk/tests/walk.rs) | [crates/walk/src/lib.rs](../crates/walk/src/lib.rs) |
 
 ## Metadata
 | Feature | Status | Tests | Source |

@@ -461,7 +461,7 @@
   },
   {
     "flag": "--one-file-system",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {
