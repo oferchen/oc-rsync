@@ -1,10 +1,9 @@
 // bin/oc-rsync/src/main.rs
 mod version;
 
-use logging::LogFormat;
-use std::{io::ErrorKind, path::PathBuf};
-use oc_rsync_cli::{cli_command, parse_logging_flags, EngineError};
+use oc_rsync_cli::{cli_command, EngineError};
 use protocol::ExitCode;
+use std::io::ErrorKind;
 
 fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     use clap::error::ErrorKind::*;
@@ -32,7 +31,7 @@ fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
 fn main() {
     if std::env::args().any(|a| a == "--version" || a == "-V") {
         if !std::env::args().any(|a| a == "--quiet" || a == "-q") {
-            print!("{}", version::render_version_lines());
+            println!("{}", version::render_version_lines().join("\n"));
         }
         return;
     }

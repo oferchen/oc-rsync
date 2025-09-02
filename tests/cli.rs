@@ -361,28 +361,13 @@ impl Drop for Tmpfs {
 #[allow(clippy::vec_init_then_push)]
 #[test]
 fn prints_version() {
-    #[allow(unused_mut)]
-    let mut features: Vec<&str> = Vec::new();
-    #[cfg(feature = "xattr")]
-    features.push("xattr");
-    #[cfg(feature = "acl")]
-    features.push("acl");
-    let features = if features.is_empty() {
-        "none".to_string()
-    } else {
-        features.join(", ")
-    };
-    let protocols = SUPPORTED_PROTOCOLS
-        .iter()
-        .map(|p| p.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
     let expected = format!(
-        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
+        "oc-rsync {} (protocol {})\nrsync {}\n{} {}\n",
         env!("CARGO_PKG_VERSION"),
-        env!("UPSTREAM_VERSION"),
-        protocols,
-        features,
+        SUPPORTED_PROTOCOLS[0],
+        option_env!("OC_RSYNC_UPSTREAM").unwrap_or("unknown"),
+        option_env!("OC_RSYNC_GIT").unwrap_or("unknown"),
+        option_env!("OC_RSYNC_OFFICIAL").unwrap_or("unofficial"),
     );
     Command::cargo_bin("oc-rsync")
         .unwrap()

@@ -42,34 +42,6 @@ pub mod version {
     include!("../../../bin/oc-rsync/src/version.rs");
 }
 
-#[allow(clippy::vec_init_then_push)]
-pub fn version_banner() -> String {
-    #[allow(unused_mut)]
-    let mut features: Vec<&str> = Vec::new();
-    #[cfg(feature = "xattr")]
-    features.push("xattr");
-    #[cfg(feature = "acl")]
-    features.push("acl");
-    let features = if features.is_empty() {
-        "none".to_string()
-    } else {
-        features.join(", ")
-    };
-    let protocols = SUPPORTED_PROTOCOLS
-        .iter()
-        .map(|p| p.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
-    let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
-    format!(
-        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
-        env!("CARGO_PKG_VERSION"),
-        upstream,
-        protocols,
-        features,
-    )
-}
-
 fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
     parse_with_options(s, from0, &mut v, 0)
@@ -143,40 +115,6 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
         "1" | "true" | "yes" => Ok(true),
         _ => Err("invalid boolean".to_string()),
     }
-}
-
-pub fn version_string() -> String {
-    format!(
-        "oc-rsync {} (rsync {})",
-        env!("CARGO_PKG_VERSION"),
-        option_env!("UPSTREAM_VERSION").unwrap_or("unknown"),
-    )
-}
-
-#[allow(clippy::vec_init_then_push)]
-pub fn version_banner() -> String {
-    #[allow(unused_mut)]
-    let mut features: Vec<&str> = Vec::new();
-    #[cfg(feature = "xattr")]
-    features.push("xattr");
-    #[cfg(feature = "acl")]
-    features.push("acl");
-    let features = if features.is_empty() {
-        "none".to_string()
-    } else {
-        features.join(", ")
-    };
-    let protocols = SUPPORTED_PROTOCOLS
-        .iter()
-        .map(|p| p.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!(
-        "{}\nProtocols: {}\nFeatures: {}\n",
-        version_string(),
-        protocols,
-        features,
-    )
 }
 
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
