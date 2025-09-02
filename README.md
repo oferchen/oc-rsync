@@ -148,7 +148,13 @@ make clippy # Run Clippy lints
 make doc    # Build documentation
 make test   # Run the test suite
 make verify-comments  # Validate file header comments
+make build UPSTREAM=<ver> OFFICIAL=<0|1> # Build oc-rsync with metadata
+make version  # Print oc-rsync --version output
 ```
+
+The `build` target forwards `UPSTREAM` and `OFFICIAL` to `cargo build` as
+`RSYNC_UPSTREAM_VER` and `OFFICIAL_BUILD`. After building, `make version`
+runs the compiled binary and displays its `--version` text.
 
 ## Fuzzing
 The project includes fuzz targets under `fuzz`.
