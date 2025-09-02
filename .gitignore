@@ -11,6 +11,7 @@
 *.exe
 *.so
 *.dylib
+/docs/build_info.md
 
 # Upstream rsync sources
 /rsync-*.tar.gz

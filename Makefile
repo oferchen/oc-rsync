@@ -6,6 +6,7 @@
 # If user passes UPSTREAM/OFFICIAL, map them to RSYNC_UPSTREAM_VER/OFFICIAL_BUILD unless already set.
 RSYNC_UPSTREAM_VER ?= $(UPSTREAM)
 OFFICIAL_BUILD     ?= $(OFFICIAL)
+BUILD_REVISION     ?= $(shell git rev-parse HEAD)
 
 VERIFY_COMMENT_FILES := $(shell git ls-files '*.rs')
 
@@ -54,15 +55,15 @@ test-golden:
 # or legacy:
 #   make build UPSTREAM=3.4.1 OFFICIAL=1
 build:
-	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) OFFICIAL_BUILD=$(OFFICIAL_BUILD)"
-	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
-		cargo build -p oc-rsync-bin --bin oc-rsync --release
+	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD)"
+	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
+	cargo build -p oc-rsync-bin --bin oc-rsync --release
 
 # Max performance build (uses your [profile.maxspeed])
 build-maxspeed:
-	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) OFFICIAL_BUILD=$(OFFICIAL_BUILD) [maxspeed]"
-	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
-		cargo build -p oc-rsync-bin --bin oc-rsync --profile maxspeed --release
+	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD) [maxspeed]"
+	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
+	cargo build -p oc-rsync-bin --bin oc-rsync --profile maxspeed --release
 
 # Show version from the release artifact built above
 version: build

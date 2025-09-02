@@ -18,9 +18,9 @@ fn prints_three_lines() {
     assert_eq!(lines.len(), 3);
     assert!(lines[0].contains(env!("CARGO_PKG_VERSION")));
     assert!(lines[0].contains(&SUPPORTED_PROTOCOLS[0].to_string()));
-    assert!(lines[1].contains(env!("OC_RSYNC_UPSTREAM")));
-    assert!(lines[2].contains(env!("OC_RSYNC_GIT")));
-    assert!(lines[2].contains(env!("OC_RSYNC_OFFICIAL")));
+    assert!(lines[1].contains(env!("RSYNC_UPSTREAM_VER")));
+    assert!(lines[2].contains(env!("BUILD_REVISION")));
+    assert!(lines[2].contains(env!("OFFICIAL_BUILD")));
 }
 
 #[test]
@@ -37,4 +37,12 @@ fn exit_code_is_zero() {
         .arg("--version")
         .assert()
         .success();
+}
+
+#[test]
+fn build_info_file_has_expected_values() {
+    let info = std::fs::read_to_string("../../docs/build_info.md").unwrap();
+    assert!(info.contains(env!("RSYNC_UPSTREAM_VER")));
+    assert!(info.contains(env!("BUILD_REVISION")));
+    assert!(info.contains(env!("OFFICIAL_BUILD")));
 }
