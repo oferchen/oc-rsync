@@ -46,6 +46,7 @@ fn service_unit_matches_spec() {
         "ProtectHome=true",
         "Restart=on-failure",
         "RestartSec=2s",
+        "ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf",
         "CapabilityBoundingSet=CAP_NET_BIND_SERVICE CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE",
         "AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE",
         "RestrictNamespaces=yes",
