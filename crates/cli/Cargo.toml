@@ -17,6 +17,7 @@ daemon = { path = "../daemon" }
 logging = { path = "../logging" }
 tracing = "0.1"
 encoding_rs = "0.8"
+textwrap = "0.16"
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.27", features = ["user", "fs"] }
