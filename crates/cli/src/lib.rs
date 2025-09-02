@@ -743,6 +743,7 @@ struct ClientOpts {
         long = "read-batch",
         value_name = "FILE",
         help_heading = "Misc",
+        help = "read a batched update from FILE",
         conflicts_with = "write_batch"
     )]
     read_batch: Option<PathBuf>,
