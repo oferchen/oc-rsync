@@ -380,7 +380,7 @@ fn prints_version() {
     let expected = format!(
         "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
         env!("CARGO_PKG_VERSION"),
-        env!("UPSTREAM_VERSION"),
+        option_env!("UPSTREAM_VERSION").unwrap_or("unknown"),
         protocols,
         features,
     );
