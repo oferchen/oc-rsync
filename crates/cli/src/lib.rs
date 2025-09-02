@@ -1,6 +1,7 @@
 // crates/cli/src/lib.rs
 use std::collections::{HashMap, HashSet};
 use std::env;
+use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::net::{IpAddr, TcpStream};
@@ -41,6 +42,29 @@ use transport::{
 use users::get_user_by_uid;
 
 pub mod version;
+
+pub fn print_version_if_requested<I>(args: I) -> bool
+where
+    I: IntoIterator<Item = OsString>,
+{
+    let mut show_version = false;
+    let mut quiet = false;
+    for arg in args {
+        if arg == "--version" || arg == "-V" {
+            show_version = true;
+        } else if arg == "--quiet" || arg == "-q" {
+            quiet = true;
+        }
+    }
+    if show_version {
+        if !quiet {
+            println!("{}", version::render_version_lines().join("\n"));
+        }
+        true
+    } else {
+        false
+    }
+}
 
 fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
