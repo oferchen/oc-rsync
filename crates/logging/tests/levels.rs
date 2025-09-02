@@ -1,11 +1,23 @@
 // crates/logging/tests/levels.rs
-use logging::{subscriber, DebugFlag, InfoFlag, LogFormat};
+use logging::{subscriber, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
 use tracing::subscriber::with_default;
 use tracing::Level;
 
 #[test]
 fn info_not_emitted_by_default() {
-    let sub = subscriber(LogFormat::Text, 0, &[], &[], false, None, false, false);
+    let cfg = SubscriberConfig::builder()
+        .format(LogFormat::Text)
+        .verbose(0)
+        .info(vec![])
+        .debug(vec![])
+        .quiet(false)
+        .log_file(None)
+        .syslog(false)
+        .journald(false)
+        .colored(true)
+        .timestamps(false)
+        .build();
+    let sub = subscriber(cfg);
     with_default(sub, || {
         assert!(!tracing::enabled!(Level::INFO));
     });
@@ -13,7 +25,19 @@ fn info_not_emitted_by_default() {
 
 #[test]
 fn verbose_enables_info() {
-    let sub = subscriber(LogFormat::Text, 1, &[], &[], false, None, false, false);
+    let cfg = SubscriberConfig::builder()
+        .format(LogFormat::Text)
+        .verbose(1)
+        .info(vec![])
+        .debug(vec![])
+        .quiet(false)
+        .log_file(None)
+        .syslog(false)
+        .journald(false)
+        .colored(true)
+        .timestamps(false)
+        .build();
+    let sub = subscriber(cfg);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::INFO));
     });
@@ -21,16 +45,19 @@ fn verbose_enables_info() {
 
 #[test]
 fn debug_enables_debug() {
-    let sub = subscriber(
-        LogFormat::Text,
-        0,
-        &[],
-        &[DebugFlag::Flist],
-        false,
-        None,
-        false,
-        false,
-    );
+    let cfg = SubscriberConfig::builder()
+        .format(LogFormat::Text)
+        .verbose(0)
+        .info(vec![])
+        .debug(vec![DebugFlag::Flist])
+        .quiet(false)
+        .log_file(None)
+        .syslog(false)
+        .journald(false)
+        .colored(true)
+        .timestamps(false)
+        .build();
+    let sub = subscriber(cfg);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::DEBUG));
     });
@@ -38,7 +65,19 @@ fn debug_enables_debug() {
 
 #[test]
 fn debug_with_two_v() {
-    let sub = subscriber(LogFormat::Text, 2, &[], &[], false, None, false, false);
+    let cfg = SubscriberConfig::builder()
+        .format(LogFormat::Text)
+        .verbose(2)
+        .info(vec![])
+        .debug(vec![])
+        .quiet(false)
+        .log_file(None)
+        .syslog(false)
+        .journald(false)
+        .colored(true)
+        .timestamps(false)
+        .build();
+    let sub = subscriber(cfg);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::DEBUG));
     });
@@ -46,16 +85,19 @@ fn debug_with_two_v() {
 
 #[test]
 fn info_flag_enables_info() {
-    let sub = subscriber(
-        LogFormat::Text,
-        0,
-        &[InfoFlag::Progress],
-        &[],
-        false,
-        None,
-        false,
-        false,
-    );
+    let cfg = SubscriberConfig::builder()
+        .format(LogFormat::Text)
+        .verbose(0)
+        .info(vec![InfoFlag::Progress])
+        .debug(vec![])
+        .quiet(false)
+        .log_file(None)
+        .syslog(false)
+        .journald(false)
+        .colored(true)
+        .timestamps(false)
+        .build();
+    let sub = subscriber(cfg);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::INFO));
     });
@@ -63,7 +105,19 @@ fn info_flag_enables_info() {
 
 #[test]
 fn json_verbose_enables_info() {
-    let sub = subscriber(LogFormat::Json, 1, &[], &[], false, None, false, false);
+    let cfg = SubscriberConfig::builder()
+        .format(LogFormat::Json)
+        .verbose(1)
+        .info(vec![])
+        .debug(vec![])
+        .quiet(false)
+        .log_file(None)
+        .syslog(false)
+        .journald(false)
+        .colored(true)
+        .timestamps(false)
+        .build();
+    let sub = subscriber(cfg);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::INFO));
     });

@@ -22,7 +22,7 @@ pub use engine::EngineError;
 use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse_with_options, Matcher, Rule};
 pub use formatter::render_help;
-use logging::{human_bytes, parse_escapes, DebugFlag, InfoFlag, LogFormat};
+use logging::{human_bytes, parse_escapes, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use protocol::CharsetConv;
 #[cfg(feature = "acl")]
@@ -145,16 +145,19 @@ fn init_logging(matches: &ArgMatches) {
         info.clear();
         debug.clear();
     }
-    logging::init(
-        log_format,
-        verbose,
-        &info,
-        &debug,
-        quiet,
-        log_file.map(|p| (p, log_file_fmt)),
-        syslog,
-        journald,
-    );
+    let cfg = SubscriberConfig::builder()
+        .format(log_format)
+        .verbose(verbose)
+        .info(info)
+        .debug(debug)
+        .quiet(quiet)
+        .log_file(log_file.map(|p| (p, log_file_fmt)))
+        .syslog(syslog)
+        .journald(journald)
+        .colored(true)
+        .timestamps(false)
+        .build();
+    logging::init(cfg);
 }
 
 fn locale_charset() -> Option<String> {
