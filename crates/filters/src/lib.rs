@@ -1146,6 +1146,53 @@ pub fn parse_with_options(
                 "hide" => (Some(RuleKind::Exclude), "s".to_string(), rest),
                 "protect" => (Some(RuleKind::Protect), "r".to_string(), rest),
                 "risk" => (Some(RuleKind::Include), "r".to_string(), rest),
+                "include-from" => {
+                    let path = PathBuf::from(rest);
+                    if !visited.insert(path.clone()) {
+                        return Err(ParseError::RecursiveInclude(path));
+                    }
+                    let sub = parse_rule_list_file(&path, from0, '+', visited, depth + 1)?;
+                    rules.extend(sub);
+                    continue;
+                }
+                "exclude-from" => {
+                    let path = PathBuf::from(rest);
+                    if !visited.insert(path.clone()) {
+                        return Err(ParseError::RecursiveInclude(path));
+                    }
+                    let sub = parse_rule_list_file(&path, from0, '-', visited, depth + 1)?;
+                    rules.extend(sub);
+                    continue;
+                }
+                "files-from" => {
+                    let path = PathBuf::from(rest);
+                    if !visited.insert(path.clone()) {
+                        return Err(ParseError::RecursiveInclude(path));
+                    }
+                    let pats = parse_list_file(&path, from0)?;
+                    for pat in pats {
+                        let anchored = if pat.starts_with('/') {
+                            pat.clone()
+                        } else {
+                            format!("/{}", pat)
+                        };
+                        let dir_pat = format!("{}/***", anchored.trim_end_matches('/'));
+                        let line1 = if from0 {
+                            format!("+{anchored}\n")
+                        } else {
+                            format!("+ {anchored}\n")
+                        };
+                        rules.extend(parse_with_options(&line1, from0, visited, depth + 1)?);
+                        let line2 = if from0 {
+                            format!("+{dir_pat}\n")
+                        } else {
+                            format!("+ {dir_pat}\n")
+                        };
+                        rules.extend(parse_with_options(&line2, from0, visited, depth + 1)?);
+                    }
+                    rules.extend(parse_with_options("- *\n", from0, visited, depth + 1)?);
+                    continue;
+                }
                 "merge" => {
                     let path = PathBuf::from(rest);
                     if !visited.insert(path.clone()) {
