@@ -146,6 +146,15 @@ pub fn version_banner() -> String {
     )
 }
 
+pub fn version_string() -> String {
+    format!(
+        "rsync  version {}  protocol version {}\n",
+        env!("CARGO_PKG_VERSION"),
+        env!("UPSTREAM_VERSION")
+    )
+    version_banner()
+}
+
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")
@@ -1292,7 +1301,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     }
 
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
-        let list = ["md5", "sha1"];
+        let list = ["md4", "md5", "sha1"];
         rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
     }
 
