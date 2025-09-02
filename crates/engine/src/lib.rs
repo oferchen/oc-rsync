@@ -206,6 +206,16 @@ fn outside_size_bounds(len: u64, opts: &SyncOptions) -> bool {
     false
 }
 
+#[cfg(unix)]
+fn hard_link_id(dev: u64, ino: u64) -> u64 {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    dev.hash(&mut hasher);
+    ino.hash(&mut hasher);
+    hasher.finish()
+}
+
 fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
     let mut normalized = PathBuf::new();
     for comp in path.as_ref().components() {
@@ -2076,10 +2086,6 @@ pub fn sync(
         1024,
         opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
     );
-    #[cfg(unix)]
-    let mut link_groups: HashMap<(u64, u64), u64> = HashMap::new();
-    #[cfg(unix)]
-    let mut next_group: u64 = 0;
     while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
@@ -2127,11 +2133,7 @@ pub fn sync(
                     if opts.hard_links && src_meta.nlink() > 1 {
                         let dev = walker.devs()[entry.dev];
                         let ino = walker.inodes()[entry.inode];
-                        let group = *link_groups.entry((dev, ino)).or_insert_with(|| {
-                            let id = next_group;
-                            next_group += 1;
-                            id
-                        });
+                        let group = hard_link_id(dev, ino);
                         if !receiver.register_hard_link(group, &dest_path)? {
                             if let Some(parent) = dest_path.parent() {
                                 fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;

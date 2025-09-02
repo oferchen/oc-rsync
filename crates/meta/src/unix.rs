@@ -281,10 +281,8 @@ impl Metadata {
             let uid = if let Some(ref map) = opts.uid_map {
                 map(self.uid)
             } else if !opts.numeric_ids {
-                if let Some(u) = get_user_by_uid(self.uid) {
-                    get_user_by_name(u.name())
-                        .map(|u| u.uid())
-                        .unwrap_or(self.uid)
+                if let Some(name) = uid_to_name(self.uid) {
+                    uid_from_name(&name).unwrap_or(self.uid)
                 } else {
                     self.uid
                 }
@@ -294,10 +292,8 @@ impl Metadata {
             let gid = if let Some(ref map) = opts.gid_map {
                 map(self.gid)
             } else if !opts.numeric_ids {
-                if let Some(g) = get_group_by_gid(self.gid) {
-                    get_group_by_name(g.name())
-                        .map(|g| g.gid())
-                        .unwrap_or(self.gid)
+                if let Some(name) = gid_to_name(self.gid) {
+                    gid_from_name(&name).unwrap_or(self.gid)
                 } else {
                     self.gid
                 }

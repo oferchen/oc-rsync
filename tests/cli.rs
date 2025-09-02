@@ -946,6 +946,36 @@ fn owner_group_and_mode_preserved() {
 
 #[cfg(unix)]
 #[test]
+fn hard_links_preserved_via_cli() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    let f1 = src_dir.join("a");
+    fs::write(&f1, b"hi").unwrap();
+    let f2 = src_dir.join("b");
+    fs::hard_link(&f1, &f2).unwrap();
+
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--hard-links",
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let ino1 = fs::metadata(dst_dir.join("a")).unwrap().ino();
+    let ino2 = fs::metadata(dst_dir.join("b")).unwrap().ino();
+    assert_eq!(ino1, ino2);
+}
+
+#[cfg(unix)]
+#[test]
 fn numeric_ids_require_privileges() {
     let dir = tempdir().unwrap();
     let probe = dir.path().join("probe");

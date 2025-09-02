@@ -369,6 +369,36 @@ fn sync_applies_chmod() {
 
 #[cfg(unix)]
 #[test]
+fn sync_preserves_permissions_with_perms() {
+    use std::os::unix::fs::PermissionsExt;
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o654)).unwrap();
+
+    let dst_file = dst.join("file");
+    fs::write(&dst_file, b"hi").unwrap();
+    fs::set_permissions(&dst_file, fs::Permissions::from_mode(0o600)).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--perms", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let mode = fs::metadata(dst.join("file")).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o654);
+}
+
+#[cfg(unix)]
+#[test]
 fn sync_preserves_executability() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
