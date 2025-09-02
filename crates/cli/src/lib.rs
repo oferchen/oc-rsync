@@ -314,6 +314,13 @@ struct ClientOpts {
     backup: bool,
     #[arg(long = "backup-dir", value_name = "DIR", help_heading = "Backup")]
     backup_dir: Option<PathBuf>,
+    #[arg(
+        long = "suffix",
+        value_name = "SUFFIX",
+        default_value = "~",
+        help_heading = "Backup"
+    )]
+    suffix: String,
     #[arg(short = 'c', long, help_heading = "Attributes")]
     checksum: bool,
     #[arg(
@@ -1366,6 +1373,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         compare_dest: opts.compare_dest.clone(),
         backup: opts.backup || opts.backup_dir.is_some(),
         backup_dir: opts.backup_dir.clone(),
+        backup_suffix: opts.suffix.clone(),
         chmod: if chmod_rules.is_empty() {
             None
         } else {
