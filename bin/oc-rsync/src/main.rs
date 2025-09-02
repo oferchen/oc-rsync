@@ -8,8 +8,7 @@ use std::io::ErrorKind;
 fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     use clap::error::ErrorKind::*;
     match kind {
-        UnknownArgument => ExitCode::Unsupported,
-        InvalidValue
+        UnknownArgument
         | InvalidSubcommand
         | NoEquals
         | ValueValidation
@@ -21,6 +20,7 @@ fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
         | MissingSubcommand
         | InvalidUtf8
         | DisplayHelpOnMissingArgumentOrSubcommand => ExitCode::SyntaxOrUsage,
+        InvalidValue => ExitCode::Unsupported,
         DisplayHelp | DisplayVersion => ExitCode::Ok,
         Io | Format => ExitCode::FileIo,
         _ => ExitCode::SyntaxOrUsage,
@@ -87,5 +87,41 @@ fn main() {
             _ => ExitCode::Protocol,
         };
         std::process::exit(u8::from(code) as i32);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::exit_code_from_error_kind;
+    use clap::error::ErrorKind::*;
+    use protocol::ExitCode;
+
+    #[test]
+    fn maps_error_kinds_to_exit_codes() {
+        let cases = [
+            (UnknownArgument, ExitCode::SyntaxOrUsage),
+            (InvalidSubcommand, ExitCode::SyntaxOrUsage),
+            (NoEquals, ExitCode::SyntaxOrUsage),
+            (ValueValidation, ExitCode::SyntaxOrUsage),
+            (TooManyValues, ExitCode::SyntaxOrUsage),
+            (TooFewValues, ExitCode::SyntaxOrUsage),
+            (WrongNumberOfValues, ExitCode::SyntaxOrUsage),
+            (ArgumentConflict, ExitCode::SyntaxOrUsage),
+            (MissingRequiredArgument, ExitCode::SyntaxOrUsage),
+            (MissingSubcommand, ExitCode::SyntaxOrUsage),
+            (InvalidUtf8, ExitCode::SyntaxOrUsage),
+            (
+                DisplayHelpOnMissingArgumentOrSubcommand,
+                ExitCode::SyntaxOrUsage,
+            ),
+            (InvalidValue, ExitCode::Unsupported),
+            (DisplayHelp, ExitCode::Ok),
+            (DisplayVersion, ExitCode::Ok),
+            (Io, ExitCode::FileIo),
+            (Format, ExitCode::FileIo),
+        ];
+        for (kind, code) in cases {
+            assert_eq!(exit_code_from_error_kind(kind), code);
+        }
     }
 }

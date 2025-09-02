@@ -5,7 +5,7 @@ use protocol::ExitCode;
 use tempfile::tempdir;
 
 #[test]
-fn unsupported_option_returns_exit_code_unsupported() {
+fn unknown_option_is_usage_error() {
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
     Command::cargo_bin("oc-rsync")
@@ -17,11 +17,9 @@ fn unsupported_option_returns_exit_code_unsupported() {
         ])
         .assert()
         .failure()
-        .code(u8::from(ExitCode::Unsupported) as i32)
+        .code(u8::from(ExitCode::SyntaxOrUsage) as i32)
         .stderr(contains("rsync: --bad-option: unknown option"))
-        .stderr(contains(
-            "rsync error: requested action not supported (code 4)",
-        ));
+        .stderr(contains("rsync error: syntax or usage error (code 1)"));
 }
 
 #[test]
