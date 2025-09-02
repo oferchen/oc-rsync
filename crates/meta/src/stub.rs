@@ -148,6 +148,23 @@ mod non_unix {
         }
     }
 
+    #[derive(Default, Debug)]
+    pub struct HardLinks;
+
+    impl HardLinks {
+        pub fn register(&mut self, _id: u64, _path: &Path) -> bool {
+            false
+        }
+
+        pub fn finalize(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    pub fn hard_link_id(_dev: u64, _ino: u64) -> u64 {
+        0
+    }
+
     #[cfg(feature = "acl")]
     pub fn read_acl(_path: &Path, _fake_super: bool) -> io::Result<(Vec<ACLEntry>, Vec<ACLEntry>)> {
         Ok((Vec::new(), Vec::new()))

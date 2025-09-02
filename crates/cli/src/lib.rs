@@ -557,7 +557,7 @@ struct ClientOpts {
         help = "munge symlinks to make them safe & unusable"
     )]
     munge_links: bool,
-    #[arg(long = "hard-links", help_heading = "Attributes")]
+    #[arg(short = 'H', long = "hard-links", help_heading = "Attributes")]
     hard_links: bool,
     #[arg(long, help_heading = "Attributes", overrides_with = "no_devices")]
     devices: bool,

@@ -311,3 +311,42 @@ fn complex_rsh_and_rsync_path_env() {
     let env_val = fs::read_to_string(&env_out).unwrap();
     assert_eq!(env_val.trim(), "qux");
 }
+
+#[cfg(unix)]
+#[test]
+fn rsh_preserves_hard_links() {
+    use std::os::unix::fs::MetadataExt;
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let f1 = src.join("a");
+    fs::write(&f1, b"hi").unwrap();
+    let f2 = src.join("b");
+    fs::hard_link(&f1, &f2).unwrap();
+
+    let rsh = dir.path().join("fake_rsh.sh");
+    fs::write(&rsh, b"#!/bin/sh\nshift\nexec \"$@\"\n").unwrap();
+    fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let dst_spec = format!("fake:{}", dst.display());
+    let rr_bin = cargo_bin("oc-rsync");
+    let rr_dir = rr_bin.parent().unwrap();
+    let path_env = format!("{}:{}", rr_dir.display(), std::env::var("PATH").unwrap());
+    AssertCommand::new(&rr_bin)
+        .env("PATH", path_env)
+        .args([
+            "-aH",
+            "--rsh",
+            rsh.to_str().unwrap(),
+            &format!("{}/", src.display()),
+            &dst_spec,
+        ])
+        .assert()
+        .success();
+
+    let ino1 = fs::metadata(dst.join("a")).unwrap().ino();
+    let ino2 = fs::metadata(dst.join("b")).unwrap().ino();
+    assert_eq!(ino1, ino2);
+}
