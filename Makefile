@@ -57,7 +57,7 @@ test-golden:
 build:
 	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD)"
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
-	cargo build -p oc-rsync-bin --bin oc-rsync --release
+	cargo build -p oc-rsync-bin --bin oc-rsync --bin oc-rsyncd --release
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
 	cargo build -p oc-rsyncd-bin --bin oc-rsyncd --release
 
@@ -65,9 +65,21 @@ build:
 build-maxspeed:
 	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD) [maxspeed]"
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
-	cargo build -p oc-rsync-bin --bin oc-rsync --profile maxspeed --release
+	cargo build -p oc-rsync-bin --bin oc-rsync --bin oc-rsyncd --profile maxspeed --release
+
+TARGETS := aarch64-apple-darwin x86_64-apple-darwin x86_64-unknown-linux-gnu x86_64-pc-windows-gnu
+
+.PHONY: $(addprefix build-,$(TARGETS)) $(addprefix build-maxspeed-,$(TARGETS))
+
+build-%:
+	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD) target=$*"
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
-	cargo build -p oc-rsyncd-bin --bin oc-rsyncd --profile maxspeed --release
+	cargo build -p oc-rsync-bin --bin oc-rsync --bin oc-rsyncd --release --target $*
+
+build-maxspeed-%:
+	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD) [maxspeed] target=$*"
+	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
+	cargo build -p oc-rsync-bin --bin oc-rsync --bin oc-rsyncd --profile maxspeed --release --target $*
 
 # Show version from the release artifact built above
 version: build
