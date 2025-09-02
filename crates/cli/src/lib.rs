@@ -145,6 +145,14 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
     }
 }
 
+pub fn version_string() -> String {
+    format!(
+        "oc-rsync {} (rsync {})",
+        env!("CARGO_PKG_VERSION"),
+        option_env!("UPSTREAM_VERSION").unwrap_or("unknown"),
+    )
+}
+
 #[allow(clippy::vec_init_then_push)]
 pub fn version_banner() -> String {
     #[allow(unused_mut)]
@@ -163,11 +171,9 @@ pub fn version_banner() -> String {
         .map(|p| p.to_string())
         .collect::<Vec<_>>()
         .join(", ");
-    let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
     format!(
-        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
-        env!("CARGO_PKG_VERSION"),
-        upstream,
+        "{}\nProtocols: {}\nFeatures: {}\n",
+        version_string(),
         protocols,
         features,
     )
@@ -2441,7 +2447,9 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut hosts_allow = opts.hosts_allow.clone();
     let mut hosts_deny = opts.hosts_deny.clone();
     let mut log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
-    let log_format = matches.get_one::<String>("client-log-file-format").cloned();
+    let log_format = matches
+        .get_one::<String>("client-log-file-format")
+        .map(|s| parse_escapes(s));
     let mut motd = opts.motd.clone();
     let mut pid_file = opts.pid_file.clone();
     let mut lock_file = opts.lock_file.clone();

@@ -455,11 +455,27 @@ pub fn parse_escapes(input: &str) -> String {
             match chars.next() {
                 Some('a') => out.push('\x07'),
                 Some('b') => out.push('\x08'),
+                Some('e') => out.push('\x1b'),
                 Some('f') => out.push('\x0c'),
                 Some('n') => out.push('\n'),
                 Some('r') => out.push('\r'),
                 Some('t') => out.push('\t'),
                 Some('v') => out.push('\x0b'),
+                Some('x') => {
+                    let mut val = 0u32;
+                    for _ in 0..2 {
+                        if let Some(peek) = chars.peek().copied() {
+                            if peek.is_ascii_hexdigit() {
+                                val = (val << 4) + chars.next().unwrap().to_digit(16).unwrap();
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    if let Some(ch) = char::from_u32(val) {
+                        out.push(ch);
+                    }
+                }
                 Some('\\') => out.push('\\'),
                 Some(c @ '0'..='7') => {
                     let mut val = c.to_digit(8).unwrap();

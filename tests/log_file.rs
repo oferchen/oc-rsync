@@ -1,6 +1,6 @@
 // tests/log_file.rs
-use assert_cmd::Command;
-use std::fs;
+use assert_cmd::Command as TestCommand;
+use std::{fs, process::Command};
 use tempfile::tempdir;
 
 #[test]
@@ -11,7 +11,7 @@ fn log_file_writes_messages() {
     fs::create_dir_all(&dst).unwrap();
     fs::write(&src, b"hi").unwrap();
     let log = tmp.path().join("log.txt");
-    Command::cargo_bin("oc-rsync")
+    TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -36,7 +36,7 @@ fn log_file_format_json_writes_json() {
     fs::create_dir_all(&dst).unwrap();
     fs::write(&src, b"hi").unwrap();
     let log = tmp.path().join("log.json");
-    Command::cargo_bin("oc-rsync")
+    TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -61,7 +61,7 @@ fn out_format_writes_custom_message() {
     fs::create_dir_all(&dst).unwrap();
     fs::write(&src, b"hi").unwrap();
     let log = tmp.path().join("log.txt");
-    Command::cargo_bin("oc-rsync")
+    TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -92,7 +92,7 @@ fn out_format_supports_all_escapes() {
     let log = tmp.path().join("log.txt");
     let fmt = "\t%o:%n%L%i%%\\\n";
     let src_arg = format!("{}/", src_dir.display());
-    Command::cargo_bin("oc-rsync")
+    TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
@@ -110,4 +110,55 @@ fn out_format_supports_all_escapes() {
     assert!(contents.contains("ln -> f"), "{}", contents);
     assert!(contents.contains(">f"), "{}", contents);
     assert!(contents.contains("%\\\n"), "{}", contents);
+}
+#[test]
+fn out_format_escapes_match_rsync() {
+    use logging::parse_escapes;
+
+    let tmp = tempdir().unwrap();
+    let src_dir = tmp.path().join("src");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::write(src_dir.join("f"), b"hi").unwrap();
+    let dst_oc = tmp.path().join("dst_oc");
+    let dst_rsync = tmp.path().join("dst_rsync");
+    fs::create_dir_all(&dst_oc).unwrap();
+    fs::create_dir_all(&dst_rsync).unwrap();
+    let log = tmp.path().join("log.txt");
+    let fmt = "\\t%o:%n\\x21";
+    let fmt_rsync = parse_escapes(fmt);
+    let src_arg = format!("{}/", src_dir.display());
+
+    TestCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--log-file",
+            log.to_str().unwrap(),
+            &format!("--out-format={fmt}"),
+            &src_arg,
+            dst_oc.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let ours = fs::read_to_string(&log).unwrap();
+    let ours_line = ours
+        .lines()
+        .find(|l| l.contains("info::name") && l.contains("send"))
+        .unwrap();
+    let ours_msg = ours_line.split("info::name: ").nth(1).unwrap();
+
+    let output = Command::new("rsync")
+        .args([
+            "-r",
+            &format!("--out-format={fmt_rsync}"),
+            &src_arg,
+            dst_rsync.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let theirs = String::from_utf8_lossy(&output.stdout);
+    let theirs_msg = theirs.lines().find(|l| !l.is_empty()).unwrap();
+
+    assert_eq!(ours_msg, theirs_msg);
 }
