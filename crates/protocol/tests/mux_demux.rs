@@ -103,3 +103,29 @@ fn error_xfer_sets_remote_error() {
     assert!(demux.ingest(frame).is_err());
     assert_eq!(demux.take_remote_error(), Some("oops".into()));
 }
+
+#[test]
+fn progress_and_xattrs() {
+    let mut mux = Mux::new(Duration::from_millis(50));
+    let mut demux = Demux::new(Duration::from_millis(50));
+
+    mux.register_channel(0);
+    let rx = demux.register_channel(0);
+
+    mux.send_progress(0, 123).unwrap();
+    mux.send_xattrs(0, b"user=1".to_vec()).unwrap();
+
+    let mut frames = Vec::new();
+    while frames.len() < 2 {
+        if let Some(frame) = mux.poll() {
+            frames.push(frame);
+        }
+    }
+
+    for frame in frames {
+        demux.ingest(frame).unwrap();
+    }
+
+    assert_eq!(rx.try_recv().unwrap(), Message::Progress(123));
+    assert_eq!(rx.try_recv().unwrap(), Message::Xattrs(b"user=1".to_vec()));
+}
