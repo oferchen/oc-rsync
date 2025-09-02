@@ -2048,7 +2048,8 @@ This option causes rsync to set the owner of the destination file to be
 the same as the source file, but only if the receiving rsync is being
 run as the super-user (see also the \f[V]--super\f[R] and
 \f[V]--fake-super\f[R] options).
-Without this option, the owner of new and/or transferred files are set
+The negative form \f[V]--no-owner\f[R] (alias \f[V]--no-o\f[R]) disables
+owner preservation. Without this option, the owner of new and/or transferred files are set
 to the invoking user on the receiving side.
 .PP
 The preservation of ownership will associate matching names by default,

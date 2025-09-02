@@ -471,6 +471,7 @@ struct ClientOpts {
     owner: bool,
     #[arg(
         long = "no-owner",
+        alias = "no-o",
         help_heading = "Attributes",
         overrides_with = "owner",
         alias = "no-o"
