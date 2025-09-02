@@ -962,6 +962,67 @@ fn temp_dir_cross_filesystem_finalizes() {
 }
 
 #[test]
+#[cfg(unix)]
+fn temp_dir_cross_filesystem_matches_rsync() {
+    let base = tempdir_in(".").unwrap();
+    let src_dir = base.path().join("src");
+    let rsync_dst = base.path().join("rsync");
+    let ours_dst = base.path().join("ours");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&rsync_dst).unwrap();
+    fs::create_dir_all(&ours_dst).unwrap();
+    let data = vec![b'x'; 200_000];
+    fs::write(src_dir.join("a.txt"), &data).unwrap();
+
+    let tmp_dir = match Tmpfs::new() {
+        Some(t) => t,
+        None => {
+            eprintln!("skipping cross-filesystem parity test; tmpfs unavailable");
+            return;
+        }
+    };
+
+    let dst_dev = fs::metadata(&rsync_dst).unwrap().dev();
+    let tmp_dev = fs::metadata(tmp_dir.path()).unwrap().dev();
+    assert_ne!(dst_dev, tmp_dev, "devices match");
+
+    let src_arg = format!("{}/", src_dir.display());
+    std::process::Command::new("rsync")
+        .args([
+            "-r",
+            "--temp-dir",
+            tmp_dir.path().to_str().unwrap(),
+            &src_arg,
+            rsync_dst.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(fs::read_dir(tmp_dir.path()).unwrap().next().is_none());
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--temp-dir",
+            tmp_dir.path().to_str().unwrap(),
+            &src_arg,
+            ours_dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert!(fs::read_dir(tmp_dir.path()).unwrap().next().is_none());
+
+    let diff = std::process::Command::new("diff")
+        .arg("-r")
+        .arg(&rsync_dst)
+        .arg(&ours_dst)
+        .status()
+        .unwrap();
+    assert!(diff.success(), "directory trees differ");
+}
+
+#[test]
 fn numeric_ids_are_preserved() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");

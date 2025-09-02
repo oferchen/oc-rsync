@@ -49,7 +49,7 @@ No known gaps.
 No known gaps.
 
 ## Performance Knobs
-- `--temp-dir` — cross-filesystem behavior differs. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
+No known gaps.
 
 ## CI
 - CI runs only on Linux; other platforms are cross-compiled without tests. [compatibility.md](compatibility.md) · [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh)
