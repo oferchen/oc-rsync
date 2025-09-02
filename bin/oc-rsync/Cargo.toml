@@ -13,6 +13,7 @@ oc-rsync-cli = { path = "../../crates/cli" }
 engine = { path = "../../crates/engine" }
 logging = { path = "../../crates/logging" }
 protocol = { path = "../../crates/protocol" }
+clap = { version = "4" }
 
 [dev-dependencies]
 assert_cmd = "2"
