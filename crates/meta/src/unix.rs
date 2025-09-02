@@ -506,8 +506,15 @@ impl Metadata {
                 if self.default_acl.is_empty() {
                     if let Err(err) = remove_default_acl(path) {
                         match err.raw_os_error() {
-                            Some(libc::EPERM) | Some(libc::EACCES) | Some(libc::ENOSYS)
-                            | Some(libc::EINVAL) | Some(libc::ENOTSUP) => {}
+                            Some(code)
+                                if matches!(
+                                    code,
+                                    libc::EPERM
+                                        | libc::EACCES
+                                        | libc::ENOSYS
+                                        | libc::EINVAL
+                                        | libc::ENOTSUP
+                                ) || code == libc::EOPNOTSUPP => {}
                             _ => return Err(err),
                         }
                     }
@@ -625,7 +632,7 @@ fn should_ignore_acl_error(err: &posix_acl::ACLError) -> bool {
         matches!(
             code,
             libc::EPERM | libc::EACCES | libc::ENOSYS | libc::EINVAL | libc::ENOTSUP
-        )
+        ) || code == libc::EOPNOTSUPP
     } else {
         false
     }

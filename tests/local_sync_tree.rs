@@ -322,6 +322,34 @@ fn sync_removes_acls() {
     assert!(dacl_dst.entries().is_empty());
 }
 
+#[cfg(all(unix, feature = "acl"))]
+#[test]
+fn sync_ignores_acls_without_flag() {
+    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+
+    let mut acl = PosixACL::read_acl(&file).unwrap();
+    acl.set(Qualifier::User(12345), ACL_READ);
+    acl.write_acl(&file).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", &src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let acl_dst = PosixACL::read_acl(dst.join("file")).unwrap();
+    assert!(acl_dst.get(Qualifier::User(12345)).is_none());
+}
+
 #[cfg(unix)]
 #[test]
 fn sync_preserves_owner_and_group() {
