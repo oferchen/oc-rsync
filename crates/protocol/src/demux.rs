@@ -109,18 +109,13 @@ impl Demux {
 
         if id == 0 {
             match &msg {
-                Message::Data(payload) if payload.len() == 1 => {
-                    let code = payload[0];
-                    self.exit_code = Some(code);
-                    if code != 0 {
+                Message::Exit(code) => {
+                    self.exit_code = Some(*code);
+                    if *code != 0 {
                         return Err(std::io::Error::other(format!("remote exit code {}", code)));
                     } else {
                         return Ok(());
                     }
-                }
-                Message::ErrorExit(code) => {
-                    self.exit_code = Some(*code);
-                    return Err(std::io::Error::other(format!("remote exit code {}", code)));
                 }
                 Message::Success(idx) => {
                     self.successes.push(*idx);

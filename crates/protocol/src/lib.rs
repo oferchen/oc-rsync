@@ -374,7 +374,7 @@ pub enum Message {
     Noop,
     Redo(u32),
     Stats(Vec<u8>),
-    ErrorExit(u8),
+    Exit(u8),
     Success(u32),
     Deleted(u32),
     NoSend(u32),
@@ -531,12 +531,13 @@ impl Message {
                 };
                 Frame { header, payload }
             }
-            Message::ErrorExit(code) => {
+            Message::Exit(code) => {
                 let payload = vec![code];
+                let msg = if code == 0 { Msg::Data } else { Msg::ErrorExit };
                 let header = FrameHeader {
                     channel,
                     tag: Tag::Message,
-                    msg: Msg::ErrorExit,
+                    msg,
                     len: payload.len() as u32,
                 };
                 Frame { header, payload }
@@ -637,7 +638,13 @@ impl Message {
                         let v = rdr.read_u32::<BigEndian>()?;
                         Ok(Message::Version(v))
                     }
-                    Msg::Data => Ok(Message::Data(f.payload)),
+                    Msg::Data => {
+                        if f.header.channel == 0 && f.payload.len() == 1 {
+                            Ok(Message::Exit(f.payload[0]))
+                        } else {
+                            Ok(Message::Data(f.payload))
+                        }
+                    }
                     Msg::Done => Ok(Message::Done),
                     Msg::FileListEntry => Ok(Message::FileListEntry(f.payload)),
                     Msg::Attributes => Ok(Message::Attributes(f.payload)),
@@ -736,7 +743,7 @@ impl Message {
                                 "invalid error exit payload",
                             ));
                         }
-                        Ok(Message::ErrorExit(f.payload[0]))
+                        Ok(Message::Exit(f.payload[0]))
                     }
                     Msg::Success => {
                         if f.payload.len() != 4 {

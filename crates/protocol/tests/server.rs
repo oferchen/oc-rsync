@@ -95,7 +95,7 @@ fn server_classic_versions() {
         srv.handshake(latest, SUPPORTED_CAPS, &local, None).unwrap();
         assert_eq!(srv.version, ver);
         let expected = {
-            let mut v = latest.to_be_bytes().to_vec();
+            let mut v = ver.to_be_bytes().to_vec();
             v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
             let mut out_frame = Vec::new();
             codecs_frame.encode(&mut out_frame).unwrap();

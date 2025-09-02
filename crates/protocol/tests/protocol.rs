@@ -205,7 +205,7 @@ fn extra_messages_roundtrip() {
     let msg2 = Message::from_frame(decoded, None).unwrap();
     assert_eq!(msg2, msg);
 
-    let msg = Message::ErrorExit(2);
+    let msg = Message::Exit(2);
     let frame = msg.to_frame(0, None);
     let mut buf = Vec::new();
     frame.encode(&mut buf).unwrap();

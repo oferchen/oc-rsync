@@ -118,10 +118,10 @@ impl<R: Read, W: Write> Server<R, W> {
         let mut buf = [0u8; 4];
         self.reader.read_exact(&mut buf)?;
         let peer = u32::from_be_bytes(buf);
-        self.writer.write_all(&version.to_be_bytes())?;
-        self.writer.flush()?;
         let ver = negotiate_version(version, peer)?;
         self.version = ver;
+        self.writer.write_all(&ver.to_be_bytes())?;
+        self.writer.flush()?;
 
         self.reader.read_exact(&mut buf)?;
         let peer_caps = u32::from_be_bytes(buf);
