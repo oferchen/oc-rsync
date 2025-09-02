@@ -118,14 +118,6 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
     }
 }
 
-pub fn version_string() -> String {
-    format!(
-        "oc-rsync {} (rsync {})\n",
-        env!("CARGO_PKG_VERSION"),
-        env!("UPSTREAM_VERSION"),
-    )
-}
-
 #[allow(clippy::vec_init_then_push)]
 pub fn version_banner() -> String {
     #[allow(unused_mut)]
@@ -146,7 +138,6 @@ pub fn version_banner() -> String {
         .join(", ");
     let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
     format!(
-        version_string(),
         "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
         env!("CARGO_PKG_VERSION"),
         upstream,
@@ -154,11 +145,6 @@ pub fn version_banner() -> String {
         features,
     )
 }
-
-pub fn version_string() -> String {
-    version_banner()
-}
-
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")
@@ -738,9 +724,19 @@ struct ClientOpts {
         help = "request charset conversion of filenames"
     )]
     iconv: Option<String>,
-    #[arg(long = "write-batch", value_name = "FILE", help_heading = "Misc")]
+    #[arg(
+        long = "write-batch",
+        value_name = "FILE",
+        help_heading = "Misc",
+        conflicts_with = "read_batch"
+    )]
     write_batch: Option<PathBuf>,
-    #[arg(long = "read-batch", value_name = "FILE", help_heading = "Misc")]
+    #[arg(
+        long = "read-batch",
+        value_name = "FILE",
+        help_heading = "Misc",
+        conflicts_with = "write_batch"
+    )]
     read_batch: Option<PathBuf>,
     #[arg(long = "copy-devices", help_heading = "Misc")]
     copy_devices: bool,
