@@ -118,6 +118,14 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
     }
 }
 
+pub fn version_string() -> String {
+    format!(
+        "oc-rsync {} (rsync {})\n",
+        env!("CARGO_PKG_VERSION"),
+        env!("UPSTREAM_VERSION"),
+    )
+}
+
 #[allow(clippy::vec_init_then_push)]
 pub fn version_banner() -> String {
     #[allow(unused_mut)]
@@ -138,6 +146,7 @@ pub fn version_banner() -> String {
         .join(", ");
     let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
     format!(
+        version_string(),
         "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
         env!("CARGO_PKG_VERSION"),
         upstream,
@@ -513,7 +522,11 @@ struct ClientOpts {
     copy_unsafe_links: bool,
     #[arg(long, help_heading = "Attributes")]
     safe_links: bool,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(
+        long,
+        help_heading = "Attributes",
+        help = "munge symlinks to make them safe & unusable"
+    )]
     munge_links: bool,
     #[arg(long = "hard-links", help_heading = "Attributes")]
     hard_links: bool,
