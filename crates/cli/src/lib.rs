@@ -472,7 +472,8 @@ struct ClientOpts {
     #[arg(
         long = "no-owner",
         help_heading = "Attributes",
-        overrides_with = "owner"
+        overrides_with = "owner",
+        alias = "no-o"
     )]
     no_owner: bool,
     #[arg(
@@ -485,7 +486,8 @@ struct ClientOpts {
     #[arg(
         long = "no-group",
         help_heading = "Attributes",
-        overrides_with = "group"
+        overrides_with = "group",
+        alias = "no-g"
     )]
     no_group: bool,
     #[arg(
