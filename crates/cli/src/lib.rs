@@ -140,6 +140,14 @@ pub fn version_banner() -> String {
     )
 }
 
+pub fn version_string() -> String {
+    format!(
+        "rsync  version {}  protocol version {}\n",
+        env!("CARGO_PKG_VERSION"),
+        env!("UPSTREAM_VERSION")
+    )
+}
+
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")
