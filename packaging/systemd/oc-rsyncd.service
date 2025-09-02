@@ -10,7 +10,7 @@ Type=notify
 NotifyAccess=main
 User=ocrsync
 Group=ocrsync
-ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd/oc-rsyncd.conf
+ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf
 Restart=on-failure
 RestartSec=2s
 NoNewPrivileges=yes
@@ -38,10 +38,6 @@ MemoryDenyWriteExecute=yes
 SystemCallFilter=@system-service
 SystemCallFilter=~@privileged
 SystemCallFilter=~@resources
-RuntimeDirectory=oc-rsyncd
-LogsDirectory=oc-rsyncd
-StateDirectory=oc-rsyncd
-ConfigurationDirectory=oc-rsyncd
 PrivateIPC=yes
 ProtectKernelLogs=yes
 SystemCallArchitectures=native

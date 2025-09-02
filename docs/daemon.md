@@ -44,10 +44,8 @@ read-only with `ProtectSystem=strict`, hides user home directories via
 `ProtectHome=true`, and restarts on failure after a short delay with
 `Restart=on-failure` and `RestartSec=2s`. The unit grants only the
 `CAP_NET_BIND_SERVICE` capability via `CapabilityBoundingSet`/`AmbientCapabilities`
-and creates isolated runtime, log, state, and configuration directories with
-`RuntimeDirectory=oc-rsyncd`, `LogsDirectory=oc-rsyncd`, `StateDirectory=oc-rsyncd`,
-and `ConfigurationDirectory=oc-rsyncd`. These settings may be relaxed if the
-daemon requires additional privileges.
+and writes its PID and log to `/run/oc-rsyncd.pid` and `/var/log/oc-rsyncd.log`.
+These settings may be relaxed if the daemon requires additional privileges.
 
 ## Module setup
 

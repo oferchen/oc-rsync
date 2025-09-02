@@ -48,11 +48,7 @@ fn service_unit_matches_spec() {
         "RestartSec=2s",
         "CapabilityBoundingSet=CAP_NET_BIND_SERVICE",
         "AmbientCapabilities=CAP_NET_BIND_SERVICE",
-        "RuntimeDirectory=oc-rsyncd",
-        "LogsDirectory=oc-rsyncd",
-        "StateDirectory=oc-rsyncd",
-        "ConfigurationDirectory=oc-rsyncd",
-        "ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd/oc-rsyncd.conf",
+        "ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf",
     ] {
         assert!(
             unit.lines().any(|l| l.trim() == expected),

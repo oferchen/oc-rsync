@@ -47,12 +47,9 @@ features to reduce attack surface. It enables
 with \f[V]Restart=on-failure\f[R] and \f[V]RestartSec=2s\f[R]. The unit
 grants only the \f[V]CAP_NET_BIND_SERVICE\f[R] capability via
 \f[V]CapabilityBoundingSet\f[R]/\f[V]AmbientCapabilities\f[R] and
-creates isolated runtime, log, state, and configuration directories with
-\f[V]RuntimeDirectory=oc-rsyncd\f[R],
-\f[V]LogsDirectory=oc-rsyncd\f[R],
-\f[V]StateDirectory=oc-rsyncd\f[R], and
-\f[V]ConfigurationDirectory=oc-rsyncd\f[R]. These settings may be
-relaxed if the daemon requires additional privileges.
+writes its PID and log to \f[V]/run/oc-rsyncd.pid\f[R] and
+\f[V]/var/log/oc-rsyncd.log\f[R]. These settings may be relaxed if the
+daemon requires additional privileges.
 .SS Module setup
 .PP
 Modules map a name to a directory on disk.
