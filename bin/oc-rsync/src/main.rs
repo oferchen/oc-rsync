@@ -2,9 +2,9 @@
 mod version;
 
 use logging::LogFormat;
-use std::{io::ErrorKind, path::PathBuf};
 use oc_rsync_cli::{cli_command, parse_logging_flags, EngineError};
 use protocol::ExitCode;
+use std::{io::ErrorKind, path::PathBuf};
 
 fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     use clap::error::ErrorKind::*;
