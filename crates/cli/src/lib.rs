@@ -241,15 +241,41 @@ struct ClientOpts {
         help = "output a change-summary for all updates"
     )]
     itemize_changes: bool,
-    #[arg(long, help_heading = "Delete")]
+    #[arg(
+        long,
+        help_heading = "Delete",
+        overrides_with_all = [
+            "delete_before",
+            "delete_during",
+            "delete_after",
+            "delete_delay"
+        ]
+    )]
     delete: bool,
-    #[arg(long = "delete-before", help_heading = "Delete")]
+    #[arg(
+        long = "delete-before",
+        help_heading = "Delete",
+        overrides_with_all = ["delete", "delete_during", "delete_after", "delete_delay"]
+    )]
     delete_before: bool,
-    #[arg(long = "delete-during", help_heading = "Delete", visible_alias = "del")]
+    #[arg(
+        long = "delete-during",
+        help_heading = "Delete",
+        visible_alias = "del",
+        overrides_with_all = ["delete", "delete_before", "delete_after", "delete_delay"]
+    )]
     delete_during: bool,
-    #[arg(long = "delete-after", help_heading = "Delete")]
+    #[arg(
+        long = "delete-after",
+        help_heading = "Delete",
+        overrides_with_all = ["delete", "delete_before", "delete_during", "delete_delay"]
+    )]
     delete_after: bool,
-    #[arg(long = "delete-delay", help_heading = "Delete")]
+    #[arg(
+        long = "delete-delay",
+        help_heading = "Delete",
+        overrides_with_all = ["delete", "delete_before", "delete_during", "delete_after"]
+    )]
     delete_delay: bool,
     #[arg(long = "delete-excluded", help_heading = "Delete")]
     delete_excluded: bool,
@@ -257,7 +283,11 @@ struct ClientOpts {
     delete_missing_args: bool,
     #[arg(long = "ignore-missing-args", help_heading = "Delete")]
     ignore_missing_args: bool,
-    #[arg(long = "remove-source-files", help_heading = "Delete")]
+    #[arg(
+        long = "remove-source-files",
+        help_heading = "Delete",
+        visible_alias = "remove-sent-files"
+    )]
     remove_source_files: bool,
     #[arg(long = "ignore-errors", help_heading = "Delete")]
     ignore_errors: bool,
@@ -303,7 +333,7 @@ struct ClientOpts {
         help = "set block/file checksum seed (advanced)"
     )]
     checksum_seed: Option<u32>,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(short = 'p', long, help_heading = "Attributes")]
     perms: bool,
     #[arg(short = 'E', long, help_heading = "Attributes")]
     executability: bool,
@@ -331,7 +361,7 @@ struct ClientOpts {
         help_heading = "Attributes"
     )]
     groupmap: Vec<String>,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(short = 't', long, help_heading = "Attributes")]
     times: bool,
     #[arg(short = 'U', long, help_heading = "Attributes")]
     atimes: bool,
@@ -341,11 +371,11 @@ struct ClientOpts {
     omit_dir_times: bool,
     #[arg(short = 'J', long, help_heading = "Attributes")]
     omit_link_times: bool,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(short = 'o', long, help_heading = "Attributes")]
     owner: bool,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(short = 'g', long, help_heading = "Attributes")]
     group: bool,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(short = 'l', long, help_heading = "Attributes")]
     links: bool,
     #[arg(short = 'L', long, help_heading = "Attributes")]
     copy_links: bool,
@@ -363,6 +393,8 @@ struct ClientOpts {
     devices: bool,
     #[arg(long, help_heading = "Attributes")]
     specials: bool,
+    #[arg(short = 'D', help_heading = "Attributes")]
+    devices_specials: bool,
     #[cfg(feature = "xattr")]
     #[arg(long, help_heading = "Attributes")]
     xattrs: bool,
@@ -669,6 +701,8 @@ fn parse_name_map(specs: &[String], kind: IdKind) -> Result<Option<IdMapper>> {
 struct DaemonOpts {
     #[arg(long)]
     daemon: bool,
+    #[arg(long = "no-detach")]
+    no_detach: bool,
     #[arg(long, value_parser = parse_module, value_name = "NAME=PATH")]
     module: Vec<Module>,
     #[arg(long)]
@@ -1255,8 +1289,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         copy_unsafe_links: opts.copy_unsafe_links,
         safe_links: opts.safe_links,
         hard_links: opts.hard_links,
-        devices: opts.devices || opts.archive,
-        specials: opts.specials || opts.archive,
+        devices: opts.devices || opts.archive || opts.devices_specials,
+        specials: opts.specials || opts.archive || opts.devices_specials,
         #[cfg(feature = "xattr")]
         xattrs: opts.xattrs || (opts.fake_super && !opts.super_user),
         #[cfg(feature = "acl")]
@@ -1272,7 +1306,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             opts.whole_file
         },
         skip_compress: opts.skip_compress.clone(),
-        partial: opts.partial || opts.partial_progress,
+        partial: opts.partial || opts.partial_progress || opts.partial_dir.is_some(),
         progress: opts.progress || opts.partial_progress,
         human_readable: opts.human_readable,
         itemize_changes: opts.itemize_changes,

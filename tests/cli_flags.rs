@@ -1,5 +1,6 @@
 // tests/cli_flags.rs
 use assert_cmd::Command;
+use oc_rsync_cli::cli_command;
 use tempfile::NamedTempFile;
 
 #[test]
@@ -92,4 +93,31 @@ fn trust_sender_flag_is_accepted() {
         .args(["--trust-sender", "--version"])
         .assert()
         .success();
+}
+
+#[test]
+fn short_attribute_flags_are_accepted() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["-p", "-o", "-g", "-t", "-l", "-D", "--version"])
+        .assert()
+        .success();
+}
+
+#[test]
+fn remove_sent_files_alias_is_accepted() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--remove-sent-files", "--version"])
+        .assert()
+        .success();
+}
+
+#[test]
+fn delete_flags_last_one_wins() {
+    let matches = cli_command()
+        .try_get_matches_from(["prog", "--delete-after", "--delete-before", "src", "dst"])
+        .unwrap();
+    assert!(matches.get_flag("delete_before"));
+    assert!(!matches.get_flag("delete_after"));
 }
