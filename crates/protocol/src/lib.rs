@@ -9,6 +9,7 @@ use std::io::{self, Read, Write};
 #[derive(Clone)]
 pub struct CharsetConv {
     remote: &'static Encoding,
+    local: &'static Encoding,
 }
 
 impl CharsetConv {
@@ -22,8 +23,20 @@ impl CharsetConv {
         res.into_owned()
     }
 
-    pub fn new(remote: &'static Encoding) -> Self {
-        Self { remote }
+    pub fn to_remote(&self, b: &[u8]) -> Vec<u8> {
+        let (s, _, _) = self.local.decode(b);
+        let (res, _, _) = self.remote.encode(&s);
+        res.into_owned()
+    }
+
+    pub fn to_local(&self, b: &[u8]) -> Vec<u8> {
+        let (s, _, _) = self.remote.decode(b);
+        let (res, _, _) = self.local.encode(&s);
+        res.into_owned()
+    }
+
+    pub fn new(remote: &'static Encoding, local: &'static Encoding) -> Self {
+        Self { remote, local }
     }
 }
 
@@ -635,8 +648,7 @@ impl Message {
     ) -> Self {
         let mut e = entry.clone();
         if let Some(cv) = iconv {
-            let s = String::from_utf8_lossy(&e.path);
-            e.path = cv.encode_remote(&s);
+            e.path = cv.to_remote(&e.path);
         }
         Message::FileListEntry(enc.encode_entry(&e))
     }
@@ -652,8 +664,7 @@ impl Message {
                     .decode_entry(bytes)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
                 if let Some(cv) = iconv {
-                    let s = cv.decode_remote(&e.path);
-                    e.path = s.into_bytes();
+                    e.path = cv.to_local(&e.path);
                 }
                 Ok(e)
             }
