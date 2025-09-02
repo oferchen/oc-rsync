@@ -3763,6 +3763,10 @@ fn cvs_exclude_skips_ignored_files() {
 #[cfg(all(unix, feature = "xattr"))]
 #[test]
 fn super_overrides_fake_super() {
+    if !Uid::effective().is_root() {
+        eprintln!("skipping super_overrides_fake_super: requires root");
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src_dir = tmp.path().join("src");
     let dst_dir = tmp.path().join("dst");
