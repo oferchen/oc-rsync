@@ -53,6 +53,7 @@ wait-timeout = "0.2"
 users = "0.11"
 meta = { path = "crates/meta" }
 daemon = { path = "crates/daemon" }
+sha2 = "0.10"
 
 [[bin]]
 name = "flag_matrix"
