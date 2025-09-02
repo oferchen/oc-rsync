@@ -154,6 +154,8 @@ impl<R: Read, W: Write> Server<R, W> {
             if let Some(codec) = negotiate_codec(codecs, &peer_codecs) {
                 if codec == Codec::Zstd && self.caps & CAP_ZSTD != 0 {
                     selected = Codec::Zstd;
+                } else {
+                    selected = codec;
                 }
             }
         } else if self.caps & CAP_ZSTD != 0 {

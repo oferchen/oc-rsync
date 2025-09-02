@@ -350,6 +350,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     "zlib" => Codec::Zlib,
                     "zlibx" => Codec::Zlibx,
                     "zstd" => Codec::Zstd,
+                    "lz4" => Codec::Lz4,
                     other => {
                         return Err(EngineError::Other(format!("unknown codec {other}")));
                     }

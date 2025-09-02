@@ -1,7 +1,7 @@
 // crates/compress/tests/codecs.rs
 use compress::{
     decode_codecs, encode_codecs, negotiate_codec, should_compress, Codec, Compressor,
-    Decompressor, Zlib, Zlibx, Zstd,
+    Decompressor, Lz4, Zlib, Zlibx, Zstd,
 };
 use std::io;
 use std::path::Path;
@@ -33,10 +33,18 @@ fn zstd_roundtrip() {
 }
 
 #[test]
+fn lz4_roundtrip() {
+    let codec = Lz4::default();
+    let compressed = codec.compress(DATA).expect("compress");
+    let decompressed = codec.decompress(&compressed).expect("decompress");
+    assert_eq!(DATA, decompressed.as_slice());
+}
+
+#[test]
 fn negotiation_helper_picks_common_codec() {
-    let local = [Codec::Zstd, Codec::Zlibx, Codec::Zlib];
-    let remote = [Codec::Zlibx, Codec::Zlib];
-    assert_eq!(negotiate_codec(&local, &remote), Some(Codec::Zlibx));
+    let local = [Codec::Zstd, Codec::Lz4, Codec::Zlibx, Codec::Zlib];
+    let remote = [Codec::Lz4, Codec::Zlibx, Codec::Zlib];
+    assert_eq!(negotiate_codec(&local, &remote), Some(Codec::Lz4));
     let remote2 = [Codec::Zstd];
     assert_eq!(negotiate_codec(&[Codec::Zlib], &remote2), None);
 }
@@ -49,9 +57,9 @@ fn codec_from_byte_rejects_unknown() {
 
 #[test]
 fn encode_decode_roundtrip_and_error() {
-    let codecs = vec![Codec::Zlib, Codec::Zlibx, Codec::Zstd];
+    let codecs = vec![Codec::Zlib, Codec::Zlibx, Codec::Zstd, Codec::Lz4];
     let encoded = encode_codecs(&codecs);
-    assert_eq!(encoded, vec![1, 2, 4]);
+    assert_eq!(encoded, vec![1, 2, 4, 8]);
     let decoded = decode_codecs(&encoded).expect("decode");
     assert_eq!(decoded, codecs);
     let err = decode_codecs(&[42]).unwrap_err();
