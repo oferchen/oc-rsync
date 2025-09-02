@@ -49,50 +49,40 @@ fn parse_nonzero_duration(s: &str) -> std::result::Result<Duration, String> {
     }
 }
 
-fn parse_size(s: &str) -> std::result::Result<usize, String> {
-    let s = s.trim();
-    if s == "0" {
-        return Ok(0);
-    }
-    if let Some(last) = s.chars().last() {
-        if last.is_ascii_alphabetic() {
-            let num = s[..s.len() - 1]
-                .parse::<usize>()
-                .map_err(|e| e.to_string())?;
-            let mult = match last.to_ascii_lowercase() {
-                'k' => 1usize << 10,
-                'm' => 1usize << 20,
-                'g' => 1usize << 30,
-                _ => return Err(format!("invalid size suffix: {last}")),
-            };
-            return num
-                .checked_mul(mult)
-                .ok_or_else(|| "size overflow".to_string());
-        }
-    }
-    s.parse::<usize>().map_err(|e| e.to_string())
-}
+const SIZE_SUFFIXES: &[(char, u32)] = &[('k', 10), ('m', 20), ('g', 30)];
 
-fn parse_file_size(s: &str) -> std::result::Result<u64, String> {
+fn parse_suffixed<T>(s: &str, shifts: &[(char, u32)]) -> std::result::Result<T, String>
+where
+    T: TryFrom<u64>,
+{
     let s = s.trim();
     if s == "0" {
-        return Ok(0);
+        return T::try_from(0).map_err(|_| "size overflow".to_string());
     }
     if let Some(last) = s.chars().last() {
         if last.is_ascii_alphabetic() {
             let num = s[..s.len() - 1].parse::<u64>().map_err(|e| e.to_string())?;
-            let mult = match last.to_ascii_lowercase() {
-                'k' => 1u64 << 10,
-                'm' => 1u64 << 20,
-                'g' => 1u64 << 30,
-                _ => return Err(format!("invalid size suffix: {last}")),
-            };
-            return num
+            let shift = shifts
+                .iter()
+                .find(|(c, _)| last.eq_ignore_ascii_case(c))
+                .map(|(_, s)| *s)
+                .ok_or_else(|| format!("invalid size suffix: {last}"))?;
+            let mult = 1u64 << shift;
+            let val = num
                 .checked_mul(mult)
-                .ok_or_else(|| "size overflow".to_string());
+                .ok_or_else(|| "size overflow".to_string())?;
+            return T::try_from(val).map_err(|_| "size overflow".to_string());
         }
     }
-    s.parse::<u64>().map_err(|e| e.to_string())
+    let val = s.parse::<u64>().map_err(|e| e.to_string())?;
+    T::try_from(val).map_err(|_| "size overflow".to_string())
+}
+
+fn parse_size<T>(s: &str) -> std::result::Result<T, String>
+where
+    T: TryFrom<u64>,
+{
+    parse_suffixed(s, SIZE_SUFFIXES)
 }
 
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
@@ -267,11 +257,26 @@ struct ClientOpts {
     force: bool,
     #[arg(long = "max-delete", value_name = "NUM", help_heading = "Delete")]
     max_delete: Option<usize>,
-    #[arg(long = "max-alloc", value_name = "SIZE", value_parser = parse_size, help_heading = "Misc")]
+    #[arg(
+        long = "max-alloc",
+        value_name = "SIZE",
+        value_parser = parse_size::<usize>,
+        help_heading = "Misc"
+    )]
     max_alloc: Option<usize>,
-    #[arg(long = "max-size", value_name = "SIZE", value_parser = parse_file_size, help_heading = "Misc")]
+    #[arg(
+        long = "max-size",
+        value_name = "SIZE",
+        value_parser = parse_size::<u64>,
+        help_heading = "Misc"
+    )]
     max_size: Option<u64>,
-    #[arg(long = "min-size", value_name = "SIZE", value_parser = parse_file_size, help_heading = "Misc")]
+    #[arg(
+        long = "min-size",
+        value_name = "SIZE",
+        value_parser = parse_size::<u64>,
+        help_heading = "Misc"
+    )]
     min_size: Option<u64>,
     #[arg(
         long,
