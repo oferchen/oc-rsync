@@ -635,10 +635,22 @@ fn temp_files_created_in_temp_dir() {
         .spawn()
         .unwrap();
 
-    let tmp_file = tmp_dir.join("a.tmp");
     let mut found = false;
     for _ in 0..50 {
-        if tmp_file.exists() {
+        let tmp_present = std::fs::read_dir(&tmp_dir)
+            .unwrap()
+            .filter_map(|e| {
+                let entry = e.ok()?;
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                if name.starts_with(".a.txt.") {
+                    Some(entry.path())
+                } else {
+                    None
+                }
+            })
+            .next();
+        if tmp_present.is_some() {
             found = true;
             break;
         }
@@ -842,6 +854,52 @@ fn delay_updates_cross_filesystem_rename() {
         .success();
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, b"y");
+}
+
+#[test]
+#[cfg(unix)]
+fn temp_dir_cross_filesystem_finalizes() {
+    let base = tempdir_in(".").unwrap();
+    let src_dir = base.path().join("src");
+    let dst_dir = base.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    let data = b"data".repeat(10);
+    fs::write(src_dir.join("a.txt"), &data).unwrap();
+
+    let tmp_dir = match Tmpfs::new() {
+        Some(t) => t,
+        None => {
+            eprintln!("skipping cross-filesystem finalize test; tmpfs unavailable");
+            return;
+        }
+    };
+
+    let dst_dev = fs::metadata(&dst_dir).unwrap().dev();
+    let tmp_dev = fs::metadata(tmp_dir.path()).unwrap().dev();
+    assert_ne!(dst_dev, tmp_dev, "devices match");
+
+    let src_arg = format!("{}/", src_dir.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--temp-dir",
+            tmp_dir.path().to_str().unwrap(),
+            &src_arg,
+            dst_dir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(fs::read_dir(tmp_dir.path()).unwrap().next().is_none());
+    let entries: Vec<_> = fs::read_dir(&dst_dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(entries, ["a.txt".to_string()]);
+    let out = fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, data);
 }
 
 #[test]
