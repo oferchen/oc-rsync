@@ -555,6 +555,23 @@ pub fn chroot_and_drop_privileges(
     Ok(())
 }
 
+#[cfg(unix)]
+pub fn drop_privileges(uid: u32, gid: u32) -> io::Result<()> {
+    use nix::unistd::{setgid, setuid, Gid, Uid};
+    if gid != 0 {
+        setgid(Gid::from_raw(gid)).map_err(io::Error::other)?;
+    }
+    if uid != 0 {
+        setuid(Uid::from_raw(uid)).map_err(io::Error::other)?;
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+pub fn drop_privileges(_uid: u32, _gid: u32) -> io::Result<()> {
+    Ok(())
+}
+
 pub type Handler = dyn Fn(&mut dyn Transport) -> io::Result<()> + Send + Sync;
 
 fn host_matches(ip: &IpAddr, pat: &str) -> bool {
