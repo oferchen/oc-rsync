@@ -213,6 +213,31 @@ fn extra_messages_roundtrip() {
 }
 
 #[test]
+fn demux_error_routing() {
+    use protocol::{Demux, Mux};
+    use std::time::Duration;
+
+    let mut mux = Mux::new(Duration::from_secs(1));
+    let tx = mux.register_channel(0);
+    tx.send(Message::ErrorXfer("ex".into())).unwrap();
+    tx.send(Message::Error("er".into())).unwrap();
+    tx.send(Message::ErrorSocket("so".into())).unwrap();
+    tx.send(Message::ErrorUtf8("ut".into())).unwrap();
+
+    let mut demux = Demux::new(Duration::from_secs(1));
+    let _rx = demux.register_channel(0);
+    for _ in 0..4 {
+        let frame = mux.poll().unwrap();
+        demux.ingest(frame).unwrap();
+    }
+
+    assert_eq!(demux.take_error_xfers(), vec!["ex".to_string()]);
+    assert_eq!(demux.take_errors(), vec!["er".to_string()]);
+    assert_eq!(demux.take_error_sockets(), vec!["so".to_string()]);
+    assert_eq!(demux.take_error_utf8s(), vec!["ut".to_string()]);
+}
+
+#[test]
 fn log_messages_roundtrip() {
     let texts = [
         (Message::ErrorXfer("a".into()), Msg::ErrorXfer),
