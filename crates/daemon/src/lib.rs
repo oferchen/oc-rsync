@@ -74,6 +74,7 @@ fn parse_gid(val: &str) -> io::Result<u32> {
 pub struct Module {
     pub name: String,
     pub path: PathBuf,
+    pub comment: Option<String>,
     pub hosts_allow: Vec<String>,
     pub hosts_deny: Vec<String>,
     pub auth_users: Vec<String>,
@@ -84,6 +85,7 @@ pub struct Module {
     pub uid: Option<u32>,
     pub gid: Option<u32>,
     pub read_only: bool,
+    pub write_only: bool,
     pub list: bool,
     pub max_connections: Option<u32>,
     pub refuse_options: Vec<String>,
@@ -95,6 +97,7 @@ impl Clone for Module {
         Self {
             name: self.name.clone(),
             path: self.path.clone(),
+            comment: self.comment.clone(),
             hosts_allow: self.hosts_allow.clone(),
             hosts_deny: self.hosts_deny.clone(),
             auth_users: self.auth_users.clone(),
@@ -105,6 +108,7 @@ impl Clone for Module {
             uid: self.uid,
             gid: self.gid,
             read_only: self.read_only,
+            write_only: self.write_only,
             list: self.list,
             max_connections: self.max_connections,
             refuse_options: self.refuse_options.clone(),
@@ -118,6 +122,7 @@ impl Default for Module {
         Self {
             name: String::new(),
             path: PathBuf::new(),
+            comment: None,
             hosts_allow: Vec::new(),
             hosts_deny: Vec::new(),
             auth_users: Vec::new(),
@@ -128,6 +133,7 @@ impl Default for Module {
             uid: None,
             gid: None,
             read_only: true,
+            write_only: false,
             list: true,
             max_connections: None,
             refuse_options: Vec::new(),
@@ -185,6 +191,7 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
             "hosts_allow" => module.hosts_allow = parse_list(val),
             "hosts_deny" => module.hosts_deny = parse_list(val),
             "auth_users" => module.auth_users = parse_list(val),
+            "comment" => module.comment = Some(val.to_string()),
             "secrets_file" => module.secrets_file = Some(PathBuf::from(val)),
             "timeout" => {
                 let secs = val
@@ -201,6 +208,7 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
             "uid" => module.uid = Some(parse_uid(val).map_err(|e| e.to_string())?),
             "gid" => module.gid = Some(parse_gid(val).map_err(|e| e.to_string())?),
             "read_only" => module.read_only = parse_bool(val).map_err(|e| e.to_string())?,
+            "write_only" => module.write_only = parse_bool(val).map_err(|e| e.to_string())?,
             "list" => module.list = parse_bool(val).map_err(|e| e.to_string())?,
             "max_connections" => {
                 let max = val
@@ -310,6 +318,7 @@ pub struct DaemonConfig {
     pub uid: Option<u32>,
     pub gid: Option<u32>,
     pub read_only: Option<bool>,
+    pub write_only: Option<bool>,
     pub list: Option<bool>,
     pub max_connections: Option<usize>,
     pub refuse_options: Vec<String>,
@@ -449,6 +458,9 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             (false, "read only") => {
                 cfg.read_only = Some(parse_bool(&val)?);
             }
+            (false, "write only") => {
+                cfg.write_only = Some(parse_bool(&val)?);
+            }
             (false, "list") => {
                 cfg.list = Some(parse_bool(&val)?);
             }
@@ -486,6 +498,11 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             (true, "auth users") => {
                 if let Some(m) = current.as_mut() {
                     m.auth_users = parse_list(&val);
+                }
+            }
+            (true, "comment") => {
+                if let Some(m) = current.as_mut() {
+                    m.comment = Some(val.trim().to_string());
                 }
             }
             (true, "secrets file") => {
@@ -528,6 +545,11 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             (true, "read only") => {
                 if let Some(m) = current.as_mut() {
                     m.read_only = parse_bool(&val)?;
+                }
+            }
+            (true, "write only") => {
+                if let Some(m) = current.as_mut() {
+                    m.write_only = parse_bool(&val)?;
                 }
             }
             (true, "list") => {
@@ -975,6 +997,16 @@ pub fn handle_connection<T: Transport>(
                 module.connections.fetch_sub(1, Ordering::SeqCst);
             }
             return Err(io::Error::new(io::ErrorKind::PermissionDenied, "read only"));
+        }
+        if module.write_only && saw_server && is_sender {
+            let _ = transport.send(b"@ERROR: write only");
+            if module.max_connections.is_some() {
+                module.connections.fetch_sub(1, Ordering::SeqCst);
+            }
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "write only",
+            ));
         }
         if let Some(dur) = module.timeout {
             transport.set_read_timeout(Some(dur))?;

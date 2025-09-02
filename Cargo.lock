@@ -1012,9 +1012,11 @@ version = "0.1.0"
 dependencies = [
  "assert_cmd",
  "clap",
+ "daemon",
  "logging",
  "oc-rsync-cli",
  "protocol",
+ "transport",
 ]
 
 [[package]]

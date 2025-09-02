@@ -63,10 +63,6 @@ name = "oc-rsync"
 path = "bin/oc-rsync/src/main.rs"
 
 [[bin]]
-name = "oc-rsyncd"
-path = "bin/oc-rsyncd/src/main.rs"
-
-[[bin]]
 name = "flag_matrix"
 path = "tools/flag_matrix.rs"
 

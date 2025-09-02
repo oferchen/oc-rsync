@@ -251,6 +251,36 @@ fn daemon_config_read_only_module_rejects_writes() {
 }
 
 #[test]
+#[serial]
+fn daemon_config_write_only_module_rejects_reads() {
+    let dir = tempfile::tempdir().unwrap();
+    let data_dir = dir.path().join("data");
+    fs::create_dir(&data_dir).unwrap();
+    let config = format!(
+        "port = 0\n[data]\n    path = {}\n    write only = yes\n",
+        data_dir.display()
+    );
+    let (mut child, port, _tmp) = spawn_daemon(&config);
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    t.authenticate(None, false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
+    t.send(b"data\n").unwrap();
+    t.receive(&mut ok).unwrap();
+    t.send(b"--server\n--sender\n").unwrap();
+    t.send(b"\n").unwrap();
+    let mut resp = [0u8; 128];
+    let n = t.receive(&mut resp).unwrap_or(0);
+    assert!(String::from_utf8_lossy(&resp[..n]).contains("write only"));
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
 fn parse_config_global_directives() {
     let cfg = parse_config(
         "read only = yes\nlist = no\nmax connections = 5\nrefuse options = delete, compress\n[data]\n    path = /tmp\n",
@@ -263,6 +293,19 @@ fn parse_config_global_directives() {
         cfg.refuse_options,
         vec!["delete".to_string(), "compress".to_string()]
     );
+}
+
+#[test]
+fn parse_config_global_write_only() {
+    let cfg = parse_config("write only = yes\n[data]\n    path = /tmp\n").unwrap();
+    assert_eq!(cfg.write_only, Some(true));
+}
+
+#[test]
+fn parse_config_module_comment_and_write_only() {
+    let cfg = parse_config("[data]\npath=/tmp\ncomment = test\nwrite only = yes\n").unwrap();
+    assert_eq!(cfg.modules[0].comment.as_deref(), Some("test"));
+    assert!(cfg.modules[0].write_only);
 }
 
 #[test]

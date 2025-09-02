@@ -70,13 +70,14 @@ fn parse_module_parses_options() {
     let auth = dir.path().join("auth");
     fs::write(&auth, "alice data\n").unwrap();
     let spec = format!(
-        "data={},hosts-allow=127.0.0.1,hosts-deny=10.0.0.1,auth-users=alice bob,secrets-file={},uid=0,gid=0,timeout=1,use-chroot=no,numeric-ids=yes",
+        "data={},comment=hi,write-only=yes,hosts-allow=127.0.0.1,hosts-deny=10.0.0.1,auth-users=alice bob,secrets-file={},uid=0,gid=0,timeout=1,use-chroot=no,numeric-ids=yes",
         dir.path().display(),
         auth.display()
     );
     let module = parse_module(&spec).unwrap();
     assert_eq!(module.name, "data");
     assert_eq!(module.path, fs::canonicalize(dir.path()).unwrap());
+    assert_eq!(module.comment.as_deref(), Some("hi"));
     assert_eq!(module.hosts_allow, vec!["127.0.0.1".to_string()]);
     assert_eq!(module.hosts_deny, vec!["10.0.0.1".to_string()]);
     assert_eq!(
@@ -89,6 +90,7 @@ fn parse_module_parses_options() {
     assert_eq!(module.timeout, Some(Duration::from_secs(1)));
     assert!(!module.use_chroot);
     assert!(module.numeric_ids);
+    assert!(module.write_only);
 }
 
 #[cfg(unix)]

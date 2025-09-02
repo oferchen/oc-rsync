@@ -74,7 +74,7 @@ when available.
 | Module parsing and secrets auth | ✅ | [tests/daemon_config.rs](../tests/daemon_config.rs)<br>[tests/daemon_auth.sh](../tests/daemon_auth.sh) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
 | IPv6 listener and rate limiting | ✅ | [tests/daemon.rs](../tests/daemon.rs) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
 | Chroot and uid/gid dropping | ⚠️ | [tests/daemon_features.sh](../tests/daemon_features.sh) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
-| `rsyncd.conf` file parsing | ❌ | — | — |
+| `rsyncd.conf` file parsing | ✅ | [tests/daemon_config.rs](../tests/daemon_config.rs) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
 
 ## CLI
 | Feature | Status | Tests | Source |
