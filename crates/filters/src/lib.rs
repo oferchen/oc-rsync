@@ -48,6 +48,7 @@ pub struct RuleData {
     matcher: GlobMatcher,
     invert: bool,
     flags: RuleFlags,
+    source: Option<PathBuf>,
 }
 
 #[derive(Clone)]
@@ -82,6 +83,24 @@ struct Cached {
 }
 
 #[derive(Clone, Default)]
+pub struct FilterStats {
+    pub matches: usize,
+    pub misses: usize,
+    pub last_source: Option<PathBuf>,
+}
+
+impl FilterStats {
+    fn record(&mut self, source: Option<&Path>, matched: bool) {
+        if matched {
+            self.matches += 1;
+            self.last_source = source.map(|p| p.to_path_buf());
+        } else {
+            self.misses += 1;
+        }
+    }
+}
+
+#[derive(Clone, Default)]
 pub struct Matcher {
     root: Option<PathBuf>,
     rules: Vec<(usize, Rule)>,
@@ -92,6 +111,7 @@ pub struct Matcher {
     existing: bool,
     prune_empty_dirs: bool,
     from0: bool,
+    stats: RefCell<FilterStats>,
 }
 
 impl Matcher {
@@ -119,6 +139,7 @@ impl Matcher {
             existing,
             prune_empty_dirs,
             from0: false,
+            stats: RefCell::new(FilterStats::default()),
         }
     }
 
@@ -236,6 +257,7 @@ impl Matcher {
 
         let mut decision: Option<bool> = None;
         let mut matched = false;
+        let mut matched_source: Option<PathBuf> = None;
         for rule in ordered.iter() {
             match rule {
                 Rule::Protect(data) => {
@@ -246,9 +268,15 @@ impl Matcher {
                         continue;
                     }
                     let matched_rule = data.matcher.is_match(path);
-                    if (data.invert && !matched_rule) || (!data.invert && matched_rule) {
+                    let rule_match =
+                        (data.invert && !matched_rule) || (!data.invert && matched_rule);
+                    self.stats
+                        .borrow_mut()
+                        .record(data.source.as_deref(), rule_match);
+                    if rule_match {
                         decision = Some(true);
                         matched = true;
+                        matched_source = data.source.clone();
                         break;
                     }
                 }
@@ -260,9 +288,15 @@ impl Matcher {
                         continue;
                     }
                     let matched_rule = data.matcher.is_match(path);
-                    if (data.invert && !matched_rule) || (!data.invert && matched_rule) {
+                    let rule_match =
+                        (data.invert && !matched_rule) || (!data.invert && matched_rule);
+                    self.stats
+                        .borrow_mut()
+                        .record(data.source.as_deref(), rule_match);
+                    if rule_match {
                         decision = Some(true);
                         matched = true;
+                        matched_source = data.source.clone();
                         break;
                     }
                 }
@@ -274,9 +308,15 @@ impl Matcher {
                         continue;
                     }
                     let matched_rule = data.matcher.is_match(path);
-                    if (data.invert && !matched_rule) || (!data.invert && matched_rule) {
+                    let rule_match =
+                        (data.invert && !matched_rule) || (!data.invert && matched_rule);
+                    self.stats
+                        .borrow_mut()
+                        .record(data.source.as_deref(), rule_match);
+                    if rule_match {
                         decision = Some(false);
                         matched = true;
+                        matched_source = data.source.clone();
                         break;
                     }
                 }
@@ -308,10 +348,18 @@ impl Matcher {
                 }
             }
         }
+        let source_str = matched_source
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default();
+        let stats = self.stats.borrow();
         tracing::info!(
             target: InfoFlag::Filter.target(),
             path = %path.display(),
             matched,
+            matches = stats.matches,
+            misses = stats.misses,
+            source = %source_str,
             rules = ordered.len(),
         );
         Ok(included)
@@ -336,6 +384,25 @@ impl Matcher {
                 other => self.rules.push((max_idx, other)),
             }
         }
+    }
+
+    pub fn stats(&self) -> FilterStats {
+        self.stats.borrow().clone()
+    }
+
+    pub fn report(&self) {
+        let stats = self.stats();
+        let source = stats
+            .last_source
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default();
+        tracing::info!(
+            target: InfoFlag::Filter.target(),
+            matches = stats.matches,
+            misses = stats.misses,
+            source = %source,
+        );
     }
 
     fn dir_rules_at(
@@ -663,7 +730,13 @@ impl Matcher {
             matches!(state, Some(false))
         }
 
-        let parsed = parse_with_options(&adjusted, self.from0, visited, depth + 1)?;
+        let parsed = parse_with_options(
+            &adjusted,
+            self.from0,
+            visited,
+            depth + 1,
+            Some(path.to_path_buf()),
+        )?;
 
         for r in parsed {
             match r {
@@ -828,6 +901,7 @@ pub fn parse_with_options(
     from0: bool,
     visited: &mut HashSet<PathBuf>,
     depth: usize,
+    source: Option<PathBuf>,
 ) -> Result<Vec<Rule>, ParseError> {
     if depth >= MAX_PARSE_DEPTH {
         return Err(ParseError::RecursionLimit);
@@ -910,6 +984,7 @@ pub fn parse_with_options(
                         matcher,
                         invert: false,
                         flags: RuleFlags::default(),
+                        source: source.clone(),
                     };
                     rules.push(Rule::Exclude(data));
                 }
@@ -974,7 +1049,7 @@ pub fn parse_with_options(
                         buf.extend_from_slice(token);
                         buf.push(b'\n');
                     }
-                    parse_from_bytes(&buf, false, visited, depth + 1)?
+                    parse_from_bytes(&buf, false, visited, depth + 1, Some(path.clone()))?
                 } else if m.contains('+') || m.contains('-') {
                     let sign = if m.contains('+') { b'+' } else { b'-' };
                     let mut buf = Vec::new();
@@ -988,9 +1063,9 @@ pub fn parse_with_options(
                         buf.extend_from_slice(token);
                         buf.push(b'\n');
                     }
-                    parse_from_bytes(&buf, false, visited, depth + 1)?
+                    parse_from_bytes(&buf, false, visited, depth + 1, Some(path.clone()))?
                 } else {
-                    parse_from_bytes(&data, true, visited, depth + 1)?
+                    parse_from_bytes(&data, true, visited, depth + 1, Some(path.clone()))?
                 }
             } else {
                 let mut content = String::from_utf8_lossy(&data).to_string();
@@ -1030,7 +1105,7 @@ pub fn parse_with_options(
                         content = buf;
                     }
                 }
-                parse_with_options(&content, from0, visited, depth + 1)?
+                parse_with_options(&content, from0, visited, depth + 1, Some(path.clone()))?
             };
             if m.contains('s') || m.contains('r') || m.contains('p') || m.contains('x') {
                 for rule in &mut sub {
@@ -1061,6 +1136,7 @@ pub fn parse_with_options(
                     matcher,
                     invert: false,
                     flags: RuleFlags::default(),
+                    source: source.clone(),
                 };
                 rules.push(Rule::Exclude(data));
             }
@@ -1076,7 +1152,7 @@ pub fn parse_with_options(
             }
             let data =
                 fs::read(&path).map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
-            let sub = parse_from_bytes(&data, from0, visited, depth + 1)?;
+            let sub = parse_from_bytes(&data, from0, visited, depth + 1, Some(path.clone()))?;
             rules.extend(sub);
             continue;
         } else if let Some(r) = line.strip_prefix(':') {
@@ -1143,6 +1219,7 @@ pub fn parse_with_options(
                     matcher,
                     invert: false,
                     flags: RuleFlags::default(),
+                    source: source.clone(),
                 };
                 rules.push(Rule::Exclude(data));
             }
@@ -1194,15 +1271,33 @@ pub fn parse_with_options(
                         } else {
                             format!("+ {anchored}\n")
                         };
-                        rules.extend(parse_with_options(&line1, from0, visited, depth + 1)?);
+                        rules.extend(parse_with_options(
+                            &line1,
+                            from0,
+                            visited,
+                            depth + 1,
+                            Some(path.clone()),
+                        )?);
                         let line2 = if from0 {
                             format!("+{dir_pat}\n")
                         } else {
                             format!("+ {dir_pat}\n")
                         };
-                        rules.extend(parse_with_options(&line2, from0, visited, depth + 1)?);
+                        rules.extend(parse_with_options(
+                            &line2,
+                            from0,
+                            visited,
+                            depth + 1,
+                            Some(path.clone()),
+                        )?);
                     }
-                    rules.extend(parse_with_options("- *\n", from0, visited, depth + 1)?);
+                    rules.extend(parse_with_options(
+                        "- *\n",
+                        from0,
+                        visited,
+                        depth + 1,
+                        Some(path.clone()),
+                    )?);
                     continue;
                 }
                 "merge" => {
@@ -1212,7 +1307,13 @@ pub fn parse_with_options(
                     }
                     let content = fs::read_to_string(&path)
                         .map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
-                    rules.extend(parse_with_options(&content, from0, visited, depth + 1)?);
+                    rules.extend(parse_with_options(
+                        &content,
+                        from0,
+                        visited,
+                        depth + 1,
+                        Some(path.clone()),
+                    )?);
                     continue;
                 }
                 "dir-merge" => {
@@ -1299,6 +1400,7 @@ pub fn parse_with_options(
                 matcher,
                 invert,
                 flags: flags.clone(),
+                source: source.clone(),
             };
             match kind {
                 RuleKind::Include => rules.push(Rule::Include(data)),
@@ -1316,7 +1418,7 @@ pub fn parse(
     visited: &mut HashSet<PathBuf>,
     depth: usize,
 ) -> Result<Vec<Rule>, ParseError> {
-    parse_with_options(input, false, visited, depth)
+    parse_with_options(input, false, visited, depth, None)
 }
 
 pub const CVS_DEFAULTS: &[&str] = &[
@@ -1379,6 +1481,7 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
                     perishable: true,
                     ..Default::default()
                 },
+                source: None,
             };
             out.push(Rule::Exclude(data));
         }
@@ -1457,6 +1560,7 @@ pub fn parse_from_bytes(
     from0: bool,
     visited: &mut HashSet<PathBuf>,
     depth: usize,
+    source: Option<PathBuf>,
 ) -> Result<Vec<Rule>, ParseError> {
     if from0 {
         let mut rules = Vec::new();
@@ -1471,12 +1575,18 @@ pub fn parse_from_bytes(
             }
             let mut buf = line;
             buf.push('\n');
-            rules.extend(parse_with_options(&buf, from0, visited, depth)?);
+            rules.extend(parse_with_options(
+                &buf,
+                from0,
+                visited,
+                depth,
+                source.clone(),
+            )?);
         }
         Ok(rules)
     } else {
         let s = String::from_utf8_lossy(input);
-        parse_with_options(&s, from0, visited, depth)
+        parse_with_options(&s, from0, visited, depth, source)
     }
 }
 
@@ -1493,7 +1603,7 @@ pub fn parse_file(
     } else {
         fs::read(path)?
     };
-    parse_from_bytes(&data, from0, visited, depth)
+    parse_from_bytes(&data, from0, visited, depth, Some(path.to_path_buf()))
 }
 
 pub fn parse_rule_list_from_bytes(
@@ -1502,6 +1612,7 @@ pub fn parse_rule_list_from_bytes(
     sign: char,
     visited: &mut HashSet<PathBuf>,
     depth: usize,
+    source: Option<PathBuf>,
 ) -> Result<Vec<Rule>, ParseError> {
     let pats = parse_list(input, from0);
     let mut rules = Vec::new();
@@ -1511,7 +1622,13 @@ pub fn parse_rule_list_from_bytes(
         } else {
             format!("{sign} {pat}\n")
         };
-        rules.extend(parse_with_options(&line, from0, visited, depth)?);
+        rules.extend(parse_with_options(
+            &line,
+            from0,
+            visited,
+            depth,
+            source.clone(),
+        )?);
     }
     Ok(rules)
 }
@@ -1530,5 +1647,5 @@ pub fn parse_rule_list_file(
     } else {
         fs::read(path)?
     };
-    parse_rule_list_from_bytes(&data, from0, sign, visited, depth)
+    parse_rule_list_from_bytes(&data, from0, sign, visited, depth, Some(path.to_path_buf()))
 }

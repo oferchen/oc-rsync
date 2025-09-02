@@ -17,6 +17,7 @@ fn include_from_newline_vs_null() {
         false,
         &mut v1,
         0,
+        None,
     )
     .unwrap();
     let m_nl = Matcher::new(rules_nl);
@@ -30,6 +31,7 @@ fn include_from_newline_vs_null() {
         true,
         &mut v2,
         0,
+        None,
     )
     .unwrap();
     let m_nul = Matcher::new(rules_nul);
@@ -45,7 +47,7 @@ fn include_exclude_precedence() {
     fs::write(&list, "a\nb\n").unwrap();
     let filter = format!("+ c\nexclude-from {}\n+ a\n- *\n", list.display());
     let mut v = HashSet::new();
-    let rules = parse_with_options(&filter, false, &mut v, 0).unwrap();
+    let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
     let m = Matcher::new(rules);
     assert!(m.is_included("c").unwrap());
     assert!(m.is_included("a").unwrap());

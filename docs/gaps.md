@@ -31,7 +31,7 @@ when available.
 | --- | --- | --- | --- |
 | Include/Exclude parser | ✅ | [crates/filters/tests/include_exclude.rs](../crates/filters/tests/include_exclude.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | `.rsync-filter` merge semantics | ✅ | [crates/filters/tests/merge.rs](../crates/filters/tests/merge.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
-| Rule logging and statistics | ❌ | — | — |
+| Rule logging and statistics | ✅ | [crates/filters/tests/rule_stats.rs](../crates/filters/tests/rule_stats.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 
 ## File List
 | Feature | Status | Tests | Source |

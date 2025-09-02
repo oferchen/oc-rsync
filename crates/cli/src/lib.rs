@@ -42,7 +42,7 @@ pub mod version;
 
 fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
-    parse_with_options(s, from0, &mut v, 0)
+    parse_with_options(s, from0, &mut v, 0, None)
 }
 
 fn parse_duration(s: &str) -> std::result::Result<Duration, std::num::ParseIntError> {
