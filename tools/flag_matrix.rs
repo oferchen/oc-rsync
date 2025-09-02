@@ -110,8 +110,7 @@ fn parse_feature_matrix() -> BTreeSet<String> {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rsync_help = Command::new("rsync").arg("--help").output()?;
-    let rsync_help_str = String::from_utf8(rsync_help.stdout)?;
+    let rsync_help_str = fs::read_to_string("tests/fixtures/rsync-help.txt")?;
     let (rsync_flags, rsync_aliases, rsync_alias_desc) = parse_help(&rsync_help_str);
 
     let oc_rsync_help = Command::new("cargo")
