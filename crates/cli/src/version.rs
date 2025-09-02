@@ -1,7 +1,6 @@
 // crates/cli/src/version.rs
 use protocol::SUPPORTED_PROTOCOLS;
 
-/// Latest rsync protocol version supported by oc-rsync.
 pub const RSYNC_PROTOCOL: u32 = SUPPORTED_PROTOCOLS[0];
 
 /// Render a three-line version banner as separate lines.
@@ -28,7 +27,6 @@ pub fn render_version_lines() -> Vec<String> {
     ]
 }
 
-/// Render the version banner as a single string ending with a newline.
 #[allow(dead_code)]
 pub fn version_banner() -> String {
     format!("{}\n", render_version_lines().join("\n"))
