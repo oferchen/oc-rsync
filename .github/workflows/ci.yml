@@ -2,26 +2,62 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  linux:
+  lint-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-    - name: Build
-      run: make build
-    - name: Run tests
-      run: cargo test --verbose
-    - name: Validate interop matrix docs
-      run: scripts/check-run-matrix-docs.sh
-      
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+      - name: Test with coverage
+        run: cargo llvm-cov --all-features --fail-under-lines 95
+      - name: Validate interop matrix docs
+        run: scripts/check-run-matrix-docs.sh
+
+  build:
+    needs: lint-test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }} --bin oc-rsync
+      - name: Package artifacts
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/oc-rsync dist/oc-rsync-${{ matrix.target }}
+          sha256sum dist/oc-rsync-${{ matrix.target }} > dist/oc-rsync-${{ matrix.target }}.sha256
+          cargo install cargo-sbom || true
+          cargo sbom --output dist/oc-rsync-${{ matrix.target }}-sbom.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oc-rsync-${{ matrix.target }}
+          path: dist
+
