@@ -22,7 +22,7 @@ pub use engine::EngineError;
 use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse_with_options, Matcher, Rule};
 pub use formatter::render_help;
-use logging::{human_bytes, parse_escapes, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
+use logging::{parse_escapes, progress_formatter, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use protocol::CharsetConv;
 #[cfg(feature = "acl")]
@@ -743,6 +743,7 @@ struct ClientOpts {
         long = "read-batch",
         value_name = "FILE",
         help_heading = "Misc",
+        help = "read a batched update from FILE",
         conflicts_with = "write_batch"
     )]
     read_batch: Option<PathBuf>,
@@ -2157,16 +2158,13 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         }
     };
     if opts.stats && !opts.quiet {
-        println!("files transferred: {}", stats.files_transferred);
-        println!("files deleted: {}", stats.files_deleted);
-        if opts.human_readable {
-            println!(
-                "bytes transferred: {}",
-                human_bytes(stats.bytes_transferred)
-            );
-        } else {
-            println!("bytes transferred: {}", stats.bytes_transferred);
-        }
+        println!(
+            "Number of regular files transferred: {}",
+            stats.files_transferred
+        );
+        println!("Number of deleted files: {}", stats.files_deleted);
+        let bytes = progress_formatter(stats.bytes_transferred, opts.human_readable);
+        println!("Total transferred file size: {} bytes", bytes);
         tracing::info!(
             target: InfoFlag::Stats.target(),
             files_transferred = stats.files_transferred,

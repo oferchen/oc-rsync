@@ -24,7 +24,7 @@ pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 use compress::{should_compress, Codec, Compressor, Decompressor, Zlib, Zlibx, Zstd};
 use filters::Matcher;
-use logging::{progress_formatter, InfoFlag};
+use logging::{progress_formatter, rate_formatter, InfoFlag};
 use protocol::ExitCode;
 use thiserror::Error;
 pub mod flist;
@@ -698,9 +698,8 @@ impl Progress {
         } else {
             self.written * 100 / self.total
         };
-        let elapsed = self.start.elapsed().as_secs().max(1);
-        let rate = self.written / elapsed;
-        let rate = format!("{}/s", progress_formatter(rate, true));
+        let elapsed = self.start.elapsed().as_secs_f64().max(1.0);
+        let rate = rate_formatter(self.written as f64 / elapsed);
         tracing::info!(
             target: InfoFlag::Progress.target(),
             written = self.written,
@@ -709,9 +708,9 @@ impl Progress {
             rate = rate.as_str()
         );
         if done {
-            eprintln!("\r{:>15} {:>3}% {:>15}", bytes, percent, rate);
+            eprintln!("\r{:>15} {:>3}% {}", bytes, percent, rate);
         } else {
-            eprint!("\r{:>15} {:>3}% {:>15}", bytes, percent, rate);
+            eprint!("\r{:>15} {:>3}% {}", bytes, percent, rate);
             let _ = std::io::stderr().flush();
         }
     }
@@ -1907,15 +1906,33 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     choices.into_iter().find(|c| remote.contains(c))
 }
 
+fn unescape_rsync(path: &str) -> String {
+    let mut bytes = Vec::with_capacity(path.len());
+    let mut iter = path.bytes();
+    while let Some(b) = iter.next() {
+        if b == b'\\' {
+            let oct: Vec<u8> = iter.clone().take(3).collect();
+            if oct.len() == 3 && oct.iter().all(|c| c.is_ascii_digit()) {
+                let val = (oct[0] - b'0') * 64 + (oct[1] - b'0') * 8 + (oct[2] - b'0');
+                bytes.push(val);
+                iter.nth(2);
+                continue;
+            }
+        }
+        bytes.push(b);
+    }
+    String::from_utf8(bytes).unwrap_or_else(|_| path.to_string())
+}
+
 fn parse_batch_file(batch_path: &Path) -> Result<Vec<PathBuf>> {
     let content = fs::read_to_string(batch_path).map_err(|e| EngineError::Other(e.to_string()))?;
     let mut paths = Vec::new();
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.contains('=') {
+        if trimmed.is_empty() || trimmed.starts_with('#') || trimmed.contains('=') {
             continue;
         }
-        paths.push(PathBuf::from(line));
+        paths.push(PathBuf::from(unescape_rsync(trimmed)));
     }
     Ok(paths)
 }
