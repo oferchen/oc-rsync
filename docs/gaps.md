@@ -29,7 +29,8 @@ coverage so progress can be tracked as features land.
 - `--daemon` — daemon mode incomplete. [daemon/src/lib.rs](../crates/daemon/src/lib.rs) · [tests/daemon.rs](../tests/daemon.rs)
 
 ## Transfer Mechanics
-- `--force` — forced deletion of non-empty dirs unsupported. [cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/cli.rs](../tests/cli.rs) *(needs dedicated test)*
+
+No known gaps. `--force` (forced deletion of non-empty directories) is supported and covered by tests `force_removes_non_empty_dirs` and `force_removes_nested_non_empty_dirs` in [tests/cli.rs](../tests/cli.rs).
 
 Filename charset conversion via `--iconv` is supported and exercised by [tests/cli.rs](../tests/cli.rs).
 
