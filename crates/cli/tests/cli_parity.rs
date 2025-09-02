@@ -1,5 +1,6 @@
 // crates/cli/tests/cli_parity.rs
 use oc_rsync_cli::cli_command;
+use std::path::Path;
 use std::process::{Command, Stdio};
 use tempfile::tempdir;
 
@@ -170,12 +171,8 @@ fn partial_progress_alias_matches_upstream() {
 
 #[test]
 fn dparam_flag_matches_upstream() {
-    require_rsync!();
-    let status = Command::new("rsync")
-        .args(["--daemon", "--dparam=pidfile=/dev/null", "--help"])
-        .status()
-        .unwrap();
-    assert!(status.success());
+    let help_output = include_str!("../../../tests/fixtures/rsync-help.txt");
+    assert!(help_output.contains("--dparam"));
 
     let matches = cli_command()
         .try_get_matches_from(["oc-rsync", "--daemon", "--dparam=pidfile=/dev/null"])
@@ -218,13 +215,13 @@ fn no_option_alias_matches_upstream() {
     assert!(matches.get_flag("no-perms"));
 }
 
+#[test]
 fn help_usage_matches_upstream() {
-    require_rsync!();
-    let upstream = std::process::Command::new("rsync")
-        .arg("--help")
-        .output()
-        .unwrap();
-    let upstream_usage = String::from_utf8_lossy(&upstream.stdout)
+    let help = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/rsync-help.txt"),
+    )
+    .unwrap();
+    let upstream_usage = help
         .lines()
         .find(|l| l.starts_with("Usage:"))
         .unwrap()

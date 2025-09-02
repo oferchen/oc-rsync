@@ -1,9 +1,10 @@
 // bin/oc-rsync/src/main.rs
 mod version;
 
-use oc_rsync_cli::{cli_command, EngineError};
+use logging::LogFormat;
+use oc_rsync_cli::{cli_command, parse_logging_flags, EngineError};
 use protocol::ExitCode;
-use std::io::ErrorKind;
+use std::{io::ErrorKind, path::PathBuf};
 
 fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     use clap::error::ErrorKind::*;
