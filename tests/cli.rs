@@ -2298,11 +2298,9 @@ fn stats_are_printed() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args(["--local", "--stats", &src_arg, dst_dir.to_str().unwrap()]);
-    cmd.assert()
-        .success()
-        .stdout(predicates::str::contains(
-            "Number of regular files transferred",
-        ));
+    cmd.assert().success().stdout(predicates::str::contains(
+        "Number of regular files transferred",
+    ));
 }
 
 #[test]

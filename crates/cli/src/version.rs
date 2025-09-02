@@ -3,11 +3,6 @@ use protocol::SUPPORTED_PROTOCOLS;
 
 pub const RSYNC_PROTOCOL: u32 = SUPPORTED_PROTOCOLS[0];
 
-/// Render a three-line version banner as separate lines.
-///
-/// Line 1: "oc-rsync <pkg-version> (protocol <RSYNC_PROTOCOL>)"
-/// Line 2: "rsync <upstream-version>"
-/// Line 3: "<build-revision> <official-flag>"
 pub fn render_version_lines() -> Vec<String> {
     vec![
         format!(

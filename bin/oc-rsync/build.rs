@@ -1,3 +1,4 @@
+// bin/oc-rsync/build.rs
 use std::{env, fs, path::Path};
 
 fn main() {
