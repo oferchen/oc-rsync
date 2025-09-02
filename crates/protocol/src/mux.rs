@@ -76,6 +76,54 @@ impl Mux {
         self.send(id, Message::ErrorXfer(text.into()))
     }
 
+    pub fn send_info<S: Into<String>>(
+        &self,
+        id: u16,
+        text: S,
+    ) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::Info(text.into()))
+    }
+
+    pub fn send_warning<S: Into<String>>(
+        &self,
+        id: u16,
+        text: S,
+    ) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::Warning(text.into()))
+    }
+
+    pub fn send_error_socket<S: Into<String>>(
+        &self,
+        id: u16,
+        text: S,
+    ) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::ErrorSocket(text.into()))
+    }
+
+    pub fn send_error_utf8<S: Into<String>>(
+        &self,
+        id: u16,
+        text: S,
+    ) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::ErrorUtf8(text.into()))
+    }
+
+    pub fn send_log<S: Into<String>>(
+        &self,
+        id: u16,
+        text: S,
+    ) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::Log(text.into()))
+    }
+
+    pub fn send_client<S: Into<String>>(
+        &self,
+        id: u16,
+        text: S,
+    ) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::Client(text.into()))
+    }
+
     pub fn send_progress(&self, id: u16, val: u64) -> Result<(), mpsc::SendError<Message>> {
         self.send(id, Message::Progress(val))
     }

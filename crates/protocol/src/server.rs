@@ -2,7 +2,10 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
-use crate::{negotiate_caps, negotiate_version, Demux, Frame, Message, Mux, CAP_CODECS, CAP_ZSTD};
+use crate::{
+    negotiate_caps, negotiate_version, Demux, ExitCode, Frame, Message, Mux, UnknownExit,
+    CAP_CODECS, CAP_ZSTD,
+};
 use compress::{decode_codecs, encode_codecs, negotiate_codec, Codec};
 
 pub struct Server<R: Read, W: Write> {
@@ -151,5 +154,41 @@ impl<R: Read, W: Write> Server<R, W> {
             Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => Ok(()),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn take_exit_code(&mut self) -> Option<Result<ExitCode, UnknownExit>> {
+        self.demux.take_exit_code()
+    }
+
+    pub fn take_remote_error(&mut self) -> Option<String> {
+        self.demux.take_remote_error()
+    }
+
+    pub fn take_successes(&mut self) -> Vec<u32> {
+        self.demux.take_successes()
+    }
+
+    pub fn take_deletions(&mut self) -> Vec<u32> {
+        self.demux.take_deletions()
+    }
+
+    pub fn take_nosends(&mut self) -> Vec<u32> {
+        self.demux.take_nosends()
+    }
+
+    pub fn take_infos(&mut self) -> Vec<String> {
+        self.demux.take_infos()
+    }
+
+    pub fn take_warnings(&mut self) -> Vec<String> {
+        self.demux.take_warnings()
+    }
+
+    pub fn take_logs(&mut self) -> Vec<String> {
+        self.demux.take_logs()
+    }
+
+    pub fn take_clients(&mut self) -> Vec<String> {
+        self.demux.take_clients()
     }
 }

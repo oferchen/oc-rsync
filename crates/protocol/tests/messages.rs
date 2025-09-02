@@ -5,6 +5,7 @@ use protocol::Message;
 fn roundtrip_additional_messages() {
     let msgs = [
         Message::ErrorXfer("test".into()),
+        Message::Error("test".into()),
         Message::Info("test".into()),
         Message::Warning("test".into()),
         Message::ErrorSocket("test".into()),
