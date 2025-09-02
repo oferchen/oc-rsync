@@ -1,0 +1,23 @@
+[package]
+name = "oc-rsyncd-bin"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[[bin]]
+name = "oc-rsyncd"
+path = "src/main.rs"
+
+[dependencies]
+oc-rsync-cli = { path = "../../crates/cli" }
+logging = { path = "../../crates/logging" }
+protocol = { path = "../../crates/protocol" }
+clap = { version = "4" }
+
+[dev-dependencies]
+assert_cmd = "2"
+
+[features]
+default = []
+xattr = ["oc-rsync-cli/xattr"]
+acl = ["oc-rsync-cli/acl"]

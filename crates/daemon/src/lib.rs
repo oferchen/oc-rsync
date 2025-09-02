@@ -320,7 +320,32 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
     let mut cfg = DaemonConfig::default();
     let mut current: Option<Module> = None;
     for raw in contents.lines() {
-        let line = raw.split(['#', ';']).next().unwrap().trim();
+        let mut line = String::new();
+        let mut in_quotes: Option<char> = None;
+        let mut prev_ws = true;
+        for c in raw.chars() {
+            match c {
+                '"' | '\'' => {
+                    if let Some(q) = in_quotes {
+                        if c == q {
+                            in_quotes = None;
+                        }
+                    } else {
+                        in_quotes = Some(c);
+                    }
+                    line.push(c);
+                    prev_ws = c.is_whitespace();
+                }
+                '#' | ';' if in_quotes.is_none() && prev_ws => {
+                    break;
+                }
+                c => {
+                    prev_ws = c.is_whitespace();
+                    line.push(c);
+                }
+            }
+        }
+        let line = line.trim();
         if line.is_empty() {
             continue;
         }

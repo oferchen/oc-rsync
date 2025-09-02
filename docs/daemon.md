@@ -7,6 +7,46 @@ The default listener binds to all IPv4 interfaces on port 873. Supply
 listener to IPv4 or IPv6 addresses respectively. These can be combined with
 `--address` to bind a specific interface.
 
+## `oc-rsyncd`
+
+A dedicated `oc-rsyncd` binary ships alongside the main CLI and enables daemon
+mode without remembering `--daemon`. It is functionally equivalent to invoking
+`oc-rsync --daemon` and exposes the same flags.
+
+```text
+$ oc-rsyncd --help
+Usage: oc-rsyncd [OPTIONS] --module NAME=PATH...
+
+Options:
+  --config <FILE>        Load daemon configuration
+  --module <NAME=PATH>   Export a module (repeatable)
+  --address <ADDRESS>    Bind to a specific interface
+  --port <PORT>          Listen on a custom TCP port
+  --secrets-file <FILE>  Authentication tokens
+  --no-detach            Stay in the foreground
+```
+
+Common invocations:
+
+```bash
+# Inline module definition
+oc-rsyncd --module 'data=/srv/export'
+
+# Load modules from a config file
+oc-rsyncd --config /etc/oc-rsyncd.conf
+```
+
+The configuration syntax is documented in
+[`oc-rsyncd.conf(5)`](../man/oc-rsyncd.conf.5). A hardened systemd unit is
+available under
+[`packaging/systemd/oc-rsyncd.service`](../packaging/systemd/oc-rsyncd.service).
+
+The `oc-rsync` client can also launch the daemon directly:
+
+```bash
+oc-rsync --daemon --module 'data=/srv/export'
+```
+
 ## Configuration file
 
 `oc-rsync` understands a configuration file that mirrors
