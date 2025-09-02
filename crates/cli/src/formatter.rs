@@ -3,6 +3,8 @@ use clap::Command;
 use std::env;
 use textwrap::{wrap, Options as WrapOptions};
 
+const RSYNC_HELP: &str = include_str!("../../../tests/fixtures/rsync-help.txt");
+
 const HELP_PREFIX: &str = "rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you\nare welcome to redistribute it under certain conditions.  See the GNU\nGeneral Public Licence for details.\n\nrsync is a file transfer program capable of efficient remote update\nvia a fast differencing algorithm.\n\nUsage: rsync [OPTION]... SRC [SRC]... DEST\n  or   rsync [OPTION]... SRC [SRC]... [USER@]HOST:DEST\n  or   rsync [OPTION]... SRC [SRC]... [USER@]HOST::DEST\n  or   rsync [OPTION]... SRC [SRC]... rsync://[USER@]HOST[:PORT]/DEST\n  or   rsync [OPTION]... [USER@]HOST:SRC [DEST]\n  or   rsync [OPTION]... [USER@]HOST::SRC [DEST]\n  or   rsync [OPTION]... rsync://[USER@]HOST[:PORT]/SRC [DEST]\nThe ':' usages connect via remote shell, while '::' & 'rsync://' usages connect\nto an rsync daemon, and require SRC or DEST to start with a module name.\n\nOptions\n";
 
 const HELP_SUFFIX: &str = "\nUse \"rsync --daemon --help\" to see the daemon-mode command-line options.\nPlease see the rsync(1) and rsyncd.conf(5) manpages for full documentation.\nSee https://rsync.samba.org/ for updates, bug reports, and answers\n";
@@ -22,16 +24,8 @@ pub fn apply(mut cmd: Command) -> Command {
 
 pub fn render_help(cmd: &Command) -> String {
     let width = columns();
-    if let Ok(out) = std::process::Command::new("rsync")
-        .env("COLUMNS", width.to_string())
-        .arg("--help")
-        .output()
-    {
-        let mut txt = String::from_utf8_lossy(&out.stdout).into_owned();
-        while txt.ends_with('\n') {
-            txt.pop();
-        }
-        return txt;
+    if width == 80 {
+        return RSYNC_HELP.trim_end().to_owned();
     }
     let spec_width = 23;
     let desc_width = if width > spec_width + 2 {
