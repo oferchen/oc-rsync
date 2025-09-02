@@ -21,7 +21,7 @@ use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions}
 use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
-use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
+use protocol::{negotiate_version, CharsetConv, SUPPORTED_PROTOCOLS};
 use shell_words::split as shell_split;
 use transport::{
     parse_sockopts, AddressFamily, RateLimitedTransport, SockOpt, SshStdioTransport, TcpTransport,
@@ -144,16 +144,18 @@ pub fn parse_iconv(spec: &str) -> std::result::Result<CliCharsetConv, String> {
         .next()
         .ok_or_else(|| "invalid iconv spec".to_string())?;
     let local_label = parts.next().unwrap_or("UTF-8");
-    if Encoding::for_label(remote_label.as_bytes()).is_none()
-        || Encoding::for_label(local_label.as_bytes()).is_none()
-    {
-        return Err(format!(
-            "iconv_open(\"{local_label}\", \"{remote_label}\") failed"
-        ));
-    }
+
+    let remote_enc = Encoding::for_label(remote_label.as_bytes());
+    let local_enc = Encoding::for_label(local_label.as_bytes());
+
+    let remote_enc = remote_enc
+        .ok_or_else(|| format!("iconv_open(\"{local_label}\", \"{remote_label}\") failed"))?;
+    let local_enc = local_enc
+        .ok_or_else(|| format!("iconv_open(\"{local_label}\", \"{remote_label}\") failed"))?;
+
     Ok(CliCharsetConv {
-        conv: CharsetConv::new(Encoding::for_label(remote_label.as_bytes()).unwrap()),
-        local: Encoding::for_label(local_label.as_bytes()).unwrap(),
+        conv: CharsetConv::new(remote_enc),
+        local: local_enc,
     })
 }
 
