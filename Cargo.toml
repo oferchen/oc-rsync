@@ -57,6 +57,7 @@ meta = { path = "crates/meta" }
 daemon = { path = "crates/daemon" }
 sha2 = "0.10"
 encoding_rs = "0.8"
+insta = { version = "1", features = ["json"] }
 
 [[bin]]
 name = "oc-rsync"
@@ -83,24 +84,3 @@ acl = ["engine/acl", "oc-rsync-cli/acl", "meta/acl"]
 cli = []
 # Enables AVX-512 implementations requiring a nightly toolchain
 nightly = ["checksums/nightly", "compress/nightly"]
-
-[profile.release]
-# Keep release sane for local builds; CI will use [profile.maxspeed]
-opt-level = 3
-lto = "thin"
-codegen-units = 16
-panic = "abort"
-debug = false
-overflow-checks = false
-incremental = false
-
-# Ultra-optimized profile (CI will use this)
-[profile.maxspeed]
-inherits = "release"
-opt-level = 3           # maximum LLVM optimizations
-lto = "fat"             # best runtime perf (slower link, larger bin)
-codegen-units = 1       # better inlining/opts across crates
-panic = "abort"         # remove unwinding paths
-debug = false
-overflow-checks = false
-incremental = false
