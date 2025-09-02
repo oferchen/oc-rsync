@@ -12,10 +12,10 @@ pub const RSYNC_PROTOCOL: u32 = SUPPORTED_PROTOCOLS[0];
 pub fn render_version_lines() -> String {
     format!(
         "oc-rsync {} (protocol {})\nrsync {}\n{} {}\n",
-        env!("CARGO_PKG_VERSION"),
+        option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"),
         RSYNC_PROTOCOL,
-        env!("OC_RSYNC_UPSTREAM"),
-        env!("OC_RSYNC_GIT"),
-        env!("OC_RSYNC_OFFICIAL"),
+        option_env!("OC_RSYNC_UPSTREAM").unwrap_or("unknown"),
+        option_env!("OC_RSYNC_GIT").unwrap_or("unknown"),
+        option_env!("OC_RSYNC_OFFICIAL").unwrap_or("unknown"),
     )
 }
