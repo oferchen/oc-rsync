@@ -7,7 +7,8 @@ use std::os::unix::fs::FileTypeExt;
 use compress::available_codecs;
 use engine::{sync, SyncOptions};
 use filters::Matcher;
-use nix::sys::stat::{makedev, mknod, Mode, SFlag};
+use meta::makedev;
+use nix::sys::stat::{mknod, Mode, SFlag};
 use tempfile::tempdir;
 
 #[test]
