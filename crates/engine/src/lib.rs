@@ -25,6 +25,7 @@ use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 use compress::{should_compress, Codec, Compressor, Decompressor, Zlib, Zstd};
 use filters::Matcher;
 use logging::progress_formatter;
+use protocol::ExitCode;
 use thiserror::Error;
 pub mod flist;
 
@@ -64,6 +65,8 @@ pub enum EngineError {
     Io(#[from] std::io::Error),
     #[error("max-alloc limit exceeded")]
     MaxAlloc,
+    #[error("{1}")]
+    Exit(ExitCode, String),
     #[error("{0}")]
     Other(String),
 }

@@ -1002,8 +1002,8 @@ fn owner_requires_privileges() {
         .args(["--local", "--owner", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .failure()
-        .code(u8::from(protocol::ExitCode::Protocol) as i32)
-        .stderr(predicates::str::contains("changing ownership"));
+        .code(u8::from(protocol::ExitCode::StartClient) as i32)
+        .stderr(predicates::str::contains("changing ownership requires"));
 
     let dst_file = dst_dir.join("id.txt");
     assert!(!dst_file.exists());
