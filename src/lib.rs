@@ -12,6 +12,12 @@ pub struct SyncConfig {
     pub verbose: u8,
     pub info: Vec<InfoFlag>,
     pub debug: Vec<DebugFlag>,
+    pub perms: bool,
+    pub times: bool,
+    pub atimes: bool,
+    pub links: bool,
+    pub devices: bool,
+    pub specials: bool,
 }
 
 impl Default for SyncConfig {
@@ -21,7 +27,80 @@ impl Default for SyncConfig {
             verbose: 0,
             info: Vec::new(),
             debug: Vec::new(),
+            perms: true,
+            times: true,
+            atimes: true,
+            links: true,
+            devices: true,
+            specials: true,
         }
+    }
+}
+
+impl SyncConfig {
+    pub fn builder() -> SyncConfigBuilder {
+        SyncConfigBuilder::default()
+    }
+}
+
+#[derive(Default)]
+pub struct SyncConfigBuilder {
+    cfg: SyncConfig,
+}
+
+impl SyncConfigBuilder {
+    pub fn log_format(mut self, log_format: LogFormat) -> Self {
+        self.cfg.log_format = log_format;
+        self
+    }
+
+    pub fn verbose(mut self, verbose: u8) -> Self {
+        self.cfg.verbose = verbose;
+        self
+    }
+
+    pub fn info(mut self, info: Vec<InfoFlag>) -> Self {
+        self.cfg.info = info;
+        self
+    }
+
+    pub fn debug(mut self, debug: Vec<DebugFlag>) -> Self {
+        self.cfg.debug = debug;
+        self
+    }
+
+    pub fn perms(mut self, enable: bool) -> Self {
+        self.cfg.perms = enable;
+        self
+    }
+
+    pub fn times(mut self, enable: bool) -> Self {
+        self.cfg.times = enable;
+        self
+    }
+
+    pub fn atimes(mut self, enable: bool) -> Self {
+        self.cfg.atimes = enable;
+        self
+    }
+
+    pub fn links(mut self, enable: bool) -> Self {
+        self.cfg.links = enable;
+        self
+    }
+
+    pub fn devices(mut self, enable: bool) -> Self {
+        self.cfg.devices = enable;
+        self
+    }
+
+    pub fn specials(mut self, enable: bool) -> Self {
+        self.cfg.specials = enable;
+        self
+    }
+
+    pub fn build(self) -> SyncConfig {
+        self.cfg
     }
 }
 
@@ -36,12 +115,12 @@ pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Resu
     );
     with_default(sub, || -> Result<()> {
         let opts = SyncOptions {
-            perms: true,
-            times: true,
-            atimes: true,
-            links: true,
-            devices: true,
-            specials: true,
+            perms: cfg.perms,
+            times: cfg.times,
+            atimes: cfg.atimes,
+            links: cfg.links,
+            devices: cfg.devices,
+            specials: cfg.specials,
             ..SyncOptions::default()
         };
         engine::sync(src, dst, &Matcher::default(), &available_codecs(), &opts)?;

@@ -61,8 +61,16 @@ Quick links:
 ### Logging
 
 Enable structured JSON logs on the command line with `--log-format json`. Library
-callers can configure logging by building a [`SyncConfig`] with
-`log_format: LogFormat::Json` and passing it to [`synchronize`].
+callers can build a [`SyncConfig`] with `SyncConfig::builder()` to configure
+logging and metadata preservation flags before passing it to
+[`synchronize`]. For example, disabling permission preservation:
+
+```rust
+let cfg = SyncConfig::builder()
+    .log_format(LogFormat::Json)
+    .perms(false)
+    .build();
+```
 
 ## Architecture
 See [docs/architecture.md](docs/architecture.md) for a deeper overview of crate
