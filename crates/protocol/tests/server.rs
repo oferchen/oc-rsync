@@ -2,7 +2,7 @@
 use compress::{available_codecs, encode_codecs, Codec};
 use protocol::{
     ExitCode, Server, CAP_ACLS, CAP_CODECS, CAP_XATTRS, CAP_ZSTD, SUPPORTED_CAPS,
-    SUPPORTED_PROTOCOLS, V31, V32,
+    SUPPORTED_PROTOCOLS, V29,
 };
 use std::io::Cursor;
 use std::time::Duration;
@@ -41,7 +41,7 @@ fn server_negotiates_version() {
 
 #[test]
 fn server_accepts_legacy_version() {
-    let legacy = V32;
+    let legacy = V29;
     let payload = encode_codecs(&available_codecs());
     let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0, None);
     let mut codecs_buf = Vec::new();
@@ -81,7 +81,7 @@ fn server_classic_versions() {
     let mut codecs_buf = Vec::new();
     codecs_frame.encode(&mut codecs_buf).unwrap();
 
-    for ver in [V31, V32] {
+    for &ver in SUPPORTED_PROTOCOLS {
         let mut input = Cursor::new({
             let mut v = vec![0, 0];
             v.extend_from_slice(&ver.to_be_bytes());
