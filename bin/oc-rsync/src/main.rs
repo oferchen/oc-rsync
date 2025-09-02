@@ -5,6 +5,14 @@ use std::{io::ErrorKind, path::PathBuf};
 use oc_rsync_cli::{cli_command, parse_logging_flags, version_string, EngineError};
 use protocol::ExitCode;
 
+fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
+    use clap::error::ErrorKind::*;
+    match kind {
+        UnknownArgument => ExitCode::Unsupported,
+        _ => ExitCode::SyntaxOrUsage,
+    }
+}
+
 fn main() {
     if std::env::args().any(|a| a == "--version" || a == "-V") {
         if !std::env::args().any(|a| a == "--quiet" || a == "-q") {
@@ -22,13 +30,25 @@ fn main() {
                     println!("{}", cmd.render_help());
                     std::process::exit(0);
                 }
-                _ => {
+                kind => {
                     let first = e.to_string();
                     let first = first.lines().next().unwrap_or("");
-                    let msg = first.strip_prefix("error: ").unwrap_or(first);
+                    let msg = match kind {
+                        ErrorKind::UnknownArgument => {
+                            let arg = first.split('\'').nth(1).unwrap_or("");
+                            format!("{arg}: unknown option")
+                        }
+                        _ => first.strip_prefix("error: ").unwrap_or(first).to_string(),
+                    };
+                    let code = exit_code_from_error_kind(kind);
+                    let desc = match code {
+                        ExitCode::Unsupported => "requested action not supported",
+                        _ => "syntax or usage error",
+                    };
+                    let code_num = u8::from(code);
                     eprintln!("rsync: {msg}");
-                    eprintln!("rsync error: syntax or usage error (code 1)");
-                    std::process::exit(1);
+                    eprintln!("rsync error: {desc} (code {code_num})");
+                    std::process::exit(code_num as i32);
                 }
             }
         });
