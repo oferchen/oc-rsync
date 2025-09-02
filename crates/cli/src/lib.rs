@@ -38,11 +38,6 @@ use transport::{
 #[cfg(unix)]
 use users::get_user_by_uid;
 
-pub fn version_string() -> String {
-    let ver = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
-    format!("rsync {ver}")
-}
-
 fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
     parse_with_options(s, from0, &mut v, 0)
@@ -120,9 +115,9 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
 
 pub fn version_string() -> String {
     format!(
-        "oc-rsync {} (rsync {})\n",
+        "oc-rsync {} (rsync {})",
         env!("CARGO_PKG_VERSION"),
-        env!("UPSTREAM_VERSION"),
+        option_env!("UPSTREAM_VERSION").unwrap_or("unknown"),
     )
 }
 
@@ -144,19 +139,12 @@ pub fn version_banner() -> String {
         .map(|p| p.to_string())
         .collect::<Vec<_>>()
         .join(", ");
-    let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
     format!(
+        "{}\nProtocols: {}\nFeatures: {}\n",
         version_string(),
-        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
-        env!("CARGO_PKG_VERSION"),
-        upstream,
         protocols,
         features,
     )
-}
-
-pub fn version_string() -> String {
-    version_banner()
 }
 
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
@@ -2388,7 +2376,9 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut hosts_allow = opts.hosts_allow.clone();
     let mut hosts_deny = opts.hosts_deny.clone();
     let mut log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
-    let log_format = matches.get_one::<String>("client-log-file-format").cloned();
+    let log_format = matches
+        .get_one::<String>("client-log-file-format")
+        .map(|s| parse_escapes(s));
     let mut motd = opts.motd.clone();
     let mut pid_file = opts.pid_file.clone();
     let mut lock_file = opts.lock_file.clone();
