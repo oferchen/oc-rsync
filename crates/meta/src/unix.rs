@@ -4,6 +4,8 @@ use std::io;
 use std::path::Path;
 
 use crate::normalize_mode;
+#[cfg(target_os = "linux")]
+use caps::{CapSet, Capability};
 use filetime::{self, FileTime};
 use nix::errno::Errno;
 use nix::sys::stat::{self, FchmodatFlags, Mode, SFlag};
@@ -310,23 +312,20 @@ impl Metadata {
             };
             expected_uid = uid;
             expected_gid = gid;
-            let res = if is_symlink {
-                match unistd::fchownat(
-                    None,
-                    path,
-                    if opts.owner {
-                        Some(Uid::from_raw(uid))
-                    } else {
-                        None
-                    },
-                    if opts.group {
-                        Some(Gid::from_raw(gid))
-                    } else {
-                        None
-                    },
-                    FchownatFlags::NoFollowSymlink,
-                ) {
-                    Err(Errno::EOPNOTSUPP) => unistd::chown(
+
+            let mut can_chown = unistd::Uid::effective().is_root();
+            #[cfg(target_os = "linux")]
+            {
+                if !can_chown {
+                    can_chown = caps::has_cap(None, CapSet::Effective, Capability::CAP_CHOWN)
+                        .unwrap_or(false);
+                }
+            }
+
+            if can_chown {
+                let res = if is_symlink {
+                    match unistd::fchownat(
+                        None,
                         path,
                         if opts.owner {
                             Some(Uid::from_raw(uid))
@@ -338,32 +337,49 @@ impl Metadata {
                         } else {
                             None
                         },
-                    ),
-                    other => other,
+                        FchownatFlags::NoFollowSymlink,
+                    ) {
+                        Err(Errno::EOPNOTSUPP) => unistd::chown(
+                            path,
+                            if opts.owner {
+                                Some(Uid::from_raw(uid))
+                            } else {
+                                None
+                            },
+                            if opts.group {
+                                Some(Gid::from_raw(gid))
+                            } else {
+                                None
+                            },
+                        ),
+                        other => other,
+                    }
+                } else {
+                    unistd::chown(
+                        path,
+                        if opts.owner {
+                            Some(Uid::from_raw(uid))
+                        } else {
+                            None
+                        },
+                        if opts.group {
+                            Some(Gid::from_raw(gid))
+                        } else {
+                            None
+                        },
+                    )
+                };
+                if let Err(err) = res {
+                    match err {
+                        Errno::EPERM | Errno::EACCES => {
+                            chown_failed = true;
+                            tracing::warn!(?path, ?err, "unable to change owner/group");
+                        }
+                        _ => return Err(nix_to_io(err)),
+                    }
                 }
             } else {
-                unistd::chown(
-                    path,
-                    if opts.owner {
-                        Some(Uid::from_raw(uid))
-                    } else {
-                        None
-                    },
-                    if opts.group {
-                        Some(Gid::from_raw(gid))
-                    } else {
-                        None
-                    },
-                )
-            };
-            if let Err(err) = res {
-                match err {
-                    Errno::EPERM | Errno::EACCES => {
-                        chown_failed = true;
-                        tracing::warn!(?path, ?err, "unable to change owner/group");
-                    }
-                    _ => return Err(nix_to_io(err)),
-                }
+                chown_failed = true;
             }
         }
 
