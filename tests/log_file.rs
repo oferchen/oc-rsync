@@ -54,6 +54,44 @@ fn log_file_format_json_writes_json() {
 }
 
 #[test]
+fn log_file_format_tokens() {
+    let tmp = tempdir().unwrap();
+    let src_dir = tmp.path().join("src");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::write(src_dir.join("f"), b"hi").unwrap();
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&dst).unwrap();
+    let log = tmp.path().join("log.txt");
+    let src_arg = format!("{}/", src_dir.display());
+    TestCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--log-file",
+            log.to_str().unwrap(),
+            "--log-file-format=%t [%p] %o %f",
+            "--out-format=%o %n",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let contents = fs::read_to_string(&log).unwrap();
+    let line = contents.lines().find(|l| l.contains("send")).unwrap();
+    let mut parts = line.split_whitespace();
+    let date = parts.next().unwrap();
+    let time = parts.next().unwrap();
+    let pid = parts.next().unwrap().trim_matches(|c| c == '[' || c == ']');
+    let op = parts.next().unwrap();
+    let file = parts.next().unwrap();
+    assert!(date.contains('/'));
+    assert!(time.contains(':'));
+    assert_eq!(pid, std::process::id().to_string());
+    assert_eq!(op, "send");
+    assert_eq!(file, "f");
+}
+
+#[test]
 fn out_format_writes_custom_message() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
