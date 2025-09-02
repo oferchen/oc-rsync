@@ -7,6 +7,15 @@ coverage so progress can be tracked as features land.
 ## Protocol
 - `--server` — handshake lacks full parity. [protocol/src/server.rs](../crates/protocol/src/server.rs) · [crates/protocol/tests/server.rs](../crates/protocol/tests/server.rs)
 
+## Compression
+- `--compress` — zlib and zstd supported; `zlibx` not implemented. [compress/src/lib.rs](../crates/compress/src/lib.rs) · [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs)
+
+## Messages
+Message handling lacks full parity; only a subset of upstream message types is implemented. [protocol/src/lib.rs](../crates/protocol/src/lib.rs) · [crates/protocol/tests/protocol.rs](../crates/protocol/tests/protocol.rs)
+
+## Exit Codes
+No known gaps. Exit codes map to upstream values. [protocol/src/lib.rs](../crates/protocol/src/lib.rs) · [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs)
+
 ## Metadata
 - `--acls` — ACL support requires optional feature and lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs)
 - `--groupmap` — numeric gid mapping only; group names unsupported. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/cli.rs](../tests/cli.rs)
