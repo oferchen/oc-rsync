@@ -696,7 +696,7 @@
   },
   {
     "flag": "--xattrs",
-    "status": "Ignored",
-    "notes": ""
+    "status": "Supported",
+    "notes": "requires `xattr` feature"
   }
 ]

@@ -25,7 +25,7 @@ type XattrFilter = Rc<dyn Fn(&OsStr) -> bool>;
 
 #[cfg(all(test, feature = "xattr"))]
 mod xattr {
-    pub use real_xattr::{get, remove, set};
+    pub use real_xattr::{get, get_deref, remove, remove_deref, set};
     use std::ffi::OsString;
     use std::path::Path;
     use xattr as real_xattr;
@@ -34,6 +34,14 @@ mod xattr {
         let attrs: Vec<OsString> = real_xattr::list(path)?.collect();
         if attrs.iter().any(|a| a == "user.disappearing") {
             let _ = remove(path, "user.disappearing");
+        }
+        Ok(attrs)
+    }
+
+    pub fn list_deref(path: &Path) -> std::io::Result<Vec<OsString>> {
+        let attrs: Vec<OsString> = real_xattr::list_deref(path)?.collect();
+        if attrs.iter().any(|a| a == "user.disappearing") {
+            let _ = remove_deref(path, "user.disappearing");
         }
         Ok(attrs)
     }
@@ -545,7 +553,7 @@ pub fn copy_xattrs(
     include_for_delete: Option<&dyn Fn(&OsStr) -> bool>,
 ) -> io::Result<()> {
     let mut attrs = Vec::new();
-    match xattr::list(src) {
+    match xattr::list_deref(src) {
         Ok(list) => {
             for attr in list {
                 if let Some(name) = attr.to_str() {
@@ -561,7 +569,7 @@ pub fn copy_xattrs(
                         continue;
                     }
                 }
-                match xattr::get(src, &attr) {
+                match xattr::get_deref(src, &attr) {
                     Ok(Some(value)) => attrs.push((attr, value)),
                     Ok(None) => {}
                     Err(err) => {

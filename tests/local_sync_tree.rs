@@ -980,3 +980,36 @@ fn sync_follows_symlinks() {
     assert!(dst.join("link").is_file());
     assert_eq!(fs::read(dst.join("link")).unwrap(), b"hi");
 }
+
+#[cfg(all(unix, feature = "xattr"))]
+#[test]
+fn sync_copy_links_preserves_xattrs() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    xattr::set(&file, "user.test", b"val").unwrap();
+    let _ = symlink("file", src.join("link"));
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--copy-links",
+            "--xattrs",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    assert!(dst.join("link").is_file());
+    let val = xattr::get(dst.join("link"), "user.test").unwrap().unwrap();
+    assert_eq!(&val[..], b"val");
+}
