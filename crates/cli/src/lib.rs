@@ -140,6 +140,14 @@ pub fn version_banner() -> String {
     )
 }
 
+pub fn version_string() -> String {
+    format!(
+        "oc-rsync {} (rsync {})\n",
+        env!("CARGO_PKG_VERSION"),
+        env!("UPSTREAM_VERSION")
+    )
+}
+
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")
@@ -1130,6 +1138,27 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         .ok_or_else(|| EngineError::Other("missing DST".into()))?;
     if opts.archive {
         opts.recursive = true;
+        if !opts.no_links {
+            opts.links = true;
+        }
+        if !opts.no_perms {
+            opts.perms = true;
+        }
+        if !opts.no_times {
+            opts.times = true;
+        }
+        if !opts.no_group {
+            opts.group = true;
+        }
+        if !opts.no_owner {
+            opts.owner = true;
+        }
+        if !opts.no_devices {
+            opts.devices = true;
+        }
+        if !opts.no_specials {
+            opts.specials = true;
+        }
     }
     let matcher = build_matcher(&opts, matches)?;
     let addr_family = if opts.ipv4 {
