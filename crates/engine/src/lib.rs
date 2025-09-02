@@ -1066,7 +1066,7 @@ impl Sender {
             if let Some(codec) = file_codec {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
-                        Codec::Zlib => {
+                        Codec::Zlib | Codec::ZlibX => {
                             let lvl = self.opts.compress_level.unwrap_or(6);
                             Zlib::new(lvl).compress(d).map_err(EngineError::from)?
                         }
@@ -1324,7 +1324,9 @@ impl Receiver {
             if let Some(codec) = file_codec {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
-                        Codec::Zlib => Zlib::default().decompress(d).map_err(EngineError::from)?,
+                        Codec::Zlib | Codec::ZlibX => {
+                            Zlib::default().decompress(d).map_err(EngineError::from)?
+                        }
                         Codec::Zstd => Zstd::default().decompress(d).map_err(EngineError::from)?,
                     };
                 }
