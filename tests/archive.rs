@@ -36,6 +36,11 @@ fn hash_dir(dir: &Path) -> Vec<u8> {
 #[cfg(unix)]
 #[test]
 fn archive_matches_combination_and_rsync() {
+    if !Uid::effective().is_root() {
+        eprintln!("skipping: requires root privileges");
+        return;
+    }
+
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     fs::create_dir(&src).unwrap();
