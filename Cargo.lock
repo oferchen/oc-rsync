@@ -199,6 +199,7 @@ dependencies = [
  "md-5",
  "md4",
  "sha1",
+ "tempfile",
 ]
 
 [[package]]

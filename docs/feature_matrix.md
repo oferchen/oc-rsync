@@ -26,8 +26,8 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--blocking-io` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--bwlimit` | ✅ | Y | Y | Y | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | burst = 128×RATE bytes, min sleep = 100 ms |
 | `--cc` | ✅ | Y | Y | Y | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | alias for `--checksum-choice` |
-| `--checksum` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | strong hashes: MD5 (default), SHA-1 |
-| `--checksum-choice` | ✅ | Y | Y | Y | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | choose the strong hash algorithm |
+| `--checksum` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | strong hashes: MD5 (default), SHA-1, MD4 (protocol < 30) |
+| `--checksum-choice` | ✅ | Y | Y | Y | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | choose the strong hash algorithm (md5, sha1, md4) |
 | `--checksum-seed` | ✅ | Y | Y | Y | [tests/checksum_seed.rs](../tests/checksum_seed.rs)<br>[tests/checksum_seed_cli.rs](../tests/checksum_seed_cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | set block/file checksum seed |
 | `--chmod` | ✅ | Y | Y | Y | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/golden/cli_parity/chmod.sh](../tests/golden/cli_parity/chmod.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--chown` | ✅ | N | N | N | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires root or CAP_CHOWN |

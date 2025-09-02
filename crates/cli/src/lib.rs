@@ -29,7 +29,7 @@ use protocol::CharsetConv;
 use protocol::CAP_ACLS;
 #[cfg(feature = "xattr")]
 use protocol::CAP_XATTRS;
-use protocol::{negotiate_version, ExitCode, CAP_CODECS, SUPPORTED_PROTOCOLS};
+use protocol::{negotiate_version, ExitCode, CAP_CODECS, LATEST_VERSION, SUPPORTED_PROTOCOLS, V30};
 use shell_words::split as shell_split;
 use transport::{
     parse_sockopts, AddressFamily, RateLimitedTransport, SockOpt, SshStdioTransport, TcpTransport,
@@ -1391,15 +1391,22 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         rsync_env.push(("RSYNC_TIMEOUT".into(), to.as_secs().to_string()));
     }
 
+    let proto = opts.protocol.unwrap_or(LATEST_VERSION);
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
-        let list = ["md4", "md5", "sha1"];
+        let list = if proto < V30 {
+            ["md4", "md5", "sha1"]
+        } else {
+            ["md5", "md4", "sha1"]
+        };
         rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
     }
 
     let remote_bin_vec = rsync_path_cmd.as_ref().map(|c| c.cmd.clone());
     let remote_env_vec = rsync_path_cmd.as_ref().map(|c| c.env.clone());
 
-    let strong = if let Some(choice) = opts.checksum_choice.as_deref() {
+    let strong = if proto < V30 {
+        StrongHash::Md4
+    } else if let Some(choice) = opts.checksum_choice.as_deref() {
         match choice {
             "md4" => StrongHash::Md4,
             "md5" => StrongHash::Md5,
@@ -1409,7 +1416,11 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             }
         }
     } else if let Ok(list) = env::var("RSYNC_CHECKSUM_LIST") {
-        let mut chosen = StrongHash::Md4;
+        let mut chosen = if proto < V30 {
+            StrongHash::Md4
+        } else {
+            StrongHash::Md5
+        };
         for name in list.split(',') {
             match name {
                 "sha1" => {
@@ -1429,7 +1440,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         }
         chosen
     } else {
-        StrongHash::Md4
+        StrongHash::Md5
     };
 
     let src_trailing = match &src {
