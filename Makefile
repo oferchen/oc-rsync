@@ -4,7 +4,7 @@
 # If user passes UPSTREAM/OFFICIAL, map them to RSYNC_UPSTREAM_VER/OFFICIAL_BUILD unless already set.
 RSYNC_UPSTREAM_VER ?= $(UPSTREAM)
 OFFICIAL_BUILD     ?= $(OFFICIAL)
-BUILD_REVISION     ?= $(shell git rev-parse HEAD)
+BUILD_REVISION     ?= $(shell git rev-parse --short=12 HEAD)
 
 VERIFY_COMMENT_FILES := $(shell git ls-files '*.rs')
 
@@ -35,7 +35,7 @@ interop:
 	bash tests/interop/run_matrix.sh
 
 test-golden:
-	cargo build --quiet -p oc-rsync-bin --bin oc-rsync
+	env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" cargo build --quiet -p oc-rsync-bin --bin oc-rsync
 	@set -euo pipefail; \
 	for script in tests/golden/cli_parity/*.sh; do \
 		echo "Running $$script"; \
