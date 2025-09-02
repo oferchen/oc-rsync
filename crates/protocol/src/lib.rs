@@ -329,9 +329,19 @@ pub enum Message {
     KeepAlive,
     FileListEntry(Vec<u8>),
     Attributes(Vec<u8>),
+    ErrorXfer(String),
+    Info(String),
     Error(String),
+    Warning(String),
+    ErrorSocket(String),
+    Log(String),
+    Client(String),
+    ErrorUtf8(String),
     Progress(u64),
     Codecs(Vec<u8>),
+    IoError(u32),
+    IoTimeout(u32),
+    Noop,
     Redo(u32),
     Stats(Vec<u8>),
     ErrorExit(u8),
@@ -402,20 +412,14 @@ impl Message {
                 };
                 Frame { header, payload }
             }
-            Message::Error(text) => {
-                let payload = if let Some(cv) = iconv {
-                    cv.encode_remote(&text)
-                } else {
-                    text.into_bytes()
-                };
-                let header = FrameHeader {
-                    channel,
-                    tag: Tag::Message,
-                    msg: Msg::Error,
-                    len: payload.len() as u32,
-                };
-                Frame { header, payload }
-            }
+            Message::ErrorXfer(text) => Self::encode_text(channel, Msg::ErrorXfer, text, iconv),
+            Message::Info(text) => Self::encode_text(channel, Msg::Info, text, iconv),
+            Message::Error(text) => Self::encode_text(channel, Msg::Error, text, iconv),
+            Message::Warning(text) => Self::encode_text(channel, Msg::Warning, text, iconv),
+            Message::ErrorSocket(text) => Self::encode_text(channel, Msg::ErrorSocket, text, iconv),
+            Message::Log(text) => Self::encode_text(channel, Msg::Log, text, iconv),
+            Message::Client(text) => Self::encode_text(channel, Msg::Client, text, iconv),
+            Message::ErrorUtf8(text) => Self::encode_text(channel, Msg::ErrorUtf8, text, iconv),
             Message::Progress(v) => {
                 let mut payload = Vec::new();
                 payload.extend_from_slice(&v.to_be_bytes());
@@ -433,6 +437,38 @@ impl Message {
                     tag: Tag::Message,
                     msg: Msg::Codecs,
                     len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::IoError(code) => {
+                let mut payload = Vec::new();
+                payload.extend_from_slice(&code.to_be_bytes());
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::IoError,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::IoTimeout(code) => {
+                let mut payload = Vec::new();
+                payload.extend_from_slice(&code.to_be_bytes());
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::IoTimeout,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::Noop => {
+                let payload = Vec::new();
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::Noop,
+                    len: 0,
                 };
                 Frame { header, payload }
             }
@@ -511,6 +547,29 @@ impl Message {
         }
     }
 
+    fn encode_text(channel: u16, msg: Msg, text: String, iconv: Option<&CharsetConv>) -> Frame {
+        let payload = if let Some(cv) = iconv {
+            cv.encode_remote(&text)
+        } else {
+            text.into_bytes()
+        };
+        let header = FrameHeader {
+            channel,
+            tag: Tag::Message,
+            msg,
+            len: payload.len() as u32,
+        };
+        Frame { header, payload }
+    }
+
+    fn decode_text(payload: Vec<u8>, iconv: Option<&CharsetConv>) -> io::Result<String> {
+        if let Some(cv) = iconv {
+            Ok(cv.decode_remote(&payload))
+        } else {
+            String::from_utf8(payload).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+        }
+    }
+
     pub fn to_frame(&self, channel: u16, iconv: Option<&CharsetConv>) -> Frame {
         self.clone().into_frame(channel, iconv)
     }
@@ -543,14 +602,37 @@ impl Message {
                     Msg::Done => Ok(Message::Done),
                     Msg::FileListEntry => Ok(Message::FileListEntry(f.payload)),
                     Msg::Attributes => Ok(Message::Attributes(f.payload)),
+                    Msg::ErrorXfer => {
+                        let text = Self::decode_text(f.payload, iconv)?;
+                        Ok(Message::ErrorXfer(text))
+                    }
+                    Msg::Info => {
+                        let text = Self::decode_text(f.payload, iconv)?;
+                        Ok(Message::Info(text))
+                    }
                     Msg::Error => {
-                        let text = if let Some(cv) = iconv {
-                            cv.decode_remote(&f.payload)
-                        } else {
-                            String::from_utf8(f.payload)
-                                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
-                        };
+                        let text = Self::decode_text(f.payload, iconv)?;
                         Ok(Message::Error(text))
+                    }
+                    Msg::Warning => {
+                        let text = Self::decode_text(f.payload, iconv)?;
+                        Ok(Message::Warning(text))
+                    }
+                    Msg::ErrorSocket => {
+                        let text = Self::decode_text(f.payload, iconv)?;
+                        Ok(Message::ErrorSocket(text))
+                    }
+                    Msg::Log => {
+                        let text = Self::decode_text(f.payload, iconv)?;
+                        Ok(Message::Log(text))
+                    }
+                    Msg::Client => {
+                        let text = Self::decode_text(f.payload, iconv)?;
+                        Ok(Message::Client(text))
+                    }
+                    Msg::ErrorUtf8 => {
+                        let text = Self::decode_text(f.payload, iconv)?;
+                        Ok(Message::ErrorUtf8(text))
                     }
                     Msg::Progress => {
                         if f.payload.len() != 8 {
@@ -576,6 +658,37 @@ impl Message {
                         Ok(Message::Redo(idx))
                     }
                     Msg::Stats => Ok(Message::Stats(f.payload)),
+                    Msg::IoError => {
+                        if f.payload.len() != 4 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                "invalid io_error payload",
+                            ));
+                        }
+                        let mut rdr = &f.payload[..];
+                        let val = rdr.read_u32::<BigEndian>()?;
+                        Ok(Message::IoError(val))
+                    }
+                    Msg::IoTimeout => {
+                        if f.payload.len() != 4 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                "invalid io_timeout payload",
+                            ));
+                        }
+                        let mut rdr = &f.payload[..];
+                        let val = rdr.read_u32::<BigEndian>()?;
+                        Ok(Message::IoTimeout(val))
+                    }
+                    Msg::Noop => {
+                        if !f.payload.is_empty() {
+                            return Err(io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                "invalid noop payload",
+                            ));
+                        }
+                        Ok(Message::Noop)
+                    }
                     Msg::ErrorExit => {
                         if f.payload.len() != 1 {
                             return Err(io::Error::new(
