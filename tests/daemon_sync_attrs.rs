@@ -174,6 +174,41 @@ fn daemon_preserves_xattrs() {
 #[cfg(all(unix, feature = "xattr"))]
 #[test]
 #[serial]
+fn daemon_preserves_symlink_xattrs_rr_client() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let srv = tmp.path().join("srv");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&srv).unwrap();
+    fs::write(src.join("file"), b"hi").unwrap();
+    std::os::unix::fs::symlink("file", src.join("link")).unwrap();
+    xattr::set(src.join("link"), "user.test", b"val").unwrap();
+
+    let (mut child, port) = spawn_daemon(&srv);
+    wait_for_daemon(port);
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--links",
+            "--xattrs",
+            &src_arg,
+            &format!("rsync://127.0.0.1:{port}/mod"),
+        ])
+        .assert()
+        .success();
+
+    let val = xattr::get(srv.join("link"), "user.test").unwrap().unwrap();
+    assert_eq!(&val[..], b"val");
+
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[cfg(all(unix, feature = "xattr"))]
+#[test]
+#[serial]
 fn daemon_preserves_xattrs_rr_client() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");

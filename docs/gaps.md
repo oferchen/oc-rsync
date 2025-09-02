@@ -23,7 +23,6 @@ No known gaps. Exit codes map to upstream values. [protocol/src/lib.rs](../crate
     - Resolved: multi-link groups with partially existing destinations now replay correctly. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)
 - `--owner` — ownership restoration lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/cli.rs](../tests/cli.rs)
 - `--perms` — permission preservation incomplete. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
-- `--xattrs` — extended attribute support requires optional feature and lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs)
 
 ## Filters
 - `--exclude` — filter syntax coverage incomplete. [filters/src/lib.rs](../crates/filters/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)

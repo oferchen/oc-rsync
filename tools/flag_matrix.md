@@ -139,4 +139,4 @@
 | --whole-file | Supported |  |
 | --write-batch | Supported |  |
 | --write-devices | Supported |  |
-| --xattrs | Ignored |  |
+| --xattrs | Supported | requires `xattr` feature |
