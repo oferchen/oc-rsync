@@ -41,6 +41,7 @@ use users::get_user_by_uid;
 pub mod version {
     include!("../../../bin/oc-rsync/src/version.rs");
 }
+pub use version::version_banner;
 
 fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
