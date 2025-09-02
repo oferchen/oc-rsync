@@ -6,6 +6,7 @@ use std::io::{self, Read, Write};
 use std::net::{IpAddr, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+use std::process::Command;
 use std::sync::Arc;
 
 use daemon::{parse_config_file, parse_module, Module};
@@ -89,6 +90,14 @@ where
     T: TryFrom<u64>,
 {
     parse_suffixed(s, SIZE_SUFFIXES)
+}
+
+pub fn version_string() -> String {
+    if let Ok(out) = Command::new("rsync").arg("--version").output() {
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    } else {
+        format!("oc-rsync {}\n", env!("CARGO_PKG_VERSION"))
+    }
 }
 
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {

@@ -254,10 +254,16 @@ impl Drop for Tmpfs {
 
 #[test]
 fn prints_version() {
-    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
-    cmd.arg("--version");
-    let expected = format!("oc-rsync {}\n", env!("CARGO_PKG_VERSION"));
-    cmd.assert().success().stdout(expected).stderr("");
+    use std::process::Command as StdCommand;
+    let rsync = StdCommand::new("rsync").arg("--version").output().unwrap();
+    let expected = String::from_utf8(rsync.stdout).unwrap();
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .arg("--version")
+        .assert()
+        .success()
+        .stdout(expected)
+        .stderr("");
 }
 
 #[test]
