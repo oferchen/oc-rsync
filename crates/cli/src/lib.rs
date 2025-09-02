@@ -1078,9 +1078,19 @@ pub fn spawn_daemon_session_with_retry(
         (host, port.unwrap_or(873))
     };
     let start = Instant::now();
-    let mut t =
-        TcpTransport::connect_with_retry(host, port, connect_timeout, family, retries, retry_delay)
-            .map_err(EngineError::from)?;
+    let mut attempt = 0;
+    let mut t = loop {
+        match TcpTransport::connect(host, port, connect_timeout, family) {
+            Ok(t) => break t,
+            Err(e) => {
+                if attempt >= retries {
+                    return Err(EngineError::from(e));
+                }
+                std::thread::sleep(retry_delay);
+                attempt += 1;
+            }
+        }
+    };
     let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(EngineError::Other)?;
     t.apply_sockopts(&parsed).map_err(EngineError::from)?;
     let handshake_timeout = connect_timeout
