@@ -537,15 +537,17 @@ pub fn init(cfg: SubscriberConfig) {
 }
 
 pub fn human_bytes(bytes: u64) -> String {
-    const UNITS: [&str; 9] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
+    // Follow rsync's human-readable formatting using decimal (1000) units and
+    // single-letter suffixes.
+    const UNITS: [&str; 9] = ["", "K", "M", "G", "T", "P", "E", "Z", "Y"];
     let mut size = bytes as f64;
-    let mut unit = 0;
-    while size >= 1024.0 && unit < UNITS.len() - 1 {
-        size /= 1024.0;
+    let mut unit = 0usize;
+    while size >= 1000.0 && unit < UNITS.len() - 1 {
+        size /= 1000.0;
         unit += 1;
     }
     if unit == 0 {
-        format!("{}{}", bytes, UNITS[unit])
+        size.trunc().to_string()
     } else {
         format!("{:.2}{}", size, UNITS[unit])
     }
@@ -565,6 +567,20 @@ pub fn progress_formatter(bytes: u64, human_readable: bool) -> String {
         }
         out.chars().rev().collect()
     }
+}
+
+pub fn rate_formatter(bytes_per_sec: f64) -> String {
+    let mut rate = bytes_per_sec / 1024.0;
+    let mut units = "kB/s";
+    if rate >= 1024.0 {
+        rate /= 1024.0;
+        units = "MB/s";
+        if rate >= 1024.0 {
+            rate /= 1024.0;
+            units = "GB/s";
+        }
+    }
+    format!("{:>7.2}{}", rate, units)
 }
 
 pub fn parse_escapes(input: &str) -> String {
