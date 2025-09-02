@@ -129,7 +129,7 @@ fn ssh_handshake_timeout() {
         .unwrap();
     t.set_write_timeout(Some(Duration::from_millis(100)))
         .unwrap();
-    let err = SshStdioTransport::handshake(&mut t, &[], &[], 31, CAP_CODECS).unwrap_err();
+    let err = SshStdioTransport::handshake(&mut t, &[], &[], None, 31, CAP_CODECS).unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::TimedOut);
 }
 

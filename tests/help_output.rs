@@ -1,3 +1,4 @@
+// tests/help_output.rs
 use assert_cmd::Command;
 use std::fs;
 

@@ -38,6 +38,11 @@ use transport::{
 #[cfg(unix)]
 use users::get_user_by_uid;
 
+pub fn version_string() -> String {
+    let ver = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
+    format!("rsync {ver}")
+}
+
 fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
     parse_with_options(s, from0, &mut v, 0)
@@ -131,10 +136,11 @@ pub fn version_banner() -> String {
         .map(|p| p.to_string())
         .collect::<Vec<_>>()
         .join(", ");
+    let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
     format!(
         "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
         env!("CARGO_PKG_VERSION"),
-        env!("UPSTREAM_VERSION"),
+        upstream,
         protocols,
         features,
     )
@@ -1315,7 +1321,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     }
 
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
-        let list = ["md5", "sha1"];
+        let list = ["md4", "md5", "sha1"];
         rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
     }
 
@@ -1709,6 +1715,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     addr_family,
                     opts.protocol.unwrap_or(31),
                     caps_send,
+                    None,
                 )
                 .map_err(EngineError::from)?;
                 #[cfg(not(any(feature = "xattr", feature = "acl")))]
@@ -1817,6 +1824,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     addr_family,
                     opts.protocol.unwrap_or(31),
                     caps_send,
+                    None,
                 )
                 .map_err(EngineError::from)?;
                 #[cfg(not(any(feature = "xattr", feature = "acl")))]
