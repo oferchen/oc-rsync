@@ -85,12 +85,29 @@ impl TcpTransport {
         }
         let sock = SockRef::from(&self.stream);
         for opt in opts {
-            match *opt {
-                SockOpt::KeepAlive(v) => sock.set_keepalive(v)?,
-                SockOpt::SendBuf(size) => sock.set_send_buffer_size(size)?,
-                SockOpt::RecvBuf(size) => sock.set_recv_buffer_size(size)?,
-                SockOpt::IpTtl(v) => sock.set_ttl(v)?,
-                SockOpt::IpTos(v) => sock.set_tos(v)?,
+            match opt {
+                SockOpt::KeepAlive(v) => sock.set_keepalive(*v)?,
+                SockOpt::SendBuf(size) => sock.set_send_buffer_size(*size)?,
+                SockOpt::RecvBuf(size) => sock.set_recv_buffer_size(*size)?,
+                SockOpt::IpTtl(v) => sock.set_ttl(*v)?,
+                SockOpt::IpTos(v) => sock.set_tos(*v)?,
+                SockOpt::TcpNoDelay(v) => sock.set_nodelay(*v)?,
+                SockOpt::ReuseAddr(v) => sock.set_reuse_address(*v)?,
+                SockOpt::BindToDevice(iface) => {
+                    #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+                    {
+                        sock.bind_device(Some(iface.as_bytes()))?;
+                    }
+                    #[cfg(not(any(
+                        target_os = "android",
+                        target_os = "fuchsia",
+                        target_os = "linux"
+                    )))]
+                    {
+                        let _ = iface;
+                    }
+                }
+                SockOpt::IpHopLimit(v) => sock.set_unicast_hops_v6(*v)?,
             }
         }
         Ok(())
