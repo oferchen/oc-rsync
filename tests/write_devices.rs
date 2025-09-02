@@ -1,4 +1,6 @@
 // tests/write_devices.rs
+#![cfg(unix)]
+
 use assert_cmd::Command;
 use std::fs;
 use std::os::unix::fs::FileTypeExt;
