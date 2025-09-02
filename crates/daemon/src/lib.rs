@@ -84,7 +84,7 @@ pub struct Module {
     pub gid: Option<u32>,
     pub read_only: bool,
     pub list: bool,
-    pub max_connections: Option<usize>,
+    pub max_connections: Option<u32>,
     pub refuse_options: Vec<String>,
     pub connections: Arc<AtomicUsize>,
 }
@@ -203,7 +203,7 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
             "list" => module.list = parse_bool(val).map_err(|e| e.to_string())?,
             "max_connections" => {
                 let max = val
-                    .parse::<usize>()
+                    .parse::<u32>()
                     .map_err(|e| format!("invalid max connections: {e}"))?;
                 module.max_connections = Some(max);
             }
@@ -512,7 +512,7 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             (true, "max connections") => {
                 if let Some(m) = current.as_mut() {
                     let max = val
-                        .parse::<usize>()
+                        .parse::<u32>()
                         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
                     m.max_connections = Some(max);
                 }
@@ -853,7 +853,7 @@ pub fn handle_connection<T: Transport>(
             }
         }
         if let Some(max) = module.max_connections {
-            if module.connections.load(Ordering::SeqCst) >= max {
+            if module.connections.load(Ordering::SeqCst) >= max as usize {
                 let _ = transport.send(b"@ERROR: max connections reached");
                 return Err(io::Error::other("max connections reached"));
             }
