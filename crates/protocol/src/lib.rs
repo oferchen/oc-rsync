@@ -85,6 +85,10 @@ pub fn negotiate_version(local: u32, peer: u32) -> Result<u32, VersionError> {
     Err(VersionError(local.min(peer)))
 }
 
+pub fn negotiate_caps(local: u32, peer: u32) -> u32 {
+    (local & peer) & SUPPORTED_CAPS
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Tag {

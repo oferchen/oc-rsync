@@ -2,7 +2,8 @@
 use encoding_rs::Encoding;
 use filelist::{Decoder as FDecoder, Encoder as FEncoder, Entry as FEntry};
 use protocol::{
-    negotiate_version, CharsetConv, Frame, Message, Msg, Tag, MIN_VERSION, SUPPORTED_PROTOCOLS,
+    negotiate_caps, negotiate_version, CharsetConv, Frame, Message, Msg, Tag, CAP_ACLS, CAP_CODECS,
+    CAP_XATTRS, CAP_ZSTD, MIN_VERSION, SUPPORTED_PROTOCOLS,
 };
 
 #[test]
@@ -48,6 +49,13 @@ fn version_negotiation() {
         assert_eq!(negotiate_version(peer, latest), Ok(peer));
     }
     assert!(negotiate_version(latest, MIN_VERSION - 1).is_err());
+}
+
+#[test]
+fn capability_negotiation() {
+    let local = CAP_CODECS | CAP_ACLS | CAP_XATTRS;
+    let peer = CAP_CODECS | CAP_ZSTD | CAP_XATTRS;
+    assert_eq!(negotiate_caps(local, peer), CAP_CODECS | CAP_XATTRS);
 }
 
 #[test]
