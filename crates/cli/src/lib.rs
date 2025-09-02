@@ -22,7 +22,7 @@ use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use protocol::CharsetConv;
-use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
+use protocol::{negotiate_version, ExitCode, SUPPORTED_PROTOCOLS};
 use shell_words::split as shell_split;
 use transport::{
     parse_sockopts, AddressFamily, RateLimitedTransport, SockOpt, SshStdioTransport, TcpTransport,
@@ -991,14 +991,16 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     if !caps::has_cap(None, CapSet::Effective, Capability::CAP_CHOWN)
                         .unwrap_or(false)
                     {
-                        return Err(EngineError::Other(
+                        return Err(EngineError::Exit(
+                            ExitCode::StartClient,
                             "changing ownership requires root or CAP_CHOWN".into(),
                         ));
                     }
                 }
                 #[cfg(not(target_os = "linux"))]
                 {
-                    return Err(EngineError::Other(
+                    return Err(EngineError::Exit(
+                        ExitCode::StartClient,
                         "changing ownership requires root".into(),
                     ));
                 }

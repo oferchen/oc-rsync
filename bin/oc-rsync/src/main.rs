@@ -53,6 +53,7 @@ fn main() {
                 ExitCode::ConnTimeout
             }
             EngineError::MaxAlloc => ExitCode::Malloc,
+            EngineError::Exit(code, _) => *code,
             _ => ExitCode::Protocol,
         };
         std::process::exit(u8::from(code) as i32);
