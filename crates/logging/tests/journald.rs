@@ -13,7 +13,7 @@ fn journald_emits_message() {
     let path = dir.path().join("sock");
     let server = UnixDatagram::bind(&path).unwrap();
     std::env::set_var("OC_RSYNC_JOURNALD_PATH", &path);
-    let sub = subscriber(LogFormat::Text, 0, &[], &[], false, None, false, true);
+    let sub = subscriber(LogFormat::Text, 1, &[], &[], false, None, false, true);
     with_default(sub, || {
         info!(target: "test", "hi");
     });

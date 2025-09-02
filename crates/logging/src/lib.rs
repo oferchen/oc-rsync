@@ -15,6 +15,9 @@ use tracing_subscriber::{
     EnvFilter,
 };
 
+mod formatter;
+pub use formatter::RsyncFormatter;
+
 use clap::ValueEnum;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -194,21 +197,35 @@ struct MessageVisitor {
 #[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 impl Visit for MessageVisitor {
     fn record_str(&mut self, field: &Field, value: &str) {
-        if !self.msg.is_empty() {
-            self.msg.push(' ');
+        if field.name() == "message" {
+            if !self.msg.is_empty() {
+                self.msg.push(' ');
+            }
+            self.msg.push_str(value);
+        } else {
+            if !self.msg.is_empty() {
+                self.msg.push(' ');
+            }
+            self.msg.push_str(field.name());
+            self.msg.push('=');
+            self.msg.push_str(value);
         }
-        self.msg.push_str(field.name());
-        self.msg.push('=');
-        self.msg.push_str(value);
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-        if !self.msg.is_empty() {
-            self.msg.push(' ');
+        if field.name() == "message" {
+            if !self.msg.is_empty() {
+                self.msg.push(' ');
+            }
+            self.msg.push_str(&format!("{value:?}"));
+        } else {
+            if !self.msg.is_empty() {
+                self.msg.push(' ');
+            }
+            self.msg.push_str(field.name());
+            self.msg.push('=');
+            self.msg.push_str(&format!("{value:?}"));
         }
-        self.msg.push_str(field.name());
-        self.msg.push('=');
-        self.msg.push_str(&format!("{value:?}"));
     }
 }
 
@@ -311,7 +328,7 @@ pub fn subscriber(
     syslog: bool,
     journald: bool,
 ) -> Box<dyn tracing::Subscriber + Send + Sync> {
-    let level = if quiet {
+    let mut level = if quiet {
         LevelFilter::ERROR
     } else if verbose > 2 {
         LevelFilter::TRACE
@@ -322,6 +339,13 @@ pub fn subscriber(
     } else {
         LevelFilter::WARN
     };
+    if !quiet {
+        if !debug.is_empty() && level < LevelFilter::DEBUG {
+            level = LevelFilter::DEBUG;
+        } else if !info.is_empty() && level < LevelFilter::INFO {
+            level = LevelFilter::INFO;
+        }
+    }
     let mut filter = EnvFilter::builder()
         .with_default_directive(level.into())
         .from_env_lossy();
@@ -339,10 +363,13 @@ pub fn subscriber(
         }
     }
 
-    let fmt_layer = tracing_fmt::layer();
+    let fmt_layer = tracing_fmt::layer()
+        .with_target(false)
+        .with_level(false)
+        .without_time();
     let fmt_layer = match format {
         LogFormat::Json => fmt_layer.json().boxed(),
-        LogFormat::Text => fmt_layer.boxed(),
+        LogFormat::Text => fmt_layer.event_format(RsyncFormatter).boxed(),
     };
 
     #[cfg(all(unix, feature = "syslog"))]
