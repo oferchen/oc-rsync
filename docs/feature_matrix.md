@@ -47,7 +47,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--copy-unsafe-links` | ✅ | N | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--crtimes` | ✅ | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--cvs-exclude` | ✅ | Y | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs)<br>[tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--daemon` | ✅ | N | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--daemon` | ✅ | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--debug` | ✅ | Y | [crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--del` | ✅ | Y | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | alias for `--delete-during` |
 | `--delay-updates` | ✅ | Y | [tests/delay_updates.rs](../tests/delay_updates.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
@@ -78,6 +78,8 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--groupmap` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires root or CAP_CHOWN |
 | `--hard-links` | ✅ | N | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--help` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--hosts-allow` | ✅ | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--hosts-deny` | ✅ | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--human-readable` | ✅ | Y | [tests/golden/cli_parity/human-readable.sh](../tests/golden/cli_parity/human-readable.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--iconv` | ❌ | N | — | — | not yet implemented |
 | `--ignore-errors` | ✅ | N | [tests/delete_policy.rs](../tests/delete_policy.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
@@ -103,6 +105,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--min-size` | ✅ | N | [tests/perf_limits.rs](../tests/perf_limits.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--mkpath` | ✅ | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--modify-window` | ✅ | N | [tests/modify_window.rs](../tests/modify_window.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | treat close mtimes as equal |
+| `--motd` | ✅ | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--munge-links` | ❌ | N | — | — | not yet implemented |
 | `--no-detach` | ❌ | N | — | — | not yet implemented |
 | `--no-D` | ❌ | N | [gaps.md](gaps.md) | — | alias for `--no-devices --no-specials` |

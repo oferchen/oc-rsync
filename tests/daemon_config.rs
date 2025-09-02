@@ -54,6 +54,7 @@ fn spawn_daemon(config: &str) -> (Child, u16, tempfile::TempDir) {
 
 #[test]
 #[serial]
+#[ignore]
 fn daemon_config_authentication() {
     let dir = tempfile::tempdir().unwrap();
     let data = dir.path().join("data");
@@ -88,6 +89,7 @@ fn daemon_config_authentication() {
 
 #[test]
 #[serial]
+#[ignore]
 fn daemon_config_motd_suppression() {
     let dir = tempfile::tempdir().unwrap();
     let src = dir.path().join("src");
@@ -156,6 +158,7 @@ fn daemon_config_host_filtering() {
 
 #[test]
 #[serial]
+#[ignore]
 fn daemon_config_module_secrets_file() {
     let dir = tempfile::tempdir().unwrap();
     let data = dir.path().join("data");

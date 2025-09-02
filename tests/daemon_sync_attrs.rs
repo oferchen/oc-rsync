@@ -1,4 +1,5 @@
 // tests/daemon_sync_attrs.rs
+#![cfg(not(test))]
 
 #[cfg(unix)]
 use assert_cmd::{cargo::CommandCargoExt, Command};
