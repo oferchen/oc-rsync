@@ -1,4 +1,12 @@
-// tests/cli.rs
+/*
+tests/cli.rs
+
+owner_requires_privileges:
+Upstream rsync exits successfully when run without privileges and leaves
+destination files owned by the invoking user. This test mirrors that
+behavior and skips when CAP_CHOWN or root is available to avoid false
+positives.
+*/
 
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
@@ -968,7 +976,7 @@ fn owner_requires_privileges() {
     let current_uid = get_current_uid();
     let target_uid = if current_uid == 0 { 1 } else { current_uid + 1 };
     if chown(&probe, Some(Uid::from_raw(target_uid)), None).is_ok() {
-        eprintln!("skipping owner_requires_privileges: has CAP_CHOWN");
+        eprintln!("skipping owner_requires_privileges: has CAP_CHOWN or running as root");
         return;
     }
 
@@ -984,7 +992,11 @@ fn owner_requires_privileges() {
         .unwrap()
         .args(["--local", "--owner", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
-        .failure();
+        .success();
+
+    let dst_file = dst_dir.join("id.txt");
+    let metadata = std::fs::metadata(&dst_file).unwrap();
+    assert_eq!(metadata.uid(), current_uid);
 }
 
 #[cfg(unix)]
