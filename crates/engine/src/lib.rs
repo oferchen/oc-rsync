@@ -1144,7 +1144,7 @@ impl Receiver {
         }
     }
 
-    pub fn apply<I>(&mut self, src: &Path, dest: &Path, rel: &Path, delta: I) -> Result<PathBuf>
+    pub fn apply<I>(&mut self, src: &Path, dest: &Path, _rel: &Path, delta: I) -> Result<PathBuf>
     where
         I: IntoIterator<Item = Result<Op>>,
     {
@@ -1166,45 +1166,49 @@ impl Receiver {
         } else {
             dest.to_path_buf()
         };
+        let dest_parent = dest.parent().unwrap_or_else(|| Path::new("."));
+        let mut auto_tmp = false;
         let mut tmp_dest = if self.opts.inplace {
             dest.to_path_buf()
         } else if let Some(dir) = &self.opts.temp_dir {
-            dir.join(rel).with_extension("tmp")
+            #[cfg(unix)]
+            let same_dev = match (fs::metadata(dest_parent), fs::metadata(dir)) {
+                (Ok(d_meta), Ok(t_meta)) => d_meta.dev() == t_meta.dev(),
+                _ => true,
+            };
+            #[cfg(not(unix))]
+            let same_dev = true;
+            let prefix = dest
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| format!(".{n}."))
+                .unwrap_or_else(|| String::from(".tmp."));
+            let tmp_parent: &Path = if same_dev {
+                dir.as_path()
+            } else {
+                auto_tmp = true;
+                dest_parent
+            };
+            Builder::new()
+                .prefix(&prefix)
+                .tempfile_in(tmp_parent)
+                .map_err(|e| io_context(tmp_parent, e))?
+                .into_temp_path()
+                .keep()
+                .map_err(|e| io_context(tmp_parent, e.error))?
         } else if self.opts.partial {
             partial.clone()
         } else {
             dest.to_path_buf()
         };
-        let mut auto_tmp = !self.opts.inplace
+        if !self.opts.inplace
             && !self.opts.partial
             && self.opts.temp_dir.is_none()
             && basis_path == dest
-            && !self.opts.write_devices;
-        if auto_tmp {
+            && !self.opts.write_devices
+        {
+            auto_tmp = true;
             tmp_dest = dest.with_extension("tmp");
-        }
-        #[cfg(unix)]
-        if self.opts.temp_dir.is_some() {
-            let dest_parent = dest.parent().unwrap_or_else(|| Path::new("."));
-            let tmp_parent = tmp_dest.parent().unwrap_or_else(|| Path::new("."));
-            if let (Ok(d_meta), Ok(t_meta)) = (fs::metadata(dest_parent), fs::metadata(tmp_parent))
-            {
-                if d_meta.dev() != t_meta.dev() {
-                    let prefix = dest
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .map(|n| format!(".{n}."))
-                        .unwrap_or_else(|| String::from(".tmp."));
-                    tmp_dest = Builder::new()
-                        .prefix(&prefix)
-                        .tempfile_in(dest_parent)
-                        .map_err(|e| io_context(dest_parent, e))?
-                        .into_temp_path()
-                        .keep()
-                        .map_err(|e| io_context(dest_parent, e.error))?;
-                    auto_tmp = true;
-                }
-            }
         }
         let mut needs_rename =
             !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some() || auto_tmp);
