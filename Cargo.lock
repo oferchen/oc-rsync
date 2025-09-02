@@ -941,6 +941,7 @@ dependencies = [
 name = "oc-rsync-bin"
 version = "0.1.0"
 dependencies = [
+ "assert_cmd",
  "engine",
  "logging",
  "oc-rsync-cli",
