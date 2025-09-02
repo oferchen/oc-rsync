@@ -110,10 +110,18 @@ fn parse_dparam(s: &str) -> std::result::Result<(String, String), String> {
 }
 
 fn parse_bool(s: &str) -> std::result::Result<bool, String> {
-    match s {
-        "0" | "false" | "no" => Ok(false),
-        "1" | "true" | "yes" => Ok(true),
-        _ => Err("invalid boolean".to_string()),
+    if ["1", "true", "yes"]
+        .iter()
+        .any(|v| s.eq_ignore_ascii_case(v))
+    {
+        Ok(true)
+    } else if ["0", "false", "no"]
+        .iter()
+        .any(|v| s.eq_ignore_ascii_case(v))
+    {
+        Ok(false)
+    } else {
+        Err("invalid boolean".to_string())
     }
 }
 
@@ -2575,6 +2583,14 @@ mod tests {
     fn windows_paths_are_local() {
         let spec = parse_remote_spec("C:/tmp/foo").unwrap();
         assert!(matches!(spec, RemoteSpec::Local(_)));
+    }
+
+    #[test]
+    fn parse_bool_is_case_insensitive() {
+        assert!(parse_bool("TRUE").unwrap());
+        assert!(parse_bool("Yes").unwrap());
+        assert!(!parse_bool("FALSE").unwrap());
+        assert!(!parse_bool("No").unwrap());
     }
 
     #[test]
