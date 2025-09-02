@@ -125,6 +125,63 @@ fn captured_frames_roundtrip() {
 }
 
 #[test]
+fn extra_messages_roundtrip() {
+    let msg = Message::Redo(0x01020304);
+    let frame = msg.to_frame(0, None);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    let decoded = Frame::decode(&buf[..]).unwrap();
+    assert_eq!(decoded.header.msg, Msg::Redo);
+    let msg2 = Message::from_frame(decoded, None).unwrap();
+    assert_eq!(msg2, msg);
+
+    let msg = Message::Stats(vec![1, 2, 3]);
+    let frame = msg.to_frame(0, None);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    let decoded = Frame::decode(&buf[..]).unwrap();
+    assert_eq!(decoded.header.msg, Msg::Stats);
+    let msg2 = Message::from_frame(decoded, None).unwrap();
+    assert_eq!(msg2, msg);
+
+    let msg = Message::Success(7);
+    let frame = msg.to_frame(0, None);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    let decoded = Frame::decode(&buf[..]).unwrap();
+    assert_eq!(decoded.header.msg, Msg::Success);
+    let msg2 = Message::from_frame(decoded, None).unwrap();
+    assert_eq!(msg2, msg);
+
+    let msg = Message::Deleted(9);
+    let frame = msg.to_frame(0, None);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    let decoded = Frame::decode(&buf[..]).unwrap();
+    assert_eq!(decoded.header.msg, Msg::Deleted);
+    let msg2 = Message::from_frame(decoded, None).unwrap();
+    assert_eq!(msg2, msg);
+
+    let msg = Message::NoSend(11);
+    let frame = msg.to_frame(0, None);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    let decoded = Frame::decode(&buf[..]).unwrap();
+    assert_eq!(decoded.header.msg, Msg::NoSend);
+    let msg2 = Message::from_frame(decoded, None).unwrap();
+    assert_eq!(msg2, msg);
+
+    let msg = Message::ErrorExit(2);
+    let frame = msg.to_frame(0, None);
+    let mut buf = Vec::new();
+    frame.encode(&mut buf).unwrap();
+    let decoded = Frame::decode(&buf[..]).unwrap();
+    assert_eq!(decoded.header.msg, Msg::ErrorExit);
+    let msg2 = Message::from_frame(decoded, None).unwrap();
+    assert_eq!(msg2, msg);
+}
+
+#[test]
 fn error_message_iconv_roundtrip() {
     let cv = CharsetConv::new(Encoding::for_label(b"latin1").unwrap());
     let msg = Message::Error("Grüße".into());

@@ -118,6 +118,12 @@ pub enum Msg {
     Error = 6,
     Progress = 7,
     Codecs = 8,
+    Redo = 9,
+    Stats = 10,
+    ErrorExit = 86,
+    Success = 100,
+    Deleted = 101,
+    NoSend = 102,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -151,6 +157,12 @@ impl TryFrom<u8> for Msg {
             6 => Ok(Msg::Error),
             7 => Ok(Msg::Progress),
             8 => Ok(Msg::Codecs),
+            9 => Ok(Msg::Redo),
+            10 => Ok(Msg::Stats),
+            86 => Ok(Msg::ErrorExit),
+            100 => Ok(Msg::Success),
+            101 => Ok(Msg::Deleted),
+            102 => Ok(Msg::NoSend),
             other => Err(UnknownMsg(other)),
         }
     }
@@ -300,6 +312,12 @@ pub enum Message {
     Error(String),
     Progress(u64),
     Codecs(Vec<u8>),
+    Redo(u32),
+    Stats(Vec<u8>),
+    ErrorExit(u8),
+    Success(u32),
+    Deleted(u32),
+    NoSend(u32),
 }
 
 impl Message {
@@ -397,6 +415,69 @@ impl Message {
                 };
                 Frame { header, payload }
             }
+            Message::Redo(idx) => {
+                let mut payload = Vec::new();
+                payload.extend_from_slice(&idx.to_be_bytes());
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::Redo,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::Stats(payload) => {
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::Stats,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::ErrorExit(code) => {
+                let payload = vec![code];
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::ErrorExit,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::Success(idx) => {
+                let mut payload = Vec::new();
+                payload.extend_from_slice(&idx.to_be_bytes());
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::Success,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::Deleted(idx) => {
+                let mut payload = Vec::new();
+                payload.extend_from_slice(&idx.to_be_bytes());
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::Deleted,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::NoSend(idx) => {
+                let mut payload = Vec::new();
+                payload.extend_from_slice(&idx.to_be_bytes());
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::NoSend,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
         }
     }
 
@@ -450,6 +531,60 @@ impl Message {
                     Ok(Message::Progress(v))
                 }
                 Msg::Codecs => Ok(Message::Codecs(f.payload)),
+                Msg::Redo => {
+                    if f.payload.len() != 4 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "invalid redo payload",
+                        ));
+                    }
+                    let mut rdr = &f.payload[..];
+                    let idx = rdr.read_u32::<BigEndian>()?;
+                    Ok(Message::Redo(idx))
+                }
+                Msg::Stats => Ok(Message::Stats(f.payload)),
+                Msg::ErrorExit => {
+                    if f.payload.len() != 1 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "invalid error exit payload",
+                        ));
+                    }
+                    Ok(Message::ErrorExit(f.payload[0]))
+                }
+                Msg::Success => {
+                    if f.payload.len() != 4 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "invalid success payload",
+                        ));
+                    }
+                    let mut rdr = &f.payload[..];
+                    let idx = rdr.read_u32::<BigEndian>()?;
+                    Ok(Message::Success(idx))
+                }
+                Msg::Deleted => {
+                    if f.payload.len() != 4 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "invalid deleted payload",
+                        ));
+                    }
+                    let mut rdr = &f.payload[..];
+                    let idx = rdr.read_u32::<BigEndian>()?;
+                    Ok(Message::Deleted(idx))
+                }
+                Msg::NoSend => {
+                    if f.payload.len() != 4 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "invalid nosend payload",
+                        ));
+                    }
+                    let mut rdr = &f.payload[..];
+                    let idx = rdr.read_u32::<BigEndian>()?;
+                    Ok(Message::NoSend(idx))
+                }
                 Msg::KeepAlive => Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "unexpected keepalive message",
