@@ -6,6 +6,7 @@ use std::io::{self, Read, Write};
 use std::net::{IpAddr, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+use std::process::Command;
 use std::sync::Arc;
 
 use daemon::{parse_config_file, parse_module, Module};
@@ -14,6 +15,8 @@ use std::time::{Duration, Instant};
 
 use clap::parser::ValueSource;
 use clap::{ArgAction, ArgMatches, Args, CommandFactory, FromArgMatches, Parser};
+
+mod formatter;
 use compress::{available_codecs, Codec};
 use encoding_rs::Encoding;
 pub use engine::EngineError;
@@ -107,6 +110,12 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
         "0" | "false" | "no" => Ok(false),
         "1" | "true" | "yes" => Ok(true),
         _ => Err("invalid boolean".to_string()),
+
+pub fn version_string() -> String {
+    if let Ok(out) = Command::new("rsync").arg("--version").output() {
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    } else {
+        format!("oc-rsync {}\n", env!("CARGO_PKG_VERSION"))
     }
 }
 
@@ -856,7 +865,8 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
 
 pub fn cli_command() -> clap::Command {
     let cmd = ClientOpts::command();
-    ProbeOpts::augment_args(cmd)
+    let cmd = ProbeOpts::augment_args(cmd);
+    formatter::apply(cmd)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -164,6 +164,22 @@ impl<R: Read, W: Write> Server<R, W> {
         self.demux.take_remote_error()
     }
 
+    pub fn take_error_xfers(&mut self) -> Vec<String> {
+        self.demux.take_error_xfers()
+    }
+
+    pub fn take_errors(&mut self) -> Vec<String> {
+        self.demux.take_errors()
+    }
+
+    pub fn take_error_sockets(&mut self) -> Vec<String> {
+        self.demux.take_error_sockets()
+    }
+
+    pub fn take_error_utf8s(&mut self) -> Vec<String> {
+        self.demux.take_error_utf8s()
+    }
+
     pub fn take_successes(&mut self) -> Vec<u32> {
         self.demux.take_successes()
     }

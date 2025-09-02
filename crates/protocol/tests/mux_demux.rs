@@ -96,11 +96,12 @@ fn error_xfer_sets_remote_error() {
     let mut demux = Demux::new(Duration::from_millis(50));
 
     mux.register_channel(0);
-    demux.register_channel(0);
+    let _rx = demux.register_channel(0);
 
     mux.send_error_xfer(0, "oops").unwrap();
     let frame = mux.poll().expect("frame");
-    assert!(demux.ingest(frame).is_err());
+    demux.ingest(frame).unwrap();
+    assert_eq!(demux.take_error_xfers(), vec!["oops".to_string()]);
     assert_eq!(demux.take_remote_error(), Some("oops".into()));
 }
 
@@ -136,7 +137,7 @@ fn collect_log_messages() {
     let mut demux = Demux::new(Duration::from_millis(50));
 
     mux.register_channel(0);
-    demux.register_channel(0);
+    let _rx = demux.register_channel(0);
 
     mux.send_info(0, "info").unwrap();
     mux.send_warning(0, "warn").unwrap();
@@ -166,7 +167,7 @@ fn collect_progress_and_stats_messages() {
     let mut demux = Demux::new(Duration::from_millis(50));
 
     mux.register_channel(0);
-    demux.register_channel(0);
+    let _rx = demux.register_channel(0);
 
     mux.send_progress(0, 123).unwrap();
     mux.send_stats(0, vec![1, 2, 3]).unwrap();

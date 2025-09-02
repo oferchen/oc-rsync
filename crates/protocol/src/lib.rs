@@ -49,9 +49,11 @@ pub use server::Server;
 
 pub const V32: u32 = 32;
 pub const V31: u32 = 31;
-pub const SUPPORTED_PROTOCOLS: &[u32] = &[V32, V31];
+pub const V30: u32 = 30;
+pub const V29: u32 = 29;
+pub const SUPPORTED_PROTOCOLS: &[u32] = &[V32, V31, V30, V29];
 pub const LATEST_VERSION: u32 = V32;
-pub const MIN_VERSION: u32 = V31;
+pub const MIN_VERSION: u32 = V29;
 
 pub const CAP_CODECS: u32 = 1 << 0;
 pub const CAP_ZSTD: u32 = 1 << 1;

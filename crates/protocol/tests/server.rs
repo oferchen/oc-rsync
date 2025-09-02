@@ -2,7 +2,7 @@
 use compress::{available_codecs, encode_codecs, Codec};
 use protocol::{
     ExitCode, Server, CAP_ACLS, CAP_CODECS, CAP_XATTRS, CAP_ZSTD, SUPPORTED_CAPS,
-    SUPPORTED_PROTOCOLS, V31, V32,
+    SUPPORTED_PROTOCOLS, V29,
 };
 use std::io::Cursor;
 use std::time::Duration;
@@ -41,7 +41,7 @@ fn server_negotiates_version() {
 
 #[test]
 fn server_accepts_legacy_version() {
-    let legacy = V32;
+    let legacy = V29;
     let payload = encode_codecs(&available_codecs());
     let codecs_frame = protocol::Message::Codecs(payload.clone()).to_frame(0, None);
     let mut codecs_buf = Vec::new();
@@ -81,7 +81,7 @@ fn server_classic_versions() {
     let mut codecs_buf = Vec::new();
     codecs_frame.encode(&mut codecs_buf).unwrap();
 
-    for ver in [V31, V32] {
+    for &ver in SUPPORTED_PROTOCOLS {
         let mut input = Cursor::new({
             let mut v = vec![0, 0];
             v.extend_from_slice(&ver.to_be_bytes());
@@ -147,7 +147,7 @@ fn server_propagates_handshake_error() {
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
     let err = srv.handshake(latest, SUPPORTED_CAPS, &[]).unwrap_err();
-    assert_eq!(err.kind(), std::io::ErrorKind::Other);
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
     assert_eq!(srv.demux.take_remote_error().as_deref(), Some("fail"));
 }
 
@@ -302,7 +302,7 @@ fn server_surfaces_progress_and_stats() {
     let mut output = Vec::new();
     let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
 
-    srv.demux.register_channel(0);
+    let _rx = srv.demux.register_channel(0);
 
     let prog = protocol::Message::Progress(42).to_frame(0, None);
     let stats = protocol::Message::Stats(vec![1, 2, 3]).to_frame(0, None);

@@ -131,8 +131,7 @@ fn demux_remote_error_propagates() {
     let mut demux = Demux::new(Duration::from_millis(50));
     let rx = demux.register_channel(5);
     let frame = Message::Error("oops".into()).to_frame(5, None);
-    let err = demux.ingest(frame).unwrap_err();
-    assert_eq!(err.kind(), std::io::ErrorKind::Other);
-    assert_eq!(demux.take_remote_error().as_deref(), Some("oops"));
+    demux.ingest(frame).unwrap();
+    assert_eq!(demux.take_errors(), vec!["oops".to_string()]);
     assert!(matches!(rx.try_recv(), Ok(Message::Error(ref s)) if s == "oops"));
 }
