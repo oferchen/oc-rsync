@@ -117,6 +117,34 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
     }
 }
 
+#[allow(clippy::vec_init_then_push)]
+pub fn version_banner() -> String {
+    #[allow(unused_mut)]
+    let mut features: Vec<&str> = Vec::new();
+    #[cfg(feature = "xattr")]
+    features.push("xattr");
+    #[cfg(feature = "acl")]
+    features.push("acl");
+    let features = if features.is_empty() {
+        "none".to_string()
+    } else {
+        features.join(", ")
+    };
+    let protocols = SUPPORTED_PROTOCOLS
+        .iter()
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
+    format!(
+        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
+        env!("CARGO_PKG_VERSION"),
+        upstream,
+        protocols,
+        features,
+    )
+}
+
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")
@@ -697,9 +725,19 @@ struct ClientOpts {
         help = "request charset conversion of filenames"
     )]
     iconv: Option<String>,
-    #[arg(long = "write-batch", value_name = "FILE", help_heading = "Misc")]
+    #[arg(
+        long = "write-batch",
+        value_name = "FILE",
+        help_heading = "Misc",
+        conflicts_with = "read_batch"
+    )]
     write_batch: Option<PathBuf>,
-    #[arg(long = "read-batch", value_name = "FILE", help_heading = "Misc")]
+    #[arg(
+        long = "read-batch",
+        value_name = "FILE",
+        help_heading = "Misc",
+        conflicts_with = "write_batch"
+    )]
     read_batch: Option<PathBuf>,
     #[arg(long = "copy-devices", help_heading = "Misc")]
     copy_devices: bool,

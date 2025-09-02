@@ -1907,6 +1907,19 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     choices.into_iter().find(|c| remote.contains(c))
 }
 
+fn parse_batch_file(batch_path: &Path) -> Result<Vec<PathBuf>> {
+    let content = fs::read_to_string(batch_path).map_err(|e| EngineError::Other(e.to_string()))?;
+    let mut paths = Vec::new();
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.contains('=') {
+            continue;
+        }
+        paths.push(PathBuf::from(line));
+    }
+    Ok(paths)
+}
+
 fn delete_extraneous(
     src: &Path,
     dst: &Path,
@@ -2168,19 +2181,13 @@ pub fn sync(
 
     if let Some(batch_path) = &opts.read_batch {
         sender.start();
-        let content =
-            fs::read_to_string(batch_path).map_err(|e| EngineError::Other(e.to_string()))?;
-        for line in content.lines() {
-            if line.trim().is_empty() || line.contains('=') {
-                continue;
-            }
-            let rel = Path::new(line);
-            let path = src_root.join(rel);
+        for rel in parse_batch_file(batch_path)? {
+            let path = src_root.join(&rel);
             if !path.exists() {
                 continue;
             }
-            let dest_path = dst.join(rel);
-            if sender.process_file(&path, &dest_path, rel, &mut receiver)? {
+            let dest_path = dst.join(&rel);
+            if sender.process_file(&path, &dest_path, &rel, &mut receiver)? {
                 stats.files_transferred += 1;
                 stats.bytes_transferred +=
                     fs::metadata(&path).map_err(|e| io_context(&path, e))?.len();
