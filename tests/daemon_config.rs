@@ -214,3 +214,36 @@ fn daemon_config_custom_port() {
     let _ = child.kill();
     let _ = child.wait();
 }
+
+#[test]
+#[serial]
+fn daemon_config_read_only_module_rejects_writes() {
+    let dir = tempfile::tempdir().unwrap();
+    let data_dir = dir.path().join("data");
+    fs::create_dir(&data_dir).unwrap();
+    let src = dir.path().join("src");
+    fs::create_dir(&src).unwrap();
+    fs::write(src.join("file.txt"), b"data").unwrap();
+    let config = format!(
+        "port = 0\n[data]\n    path = {}\n    read only = yes\n",
+        data_dir.display()
+    );
+    let (mut child, port, _tmp) = spawn_daemon(&config);
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    t.authenticate(None, false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
+    t.send(b"data\n").unwrap();
+    t.receive(&mut ok).unwrap();
+    t.send(b"--server\n").unwrap();
+    t.send(b"\n").unwrap();
+    let mut resp = [0u8; 128];
+    let n = t.receive(&mut resp).unwrap_or(0);
+    assert!(String::from_utf8_lossy(&resp[..n]).contains("read only"));
+    let _ = child.kill();
+    let _ = child.wait();
+}

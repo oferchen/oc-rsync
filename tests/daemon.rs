@@ -1846,3 +1846,56 @@ fn daemon_honors_bwlimit() {
     let _ = child.kill();
     let _ = child.wait();
 }
+
+#[test]
+#[serial]
+fn daemon_hides_unlisted_modules() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let hidden = dir.path().join("hidden");
+    fs::create_dir(&hidden).unwrap();
+    let visible = dir.path().join("visible");
+    fs::create_dir(&visible).unwrap();
+    let mut child = StdCommand::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--daemon",
+            "--module",
+            &format!("hidden={},list=no", hidden.display()),
+            "--module",
+            &format!("visible={}", visible.display()),
+            "--port",
+            "0",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let port = match read_port(&mut child) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("{e}");
+        }
+    };
+    wait_for_daemon(port);
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+    let mut buf = [0u8; 4];
+    t.receive(&mut buf).unwrap();
+    t.authenticate(None, false).unwrap();
+    let mut ok = [0u8; 64];
+    t.receive(&mut ok).unwrap();
+    t.send(b"\n").unwrap();
+    let mut resp = [0u8; 1024];
+    let n = t.receive(&mut resp).unwrap();
+    let listing = String::from_utf8_lossy(&resp[..n]);
+    assert!(listing.contains("visible"));
+    assert!(!listing.contains("hidden"));
+    let _ = child.kill();
+    let _ = child.wait();
+}
