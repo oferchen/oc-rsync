@@ -52,7 +52,7 @@ fn service_unit_matches_spec() {
         "LogsDirectory=oc-rsyncd",
         "StateDirectory=oc-rsyncd",
         "ConfigurationDirectory=oc-rsyncd",
-        "ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd/oc-rsyncd.conf",
+        "ExecStart=/usr/local/bin/oc-rsyncd --no-detach --config=/etc/oc-rsyncd/oc-rsyncd.conf",
     ] {
         assert!(
             unit.lines().any(|l| l.trim() == expected),
