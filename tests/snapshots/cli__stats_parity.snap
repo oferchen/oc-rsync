@@ -1,5 +1,5 @@
 ---
-source: crates/cli/tests/progress_stats.rs
+source: tests/cli.rs
 expression: "our_stats.join(\"\\n\")"
 ---
 Number of deleted files: 0

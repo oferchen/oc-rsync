@@ -947,6 +947,7 @@ dependencies = [
  "engine",
  "filetime",
  "filters",
+ "insta",
  "logging",
  "meta",
  "nix 0.27.1",

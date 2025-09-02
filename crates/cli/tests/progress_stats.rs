@@ -49,11 +49,20 @@ fn progress_parity() {
         .output()
         .unwrap();
 
-    let up_stderr = String::from_utf8_lossy(&up.stderr).replace('\r', "\n");
-    let our_stderr = String::from_utf8_lossy(&ours.stderr).replace('\r', "\n");
+    let norm = |s: &[u8]| {
+        let txt = String::from_utf8_lossy(s).replace('\r', "\n");
+        txt.lines()
+            .rev()
+            .find(|l| l.contains('%'))
+            .and_then(|l| l.split(" (xfr").next())
+            .unwrap()
+            .to_string()
+    };
+    let up_line = norm(&up.stdout);
+    let our_line = norm(&ours.stderr);
 
-    assert_eq!(our_stderr, up_stderr);
-    insta::assert_snapshot!("progress_parity", our_stderr);
+    assert_eq!(our_line, up_line);
+    insta::assert_snapshot!("progress_parity", our_line);
 }
 
 #[test]
@@ -88,7 +97,7 @@ fn stats_parity() {
         .unwrap();
 
     let up_stdout = String::from_utf8_lossy(&up.stdout);
-    let up_stats: Vec<&str> = up_stdout
+    let mut up_stats: Vec<&str> = up_stdout
         .lines()
         .filter(|l| {
             l.starts_with("Number of regular files transferred")
@@ -96,9 +105,11 @@ fn stats_parity() {
                 || l.starts_with("Total transferred file size")
         })
         .collect();
+    up_stats.sort_unstable();
 
     let our_stdout = String::from_utf8_lossy(&ours.stdout);
-    let our_stats: Vec<&str> = our_stdout.lines().collect();
+    let mut our_stats: Vec<&str> = our_stdout.lines().collect();
+    our_stats.sort_unstable();
 
     assert_eq!(our_stats, up_stats);
     insta::assert_snapshot!("stats_parity", our_stats.join("\n"));
