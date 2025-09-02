@@ -318,6 +318,7 @@ pub enum Message {
     Success(u32),
     Deleted(u32),
     NoSend(u32),
+    Other(Msg, Vec<u8>),
 }
 
 impl Message {
@@ -478,6 +479,15 @@ impl Message {
                 };
                 Frame { header, payload }
             }
+            Message::Other(msg, payload) => {
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
         }
     }
 
@@ -500,97 +510,101 @@ impl Message {
                     "invalid keepalive message",
                 )),
             },
-            Tag::Message => match f.header.msg {
-                Msg::Version => {
-                    let mut rdr = &f.payload[..];
-                    let v = rdr.read_u32::<BigEndian>()?;
-                    Ok(Message::Version(v))
-                }
-                Msg::Data => Ok(Message::Data(f.payload)),
-                Msg::Done => Ok(Message::Done),
-                Msg::FileListEntry => Ok(Message::FileListEntry(f.payload)),
-                Msg::Attributes => Ok(Message::Attributes(f.payload)),
-                Msg::Error => {
-                    let text = if let Some(cv) = iconv {
-                        cv.decode_remote(&f.payload)
-                    } else {
-                        String::from_utf8(f.payload)
-                            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
-                    };
-                    Ok(Message::Error(text))
-                }
-                Msg::Progress => {
-                    if f.payload.len() != 8 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "invalid progress payload",
-                        ));
+            Tag::Message =>
+            {
+                #[allow(unreachable_patterns)]
+                match f.header.msg {
+                    Msg::Version => {
+                        let mut rdr = &f.payload[..];
+                        let v = rdr.read_u32::<BigEndian>()?;
+                        Ok(Message::Version(v))
                     }
-                    let mut rdr = &f.payload[..];
-                    let v = rdr.read_u64::<BigEndian>()?;
-                    Ok(Message::Progress(v))
-                }
-                Msg::Codecs => Ok(Message::Codecs(f.payload)),
-                Msg::Redo => {
-                    if f.payload.len() != 4 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "invalid redo payload",
-                        ));
+                    Msg::Data => Ok(Message::Data(f.payload)),
+                    Msg::Done => Ok(Message::Done),
+                    Msg::FileListEntry => Ok(Message::FileListEntry(f.payload)),
+                    Msg::Attributes => Ok(Message::Attributes(f.payload)),
+                    Msg::Error => {
+                        let text = if let Some(cv) = iconv {
+                            cv.decode_remote(&f.payload)
+                        } else {
+                            String::from_utf8(f.payload)
+                                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
+                        };
+                        Ok(Message::Error(text))
                     }
-                    let mut rdr = &f.payload[..];
-                    let idx = rdr.read_u32::<BigEndian>()?;
-                    Ok(Message::Redo(idx))
-                }
-                Msg::Stats => Ok(Message::Stats(f.payload)),
-                Msg::ErrorExit => {
-                    if f.payload.len() != 1 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "invalid error exit payload",
-                        ));
+                    Msg::Progress => {
+                        if f.payload.len() != 8 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                "invalid progress payload",
+                            ));
+                        }
+                        let mut rdr = &f.payload[..];
+                        let v = rdr.read_u64::<BigEndian>()?;
+                        Ok(Message::Progress(v))
                     }
-                    Ok(Message::ErrorExit(f.payload[0]))
-                }
-                Msg::Success => {
-                    if f.payload.len() != 4 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "invalid success payload",
-                        ));
+                    Msg::Codecs => Ok(Message::Codecs(f.payload)),
+                    Msg::Redo => {
+                        if f.payload.len() != 4 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                "invalid redo payload",
+                            ));
+                        }
+                        let mut rdr = &f.payload[..];
+                        let idx = rdr.read_u32::<BigEndian>()?;
+                        Ok(Message::Redo(idx))
                     }
-                    let mut rdr = &f.payload[..];
-                    let idx = rdr.read_u32::<BigEndian>()?;
-                    Ok(Message::Success(idx))
-                }
-                Msg::Deleted => {
-                    if f.payload.len() != 4 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "invalid deleted payload",
-                        ));
+                    Msg::Stats => Ok(Message::Stats(f.payload)),
+                    Msg::ErrorExit => {
+                        if f.payload.len() != 1 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                "invalid error exit payload",
+                            ));
+                        }
+                        Ok(Message::ErrorExit(f.payload[0]))
                     }
-                    let mut rdr = &f.payload[..];
-                    let idx = rdr.read_u32::<BigEndian>()?;
-                    Ok(Message::Deleted(idx))
-                }
-                Msg::NoSend => {
-                    if f.payload.len() != 4 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "invalid nosend payload",
-                        ));
+                    Msg::Success => {
+                        if f.payload.len() != 4 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                "invalid success payload",
+                            ));
+                        }
+                        let mut rdr = &f.payload[..];
+                        let idx = rdr.read_u32::<BigEndian>()?;
+                        Ok(Message::Success(idx))
                     }
-                    let mut rdr = &f.payload[..];
-                    let idx = rdr.read_u32::<BigEndian>()?;
-                    Ok(Message::NoSend(idx))
+                    Msg::Deleted => {
+                        if f.payload.len() != 4 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                "invalid deleted payload",
+                            ));
+                        }
+                        let mut rdr = &f.payload[..];
+                        let idx = rdr.read_u32::<BigEndian>()?;
+                        Ok(Message::Deleted(idx))
+                    }
+                    Msg::NoSend => {
+                        if f.payload.len() != 4 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                "invalid nosend payload",
+                            ));
+                        }
+                        let mut rdr = &f.payload[..];
+                        let idx = rdr.read_u32::<BigEndian>()?;
+                        Ok(Message::NoSend(idx))
+                    }
+                    Msg::KeepAlive => Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "unexpected keepalive message",
+                    )),
+                    other => Ok(Message::Other(other, f.payload)),
                 }
-                Msg::KeepAlive => Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "unexpected keepalive message",
-                )),
-                other => Ok(Message::Other(other, f.payload)),
-            },
+            }
         }
     }
 

@@ -1109,6 +1109,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
     let strong = if let Some(choice) = opts.checksum_choice.as_deref() {
         match choice {
+            "md4" => StrongHash::Md4,
             "md5" => StrongHash::Md5,
             "sha1" => StrongHash::Sha1,
             other => {
@@ -1116,7 +1117,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             }
         }
     } else if let Ok(list) = env::var("RSYNC_CHECKSUM_LIST") {
-        let mut chosen = StrongHash::Md5;
+        let mut chosen = StrongHash::Md4;
         for name in list.split(',') {
             match name {
                 "sha1" => {
@@ -1127,12 +1128,16 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     chosen = StrongHash::Md5;
                     break;
                 }
+                "md4" => {
+                    chosen = StrongHash::Md4;
+                    break;
+                }
                 _ => {}
             }
         }
         chosen
     } else {
-        StrongHash::Md5
+        StrongHash::Md4
     };
 
     let src_trailing = match &src {

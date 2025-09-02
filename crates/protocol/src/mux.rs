@@ -27,7 +27,7 @@ impl Mux {
             keepalive,
             channels: IndexMap::new(),
             next: 0,
-            strong_hash: StrongHash::Md5,
+            strong_hash: StrongHash::Md4,
             compressor: Codec::Zlib,
         }
     }

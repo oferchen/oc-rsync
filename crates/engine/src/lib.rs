@@ -1719,7 +1719,7 @@ impl Default for SyncOptions {
             ignore_existing: false,
             size_only: false,
             ignore_times: false,
-            strong: StrongHash::Md5,
+            strong: StrongHash::Md4,
             checksum_seed: 0,
             compress_level: None,
             compress_choice: None,
