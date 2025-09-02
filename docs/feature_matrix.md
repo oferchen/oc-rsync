@@ -63,15 +63,15 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--dparam` | ❌ | N | — | — | not yet implemented |
 | `--dry-run` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--early-input` | ✅ | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--exclude` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--exclude-from` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--exclude` | ✅ | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--exclude-from` | ✅ | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--executability` | ✅ | Y | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--existing` | ✅ | Y | [tests/filter_corpus.rs](../tests/filter_corpus.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--fake-super` | ✅ | N | [tests/fake_super.rs](../tests/fake_super.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires `xattr` feature |
-| `--files-from` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--files-from` | ✅ | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--filter` | ✅ | Y | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--force` | ✅ | Y | [tests/delete_policy.rs](../tests/delete_policy.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--from0` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--from0` | ✅ | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--fsync` | ✅ | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--fuzzy` | ✅ | N | [tests/fuzzy.rs](../tests/fuzzy.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--group` | ✅ | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires root or CAP_CHOWN |
@@ -86,8 +86,8 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--ignore-existing` | ✅ | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--ignore-missing-args` | ✅ | N | [tests/ignore_missing_args.rs](../tests/ignore_missing_args.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--ignore-times` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--include` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--include-from` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--include` | ✅ | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--include-from` | ✅ | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--info` | ✅ | N | [crates/logging/tests/info_flags.rs](../crates/logging/tests/info_flags.rs)<br>[crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--inplace` | ✅ | Y | [tests/golden/cli_parity/inplace.sh](../tests/golden/cli_parity/inplace.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--ipv4` | ✅ | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | select IPv4 transport or listener |

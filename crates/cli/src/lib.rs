@@ -1912,7 +1912,12 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("filter_file")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
-            let data = fs::read(file)?;
+            let mut data = Vec::new();
+            if file == Path::new("-") {
+                io::stdin().read_to_end(&mut data)?;
+            } else {
+                data = fs::read(file)?;
+            }
             let rs = filters::parse_from_bytes(&data, opts.from0, &mut HashSet::new(), 0)
                 .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
             add_rules(idx + 1, rs);
@@ -1948,8 +1953,15 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
             let mut vset = HashSet::new();
-            let rs = filters::parse_rule_list_file(file, opts.from0, '+', &mut vset, 0)
-                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+            let rs = if file == Path::new("-") {
+                let mut buf = Vec::new();
+                io::stdin().read_to_end(&mut buf)?;
+                filters::parse_rule_list_from_bytes(&buf, opts.from0, '+', &mut vset, 0)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?
+            } else {
+                filters::parse_rule_list_file(file, opts.from0, '+', &mut vset, 0)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?
+            };
             add_rules(idx + 1, rs);
         }
     }
@@ -1959,8 +1971,15 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
             let mut vset = HashSet::new();
-            let rs = filters::parse_rule_list_file(file, opts.from0, '-', &mut vset, 0)
-                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+            let rs = if file == Path::new("-") {
+                let mut buf = Vec::new();
+                io::stdin().read_to_end(&mut buf)?;
+                filters::parse_rule_list_from_bytes(&buf, opts.from0, '-', &mut vset, 0)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?
+            } else {
+                filters::parse_rule_list_file(file, opts.from0, '-', &mut vset, 0)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?
+            };
             add_rules(idx + 1, rs);
         }
     }

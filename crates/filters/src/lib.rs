@@ -1037,9 +1037,10 @@ pub fn parse_with_options(
             if !visited.insert(path.clone()) {
                 return Err(ParseError::RecursiveInclude(path));
             }
-            let content = fs::read_to_string(&path)
-                .map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
-            rules.extend(parse_with_options(&content, from0, visited, depth + 1)?);
+            let data =
+                fs::read(&path).map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
+            let sub = parse_from_bytes(&data, from0, visited, depth + 1)?;
+            rules.extend(sub);
             continue;
         } else if let Some(r) = line.strip_prefix(':') {
             let (m, file) = split_mods(r, "-+Cenw/!srpx");
