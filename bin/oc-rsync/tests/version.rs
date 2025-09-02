@@ -29,3 +29,12 @@ fn output_is_immutable() {
     let second = version_output();
     assert_eq!(first, second);
 }
+
+#[test]
+fn exit_code_is_zero() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .arg("--version")
+        .assert()
+        .success();
+}

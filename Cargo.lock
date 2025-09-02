@@ -942,6 +942,7 @@ name = "oc-rsync-bin"
 version = "0.1.0"
 dependencies = [
  "assert_cmd",
+ "clap",
  "engine",
  "logging",
  "oc-rsync-cli",
