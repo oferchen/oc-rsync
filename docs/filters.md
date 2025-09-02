@@ -15,3 +15,15 @@ their relative order is preserved with global rules.
 
 The parser is fuzzed and property tested against rsync to ensure identical
 semantics.
+
+## Reporting
+
+`Matcher` instances keep running statistics of rule evaluations. Each rule
+records whether it matched or missed and the source file that defined it. After
+filter checks, call `Matcher::stats()` or `Matcher::report()` to retrieve or log
+these counters. `LoggingAgent` consumes this data on the `info::filter` target
+to produce lines such as:
+
+```
+matches=1 misses=0 source=/tmp/rules
+```

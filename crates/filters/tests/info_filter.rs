@@ -2,9 +2,10 @@
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 
-use filters::{parse, Matcher};
+use filters::{parse_file, Matcher};
 use logging::InfoFlag;
 use std::collections::HashSet;
+use tempfile::NamedTempFile;
 use tracing::level_filters::LevelFilter;
 use tracing::subscriber::with_default;
 use tracing_subscriber::{
@@ -36,15 +37,13 @@ impl<'a> MakeWriter<'a> for VecWriter {
         VecWriterGuard(self.0.clone())
     }
 }
-
-fn m(input: &str) -> Matcher {
-    let mut v = HashSet::new();
-    Matcher::new(parse(input, &mut v, 0).unwrap())
-}
-
 #[test]
 fn logs_match_and_rule_count() {
-    let matcher = m("+ foo\n- *\n");
+    let tmp = NamedTempFile::new().unwrap();
+    std::fs::write(tmp.path(), "+ foo\n- *\n").unwrap();
+    let mut v = HashSet::new();
+    let rules = parse_file(tmp.path(), false, &mut v, 0).unwrap();
+    let matcher = Matcher::new(rules);
 
     let writer = VecWriter::default();
     let mut filter = EnvFilter::builder()
@@ -69,4 +68,7 @@ fn logs_match_and_rule_count() {
     let line = log.lines().find(|l| l.contains("info::filter")).unwrap();
     assert!(line.contains("matched=true"));
     assert!(line.contains("rules=2"));
+    assert!(line.contains("matches=1"));
+    assert!(line.contains("misses=0"));
+    assert!(line.contains(&format!("source={}", tmp.path().display())));
 }

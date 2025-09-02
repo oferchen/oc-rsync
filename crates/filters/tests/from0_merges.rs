@@ -32,7 +32,7 @@ fn merge_word_split_from0() {
     fs::write(&list, b"-foo\0+bar\0").unwrap();
     let spec = format!(": merge,w {}\n", list.display());
     let mut v: HashSet<PathBuf> = HashSet::new();
-    let rules = parse_with_options(&spec, true, &mut v, 0).unwrap();
+    let rules = parse_with_options(&spec, true, &mut v, 0, None).unwrap();
     let matcher = Matcher::new(rules);
     assert!(!matcher.is_included("foo").unwrap());
     assert!(matcher.is_included("bar").unwrap());
