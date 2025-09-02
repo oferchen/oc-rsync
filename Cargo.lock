@@ -440,6 +440,7 @@ dependencies = [
  "protocol",
  "tempfile",
  "thiserror",
+ "tracing",
  "walk",
  "xattr",
 ]

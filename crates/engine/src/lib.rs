@@ -24,7 +24,7 @@ pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 use compress::{should_compress, Codec, Compressor, Decompressor, Zlib, Zlibx, Zstd};
 use filters::Matcher;
-use logging::progress_formatter;
+use logging::{progress_formatter, InfoFlag};
 use protocol::ExitCode;
 use thiserror::Error;
 pub mod flist;
@@ -204,6 +204,18 @@ fn outside_size_bounds(len: u64, opts: &SyncOptions) -> bool {
         }
     }
     false
+}
+
+fn log_name(rel: &Path, link: Option<&Path>, opts: &SyncOptions, default: String) {
+    if opts.quiet {
+        return;
+    }
+    if let Some(fmt) = &opts.out_format {
+        let msg = logging::render_out_format(fmt, rel, link);
+        tracing::info!(target: InfoFlag::Name.target(), "{}", msg);
+    } else if opts.itemize_changes {
+        println!("{}", default);
+    }
 }
 
 #[cfg(unix)]
@@ -1707,6 +1719,7 @@ pub struct SyncOptions {
     pub progress: bool,
     pub human_readable: bool,
     pub itemize_changes: bool,
+    pub out_format: Option<String>,
     pub partial_dir: Option<PathBuf>,
     pub temp_dir: Option<PathBuf>,
     pub append: bool,
@@ -1803,6 +1816,7 @@ impl Default for SyncOptions {
             progress: false,
             human_readable: false,
             itemize_changes: false,
+            out_format: None,
             partial_dir: None,
             temp_dir: None,
             append: false,
@@ -2269,8 +2283,8 @@ pub fn sync(
                         if let Some(f) = batch_file.as_mut() {
                             let _ = writeln!(f, "{}", rel.display());
                         }
-                        if opts.itemize_changes && !opts.quiet {
-                            println!(">f+++++++++ {}", rel.display());
+                        if (opts.out_format.is_some() || opts.itemize_changes) && !opts.quiet {
+                            log_name(rel, None, opts, format!(">f+++++++++ {}", rel.display()));
                         }
                     }
                     if opts.remove_source_files {
@@ -2342,8 +2356,8 @@ pub fn sync(
                             chown(&dest_path, Some(Uid::from_raw(uid)), gid)
                                 .map_err(|e| io_context(&dest_path, std::io::Error::from(e)))?;
                         }
-                        if opts.itemize_changes && !opts.quiet {
-                            println!("cd+++++++++ {}/", rel.display());
+                        if (opts.out_format.is_some() || opts.itemize_changes) && !opts.quiet {
+                            log_name(rel, None, opts, format!("cd+++++++++ {}/", rel.display()));
                         }
                     }
                     dir_meta.push((path.clone(), dest_path.clone()));
@@ -2436,8 +2450,17 @@ pub fn sync(
                         receiver.copy_metadata(&path, &dest_path)?;
                         if created {
                             stats.files_transferred += 1;
-                            if opts.itemize_changes && !opts.quiet {
-                                println!("cL+++++++++ {} -> {}", rel.display(), target.display());
+                            if (opts.out_format.is_some() || opts.itemize_changes) && !opts.quiet {
+                                log_name(
+                                    rel,
+                                    Some(&target),
+                                    opts,
+                                    format!(
+                                        "cL+++++++++ {} -> {}",
+                                        rel.display(),
+                                        target.display()
+                                    ),
+                                );
                             }
                         }
                         if opts.remove_source_files {
@@ -2473,8 +2496,15 @@ pub fn sync(
                             receiver.copy_metadata_now(&path, &dest_path)?;
                             if created {
                                 stats.files_transferred += 1;
-                                if opts.itemize_changes && !opts.quiet {
-                                    println!("cD+++++++++ {}", rel.display());
+                                if (opts.out_format.is_some() || opts.itemize_changes)
+                                    && !opts.quiet
+                                {
+                                    log_name(
+                                        rel,
+                                        None,
+                                        opts,
+                                        format!("cD+++++++++ {}", rel.display()),
+                                    );
                                 }
                             }
                         } else if file_type.is_fifo() && opts.specials {

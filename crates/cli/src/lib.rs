@@ -193,6 +193,8 @@ struct ClientOpts {
         id = "client-log-file-format"
     )]
     log_file_format: Option<String>,
+    #[arg(long = "out-format", value_name = "FORMAT", help_heading = "Output")]
+    out_format: Option<String>,
     #[arg(
         long,
         value_name = "FLAGS",
@@ -1370,6 +1372,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         progress: opts.progress || opts.partial_progress,
         human_readable: opts.human_readable,
         itemize_changes: opts.itemize_changes,
+        out_format: opts.out_format.clone(),
         partial_dir: opts.partial_dir.clone(),
         temp_dir: opts.temp_dir.clone(),
         append: opts.append,
