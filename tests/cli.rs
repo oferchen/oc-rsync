@@ -1,4 +1,4 @@
-// tests/cli.rs
+// tests/cli.rs - CLI integration tests. Includes Tmpfs helper that skips cross-filesystem tests when tmpfs isn't available.
 
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
@@ -32,6 +32,22 @@ struct Tmpfs(TempDir);
 impl Tmpfs {
     fn new() -> Option<Self> {
         if !cfg!(target_os = "linux") {
+            return None;
+        }
+        if !Uid::effective().is_root() {
+            return None;
+        }
+        let mount_exists = std::env::var_os("PATH").is_some_and(|paths| {
+            std::env::split_paths(&paths).any(|dir| dir.join("mount").is_file())
+        });
+        if !mount_exists {
+            return None;
+        }
+        if let Ok(fs) = std::fs::read_to_string("/proc/filesystems") {
+            if !fs.lines().any(|l| l.trim().ends_with("tmpfs")) {
+                return None;
+            }
+        } else {
             return None;
         }
         let dir = tempdir().ok()?;
