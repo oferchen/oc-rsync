@@ -23,9 +23,7 @@ pub use engine::EngineError;
 use engine::{pipe_sessions, sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse_with_options, Matcher, Rule};
 pub use formatter::render_help;
-use logging::{
-    parse_escapes, progress_formatter, DebugFlag, InfoFlag, LogFormat, SubscriberConfig,
-};
+use logging::{human_bytes, parse_escapes, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use protocol::CharsetConv;
 #[cfg(feature = "acl")]
@@ -2183,12 +2181,16 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         }
     };
     if opts.stats && !opts.quiet {
+        println!("Number of deleted files: {}", stats.files_deleted);
         println!(
             "Number of regular files transferred: {}",
             stats.files_transferred
         );
-        println!("Number of deleted files: {}", stats.files_deleted);
-        let bytes = progress_formatter(stats.bytes_transferred, opts.human_readable);
+        let bytes = if opts.human_readable {
+            human_bytes(stats.bytes_transferred)
+        } else {
+            stats.bytes_transferred.to_string()
+        };
         println!("Total transferred file size: {} bytes", bytes);
         tracing::info!(
             target: InfoFlag::Stats.target(),
