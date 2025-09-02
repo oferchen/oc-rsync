@@ -19,7 +19,7 @@ jobs:
         toolchain: stable
         override: true
     - name: Build
-      run: cargo build --verbose
+      run: make build
     - name: Run tests
       run: cargo test --verbose
     - name: Validate interop matrix docs
