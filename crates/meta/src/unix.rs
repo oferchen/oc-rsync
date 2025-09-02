@@ -276,6 +276,7 @@ impl Metadata {
 
         let mut expected_uid = self.uid;
         let mut expected_gid = self.gid;
+        let mut chown_failed = false;
         if opts.owner || opts.group {
             let uid = if let Some(ref map) = opts.uid_map {
                 map(self.uid)
@@ -352,7 +353,13 @@ impl Metadata {
                 )
             };
             if let Err(err) = res {
-                return Err(nix_to_io(err));
+                match err {
+                    Errno::EPERM | Errno::EACCES => {
+                        chown_failed = true;
+                        tracing::warn!(?path, ?err, "unable to change owner/group");
+                    }
+                    _ => return Err(nix_to_io(err)),
+                }
             }
         }
 
@@ -411,7 +418,7 @@ impl Metadata {
             }
         }
 
-        if opts.owner || opts.group {
+        if (opts.owner || opts.group) && !chown_failed {
             let meta_after = fs::symlink_metadata(path)?;
             if opts.owner && meta_after.uid() != expected_uid {
                 return Err(io::Error::other("failed to restore uid"));

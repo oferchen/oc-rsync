@@ -8,6 +8,7 @@ nix = { version = "0.27", features = ["fs", "user"] }
 filetime = "0.2"
 libc = "0.2"
 users = "0.11"
+tracing = "0.1"
 
 [dependencies.xattr]
 version = "1.5"
