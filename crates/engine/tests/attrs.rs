@@ -873,9 +873,13 @@ fn fake_super_stores_xattrs() {
     assert!(xattr::get(&dst_file, "user.rsync.uid").unwrap().is_some());
 }
 
-#[cfg(all(feature = "xattr"))]
+#[cfg(all(unix, feature = "xattr"))]
 #[test]
 fn super_overrides_fake_super() {
+    if !Uid::effective().is_root() {
+        println!("Skipping super_overrides_fake_super test: requires root");
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");

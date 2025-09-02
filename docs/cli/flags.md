@@ -33,7 +33,7 @@
 | short | long | summary | implemented? | notes | enhanced? |
 | --- | --- | --- | :---: | --- | :---: |
 | -z | --compress | compress file data during the transfer | yes |  | no |
-|  | --compress-choice=STR | choose the compression algorithm (aka --zc) | yes |  | no |
+|  | --compress-choice=STR | choose the compression algorithm (aka --zc) | yes | supports zstd, lz4, zlibx, and zlib | no |
 |  | --compress-level=NUM | explicitly set compression level (aka --zl) | yes |  | no |
 |  | --skip-compress=LIST | skip compressing files with suffix in LIST | no |  | no |
 
