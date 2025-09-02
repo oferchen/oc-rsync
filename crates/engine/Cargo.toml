@@ -17,6 +17,7 @@ logging = { path = "../logging" }
 libc = "0.2"
 memmap2 = "0.9"
 tempfile = "3"
+tracing = "0.1"
 
 [dev-dependencies]
 compress = { path = "../compress" }

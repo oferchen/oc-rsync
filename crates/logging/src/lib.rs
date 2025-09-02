@@ -1,6 +1,6 @@
 // crates/logging/src/lib.rs
 use std::fs::OpenOptions;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{
     fmt,
@@ -278,4 +278,34 @@ pub fn progress_formatter(bytes: u64, human_readable: bool) -> String {
         }
         out.chars().rev().collect()
     }
+}
+
+pub fn render_out_format(format: &str, name: &Path, link: Option<&Path>) -> String {
+    let mut out = String::new();
+    let mut chars = format.chars();
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            if let Some(n) = chars.next() {
+                match n {
+                    'n' => out.push_str(&name.to_string_lossy()),
+                    'L' => {
+                        if let Some(l) = link {
+                            out.push_str(" -> ");
+                            out.push_str(&l.to_string_lossy());
+                        }
+                    }
+                    '%' => out.push('%'),
+                    other => {
+                        out.push('%');
+                        out.push(other);
+                    }
+                }
+            } else {
+                out.push('%');
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
