@@ -5,7 +5,7 @@ This page enumerates known gaps between **oc-rsync** and upstream
 coverage so progress can be tracked as features land.
 
 ## Protocol
-- `--server` — handshake lacks full parity. [protocol/src/server.rs](../crates/protocol/src/server.rs) · [crates/protocol/tests/server.rs](../crates/protocol/tests/server.rs)
+No known gaps.
 
 ## Metadata
 - `--acls` — ACL support requires optional feature and lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs)

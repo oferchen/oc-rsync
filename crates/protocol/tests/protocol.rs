@@ -56,6 +56,7 @@ fn captured_frames_roundtrip() {
         path: b"file.txt".to_vec(),
         uid: 0,
         gid: 0,
+        group: None,
     };
     let mut fenc = FEncoder::new();
     let payload = fenc.encode_entry(&entry);
@@ -139,6 +140,7 @@ fn filelist_iconv_roundtrip() {
         path: "Grüße".as_bytes().to_vec(),
         uid: 0,
         gid: 0,
+        group: None,
     };
     let mut enc = FEncoder::new();
     let msg = Message::from_file_list(&entry, &mut enc, Some(&cv));

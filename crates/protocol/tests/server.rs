@@ -1,7 +1,7 @@
 // crates/protocol/tests/server.rs
 use compress::{available_codecs, encode_codecs, Codec};
 use protocol::{
-    ExitCode, Message, Server, CAP_CODECS, CAP_ZSTD, SUPPORTED_CAPS, SUPPORTED_PROTOCOLS, V31, V32,
+    ExitCode, Server, CAP_CODECS, CAP_ZSTD, SUPPORTED_CAPS, SUPPORTED_PROTOCOLS, V31, V32,
 };
 use std::io::Cursor;
 use std::time::Duration;
@@ -15,7 +15,7 @@ fn server_negotiates_version() {
     codecs_frame.encode(&mut codecs_buf).unwrap();
     let latest = SUPPORTED_PROTOCOLS[0];
     let mut input = Cursor::new({
-        let mut v = vec![0];
+        let mut v = vec![0, 0];
         v.extend_from_slice(&latest.to_be_bytes());
         v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
         v.extend_from_slice(&codecs_buf);
@@ -46,7 +46,7 @@ fn server_accepts_legacy_version() {
     let mut codecs_buf = Vec::new();
     codecs_frame.encode(&mut codecs_buf).unwrap();
     let mut input = Cursor::new({
-        let mut v = vec![0];
+        let mut v = vec![0, 0];
         v.extend_from_slice(&legacy.to_be_bytes());
         v.extend_from_slice(&CAP_CODECS.to_be_bytes());
         v.extend_from_slice(&codecs_buf);
@@ -82,7 +82,7 @@ fn server_classic_versions() {
 
     for ver in [V31, V32] {
         let mut input = Cursor::new({
-            let mut v = vec![0];
+            let mut v = vec![0, 0];
             v.extend_from_slice(&ver.to_be_bytes());
             v.extend_from_slice(&CAP_CODECS.to_be_bytes());
             v.extend_from_slice(&codecs_buf);
@@ -94,7 +94,7 @@ fn server_classic_versions() {
         srv.handshake(latest, SUPPORTED_CAPS, &local).unwrap();
         assert_eq!(srv.version, ver);
         let expected = {
-            let mut v = ver.to_be_bytes().to_vec();
+            let mut v = latest.to_be_bytes().to_vec();
             v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
             let mut out_frame = Vec::new();
             codecs_frame.encode(&mut out_frame).unwrap();
@@ -114,7 +114,7 @@ fn server_negotiates_zstd() {
     codecs_frame.encode(&mut codecs_buf).unwrap();
     let latest = SUPPORTED_PROTOCOLS[0];
     let mut input = Cursor::new({
-        let mut v = vec![0];
+        let mut v = vec![0, 0];
         v.extend_from_slice(&latest.to_be_bytes());
         v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
         v.extend_from_slice(&codecs_buf);
@@ -137,7 +137,7 @@ fn server_propagates_handshake_error() {
         .unwrap();
     let latest = SUPPORTED_PROTOCOLS[0];
     let mut input = Cursor::new({
-        let mut v = vec![0];
+        let mut v = vec![0, 0];
         v.extend_from_slice(&latest.to_be_bytes());
         v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
         v.extend_from_slice(&buf);
@@ -159,7 +159,7 @@ fn server_propagates_handshake_exit_code() {
         .unwrap();
     let latest = SUPPORTED_PROTOCOLS[0];
     let mut input = Cursor::new({
-        let mut v = vec![0];
+        let mut v = vec![0, 0];
         v.extend_from_slice(&latest.to_be_bytes());
         v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
         v.extend_from_slice(&buf);
@@ -185,7 +185,7 @@ fn server_parses_args_and_env() {
     let latest = SUPPORTED_PROTOCOLS[0];
     let mut input = Cursor::new({
         let mut v = Vec::new();
-        v.extend_from_slice(b"--foo\0bar\0X=1\0\0");
+        v.extend_from_slice(b"--foo\0bar\0\0X=1\0\0");
         v.extend_from_slice(&latest.to_be_bytes());
         v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
         v.extend_from_slice(&frame_buf);
@@ -201,10 +201,58 @@ fn server_parses_args_and_env() {
 }
 
 #[test]
+fn server_accepts_equals_in_arg() {
+    let local = available_codecs();
+    let payload = encode_codecs(&local);
+    let frame = protocol::Message::Codecs(payload.clone()).to_frame(0, None);
+    let mut frame_buf = Vec::new();
+    frame.encode(&mut frame_buf).unwrap();
+    let latest = SUPPORTED_PROTOCOLS[0];
+    let mut input = Cursor::new({
+        let mut v = Vec::new();
+        v.extend_from_slice(b"--opt=foo=bar\0\0");
+        v.extend_from_slice(&latest.to_be_bytes());
+        v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
+        v.extend_from_slice(&frame_buf);
+        v
+    });
+    let mut output = Vec::new();
+    let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
+    srv.handshake(latest, SUPPORTED_CAPS, &local)
+        .expect("handshake");
+    assert_eq!(srv.args, vec!["--opt=foo=bar"]);
+    assert!(srv.env.is_empty());
+}
+
+#[test]
+fn server_rejects_invalid_env() {
+    let local = available_codecs();
+    let payload = encode_codecs(&local);
+    let frame = protocol::Message::Codecs(payload.clone()).to_frame(0, None);
+    let mut frame_buf = Vec::new();
+    frame.encode(&mut frame_buf).unwrap();
+    let latest = SUPPORTED_PROTOCOLS[0];
+    let mut input = Cursor::new({
+        let mut v = Vec::new();
+        v.extend_from_slice(b"--foo\0\0BADENV\0\0");
+        v.extend_from_slice(&latest.to_be_bytes());
+        v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
+        v.extend_from_slice(&frame_buf);
+        v
+    });
+    let mut output = Vec::new();
+    let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
+    let err = srv
+        .handshake(latest, SUPPORTED_CAPS, &local)
+        .expect_err("handshake should fail");
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+}
+
+#[test]
 fn server_rejects_option_after_arg() {
     let local = available_codecs();
     let payload = encode_codecs(&local);
-    let frame = protocol::Message::Codecs(payload.clone()).to_frame(0);
+    let frame = protocol::Message::Codecs(payload.clone()).to_frame(0, None);
     let mut frame_buf = Vec::new();
     frame.encode(&mut frame_buf).unwrap();
     let latest = SUPPORTED_PROTOCOLS[0];
