@@ -84,6 +84,34 @@ impl Mux {
         self.send(id, Message::Xattrs(data))
     }
 
+    pub fn send_success(&self, id: u16, idx: u32) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::Success(idx))
+    }
+
+    pub fn send_deleted(&self, id: u16, idx: u32) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::Deleted(idx))
+    }
+
+    pub fn send_no_send(&self, id: u16, idx: u32) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::NoSend(idx))
+    }
+
+    pub fn send_redo(&self, id: u16, idx: u32) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::Redo(idx))
+    }
+
+    pub fn send_stats(&self, id: u16, data: Vec<u8>) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::Stats(data))
+    }
+
+    pub fn send_io_error(&self, id: u16, val: u32) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::IoError(val))
+    }
+
+    pub fn send_io_timeout(&self, id: u16, val: u32) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::IoTimeout(val))
+    }
+
     pub fn poll(&mut self) -> Option<Frame> {
         let now = Instant::now();
 

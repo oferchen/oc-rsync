@@ -19,6 +19,9 @@ pub struct Demux {
     pub compressor: Codec,
     exit_code: Option<u8>,
     remote_error: Option<String>,
+    successes: Vec<u32>,
+    deletions: Vec<u32>,
+    nosends: Vec<u32>,
 }
 
 impl Demux {
@@ -30,6 +33,9 @@ impl Demux {
             compressor: Codec::Zlib,
             exit_code: None,
             remote_error: None,
+            successes: Vec::new(),
+            deletions: Vec::new(),
+            nosends: Vec::new(),
         }
     }
 
@@ -78,6 +84,15 @@ impl Demux {
                     self.exit_code = Some(*code);
                     return Err(std::io::Error::other(format!("remote exit code {}", code)));
                 }
+                Message::Success(idx) => {
+                    self.successes.push(*idx);
+                }
+                Message::Deleted(idx) => {
+                    self.deletions.push(*idx);
+                }
+                Message::NoSend(idx) => {
+                    self.nosends.push(*idx);
+                }
                 _ => {}
             }
         }
@@ -104,6 +119,18 @@ impl Demux {
 
     pub fn take_remote_error(&mut self) -> Option<String> {
         self.remote_error.take()
+    }
+
+    pub fn take_successes(&mut self) -> Vec<u32> {
+        std::mem::take(&mut self.successes)
+    }
+
+    pub fn take_deletions(&mut self) -> Vec<u32> {
+        std::mem::take(&mut self.deletions)
+    }
+
+    pub fn take_nosends(&mut self) -> Vec<u32> {
+        std::mem::take(&mut self.nosends)
     }
 
     pub fn poll(&mut self) -> std::io::Result<()> {

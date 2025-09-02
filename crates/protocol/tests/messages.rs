@@ -21,3 +21,26 @@ fn roundtrip_additional_messages() {
         assert_eq!(decoded, msg);
     }
 }
+
+#[test]
+fn roundtrip_remaining_messages() {
+    let msgs = [
+        Message::Success(1),
+        Message::Deleted(2),
+        Message::NoSend(3),
+        Message::Redo(4),
+        Message::Stats(vec![1, 2, 3]),
+        Message::Progress(5),
+        Message::Attributes(vec![6, 7]),
+        Message::FileListEntry(vec![8, 9]),
+        Message::Codecs(vec![10, 11]),
+        Message::ErrorExit(12),
+        Message::Done,
+        Message::KeepAlive,
+    ];
+    for msg in msgs.into_iter() {
+        let frame = msg.clone().to_frame(1, None);
+        let decoded = Message::from_frame(frame, None).unwrap();
+        assert_eq!(decoded, msg);
+    }
+}
