@@ -24,7 +24,7 @@ pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 use compress::{should_compress, Codec, Compressor, Decompressor, Zlib, Zlibx, Zstd};
 use filters::Matcher;
-use logging::{progress_formatter, InfoFlag};
+use logging::{progress_formatter, rate_formatter, InfoFlag};
 use protocol::ExitCode;
 use thiserror::Error;
 pub mod flist;
@@ -698,9 +698,8 @@ impl Progress {
         } else {
             self.written * 100 / self.total
         };
-        let elapsed = self.start.elapsed().as_secs().max(1);
-        let rate = self.written / elapsed;
-        let rate = format!("{}/s", progress_formatter(rate, true));
+        let elapsed = self.start.elapsed().as_secs_f64().max(1.0);
+        let rate = rate_formatter(self.written as f64 / elapsed);
         tracing::info!(
             target: InfoFlag::Progress.target(),
             written = self.written,
@@ -709,9 +708,9 @@ impl Progress {
             rate = rate.as_str()
         );
         if done {
-            eprintln!("\r{:>15} {:>3}% {:>15}", bytes, percent, rate);
+            eprintln!("\r{:>15} {:>3}% {}", bytes, percent, rate);
         } else {
-            eprint!("\r{:>15} {:>3}% {:>15}", bytes, percent, rate);
+            eprint!("\r{:>15} {:>3}% {}", bytes, percent, rate);
             let _ = std::io::stderr().flush();
         }
     }
