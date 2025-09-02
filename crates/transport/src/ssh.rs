@@ -174,6 +174,7 @@ impl SshStdioTransport {
         env: &[(String, String)],
         remote_opts: &[String],
         version: u32,
+        caps: u32,
     ) -> io::Result<(Vec<Codec>, u32)> {
         for opt in remote_opts {
             let mut buf = Vec::new();
@@ -207,7 +208,7 @@ impl SshStdioTransport {
         let peer = u32::from_be_bytes(ver_buf);
         negotiate_version(version, peer).map_err(|e| io::Error::other(e.to_string()))?;
 
-        let local_caps = CAP_CODECS;
+        let local_caps = caps | CAP_CODECS;
         transport.send(&local_caps.to_be_bytes())?;
 
         let mut cap_buf = [0u8; 4];
@@ -228,10 +229,10 @@ impl SshStdioTransport {
         } else {
             0
         };
-        let caps = server_caps & local_caps;
+        let common_caps = server_caps & local_caps;
 
         let mut peer_codecs = vec![Codec::Zlib];
-        if caps & CAP_CODECS != 0 {
+        if common_caps & CAP_CODECS != 0 {
             let payload = compress::encode_codecs(&available_codecs());
             let frame = Message::Codecs(payload).to_frame(0, None);
             let mut buf = Vec::new();
@@ -279,7 +280,7 @@ impl SshStdioTransport {
             }
         }
 
-        Ok((peer_codecs, caps))
+        Ok((peer_codecs, common_caps))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -385,6 +386,7 @@ impl SshStdioTransport {
         connect_timeout: Option<Duration>,
         family: Option<AddressFamily>,
         version: u32,
+        caps: u32,
     ) -> io::Result<(Self, Vec<Codec>, u32)> {
         let start = Instant::now();
         let mut t = Self::spawn_with_rsh(
@@ -409,7 +411,7 @@ impl SshStdioTransport {
             t.set_read_timeout(Some(remaining))?;
             t.set_write_timeout(Some(remaining))?;
         }
-        let (codecs, caps) = Self::handshake(&mut t, rsync_env, remote_opts, version)?;
+        let (codecs, caps) = Self::handshake(&mut t, rsync_env, remote_opts, version, caps)?;
         if connect_timeout.is_some() {
             t.set_read_timeout(None)?;
             t.set_write_timeout(None)?;

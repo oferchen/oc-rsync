@@ -208,6 +208,84 @@ fn sync_preserves_acls() {
     assert_eq!(dacl_src.entries(), dacl_dst.entries());
 }
 
+#[cfg(all(unix, feature = "xattr"))]
+#[test]
+fn sync_xattrs_match_rsync() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst_oc = tmp.path().join("dst_oc");
+    let dst_rs = tmp.path().join("dst_rs");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst_oc).unwrap();
+    fs::create_dir_all(&dst_rs).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    xattr::set(&file, "user.test", b"val").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--xattrs", &src_arg, dst_oc.to_str().unwrap()])
+        .assert()
+        .success();
+
+    Command::new("rsync")
+        .args(["-aX", &src_arg, dst_rs.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let val_oc = xattr::get(dst_oc.join("file"), "user.test")
+        .unwrap()
+        .unwrap();
+    let val_rs = xattr::get(dst_rs.join("file"), "user.test")
+        .unwrap()
+        .unwrap();
+    assert_eq!(val_oc, val_rs);
+}
+
+#[cfg(all(unix, feature = "acl"))]
+#[test]
+fn sync_acls_match_rsync() {
+    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst_oc = tmp.path().join("dst_oc");
+    let dst_rs = tmp.path().join("dst_rs");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst_oc).unwrap();
+    fs::create_dir_all(&dst_rs).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+
+    let mut acl = PosixACL::read_acl(&file).unwrap();
+    acl.set(Qualifier::User(12345), ACL_READ);
+    acl.write_acl(&file).unwrap();
+    let mut dacl = PosixACL::read_default_acl(&src).unwrap();
+    dacl.set(Qualifier::User(12345), ACL_READ);
+    dacl.write_default_acl(&src).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--acls", &src_arg, dst_oc.to_str().unwrap()])
+        .assert()
+        .success();
+
+    Command::new("rsync")
+        .args(["-aA", &src_arg, dst_rs.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let acl_oc = PosixACL::read_acl(dst_oc.join("file")).unwrap();
+    let acl_rs = PosixACL::read_acl(dst_rs.join("file")).unwrap();
+    assert_eq!(acl_oc.entries(), acl_rs.entries());
+
+    let dacl_oc = PosixACL::read_default_acl(&dst_oc).unwrap();
+    let dacl_rs = PosixACL::read_default_acl(&dst_rs).unwrap();
+    assert_eq!(dacl_oc.entries(), dacl_rs.entries());
+}
+
 #[cfg(unix)]
 #[test]
 fn sync_preserves_owner_and_group() {
