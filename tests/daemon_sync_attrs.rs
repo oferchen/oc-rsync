@@ -6,8 +6,6 @@ use assert_cmd::{cargo::CommandCargoExt, Command};
 use serial_test::serial;
 #[cfg(unix)]
 use std::fs;
-#[cfg(all(unix, feature = "xattr"))]
-use std::io;
 #[cfg(unix)]
 use std::net::{TcpListener, TcpStream};
 #[cfg(unix)]
@@ -85,7 +83,7 @@ fn wait_for_daemon(port: u16) {
 fn try_set_xattr(path: &std::path::Path, name: &str, value: &[u8]) -> bool {
     match xattr::set(path, name, value) {
         Ok(()) => true,
-        Err(e) if e.kind() == io::ErrorKind::PermissionDenied => false,
+        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => false,
         Err(e) => panic!("setting {name}: {e}"),
     }
 }
@@ -158,7 +156,7 @@ fn daemon_preserves_xattrs() {
         match xattr::get(srv.join("file"), "security.test") {
             Ok(None) => {}
             Ok(Some(_)) => panic!("security.test should be absent"),
-            Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {}
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {}
             Err(e) => panic!("get security.test: {e}"),
         }
     }
@@ -212,7 +210,7 @@ fn daemon_preserves_xattrs_rr_client() {
         match xattr::get(srv.join("file"), "security.test") {
             Ok(None) => {}
             Ok(Some(_)) => panic!("security.test should be absent"),
-            Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {}
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {}
             Err(e) => panic!("get security.test: {e}"),
         }
     }
@@ -267,7 +265,7 @@ fn daemon_preserves_xattrs_rr_daemon() {
         match xattr::get(srv.join("file"), "security.test") {
             Ok(None) => {}
             Ok(Some(_)) => panic!("security.test should be absent"),
-            Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {}
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {}
             Err(e) => panic!("get security.test: {e}"),
         }
     }
