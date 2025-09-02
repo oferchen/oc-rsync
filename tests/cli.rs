@@ -1,6 +1,5 @@
 // tests/cli.rs
 
-
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
 use encoding_rs::Encoding;
@@ -990,11 +989,12 @@ fn owner_requires_privileges() {
         .unwrap()
         .args(["--local", "--owner", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
-        .success();
+        .failure()
+        .code(u8::from(protocol::ExitCode::Protocol) as i32)
+        .stderr(predicates::str::contains("changing ownership"));
 
     let dst_file = dst_dir.join("id.txt");
-    let metadata = std::fs::metadata(&dst_file).unwrap();
-    assert_eq!(metadata.uid(), current_uid);
+    assert!(!dst_file.exists());
 }
 
 #[cfg(unix)]
