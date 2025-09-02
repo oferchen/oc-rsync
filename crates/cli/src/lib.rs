@@ -141,6 +141,11 @@ pub fn version_banner() -> String {
 }
 
 pub fn version_string() -> String {
+    format!(
+        "rsync  version {}  protocol version {}\n",
+        env!("CARGO_PKG_VERSION"),
+        env!("UPSTREAM_VERSION")
+    )
     version_banner()
 }
 

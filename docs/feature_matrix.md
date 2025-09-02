@@ -10,6 +10,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | Feature | Supported | Notes |
 | --- | --- | --- |
 | File list path-delta encoding with uid/gid tables | ✅ | Exercised via `filelist` tests |
+| File list xattr and ACL metadata | ✅ | Exercised via `filelist` tests |
 
 | Option | Supported | Parity (Y/N) | Message-parity (Y/N) | Parser-parity (Y/N) | Tests | Source | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
