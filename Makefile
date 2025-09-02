@@ -58,6 +58,8 @@ build:
 	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD)"
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
 	cargo build -p oc-rsync-bin --bin oc-rsync --bin oc-rsyncd --release
+	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
+	cargo build -p oc-rsyncd-bin --bin oc-rsyncd --release
 
 # Max performance build (uses your [profile.maxspeed])
 build-maxspeed:
