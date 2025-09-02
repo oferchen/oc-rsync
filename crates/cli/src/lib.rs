@@ -580,7 +580,8 @@ struct ClientOpts {
     #[arg(long = "timeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     timeout: Option<Duration>,
     #[arg(
-        long = "contimeout",
+        long = "connect-timeout",
+        alias = "contimeout",
         value_name = "SECONDS",
         value_parser = parse_nonzero_duration,
         help_heading = "Misc"

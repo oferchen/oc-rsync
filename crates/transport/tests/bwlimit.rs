@@ -4,7 +4,7 @@ use std::io;
 use std::rc::Rc;
 use std::time::Duration;
 
-use transport::{LocalPipeTransport, RateLimitedTransport};
+use transport::{LocalPipeTransport, RateLimitedTransport, Transport};
 
 #[test]
 fn write_below_min_sleep_is_unthrottled() {
