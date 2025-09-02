@@ -167,3 +167,43 @@ fn partial_progress_alias_matches_upstream() {
     assert!(matches.get_flag("partial"));
     assert!(matches.get_flag("progress"));
 }
+
+#[test]
+fn help_usage_matches_upstream() {
+    require_rsync!();
+    let upstream = std::process::Command::new("rsync")
+        .arg("--help")
+        .output()
+        .unwrap();
+    let upstream_usage = String::from_utf8_lossy(&upstream.stdout)
+        .lines()
+        .find(|l| l.starts_with("Usage:"))
+        .unwrap()
+        .to_string();
+    let ours = cli_command().render_help().to_string();
+    let our_usage = ours
+        .lines()
+        .find(|l| l.starts_with("Usage:"))
+        .unwrap()
+        .to_string();
+    assert_eq!(our_usage, upstream_usage);
+}
+
+#[test]
+fn misuse_matches_upstream() {
+    require_rsync!();
+    let upstream = std::process::Command::new("rsync")
+        .arg("--bogus")
+        .output()
+        .unwrap();
+    let ours = assert_cmd::Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .arg("--bogus")
+        .output()
+        .unwrap();
+    assert_eq!(upstream.status.code(), ours.status.code());
+    let up_lines: Vec<_> = String::from_utf8_lossy(&upstream.stderr).lines().collect();
+    let our_lines: Vec<_> = String::from_utf8_lossy(&ours.stderr).lines().collect();
+    assert_eq!(our_lines[0], up_lines[0]);
+    assert!(our_lines[1].starts_with("rsync error: syntax or usage error (code 1)"));
+}

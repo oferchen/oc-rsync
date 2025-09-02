@@ -14,6 +14,8 @@ use std::time::{Duration, Instant};
 
 use clap::parser::ValueSource;
 use clap::{ArgAction, ArgMatches, Args, CommandFactory, FromArgMatches, Parser};
+
+mod formatter;
 use compress::{available_codecs, Codec};
 use encoding_rs::Encoding;
 pub use engine::EngineError;
@@ -766,7 +768,8 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
 
 pub fn cli_command() -> clap::Command {
     let cmd = ClientOpts::command();
-    ProbeOpts::augment_args(cmd)
+    let cmd = ProbeOpts::augment_args(cmd);
+    formatter::apply(cmd)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

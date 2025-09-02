@@ -12,7 +12,26 @@ fn main() {
         }
         return;
     }
-    let matches = cli_command().get_matches();
+    let mut cmd = cli_command();
+    let matches = cmd
+        .try_get_matches_from_mut(std::env::args_os())
+        .unwrap_or_else(|e| {
+            use clap::error::ErrorKind;
+            match e.kind() {
+                ErrorKind::DisplayHelp => {
+                    println!("{}", cmd.render_help());
+                    std::process::exit(0);
+                }
+                _ => {
+                    let first = e.to_string();
+                    let first = first.lines().next().unwrap_or("");
+                    let msg = first.strip_prefix("error: ").unwrap_or(first);
+                    eprintln!("rsync: {msg}");
+                    eprintln!("rsync error: syntax or usage error (code 1)");
+                    std::process::exit(1);
+                }
+            }
+        });
     let quiet = matches.get_flag("quiet");
     let verbose = if quiet {
         0
