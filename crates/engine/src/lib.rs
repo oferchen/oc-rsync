@@ -1162,13 +1162,10 @@ impl Receiver {
     #[cfg(unix)]
     fn register_hard_link(&mut self, group: u64, dest: &Path) -> Result<bool> {
         let entry = self.link_map.entry(group).or_default();
-        if entry.is_empty() {
+        if !entry.iter().any(|p| p == dest) {
             entry.push(dest.to_path_buf());
-            Ok(true)
-        } else {
-            entry.push(dest.to_path_buf());
-            Ok(false)
         }
+        Ok(entry.len() == 1)
     }
 
     pub fn apply<I>(&mut self, src: &Path, dest: &Path, _rel: &Path, delta: I) -> Result<PathBuf>
@@ -1602,13 +1599,14 @@ impl Receiver {
         }
         #[cfg(unix)]
         {
-            for (_, paths) in std::mem::take(&mut self.link_map) {
-                if let Some((src, rest)) = paths.split_first() {
-                    for dest in rest {
+            for (_, mut paths) in std::mem::take(&mut self.link_map) {
+                if let Some(pos) = paths.iter().position(|p| p.exists()) {
+                    let src = paths.remove(pos);
+                    for dest in paths {
                         if dest.exists() {
-                            fs::remove_file(dest).map_err(|e| io_context(dest, e))?;
+                            fs::remove_file(&dest).map_err(|e| io_context(&dest, e))?;
                         }
-                        fs::hard_link(src, dest).map_err(|e| io_context(dest, e))?;
+                        fs::hard_link(&src, &dest).map_err(|e| io_context(&dest, e))?;
                     }
                 }
             }
@@ -2160,18 +2158,6 @@ pub fn sync(
                             }
                         }
                     }
-                    #[cfg(unix)]
-                    if opts.hard_links && src_meta.nlink() > 1 {
-                        let dev = walker.devs()[entry.dev];
-                        let ino = walker.inodes()[entry.inode];
-                        let group = hard_link_id(dev, ino);
-                        if !receiver.register_hard_link(group, &dest_path)? {
-                            if let Some(parent) = dest_path.parent() {
-                                fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
-                            }
-                            continue;
-                        }
-                    }
                     let partial_exists = if opts.partial {
                         let partial_path = if let Some(ref dir) = opts.partial_dir {
                             let file = dest_path.file_name().unwrap_or_default();
@@ -2192,6 +2178,18 @@ pub fn sync(
                     }
                     if opts.update && !dest_path.exists() && !partial_exists {
                         continue;
+                    }
+                    #[cfg(unix)]
+                    if opts.hard_links && src_meta.nlink() > 1 {
+                        let dev = walker.devs()[entry.dev];
+                        let ino = walker.inodes()[entry.inode];
+                        let group = hard_link_id(dev, ino);
+                        if !receiver.register_hard_link(group, &dest_path)? {
+                            if let Some(parent) = dest_path.parent() {
+                                fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
+                            }
+                            continue;
+                        }
                     }
                     if !dest_path.exists() && !partial_exists {
                         if let Some(ref link_dir) = opts.link_dest {
