@@ -746,7 +746,14 @@ pub fn chroot_and_drop_privileges(
 
 #[cfg(unix)]
 pub fn drop_privileges(uid: u32, gid: u32) -> io::Result<()> {
-    use nix::unistd::{getegid, geteuid, setgid, setgroups, setuid, Gid, Uid};
+    #[cfg(not(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "redox",
+        target_os = "haiku",
+    )))]
+    use nix::unistd::setgroups;
+    use nix::unistd::{getegid, geteuid, setgid, setuid, Gid, Uid};
     let cur_uid = geteuid().as_raw();
     let cur_gid = getegid().as_raw();
     if (uid != cur_uid || gid != cur_gid) && cur_uid != 0 {
@@ -756,7 +763,15 @@ pub fn drop_privileges(uid: u32, gid: u32) -> io::Result<()> {
         ));
     }
     if gid != cur_gid {
-        setgroups(&[Gid::from_raw(gid)]).map_err(io::Error::other)?;
+        #[cfg(not(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "redox",
+            target_os = "haiku",
+        )))]
+        {
+            setgroups(&[Gid::from_raw(gid)]).map_err(io::Error::other)?;
+        }
         setgid(Gid::from_raw(gid)).map_err(io::Error::other)?;
     }
     if uid != cur_uid {
