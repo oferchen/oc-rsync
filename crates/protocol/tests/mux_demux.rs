@@ -89,3 +89,17 @@ fn unregister_channel_rejects_frames() {
     let frame = Message::Data(b"other".to_vec()).into_frame(1, None);
     assert!(demux.ingest(frame).is_err());
 }
+
+#[test]
+fn error_xfer_sets_remote_error() {
+    let mut mux = Mux::new(Duration::from_millis(50));
+    let mut demux = Demux::new(Duration::from_millis(50));
+
+    mux.register_channel(0);
+    demux.register_channel(0);
+
+    mux.send_error_xfer(0, "oops").unwrap();
+    let frame = mux.poll().expect("frame");
+    assert!(demux.ingest(frame).is_err());
+    assert_eq!(demux.take_remote_error(), Some("oops".into()));
+}

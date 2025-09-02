@@ -68,6 +68,14 @@ impl Mux {
         self.send(id, Message::Error(text.into()))
     }
 
+    pub fn send_error_xfer<S: Into<String>>(
+        &self,
+        id: u16,
+        text: S,
+    ) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::ErrorXfer(text.into()))
+    }
+
     pub fn poll(&mut self) -> Option<Frame> {
         let now = Instant::now();
 

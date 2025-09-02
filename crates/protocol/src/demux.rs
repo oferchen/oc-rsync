@@ -53,13 +53,14 @@ impl Demux {
         let id = frame.header.channel;
         let msg = Message::from_frame(frame.clone(), None)?;
 
-        if let Message::Error(text) = &msg {
+        if let Some(text) = msg.error_text() {
             if let Some(ch) = self.channels.get_mut(&id) {
                 ch.last_recv = Instant::now();
                 let _ = ch.sender.send(msg.clone());
             }
-            self.remote_error = Some(text.clone());
-            return Err(std::io::Error::other(text.clone()));
+            let err = text.to_string();
+            self.remote_error = Some(err.clone());
+            return Err(std::io::Error::other(err));
         }
 
         if id == 0 {
