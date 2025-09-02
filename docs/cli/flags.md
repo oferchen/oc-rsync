@@ -177,7 +177,7 @@
 | -@ | --modify-window=NUM | set the accuracy for mod-time comparisons | no |  | no |
 |  | --munge-links | munge symlinks to make them safe & unusable | no |  | no |
 |  | --no-OPTION | turn off an implied OPTION (e.g. --no-D) | no |  | no |
-|  | --no-implied-dirs | don't send implied dirs with --relative | no |  | no |
+|  | --no-implied-dirs | don't send implied dirs with --relative | yes |  | no |
 | --old-d | --old-dirs | works like --dirs when talking to old rsync | no |  | no |
 | -x | --one-file-system | don't cross filesystem boundaries | no |  | no |
 |  | --partial | keep partially transferred files | yes |  | no |

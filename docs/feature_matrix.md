@@ -107,7 +107,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--no-detach` | ❌ | N | — | — | not yet implemented |
 | `--no-D` | ❌ | N | [gaps.md](gaps.md) | — | alias for `--no-devices --no-specials` |
 | `--no-OPTION` | ❌ | N | — | — | not yet implemented |
-| `--no-implied-dirs` | ❌ | N | — | — | not yet implemented |
+| `--no-implied-dirs` | ✅ | Y | [tests/no_implied_dirs.rs](../tests/no_implied_dirs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | preserves existing symlinked directories |
 | `--no-motd` | ✅ | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--numeric-ids` | ✅ | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--old-args` | ❌ | N | — | — | not yet implemented |

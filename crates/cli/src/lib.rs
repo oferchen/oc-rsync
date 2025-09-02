@@ -139,6 +139,8 @@ struct ClientOpts {
     dirs: bool,
     #[arg(short = 'R', long, help_heading = "Selection")]
     relative: bool,
+    #[arg(long = "no-implied-dirs", help_heading = "Selection")]
+    no_implied_dirs: bool,
     #[arg(short = 'n', long, help_heading = "Selection")]
     dry_run: bool,
     #[arg(long = "list-only", help_heading = "Output")]
@@ -1260,6 +1262,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         checksum: opts.checksum,
         compress,
         dirs: opts.dirs,
+        no_implied_dirs: opts.no_implied_dirs,
         list_only: opts.list_only,
         update: opts.update,
         existing: opts.existing,
