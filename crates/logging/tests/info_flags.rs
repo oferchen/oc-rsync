@@ -58,6 +58,7 @@ fn emit(flag: InfoFlag) {
         InfoFlag::Stats2 => tracing::info!(target: InfoFlag::Stats2.target(), "stats2"),
         InfoFlag::Stats3 => tracing::info!(target: InfoFlag::Stats3.target(), "stats3"),
         InfoFlag::Symsafe => tracing::info!(target: InfoFlag::Symsafe.target(), "symsafe"),
+        InfoFlag::Filter => tracing::info!(target: InfoFlag::Filter.target(), "filter"),
     }
 }
 

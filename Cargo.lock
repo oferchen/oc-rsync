@@ -492,8 +492,11 @@ name = "filters"
 version = "0.1.0"
 dependencies = [
  "globset",
+ "logging",
  "proptest",
  "tempfile",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

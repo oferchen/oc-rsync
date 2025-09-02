@@ -1,5 +1,6 @@
 // crates/filters/src/lib.rs
 use globset::{Glob, GlobMatcher};
+use logging::InfoFlag;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -234,6 +235,7 @@ impl Matcher {
         }
 
         let mut decision: Option<bool> = None;
+        let mut matched = false;
         for rule in ordered.iter() {
             match rule {
                 Rule::Protect(data) => {
@@ -243,9 +245,10 @@ impl Matcher {
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched = data.matcher.is_match(path);
-                    if (data.invert && !matched) || (!data.invert && matched) {
+                    let matched_rule = data.matcher.is_match(path);
+                    if (data.invert && !matched_rule) || (!data.invert && matched_rule) {
                         decision = Some(true);
+                        matched = true;
                         break;
                     }
                 }
@@ -256,9 +259,10 @@ impl Matcher {
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched = data.matcher.is_match(path);
-                    if (data.invert && !matched) || (!data.invert && matched) {
+                    let matched_rule = data.matcher.is_match(path);
+                    if (data.invert && !matched_rule) || (!data.invert && matched_rule) {
                         decision = Some(true);
+                        matched = true;
                         break;
                     }
                 }
@@ -269,9 +273,10 @@ impl Matcher {
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched = data.matcher.is_match(path);
-                    if (data.invert && !matched) || (!data.invert && matched) {
+                    let matched_rule = data.matcher.is_match(path);
+                    if (data.invert && !matched_rule) || (!data.invert && matched_rule) {
                         decision = Some(false);
+                        matched = true;
                         break;
                     }
                 }
@@ -303,6 +308,12 @@ impl Matcher {
                 }
             }
         }
+        tracing::info!(
+            target: InfoFlag::Filter.target(),
+            path = %path.display(),
+            matched,
+            rules = ordered.len(),
+        );
         Ok(included)
     }
 
