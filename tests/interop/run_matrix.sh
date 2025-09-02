@@ -44,6 +44,14 @@ for flag in --progress --info=progress2; do
   SCENARIOS+=("resume_${name} --partial $flag")
 done
 
+if [[ "${LIST_SCENARIOS:-0}" == "1" ]]; then
+  for entry in "${SCENARIOS[@]}"; do
+    IFS=' ' read -r name _ <<< "$entry"
+    echo "$name"
+  done
+  exit 0
+fi
+
 # Options used for all transfers. -a implies -rtgoD, we add -A and -X for ACLs
 # and xattrs.
 COMMON_FLAGS=(--archive --acls --xattrs)
