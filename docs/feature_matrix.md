@@ -93,7 +93,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--itemize-changes` | ✅ | Y | [tests/golden/cli_parity/itemize-changes.sh](../tests/golden/cli_parity/itemize-changes.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--keep-dirlinks` | ✅ | Y | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--link-dest` | ✅ | Y | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--links` | ✅ | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | preserves relative/absolute targets; supports dangling links |
+| `--links` | ✅ | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs) | preserves relative/absolute targets; supports dangling links |
 | `--list-only` | ✅ | Y | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--log-file` | ✅ | N | [tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | limited format support |
 | `--log-file-format` | ✅ | N | [tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | limited format support |

@@ -19,7 +19,6 @@ No known gaps. Exit codes map to upstream values. [protocol/src/lib.rs](../crate
 ## Metadata
 - `--archive` — composite flag; underlying `--owner`, `--group`, and `--perms` gaps apply. [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/archive.rs](../tests/archive.rs)
 - `--acls` — ACL support requires optional feature and lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs)
-- `--links` — symlink handling lacks parity. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
 - `--hard-links` — hard link tracking incomplete. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)
 - `--owner` — ownership restoration lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/cli.rs](../tests/cli.rs)
 - `--perms` — permission preservation incomplete. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
