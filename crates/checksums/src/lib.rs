@@ -69,30 +69,24 @@ impl ChecksumConfig {
 }
 
 #[allow(clippy::needless_borrows_for_generic_args)]
-pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
+pub fn strong_digest(data: &[u8], alg: StrongHash, _seed: u32) -> Vec<u8> {
     match alg {
-        StrongHash::Md4 => md4_digest(data, seed),
+        StrongHash::Md4 => {
+            let mut hasher = Md4::new();
+            hasher.update(data);
+            hasher.finalize().to_vec()
+        }
         StrongHash::Md5 => {
             let mut hasher = Md5::new();
-            hasher.update(&seed.to_le_bytes());
             hasher.update(data);
             hasher.finalize().to_vec()
         }
         StrongHash::Sha1 => {
             let mut hasher = Sha1::new();
-            hasher.update(&seed.to_le_bytes());
             hasher.update(data);
             hasher.finalize().to_vec()
         }
     }
-}
-
-#[inline]
-fn md4_digest(data: &[u8], seed: u32) -> Vec<u8> {
-    let mut hasher = Md4::new();
-    hasher.update(seed.to_le_bytes());
-    hasher.update(data);
-    hasher.finalize().to_vec()
 }
 
 pub fn rolling_checksum(data: &[u8]) -> u32 {
@@ -384,15 +378,15 @@ mod tests {
     #[test]
     fn strong_digests() {
         let digest_md4 = strong_digest(b"hello world", StrongHash::Md4, 0);
-        assert_eq!(hex::encode(digest_md4), "ea91f391e02b5e19f432b43bd87a531d");
+        assert_eq!(hex::encode(digest_md4), "aa010fbc1d14c795d86ef98c95479d17");
 
         let digest_md5 = strong_digest(b"hello world", StrongHash::Md5, 0);
-        assert_eq!(hex::encode(digest_md5), "be4b47980f89d075f8f7e7a9fab84e29");
+        assert_eq!(hex::encode(digest_md5), "5eb63bbbe01eeed093cb22bb8f5acdc3");
 
         let digest_sha1 = strong_digest(b"hello world", StrongHash::Sha1, 0);
         assert_eq!(
             hex::encode(digest_sha1),
-            "1fb6475c524899f98b088f7608bdab8f1591e078"
+            "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed"
         );
     }
 

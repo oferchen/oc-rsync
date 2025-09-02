@@ -16,8 +16,7 @@ when available.
 ## Checksums
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
-| Rolling and strong MD5/SHA-1 hashes | ✅ | [crates/checksums/tests/golden.rs](../crates/checksums/tests/golden.rs) | [crates/checksums/src/lib.rs](../crates/checksums/src/lib.rs) |
-| Legacy MD4 algorithm | ❌ | — | — |
+| Rolling and strong MD4/MD5/SHA-1 hashes | ✅ | [crates/checksums/tests/golden.rs](../crates/checksums/tests/golden.rs)<br>[crates/checksums/tests/rsync.rs](../crates/checksums/tests/rsync.rs) | [crates/checksums/src/lib.rs](../crates/checksums/src/lib.rs) |
 
 ## Compression
 | Feature | Status | Tests | Source |
