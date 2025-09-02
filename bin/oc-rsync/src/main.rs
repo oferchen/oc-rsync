@@ -2,13 +2,13 @@
 use logging::LogFormat;
 use std::{io::ErrorKind, path::PathBuf};
 
-use oc_rsync_cli::{cli_command, parse_logging_flags, version_string, EngineError};
+use oc_rsync_cli::{cli_command, parse_logging_flags, version_banner, EngineError};
 use protocol::ExitCode;
 
 fn main() {
     if std::env::args().any(|a| a == "--version" || a == "-V") {
         if !std::env::args().any(|a| a == "--quiet" || a == "-q") {
-            print!("{}", version_string());
+            print!("{}", version_banner());
         }
         return;
     }

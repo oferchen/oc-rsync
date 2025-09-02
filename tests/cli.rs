@@ -358,11 +358,32 @@ impl Drop for Tmpfs {
     }
 }
 
+#[allow(clippy::vec_init_then_push)]
 #[test]
 fn prints_version() {
-    use std::process::Command as StdCommand;
-    let rsync = StdCommand::new("rsync").arg("--version").output().unwrap();
-    let expected = String::from_utf8(rsync.stdout).unwrap();
+    #[allow(unused_mut)]
+    let mut features: Vec<&str> = Vec::new();
+    #[cfg(feature = "xattr")]
+    features.push("xattr");
+    #[cfg(feature = "acl")]
+    features.push("acl");
+    let features = if features.is_empty() {
+        "none".to_string()
+    } else {
+        features.join(", ")
+    };
+    let protocols = SUPPORTED_PROTOCOLS
+        .iter()
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let expected = format!(
+        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
+        env!("CARGO_PKG_VERSION"),
+        env!("UPSTREAM_VERSION"),
+        protocols,
+        features,
+    );
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .arg("--version")

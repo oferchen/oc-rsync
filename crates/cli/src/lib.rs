@@ -6,7 +6,6 @@ use std::io::{self, Read, Write};
 use std::net::{IpAddr, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use std::process::Command;
 use std::sync::Arc;
 
 use daemon::{parse_config_file, parse_module, Module};
@@ -110,13 +109,34 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
         "0" | "false" | "no" => Ok(false),
         "1" | "true" | "yes" => Ok(true),
         _ => Err("invalid boolean".to_string()),
-
-pub fn version_string() -> String {
-    if let Ok(out) = Command::new("rsync").arg("--version").output() {
-        String::from_utf8_lossy(&out.stdout).into_owned()
-    } else {
-        format!("oc-rsync {}\n", env!("CARGO_PKG_VERSION"))
     }
+}
+
+#[allow(clippy::vec_init_then_push)]
+pub fn version_banner() -> String {
+    #[allow(unused_mut)]
+    let mut features: Vec<&str> = Vec::new();
+    #[cfg(feature = "xattr")]
+    features.push("xattr");
+    #[cfg(feature = "acl")]
+    features.push("acl");
+    let features = if features.is_empty() {
+        "none".to_string()
+    } else {
+        features.join(", ")
+    };
+    let protocols = SUPPORTED_PROTOCOLS
+        .iter()
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
+        env!("CARGO_PKG_VERSION"),
+        env!("UPSTREAM_VERSION"),
+        protocols,
+        features,
+    )
 }
 
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
