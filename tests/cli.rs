@@ -1,4 +1,9 @@
-// tests/cli.rs
+/* tests/cli.rs
+
+Includes a `Tmpfs` helper for cross-filesystem tests. It attempts to mount a
+temporary `tmpfs` and yields `None` when unsupported so tests can skip without
+emitting external mount errors.
+*/
 
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
@@ -32,9 +37,14 @@ struct Tmpfs(TempDir);
 #[cfg(unix)]
 impl Tmpfs {
     fn new() -> Option<Self> {
+        if !cfg!(target_os = "linux") {
+            return None;
+        }
         let dir = tempdir().ok()?;
         let status = std::process::Command::new("mount")
             .args(["-t", "tmpfs", "tmpfs", dir.path().to_str().unwrap()])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .status()
             .ok()?;
         if status.success() {
@@ -646,7 +656,7 @@ fn temp_dir_cross_filesystem_temp_file_in_dest() {
     let tmp_dir = match Tmpfs::new() {
         Some(t) => t,
         None => {
-            eprintln!("skipping cross-filesystem temp-dir test; mount failed");
+            eprintln!("skipping cross-filesystem temp-dir test; tmpfs unavailable");
             return;
         }
     };
@@ -763,7 +773,7 @@ fn temp_dir_cross_filesystem_rename() {
     let tmp_dir = match Tmpfs::new() {
         Some(t) => t,
         None => {
-            eprintln!("skipping cross-filesystem rename test; mount failed");
+            eprintln!("skipping cross-filesystem rename test; tmpfs unavailable");
             return;
         }
     };
@@ -801,7 +811,7 @@ fn delay_updates_cross_filesystem_rename() {
     let tmp_dir = match Tmpfs::new() {
         Some(t) => t,
         None => {
-            eprintln!("skipping cross-filesystem rename test; mount failed");
+            eprintln!("skipping cross-filesystem rename test; tmpfs unavailable");
             return;
         }
     };
