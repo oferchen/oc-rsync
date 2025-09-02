@@ -55,7 +55,9 @@ pub const MIN_VERSION: u32 = V31;
 
 pub const CAP_CODECS: u32 = 1 << 0;
 pub const CAP_ZSTD: u32 = 1 << 1;
-pub const SUPPORTED_CAPS: u32 = CAP_CODECS | CAP_ZSTD;
+pub const CAP_ACLS: u32 = 1 << 2;
+pub const CAP_XATTRS: u32 = 1 << 3;
+pub const SUPPORTED_CAPS: u32 = CAP_CODECS | CAP_ZSTD | CAP_ACLS | CAP_XATTRS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VersionError(pub u32);
@@ -147,6 +149,7 @@ pub enum Msg {
     Attributes = 0xF4,
     Progress = 0xF5,
     Codecs = 0xF6,
+    Xattrs = 0xF7,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -196,6 +199,7 @@ impl TryFrom<u8> for Msg {
             0xF4 => Ok(Msg::Attributes),
             0xF5 => Ok(Msg::Progress),
             0xF6 => Ok(Msg::Codecs),
+            0xF7 => Ok(Msg::Xattrs),
             other => Err(UnknownMsg(other)),
         }
     }
@@ -342,6 +346,7 @@ pub enum Message {
     KeepAlive,
     FileListEntry(Vec<u8>),
     Attributes(Vec<u8>),
+    Xattrs(Vec<u8>),
     ErrorXfer(String),
     Info(String),
     Error(String),
@@ -421,6 +426,15 @@ impl Message {
                     channel,
                     tag: Tag::Message,
                     msg: Msg::Attributes,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
+            Message::Xattrs(payload) => {
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg: Msg::Xattrs,
                     len: payload.len() as u32,
                 };
                 Frame { header, payload }
@@ -615,6 +629,7 @@ impl Message {
                     Msg::Done => Ok(Message::Done),
                     Msg::FileListEntry => Ok(Message::FileListEntry(f.payload)),
                     Msg::Attributes => Ok(Message::Attributes(f.payload)),
+                    Msg::Xattrs => Ok(Message::Xattrs(f.payload)),
                     Msg::ErrorXfer => {
                         let text = Self::decode_text(f.payload, iconv)?;
                         Ok(Message::ErrorXfer(text))

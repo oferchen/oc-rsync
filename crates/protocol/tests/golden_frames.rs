@@ -29,6 +29,17 @@ fn decode_progress_golden() {
 }
 
 #[test]
+fn decode_xattrs_golden() {
+    const XATTRS: [u8; 14] = [
+        0, 0, 0, 0xF7, 0, 0, 0, 6, b'u', b's', b'e', b'r', b'=', b'1',
+    ];
+    let frame = Frame::decode(&XATTRS[..]).unwrap();
+    assert_eq!(frame.header.msg, Msg::Xattrs);
+    let msg = Message::from_frame(frame, None).unwrap();
+    assert_eq!(msg, Message::Xattrs(b"user=1".to_vec()));
+}
+
+#[test]
 fn decode_error_golden() {
     const ERR: [u8; 12] = [0, 0, 0, 3, 0, 0, 0, 4, b'o', b'o', b'p', b's'];
     let frame = Frame::decode(&ERR[..]).unwrap();

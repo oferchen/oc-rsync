@@ -76,6 +76,14 @@ impl Mux {
         self.send(id, Message::ErrorXfer(text.into()))
     }
 
+    pub fn send_progress(&self, id: u16, val: u64) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::Progress(val))
+    }
+
+    pub fn send_xattrs(&self, id: u16, data: Vec<u8>) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::Xattrs(data))
+    }
+
     pub fn poll(&mut self) -> Option<Frame> {
         let now = Instant::now();
 

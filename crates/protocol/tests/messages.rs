@@ -1,23 +1,21 @@
 // crates/protocol/tests/messages.rs
-use protocol::{Message, Msg};
+use protocol::Message;
 
 #[test]
 fn roundtrip_additional_messages() {
     let msgs = [
-        Msg::ErrorXfer,
-        Msg::Info,
-        Msg::Warning,
-        Msg::ErrorSocket,
-        Msg::ErrorUtf8,
-        Msg::Log,
-        Msg::Client,
-        Msg::IoError,
-        Msg::IoTimeout,
-        Msg::Noop,
+        Message::ErrorXfer("test".into()),
+        Message::Info("test".into()),
+        Message::Warning("test".into()),
+        Message::ErrorSocket("test".into()),
+        Message::ErrorUtf8("test".into()),
+        Message::Log("test".into()),
+        Message::Client("test".into()),
+        Message::IoError(7),
+        Message::IoTimeout(9),
+        Message::Noop,
     ];
-    for m in msgs {
-        let payload = b"test".to_vec();
-        let msg = Message::Other(m, payload.clone());
+    for msg in msgs.into_iter() {
         let frame = msg.clone().to_frame(9, None);
         let decoded = Message::from_frame(frame, None).unwrap();
         assert_eq!(decoded, msg);

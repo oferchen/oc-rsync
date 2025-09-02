@@ -1,7 +1,8 @@
 // crates/protocol/tests/server.rs
 use compress::{available_codecs, encode_codecs, Codec};
 use protocol::{
-    ExitCode, Server, CAP_CODECS, CAP_ZSTD, SUPPORTED_CAPS, SUPPORTED_PROTOCOLS, V31, V32,
+    ExitCode, Server, CAP_ACLS, CAP_CODECS, CAP_XATTRS, CAP_ZSTD, SUPPORTED_CAPS,
+    SUPPORTED_PROTOCOLS, V31, V32,
 };
 use std::io::Cursor;
 use std::time::Duration;
@@ -198,6 +199,29 @@ fn server_parses_args_and_env() {
         .expect("handshake");
     assert_eq!(srv.args, vec!["--foo", "bar"]);
     assert_eq!(srv.env, vec![("X".into(), "1".into())]);
+}
+
+#[test]
+fn server_negotiates_optional_features() {
+    let latest = SUPPORTED_PROTOCOLS[0];
+    let peer_caps = (CAP_ACLS | CAP_XATTRS).to_be_bytes();
+    let mut input = Cursor::new({
+        let mut v = vec![0, 0];
+        v.extend_from_slice(&latest.to_be_bytes());
+        v.extend_from_slice(&peer_caps);
+        v
+    });
+    let mut output = Vec::new();
+    let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
+    let (caps, peer_codecs) = srv.handshake(latest, SUPPORTED_CAPS, &[]).unwrap();
+    assert_eq!(caps & (CAP_ACLS | CAP_XATTRS), CAP_ACLS | CAP_XATTRS);
+    assert_eq!(peer_codecs, vec![Codec::Zlib]);
+    let expected = {
+        let mut v = latest.to_be_bytes().to_vec();
+        v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
+        v
+    };
+    assert_eq!(output, expected);
 }
 
 #[test]

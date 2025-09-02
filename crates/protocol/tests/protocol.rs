@@ -122,6 +122,20 @@ fn captured_frames_roundtrip() {
         .encode(&mut buf)
         .unwrap();
     assert_eq!(buf, PROG);
+
+    const XATTRS: [u8; 14] = [
+        0, 0, 0, 0xF7, 0, 0, 0, 6, b'u', b's', b'e', b'r', b'=', b'1',
+    ];
+    let frame = Frame::decode(&XATTRS[..]).unwrap();
+    assert_eq!(frame.header.msg, Msg::Xattrs);
+    let msg = Message::from_frame(frame.clone(), None).unwrap();
+    assert_eq!(msg, Message::Xattrs(b"user=1".to_vec()));
+    let mut buf = Vec::new();
+    Message::Xattrs(b"user=1".to_vec())
+        .into_frame(0, None)
+        .encode(&mut buf)
+        .unwrap();
+    assert_eq!(buf, XATTRS);
 }
 
 #[test]
