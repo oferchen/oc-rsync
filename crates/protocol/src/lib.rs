@@ -787,6 +787,16 @@ impl Message {
             )),
         }
     }
+
+    pub fn error_text(&self) -> Option<&str> {
+        match self {
+            Message::ErrorXfer(t)
+            | Message::Error(t)
+            | Message::ErrorSocket(t)
+            | Message::ErrorUtf8(t) => Some(t),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
