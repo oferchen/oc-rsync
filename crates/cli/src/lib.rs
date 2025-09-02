@@ -22,7 +22,7 @@ pub use engine::EngineError;
 use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse_with_options, Matcher, Rule};
 pub use formatter::render_help;
-use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
+use logging::{human_bytes, parse_escapes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use protocol::CharsetConv;
 #[cfg(feature = "acl")]
@@ -37,6 +37,11 @@ use transport::{
 };
 #[cfg(unix)]
 use users::get_user_by_uid;
+
+pub fn version_string() -> String {
+    let ver = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
+    format!("rsync {ver}")
+}
 
 fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
@@ -139,12 +144,19 @@ pub fn version_banner() -> String {
         .map(|p| p.to_string())
         .collect::<Vec<_>>()
         .join(", ");
+    let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
     format!(
-        "{}Protocols: {}\nFeatures: {}\n",
         version_string(),
+        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
+        env!("CARGO_PKG_VERSION"),
+        upstream,
         protocols,
         features,
     )
+}
+
+pub fn version_string() -> String {
+    version_banner()
 }
 
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
@@ -1141,6 +1153,27 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         .ok_or_else(|| EngineError::Other("missing DST".into()))?;
     if opts.archive {
         opts.recursive = true;
+        if !opts.no_links {
+            opts.links = true;
+        }
+        if !opts.no_perms {
+            opts.perms = true;
+        }
+        if !opts.no_times {
+            opts.times = true;
+        }
+        if !opts.no_group {
+            opts.group = true;
+        }
+        if !opts.no_owner {
+            opts.owner = true;
+        }
+        if !opts.no_devices {
+            opts.devices = true;
+        }
+        if !opts.no_specials {
+            opts.specials = true;
+        }
     }
     let matcher = build_matcher(&opts, matches)?;
     let addr_family = if opts.ipv4 {
@@ -1297,7 +1330,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     }
 
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
-        let list = ["md5", "sha1"];
+        let list = ["md4", "md5", "sha1"];
         rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
     }
 
@@ -1546,7 +1579,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         progress: opts.progress || opts.partial_progress,
         human_readable: opts.human_readable,
         itemize_changes: opts.itemize_changes,
-        out_format: opts.out_format.clone(),
+        out_format: opts.out_format.as_ref().map(|s| parse_escapes(s)),
         partial_dir: opts.partial_dir.clone(),
         temp_dir: opts.temp_dir.clone(),
         append: opts.append,
@@ -1691,6 +1724,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     addr_family,
                     opts.protocol.unwrap_or(31),
                     caps_send,
+                    None,
                 )
                 .map_err(EngineError::from)?;
                 #[cfg(not(any(feature = "xattr", feature = "acl")))]
@@ -1799,6 +1833,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     addr_family,
                     opts.protocol.unwrap_or(31),
                     caps_send,
+                    None,
                 )
                 .map_err(EngineError::from)?;
                 #[cfg(not(any(feature = "xattr", feature = "acl")))]

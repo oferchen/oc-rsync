@@ -11,7 +11,7 @@ when available.
 | Frame multiplexing and keep-alives | ✅ | [crates/protocol/tests/mux_demux.rs](../crates/protocol/tests/mux_demux.rs) | [crates/protocol/src/mux.rs](../crates/protocol/src/mux.rs) |
 | Version negotiation | ✅ | [crates/protocol/tests/server.rs](../crates/protocol/tests/server.rs) | [crates/protocol/src/server.rs](../crates/protocol/src/server.rs) |
 | Exit code propagation | ⚠️ | [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs) | [crates/protocol/src/lib.rs](../crates/protocol/src/lib.rs) |
-| Challenge-response authentication | ❌ | — | — |
+| Challenge-response authentication | ✅ | [crates/protocol/tests/auth.rs](../crates/protocol/tests/auth.rs) | [crates/protocol/src/server.rs](../crates/protocol/src/server.rs) |
 
 ## Checksums
 | Feature | Status | Tests | Source |
@@ -38,7 +38,7 @@ when available.
 | --- | --- | --- | --- |
 | Path-delta encoding with uid/gid tables | ✅ | [crates/engine/tests/flist.rs](../crates/engine/tests/flist.rs) | [crates/filelist/src/lib.rs](../crates/filelist/src/lib.rs) |
 | Group ID preservation | ⚠️ | [crates/engine/tests/flist.rs](../crates/engine/tests/flist.rs) | [crates/filelist/src/lib.rs](../crates/filelist/src/lib.rs) |
-| Extended attributes and ACL entries | ❌ | — | — |
+| Extended attributes and ACL entries | ✅ | [crates/engine/tests/flist.rs](../crates/engine/tests/flist.rs) | [crates/filelist/src/lib.rs](../crates/filelist/src/lib.rs) |
 
 ## Walk
 | Feature | Status | Tests | Source |
