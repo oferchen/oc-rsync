@@ -10,7 +10,7 @@ use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command as StdCommand, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
@@ -279,6 +279,28 @@ fn parse_config_inline_comments_and_modules() {
     assert_eq!(cfg.modules.len(), 2);
     assert_eq!(cfg.modules[0].name, "first");
     assert_eq!(cfg.modules[1].name, "second");
+}
+
+#[test]
+fn parse_config_value_contains_hash() {
+    let cfg = parse_config("log file = /tmp/rsync#log\n[data]\n    path = /tmp\n").unwrap();
+    assert_eq!(cfg.log_file, Some(PathBuf::from("/tmp/rsync#log")));
+}
+
+#[test]
+fn parse_config_value_contains_semicolon() {
+    let cfg = parse_config("log file = /tmp/rsync;log\n[data]\n    path = /tmp\n").unwrap();
+    assert_eq!(cfg.log_file, Some(PathBuf::from("/tmp/rsync;log")));
+}
+
+#[test]
+fn parse_config_value_contains_comment_chars_inside_quotes() {
+    let cfg =
+        parse_config("log file = \"/tmp/rsync #log ;semi\"\n[data]\n    path = /tmp\n").unwrap();
+    assert_eq!(
+        cfg.log_file,
+        Some(PathBuf::from("\"/tmp/rsync #log ;semi\""))
+    );
 }
 
 #[test]
