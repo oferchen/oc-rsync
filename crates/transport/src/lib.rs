@@ -8,7 +8,7 @@ pub mod tcp;
 
 pub use rate::RateLimitedTransport;
 pub use ssh::SshStdioTransport;
-pub use tcp::TcpTransport;
+pub use tcp::{connect_with_retry, TcpTransport};
 
 pub fn rate_limited<T: Transport>(inner: T, bwlimit: u64) -> RateLimitedTransport<T> {
     RateLimitedTransport::new(inner, bwlimit)
