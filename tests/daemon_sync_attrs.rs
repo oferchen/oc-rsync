@@ -6,7 +6,7 @@ use assert_cmd::{cargo::CommandCargoExt, Command};
 use serial_test::serial;
 #[cfg(unix)]
 use std::fs;
-#[cfg(unix)]
+#[cfg(all(unix, feature = "xattr"))]
 use std::io;
 #[cfg(unix)]
 use std::net::{TcpListener, TcpStream};
