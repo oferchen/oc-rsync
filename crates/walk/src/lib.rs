@@ -1,7 +1,6 @@
 // crates/walk/src/lib.rs
 use std::collections::HashMap;
 use std::fs::FileType;
-use std::io;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
@@ -103,7 +102,7 @@ pub fn walk_with_max_size(
 }
 
 impl Iterator for Walk {
-    type Item = io::Result<Vec<Entry>>;
+    type Item = std::io::Result<Vec<Entry>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut batch = Vec::new();
@@ -166,7 +165,7 @@ impl Iterator for Walk {
                     let msg = err.to_string();
                     let io_err = match err.into_io_error() {
                         Some(inner) => inner,
-                        None => io::Error::other(msg),
+                        None => std::io::Error::other(msg),
                     };
                     return Some(Err(io_err));
                 }
