@@ -6,12 +6,10 @@ use assert_cmd::{cargo::CommandCargoExt, Command};
 use serial_test::serial;
 #[cfg(unix)]
 use std::fs;
-#[cfg(unix)]
+#[cfg(all(unix, feature = "xattr"))]
 use std::io;
 #[cfg(unix)]
 use std::net::{TcpListener, TcpStream};
-#[cfg(unix)]
-use std::os::unix::fs::MetadataExt;
 #[cfg(unix)]
 use std::process::{Child, Command as StdCommand};
 #[cfg(unix)]
@@ -648,6 +646,7 @@ fn daemon_preserves_uid_gid_perms() {
 #[test]
 #[serial]
 fn daemon_preserves_hard_links_rr_client() {
+    use std::os::unix::fs::MetadataExt;
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
