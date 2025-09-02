@@ -982,10 +982,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
     #[cfg(unix)]
     {
-        let owner_req = matches.value_source("owner") == Some(ValueSource::CommandLine);
-        let group_req = matches.value_source("group") == Some(ValueSource::CommandLine);
-        let chown_req = matches.value_source("chown") == Some(ValueSource::CommandLine);
-        if owner_req || group_req || chown_req {
+        if opts.owner || opts.group || opts.chown.is_some() {
             use nix::unistd::Uid;
             if !Uid::effective().is_root() {
                 #[cfg(target_os = "linux")]
