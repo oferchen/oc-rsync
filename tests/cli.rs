@@ -2,6 +2,7 @@
 
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
+use encoding_rs::Encoding;
 use engine::SyncOptions;
 use filetime::{set_file_mtime, FileTime};
 use logging::progress_formatter;
@@ -177,7 +178,7 @@ fn iconv_option_sent_to_daemon() {
         &sync_opts,
         SUPPORTED_PROTOCOLS[0],
         None,
-        Some(cv.as_ref()),
+        Some(&cv),
     )
     .unwrap();
     handle.join().unwrap();
@@ -185,11 +186,15 @@ fn iconv_option_sent_to_daemon() {
 
 #[test]
 fn iconv_transcodes_filenames() {
-    let cv = parse_iconv("utf8,latin1").unwrap();
+    let spec = "utf8,latin1";
+    let cv = parse_iconv(spec).unwrap();
     let remote = b"f\xC3\xB8o";
-    let local = cv.remote_to_local(remote);
-    assert_eq!(local, b"f\xF8o");
-    let roundtrip = cv.local_to_remote(&local);
+    let decoded = cv.decode_remote(remote);
+    let local_enc = Encoding::for_label(b"latin1").unwrap();
+    let (local, _, _) = local_enc.encode(&decoded);
+    assert_eq!(local.as_ref(), b"f\xF8o");
+    let (round_dec, _, _) = local_enc.decode(&local);
+    let roundtrip = cv.encode_remote(&round_dec);
     assert_eq!(roundtrip, remote);
 }
 
