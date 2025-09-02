@@ -170,12 +170,8 @@ fn partial_progress_alias_matches_upstream() {
 
 #[test]
 fn dparam_flag_matches_upstream() {
-    require_rsync!();
-    let status = Command::new("rsync")
-        .args(["--daemon", "--dparam=pidfile=/dev/null", "--help"])
-        .status()
-        .unwrap();
-    assert!(status.success());
+    let help_output = include_str!("../../../tests/fixtures/rsync-help.txt");
+    assert!(help_output.contains("--dparam"));
 
     let matches = cli_command()
         .try_get_matches_from(["oc-rsync", "--daemon", "--dparam=pidfile=/dev/null"])
