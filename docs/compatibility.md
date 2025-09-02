@@ -44,7 +44,7 @@ kept up to date from their results.
 * Filters, sparse files, and compression work across transports. Hard links are
   not yet supported.
 * Extended attributes and ACLs are available only when built with the `xattr`
-  and `acl` feature gates and have not been widely exercised.
+  and `acl` feature gates and are exercised by round-trip tests.
 * Filesystem differences (case sensitivity, permissions) across platforms may
   lead to subtle inconsistencies.
 
