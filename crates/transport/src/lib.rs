@@ -146,13 +146,17 @@ pub trait SshTransport: Transport {}
 
 pub trait DaemonTransport: Transport {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SockOpt {
     KeepAlive(bool),
     SendBuf(usize),
     RecvBuf(usize),
     IpTtl(u32),
     IpTos(u32),
+    TcpNoDelay(bool),
+    ReuseAddr(bool),
+    BindToDevice(String),
+    IpHopLimit(u32),
 }
 
 pub fn parse_sockopts(opts: &[String]) -> Result<Vec<SockOpt>, String> {
@@ -187,6 +191,21 @@ fn parse_sockopt(s: &str) -> Result<SockOpt, String> {
                 .map_err(|_| "invalid SO_RCVBUF value".to_string())?;
             Ok(SockOpt::RecvBuf(size))
         }
+        "TCP_NODELAY" => {
+            let enabled = value.map(|v| v != "0").unwrap_or(true);
+            Ok(SockOpt::TcpNoDelay(enabled))
+        }
+        "SO_REUSEADDR" => {
+            let enabled = value.map(|v| v != "0").unwrap_or(true);
+            Ok(SockOpt::ReuseAddr(enabled))
+        }
+        "SO_BINDTODEVICE" => {
+            let v = value.ok_or_else(|| "SO_BINDTODEVICE requires a value".to_string())?;
+            if v.is_empty() {
+                return Err("SO_BINDTODEVICE requires a non-empty value".to_string());
+            }
+            Ok(SockOpt::BindToDevice(v.to_string()))
+        }
         _ => Err(format!("unknown socket option: {name}")),
     }
 }
@@ -201,6 +220,7 @@ fn parse_prefixed_sockopt(prefix: &str, rest: &str) -> Result<SockOpt, String> {
             match name.to_ascii_lowercase().as_str() {
                 "ttl" => Ok(SockOpt::IpTtl(val)),
                 "tos" => Ok(SockOpt::IpTos(val)),
+                "hoplimit" => Ok(SockOpt::IpHopLimit(val)),
                 _ => Err(format!("unknown ip socket option: {name}")),
             }
         }
