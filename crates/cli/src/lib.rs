@@ -38,9 +38,8 @@ use transport::{
 #[cfg(unix)]
 use users::get_user_by_uid;
 
-pub fn version_string() -> String {
-    let ver = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
-    format!("rsync {ver}")
+pub mod version {
+    include!("../../../bin/oc-rsync/src/version.rs");
 }
 
 fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
@@ -145,6 +144,7 @@ pub fn version_banner() -> String {
         features,
     )
 }
+
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")
@@ -608,7 +608,8 @@ struct ClientOpts {
     #[arg(long = "timeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     timeout: Option<Duration>,
     #[arg(
-        long = "contimeout",
+        long = "connect-timeout",
+        alias = "contimeout",
         value_name = "SECONDS",
         value_parser = parse_nonzero_duration,
         help_heading = "Misc"

@@ -1,4 +1,5 @@
 // crates/logging/src/lib.rs
+#![allow(clippy::too_many_arguments)]
 use std::fmt;
 use std::fs::OpenOptions;
 #[cfg(unix)]

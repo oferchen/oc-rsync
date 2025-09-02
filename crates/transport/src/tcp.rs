@@ -194,3 +194,19 @@ impl Transport for TcpTransport {
 }
 
 impl DaemonTransport for TcpTransport {}
+
+/// Attempt to establish a TCP connection with exponential backoff.
+///
+/// This is a convenience wrapper around [`TcpTransport::connect_with_retry`]
+/// exposing the retry logic as a free function so that higher level APIs can
+/// use it without constructing a [`TcpTransport`] manually.
+pub fn connect_with_retry(
+    host: &str,
+    port: u16,
+    connect_timeout: Option<Duration>,
+    family: Option<AddressFamily>,
+    retries: u32,
+    retry_delay: Duration,
+) -> io::Result<TcpTransport> {
+    TcpTransport::connect_with_retry(host, port, connect_timeout, family, retries, retry_delay)
+}
