@@ -589,6 +589,7 @@ impl Message {
                     io::ErrorKind::InvalidData,
                     "unexpected keepalive message",
                 )),
+                other => Ok(Message::Other(other, f.payload)),
             },
         }
     }

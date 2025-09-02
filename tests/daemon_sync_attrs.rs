@@ -11,8 +11,6 @@ use std::io;
 #[cfg(unix)]
 use std::net::{TcpListener, TcpStream};
 #[cfg(unix)]
-use std::os::unix::fs::MetadataExt;
-#[cfg(unix)]
 use std::process::{Child, Command as StdCommand};
 #[cfg(unix)]
 use std::thread::sleep;
@@ -648,6 +646,7 @@ fn daemon_preserves_uid_gid_perms() {
 #[test]
 #[serial]
 fn daemon_preserves_hard_links_rr_client() {
+    use std::os::unix::fs::MetadataExt;
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");

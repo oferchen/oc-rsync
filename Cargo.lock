@@ -152,6 +152,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
+name = "caps"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "190baaad529bcfbde9e1a19022c42781bdb6ff9de25721abdb8fd98c0807730b"
+dependencies = [
+ "libc",
+ "thiserror",
+]
+
+[[package]]
 name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -918,6 +928,7 @@ name = "oc-rsync-cli"
 version = "0.1.0"
 dependencies = [
  "assert_cmd",
+ "caps",
  "clap",
  "compress",
  "daemon",
@@ -926,6 +937,7 @@ dependencies = [
  "filters",
  "logging",
  "meta",
+ "nix 0.27.1",
  "protocol",
  "shell-words",
  "tempfile",
