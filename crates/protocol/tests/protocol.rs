@@ -86,7 +86,7 @@ fn captured_frames_roundtrip() {
     assert_eq!(msg.to_file_list(&mut fdec, None).unwrap(), entry);
 
     const ATTRS: [u8; 16] = [
-        0, 0, 0, 5, 0, 0, 0, 8, b'm', b'o', b'd', b'e', b'=', b'7', b'5', b'5',
+        0, 0, 0, 244, 0, 0, 0, 8, b'm', b'o', b'd', b'e', b'=', b'7', b'5', b'5',
     ];
     let frame = Frame::decode(&ATTRS[..]).unwrap();
     assert_eq!(frame.header.msg, Msg::Attributes);
@@ -99,7 +99,7 @@ fn captured_frames_roundtrip() {
         .unwrap();
     assert_eq!(buf, ATTRS);
 
-    const ERR: [u8; 12] = [0, 0, 0, 6, 0, 0, 0, 4, b'o', b'o', b'p', b's'];
+    const ERR: [u8; 12] = [0, 0, 0, 3, 0, 0, 0, 4, b'o', b'o', b'p', b's'];
     let frame = Frame::decode(&ERR[..]).unwrap();
     assert_eq!(frame.header.msg, Msg::Error);
     let msg = Message::from_frame(frame.clone(), None).unwrap();
@@ -111,7 +111,7 @@ fn captured_frames_roundtrip() {
         .unwrap();
     assert_eq!(buf, ERR);
 
-    const PROG: [u8; 16] = [0, 0, 0, 7, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0x30, 0x39];
+    const PROG: [u8; 16] = [0, 0, 0, 245, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0x30, 0x39];
     let frame = Frame::decode(&PROG[..]).unwrap();
     assert_eq!(frame.header.msg, Msg::Progress);
     let msg = Message::from_frame(frame.clone(), None).unwrap();
