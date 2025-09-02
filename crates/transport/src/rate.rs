@@ -1,5 +1,4 @@
 // crates/transport/src/rate.rs
-use std::io;
 use std::time::{Duration, Instant};
 
 use crate::Transport;
@@ -65,7 +64,7 @@ impl<T: Transport> RateLimitedTransport<T> {
 }
 
 impl<T: Transport> Transport for RateLimitedTransport<T> {
-    fn send(&mut self, data: &[u8]) -> io::Result<()> {
+    fn send(&mut self, data: &[u8]) -> std::io::Result<()> {
         let mut offset = 0;
         while offset < data.len() {
             let end = std::cmp::min(offset + self.burst, data.len());
@@ -77,15 +76,15 @@ impl<T: Transport> Transport for RateLimitedTransport<T> {
         Ok(())
     }
 
-    fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    fn receive(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         self.inner.receive(buf)
     }
 
-    fn set_read_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
+    fn set_read_timeout(&mut self, dur: Option<Duration>) -> std::io::Result<()> {
         self.inner.set_read_timeout(dur)
     }
 
-    fn set_write_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
+    fn set_write_timeout(&mut self, dur: Option<Duration>) -> std::io::Result<()> {
         self.inner.set_write_timeout(dur)
     }
 }
