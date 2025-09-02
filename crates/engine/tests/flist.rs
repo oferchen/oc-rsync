@@ -41,6 +41,42 @@ fn roundtrip() {
 }
 
 #[test]
+fn group_id_roundtrip() {
+    let entries = vec![
+        Entry {
+            path: b"a".to_vec(),
+            uid: 1,
+            gid: 2,
+            group: Some(42),
+            xattrs: Vec::new(),
+            acl: Vec::new(),
+            default_acl: Vec::new(),
+        },
+        Entry {
+            path: b"a/b".to_vec(),
+            uid: 1,
+            gid: 3,
+            group: Some(42),
+            xattrs: Vec::new(),
+            acl: Vec::new(),
+            default_acl: Vec::new(),
+        },
+        Entry {
+            path: b"c".to_vec(),
+            uid: 4,
+            gid: 3,
+            group: Some(99),
+            xattrs: Vec::new(),
+            acl: Vec::new(),
+            default_acl: Vec::new(),
+        },
+    ];
+    let payloads = flist::encode(&entries, None);
+    let decoded = flist::decode(&payloads, None).unwrap();
+    assert_eq!(decoded, entries);
+}
+
+#[test]
 fn iconv_roundtrip() {
     let cv = CharsetConv::new(
         Encoding::for_label(b"latin1").unwrap(),
