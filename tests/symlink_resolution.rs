@@ -180,3 +180,31 @@ fn munge_links_off_preserves_target() {
 
     assert_eq!(fs::read_link(dst.join("link")).unwrap(), Path::new("file"));
 }
+
+#[cfg(unix)]
+#[test]
+fn munge_links_unmunges_existing_prefix() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("file"), b"hi").unwrap();
+    symlink("/rsyncd-munged/file", src.join("link"));
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--links",
+            "--munge-links",
+            &format!("{}/", src.display()),
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert_eq!(
+        fs::read_link(dst.join("link")).unwrap(),
+        Path::new("/rsyncd-munged/file")
+    );
+}

@@ -2,6 +2,8 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
+use checksums::{strong_digest, StrongHash};
+
 use crate::{
     negotiate_caps, negotiate_version, Demux, ExitCode, Frame, Message, Mux, UnknownExit,
     CAP_CODECS, CAP_ZSTD,
@@ -38,6 +40,7 @@ impl<R: Read, W: Write> Server<R, W> {
         version: u32,
         caps: u32,
         codecs: &[Codec],
+        token: Option<&str>,
     ) -> io::Result<(u32, Vec<Codec>)> {
         self.args.clear();
         self.env.clear();
@@ -91,6 +94,24 @@ impl<R: Read, W: Write> Server<R, W> {
                 cur.clear();
             } else {
                 cur.push(b[0]);
+            }
+        }
+
+        if let Some(tok) = token {
+            const CHALLENGE: &[u8; 16] = b"0123456789abcdef";
+            self.writer.write_all(CHALLENGE)?;
+            self.writer.flush()?;
+            let mut resp = [0u8; 16];
+            self.reader.read_exact(&mut resp)?;
+            let mut buf = Vec::new();
+            buf.extend_from_slice(CHALLENGE);
+            buf.extend_from_slice(tok.as_bytes());
+            let expected = strong_digest(&buf, StrongHash::Md5, 0);
+            if expected[..16] != resp {
+                return Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "invalid challenge response",
+                ));
             }
         }
 

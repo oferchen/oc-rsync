@@ -35,6 +35,30 @@ impl TcpTransport {
         Ok(Self { stream })
     }
 
+    pub fn connect_with_retry(
+        host: &str,
+        port: u16,
+        connect_timeout: Option<Duration>,
+        family: Option<AddressFamily>,
+        retries: u32,
+        retry_delay: Duration,
+    ) -> io::Result<Self> {
+        let mut attempt = 0;
+        loop {
+            match Self::connect(host, port, connect_timeout, family) {
+                Ok(t) => return Ok(t),
+                Err(e) => {
+                    if attempt >= retries {
+                        return Err(e);
+                    }
+                    let backoff = retry_delay.mul_f64(2_f64.powi(attempt as i32));
+                    std::thread::sleep(backoff);
+                    attempt += 1;
+                }
+            }
+        }
+    }
+
     pub fn listen(
         addr: Option<IpAddr>,
         port: u16,

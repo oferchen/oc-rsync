@@ -137,6 +137,7 @@ fn custom_rsh_negotiates_codecs() {
         None,
         LATEST_VERSION,
         CAP_CODECS,
+        None,
     )
     .unwrap();
     drop(session);
