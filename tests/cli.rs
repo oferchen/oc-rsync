@@ -900,6 +900,10 @@ fn numeric_ids_are_preserved() {
 #[test]
 fn owner_group_and_mode_preserved() {
     use std::os::unix::fs::PermissionsExt;
+    if !Uid::effective().is_root() {
+        eprintln!("skipping owner_group_and_mode_preserved: requires root or CAP_CHOWN",);
+        return;
+    }
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
