@@ -70,7 +70,7 @@ Classic `rsync` protocol versions 31–32 are supported.
 | `--fake-super` | — | ✅ | ❌ | [tests/fake_super.rs](../tests/fake_super.rs) | requires `xattr` feature | ≤3.2 |
 | `--files-from` | — | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--filter` | `-f` | ✅ | ✅ | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) |  | ≤3.2 |
-| `--force` | — | ❌ | — | — | not yet implemented | ≤3.2 |
+| `--force` | — | ✅ | ✅ | [tests/delete_policy.rs](../tests/delete_policy.rs) |  | ≤3.2 |
 | `--from0` | `-0` | ✅ | ❌ | [tests/cli.rs](../tests/cli.rs) |  | ≤3.2 |
 | `--fsync` | — | ✅ | ❌ | [tests/cli_flags.rs](../tests/cli_flags.rs) |  | ≤3.2 |
 | `--fuzzy` | `-y` | ✅ | ❌ | [tests/fuzzy.rs](../tests/fuzzy.rs) |  | ≤3.2 |
