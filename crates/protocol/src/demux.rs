@@ -22,6 +22,10 @@ pub struct Demux {
     successes: Vec<u32>,
     deletions: Vec<u32>,
     nosends: Vec<u32>,
+    infos: Vec<String>,
+    warnings: Vec<String>,
+    logs: Vec<String>,
+    clients: Vec<String>,
 }
 
 impl Demux {
@@ -36,6 +40,10 @@ impl Demux {
             successes: Vec::new(),
             deletions: Vec::new(),
             nosends: Vec::new(),
+            infos: Vec::new(),
+            warnings: Vec::new(),
+            logs: Vec::new(),
+            clients: Vec::new(),
         }
     }
 
@@ -93,6 +101,18 @@ impl Demux {
                 Message::NoSend(idx) => {
                     self.nosends.push(*idx);
                 }
+                Message::Info(text) => {
+                    self.infos.push(text.clone());
+                }
+                Message::Warning(text) => {
+                    self.warnings.push(text.clone());
+                }
+                Message::Log(text) => {
+                    self.logs.push(text.clone());
+                }
+                Message::Client(text) => {
+                    self.clients.push(text.clone());
+                }
                 _ => {}
             }
         }
@@ -131,6 +151,22 @@ impl Demux {
 
     pub fn take_nosends(&mut self) -> Vec<u32> {
         std::mem::take(&mut self.nosends)
+    }
+
+    pub fn take_infos(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.infos)
+    }
+
+    pub fn take_warnings(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.warnings)
+    }
+
+    pub fn take_logs(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.logs)
+    }
+
+    pub fn take_clients(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.clients)
     }
 
     pub fn poll(&mut self) -> std::io::Result<()> {

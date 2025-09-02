@@ -129,3 +129,33 @@ fn progress_and_xattrs() {
     assert_eq!(rx.try_recv().unwrap(), Message::Progress(123));
     assert_eq!(rx.try_recv().unwrap(), Message::Xattrs(b"user=1".to_vec()));
 }
+
+#[test]
+fn collect_log_messages() {
+    let mut mux = Mux::new(Duration::from_millis(50));
+    let mut demux = Demux::new(Duration::from_millis(50));
+
+    mux.register_channel(0);
+    demux.register_channel(0);
+
+    mux.send_info(0, "info").unwrap();
+    mux.send_warning(0, "warn").unwrap();
+    mux.send_log(0, "log").unwrap();
+    mux.send_client(0, "client").unwrap();
+
+    let mut frames = Vec::new();
+    while frames.len() < 4 {
+        if let Some(frame) = mux.poll() {
+            frames.push(frame);
+        }
+    }
+
+    for frame in frames {
+        demux.ingest(frame).unwrap();
+    }
+
+    assert_eq!(demux.take_infos(), vec!["info".to_string()]);
+    assert_eq!(demux.take_warnings(), vec!["warn".to_string()]);
+    assert_eq!(demux.take_logs(), vec!["log".to_string()]);
+    assert_eq!(demux.take_clients(), vec!["client".to_string()]);
+}
