@@ -109,15 +109,31 @@ impl TryFrom<u8> for Tag {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Msg {
-    Version = 0,
-    Data = 1,
-    Done = 2,
-    KeepAlive = 3,
-    FileListEntry = 4,
-    Attributes = 5,
-    Error = 6,
-    Progress = 7,
-    Codecs = 8,
+    Data = 0,
+    ErrorXfer = 1,
+    Info = 2,
+    Error = 3,
+    Warning = 4,
+    ErrorSocket = 5,
+    Log = 6,
+    Client = 7,
+    ErrorUtf8 = 8,
+    Redo = 9,
+    Stats = 10,
+    IoError = 22,
+    IoTimeout = 33,
+    Noop = 42,
+    ErrorExit = 86,
+    Success = 100,
+    Deleted = 101,
+    NoSend = 102,
+    Version = 240,
+    Done = 241,
+    KeepAlive = 242,
+    FileListEntry = 243,
+    Attributes = 244,
+    Progress = 245,
+    Codecs = 246,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -142,15 +158,31 @@ impl TryFrom<u8> for Msg {
 
     fn try_from(v: u8) -> Result<Self, <Self as TryFrom<u8>>::Error> {
         match v {
-            0 => Ok(Msg::Version),
-            1 => Ok(Msg::Data),
-            2 => Ok(Msg::Done),
-            3 => Ok(Msg::KeepAlive),
-            4 => Ok(Msg::FileListEntry),
-            5 => Ok(Msg::Attributes),
-            6 => Ok(Msg::Error),
-            7 => Ok(Msg::Progress),
-            8 => Ok(Msg::Codecs),
+            0 => Ok(Msg::Data),
+            1 => Ok(Msg::ErrorXfer),
+            2 => Ok(Msg::Info),
+            3 => Ok(Msg::Error),
+            4 => Ok(Msg::Warning),
+            5 => Ok(Msg::ErrorSocket),
+            6 => Ok(Msg::Log),
+            7 => Ok(Msg::Client),
+            8 => Ok(Msg::ErrorUtf8),
+            9 => Ok(Msg::Redo),
+            10 => Ok(Msg::Stats),
+            22 => Ok(Msg::IoError),
+            33 => Ok(Msg::IoTimeout),
+            42 => Ok(Msg::Noop),
+            86 => Ok(Msg::ErrorExit),
+            100 => Ok(Msg::Success),
+            101 => Ok(Msg::Deleted),
+            102 => Ok(Msg::NoSend),
+            240 => Ok(Msg::Version),
+            241 => Ok(Msg::Done),
+            242 => Ok(Msg::KeepAlive),
+            243 => Ok(Msg::FileListEntry),
+            244 => Ok(Msg::Attributes),
+            245 => Ok(Msg::Progress),
+            246 => Ok(Msg::Codecs),
             other => Err(UnknownMsg(other)),
         }
     }
@@ -300,6 +332,7 @@ pub enum Message {
     Error(String),
     Progress(u64),
     Codecs(Vec<u8>),
+    Other(Msg, Vec<u8>),
 }
 
 impl Message {
@@ -397,6 +430,15 @@ impl Message {
                 };
                 Frame { header, payload }
             }
+            Message::Other(msg, payload) => {
+                let header = FrameHeader {
+                    channel,
+                    tag: Tag::Message,
+                    msg,
+                    len: payload.len() as u32,
+                };
+                Frame { header, payload }
+            }
         }
     }
 
@@ -454,6 +496,7 @@ impl Message {
                     io::ErrorKind::InvalidData,
                     "unexpected keepalive message",
                 )),
+                other => Ok(Message::Other(other, f.payload)),
             },
         }
     }
