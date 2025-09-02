@@ -37,6 +37,38 @@ fn hard_links_grouped() {
 }
 
 #[test]
+fn hard_links_existing_dest() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file1 = src.join("a");
+    fs::write(&file1, b"hi").unwrap();
+    let file2 = src.join("b");
+    fs::hard_link(&file1, &file2).unwrap();
+
+    let dst_a = dst.join("a");
+    fs::write(&dst_a, b"junk").unwrap();
+
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(),
+        &SyncOptions {
+            hard_links: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let ino1 = fs::metadata(dst.join("a")).unwrap().ino();
+    let ino2 = fs::metadata(dst.join("b")).unwrap().ino();
+    assert_eq!(ino1, ino2);
+}
+
+#[test]
 fn copy_links_requires_referent() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");

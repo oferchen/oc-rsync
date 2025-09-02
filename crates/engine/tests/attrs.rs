@@ -493,6 +493,48 @@ fn acls_roundtrip() {
     assert_eq!(dacl_src.entries(), dacl_dst.entries());
 }
 
+#[cfg(feature = "acl")]
+#[test]
+fn acls_imply_perms() {
+    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o640)).unwrap();
+    let mut acl = PosixACL::read_acl(&file).unwrap();
+    acl.set(Qualifier::User(12345), ACL_READ);
+    acl.write_acl(&file).unwrap();
+
+    let dst_file = dst.join("file");
+    fs::write(&dst_file, b"junk").unwrap();
+    fs::set_permissions(&dst_file, fs::Permissions::from_mode(0o600)).unwrap();
+
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(),
+        &SyncOptions {
+            acls: true,
+            perms: false,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let meta = fs::metadata(dst.join("file")).unwrap();
+    assert_eq!(meta.permissions().mode() & 0o777, 0o640);
+    let acl_src = PosixACL::read_acl(&file).unwrap();
+    let acl_dst = PosixACL::read_acl(dst.join("file")).unwrap();
+    assert_eq!(acl_src.entries(), acl_dst.entries());
+}
+
 #[test]
 fn devices_roundtrip() {
     let tmp = tempdir().unwrap();

@@ -1122,6 +1122,62 @@ fn owner_group_and_mode_preserved() {
     assert_eq!(meta.permissions().mode() & 0o7777, 0o741);
 }
 
+#[cfg(all(unix, feature = "acl"))]
+#[test]
+fn owner_group_perms_acls_preserved() {
+    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+    use std::os::unix::fs::PermissionsExt;
+    if !Uid::effective().is_root() {
+        eprintln!("skipping owner_group_perms_acls_preserved: requires root or CAP_CHOWN");
+        return;
+    }
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    let file = src_dir.join("a.txt");
+    fs::write(&file, b"ids").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o640)).unwrap();
+    let mut acl = PosixACL::read_acl(&file).unwrap();
+    acl.set(Qualifier::User(12345), ACL_READ);
+    acl.write_acl(&file).unwrap();
+    let acl_src = PosixACL::read_acl(&file).unwrap();
+
+    let dst_file = dst_dir.join("a.txt");
+    fs::write(&dst_file, b"junk").unwrap();
+    fs::set_permissions(&dst_file, fs::Permissions::from_mode(0o600)).unwrap();
+    let uid = get_current_uid();
+    let gid = get_current_gid();
+    let new_uid = if uid == 0 { 1 } else { 0 };
+    let new_gid = if gid == 0 { 1 } else { 0 };
+    let _ = chown(
+        &dst_file,
+        Some(Uid::from_raw(new_uid)),
+        Some(Gid::from_raw(new_gid)),
+    );
+
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--local",
+        "--owner",
+        "--group",
+        "--perms",
+        "--acls",
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    let meta = std::fs::metadata(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(meta.uid(), uid);
+    assert_eq!(meta.gid(), gid);
+    assert_eq!(meta.permissions().mode() & 0o777, 0o640);
+    let acl_dst = PosixACL::read_acl(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(acl_src.entries(), acl_dst.entries());
+}
+
 #[cfg(unix)]
 #[test]
 fn hard_links_preserved_via_cli() {
