@@ -112,6 +112,8 @@ pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Resu
         &cfg.debug,
         false,
         None,
+        false,
+        false,
     );
     with_default(sub, || -> Result<()> {
         let opts = SyncOptions {

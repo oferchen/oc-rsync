@@ -268,6 +268,10 @@ struct ClientOpts {
         id = "client-log-file-format"
     )]
     log_file_format: Option<String>,
+    #[arg(long, help_heading = "Output", env = "OC_RSYNC_SYSLOG")]
+    syslog: bool,
+    #[arg(long, help_heading = "Output", env = "OC_RSYNC_JOURNALD")]
+    journald: bool,
     #[arg(long = "out-format", value_name = "FORMAT", help_heading = "Output")]
     out_format: Option<String>,
     #[arg(
