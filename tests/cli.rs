@@ -900,6 +900,13 @@ fn numeric_ids_are_preserved() {
 #[test]
 fn owner_group_and_mode_preserved() {
     use std::os::unix::fs::PermissionsExt;
+    // This test manipulates file ownership and therefore requires root
+    // privileges. Skip the test when run without sufficient permissions to
+    // avoid spurious failures in unprivileged environments.
+    if !Uid::effective().is_root() {
+        eprintln!("skipping owner_group_and_mode_preserved: requires root privileges");
+        return;
+    }
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
