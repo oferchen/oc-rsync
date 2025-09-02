@@ -210,8 +210,9 @@ fn log_name(rel: &Path, link: Option<&Path>, opts: &SyncOptions, default: String
     if opts.quiet {
         return;
     }
+    let itemized = default.split_once(' ').map(|(i, _)| i.to_string());
     if let Some(fmt) = &opts.out_format {
-        let msg = logging::render_out_format(fmt, rel, link);
+        let msg = logging::render_out_format(fmt, rel, link, itemized.as_deref());
         tracing::info!(target: InfoFlag::Name.target(), "{}", msg);
     } else if opts.itemize_changes {
         println!("{}", default);

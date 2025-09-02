@@ -280,7 +280,12 @@ pub fn progress_formatter(bytes: u64, human_readable: bool) -> String {
     }
 }
 
-pub fn render_out_format(format: &str, name: &Path, link: Option<&Path>) -> String {
+pub fn render_out_format(
+    format: &str,
+    name: &Path,
+    link: Option<&Path>,
+    itemized: Option<&str>,
+) -> String {
     let mut out = String::new();
     let mut chars = format.chars();
     while let Some(c) = chars.next() {
@@ -292,6 +297,22 @@ pub fn render_out_format(format: &str, name: &Path, link: Option<&Path>) -> Stri
                         if let Some(l) = link {
                             out.push_str(" -> ");
                             out.push_str(&l.to_string_lossy());
+                        }
+                    }
+                    'i' => {
+                        if let Some(i) = itemized {
+                            out.push_str(i);
+                        }
+                    }
+                    'o' => {
+                        if let Some(i) = itemized {
+                            let op = match i.chars().next().unwrap_or(' ') {
+                                '>' => "send",
+                                '<' => "recv",
+                                '*' => "del.",
+                                _ => "",
+                            };
+                            out.push_str(op);
                         }
                     }
                     '%' => out.push('%'),

@@ -120,10 +120,13 @@ pub fn version_string() -> String {
 }
 
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
-    let info = matches
+    let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")
         .map(|v| v.copied().collect())
         .unwrap_or_default();
+    if matches.contains_id("out_format") && !info.contains(&InfoFlag::Name) {
+        info.push(InfoFlag::Name);
+    }
     let debug = matches
         .get_many::<DebugFlag>("debug")
         .map(|v| v.copied().collect())
