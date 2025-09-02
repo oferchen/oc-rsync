@@ -12,18 +12,27 @@ fn roundtrip() {
             uid: 1,
             gid: 2,
             group: None,
+            xattrs: vec![(b"user.test".to_vec(), b"1".to_vec())],
+            acl: vec![1, 0, 0, 0, 0, 7, 0, 0, 0],
+            default_acl: Vec::new(),
         },
         Entry {
             path: b"a/b".to_vec(),
             uid: 1,
             gid: 3,
             group: None,
+            xattrs: Vec::new(),
+            acl: Vec::new(),
+            default_acl: vec![1, 0, 0, 0, 0, 7, 0, 0, 0],
         },
         Entry {
             path: b"c".to_vec(),
             uid: 4,
             gid: 3,
             group: None,
+            xattrs: Vec::new(),
+            acl: Vec::new(),
+            default_acl: Vec::new(),
         },
     ];
     let payloads = flist::encode(&entries, None);
@@ -42,6 +51,9 @@ fn iconv_roundtrip() {
         uid: 0,
         gid: 0,
         group: None,
+        xattrs: Vec::new(),
+        acl: Vec::new(),
+        default_acl: Vec::new(),
     }];
     let payloads = flist::encode(&entries, Some(&cv));
     let decoded = flist::decode(&payloads, Some(&cv)).unwrap();
@@ -59,6 +71,9 @@ fn iconv_non_utf8_local_roundtrip() {
         uid: 0,
         gid: 0,
         group: None,
+        xattrs: Vec::new(),
+        acl: Vec::new(),
+        default_acl: Vec::new(),
     }];
     let payloads = flist::encode(&entries, Some(&cv));
     let decoded = flist::decode(&payloads, Some(&cv)).unwrap();

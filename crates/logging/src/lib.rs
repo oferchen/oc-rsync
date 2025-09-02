@@ -280,14 +280,54 @@ pub fn progress_formatter(bytes: u64, human_readable: bool) -> String {
     }
 }
 
+pub fn parse_escapes(input: &str) -> String {
+    let mut out = String::new();
+    let mut chars = input.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            match chars.next() {
+                Some('a') => out.push('\x07'),
+                Some('b') => out.push('\x08'),
+                Some('f') => out.push('\x0c'),
+                Some('n') => out.push('\n'),
+                Some('r') => out.push('\r'),
+                Some('t') => out.push('\t'),
+                Some('v') => out.push('\x0b'),
+                Some('\\') => out.push('\\'),
+                Some(c @ '0'..='7') => {
+                    let mut val = c.to_digit(8).unwrap();
+                    for _ in 0..2 {
+                        if let Some(peek) = chars.peek().copied() {
+                            if ('0'..='7').contains(&peek) {
+                                val = (val << 3) + chars.next().unwrap().to_digit(8).unwrap();
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    if let Some(ch) = char::from_u32(val) {
+                        out.push(ch);
+                    }
+                }
+                Some(other) => out.push(other),
+                None => out.push('\\'),
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 pub fn render_out_format(
     format: &str,
     name: &Path,
     link: Option<&Path>,
     itemized: Option<&str>,
 ) -> String {
+    let fmt = parse_escapes(format);
     let mut out = String::new();
-    let mut chars = format.chars();
+    let mut chars = fmt.chars();
     while let Some(c) = chars.next() {
         if c == '%' {
             if let Some(n) = chars.next() {

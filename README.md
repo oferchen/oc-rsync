@@ -107,6 +107,13 @@ cargo build -p oc-rsync-bin --bin oc-rsync
 cargo run -p oc-rsync-bin -- "<SRC>" "<DEST>"
 ```
 
+Support for preserving extended attributes and POSIX ACLs is gated behind
+optional Cargo features. Enable them at build time:
+
+```
+cargo build -p oc-rsync-bin --bin oc-rsync --features "xattr acl"
+```
+
 ## Packaging
 
 Release tarballs include sample files under `packaging/` to help run the

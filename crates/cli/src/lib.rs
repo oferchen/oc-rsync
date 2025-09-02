@@ -22,7 +22,7 @@ pub use engine::EngineError;
 use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse_with_options, Matcher, Rule};
 pub use formatter::render_help;
-use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
+use logging::{human_bytes, parse_escapes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use protocol::CharsetConv;
 #[cfg(feature = "acl")]
@@ -37,6 +37,11 @@ use transport::{
 };
 #[cfg(unix)]
 use users::get_user_by_uid;
+
+pub fn version_string() -> String {
+    let ver = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
+    format!("rsync {ver}")
+}
 
 fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
@@ -113,6 +118,14 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
     }
 }
 
+pub fn version_string() -> String {
+    format!(
+        "oc-rsync {} (rsync {})\n",
+        env!("CARGO_PKG_VERSION"),
+        env!("UPSTREAM_VERSION"),
+    )
+}
+
 #[allow(clippy::vec_init_then_push)]
 pub fn version_banner() -> String {
     #[allow(unused_mut)]
@@ -131,10 +144,12 @@ pub fn version_banner() -> String {
         .map(|p| p.to_string())
         .collect::<Vec<_>>()
         .join(", ");
+    let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
     format!(
+        version_string(),
         "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
         env!("CARGO_PKG_VERSION"),
-        env!("UPSTREAM_VERSION"),
+        upstream,
         protocols,
         features,
     )
@@ -509,7 +524,11 @@ struct ClientOpts {
     copy_unsafe_links: bool,
     #[arg(long, help_heading = "Attributes")]
     safe_links: bool,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(
+        long,
+        help_heading = "Attributes",
+        help = "munge symlinks to make them safe & unusable"
+    )]
     munge_links: bool,
     #[arg(long = "hard-links", help_heading = "Attributes")]
     hard_links: bool,
@@ -605,6 +624,10 @@ struct ClientOpts {
         help_heading = "Misc"
     )]
     connect_timeout: Option<Duration>,
+    #[arg(long = "retries", value_name = "NUM", value_parser = clap::value_parser!(u32), help_heading = "Misc")]
+    retries: Option<u32>,
+    #[arg(long = "retry-delay", value_name = "SECONDS", value_parser = parse_nonzero_duration, help_heading = "Misc")]
+    retry_delay: Option<Duration>,
     #[arg(long = "modify-window", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     modify_window: Option<Duration>,
     #[arg(
@@ -713,6 +736,8 @@ struct ClientOpts {
     iconv: Option<String>,
     #[arg(long = "write-batch", value_name = "FILE", help_heading = "Misc")]
     write_batch: Option<PathBuf>,
+    #[arg(long = "read-batch", value_name = "FILE", help_heading = "Misc")]
+    read_batch: Option<PathBuf>,
     #[arg(long = "copy-devices", help_heading = "Misc")]
     copy_devices: bool,
     #[arg(
@@ -1019,7 +1044,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn spawn_daemon_session(
+pub fn spawn_daemon_session_with_retry(
     host: &str,
     module: &str,
     port: Option<u16>,
@@ -1027,6 +1052,8 @@ pub fn spawn_daemon_session(
     no_motd: bool,
     timeout: Option<Duration>,
     connect_timeout: Option<Duration>,
+    retries: u32,
+    retry_delay: Duration,
     family: Option<AddressFamily>,
     sockopts: &[String],
     opts: &SyncOptions,
@@ -1042,7 +1069,8 @@ pub fn spawn_daemon_session(
     };
     let start = Instant::now();
     let mut t =
-        TcpTransport::connect(host, port, connect_timeout, family).map_err(EngineError::from)?;
+        TcpTransport::connect_with_retry(host, port, connect_timeout, family, retries, retry_delay)
+            .map_err(EngineError::from)?;
     let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(EngineError::Other)?;
     t.apply_sockopts(&parsed).map_err(EngineError::from)?;
     let handshake_timeout = connect_timeout
@@ -1125,6 +1153,41 @@ pub fn spawn_daemon_session(
     Ok(t)
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_daemon_session(
+    host: &str,
+    module: &str,
+    port: Option<u16>,
+    password_file: Option<&Path>,
+    no_motd: bool,
+    timeout: Option<Duration>,
+    connect_timeout: Option<Duration>,
+    family: Option<AddressFamily>,
+    sockopts: &[String],
+    opts: &SyncOptions,
+    version: u32,
+    early_input: Option<&Path>,
+    iconv: Option<&CharsetConv>,
+) -> Result<TcpTransport> {
+    spawn_daemon_session_with_retry(
+        host,
+        module,
+        port,
+        password_file,
+        no_motd,
+        timeout,
+        connect_timeout,
+        0,
+        Duration::from_secs(0),
+        family,
+        sockopts,
+        opts,
+        version,
+        early_input,
+        iconv,
+    )
+}
+
 fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let src_arg = opts
         .src
@@ -1136,6 +1199,27 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         .ok_or_else(|| EngineError::Other("missing DST".into()))?;
     if opts.archive {
         opts.recursive = true;
+        if !opts.no_links {
+            opts.links = true;
+        }
+        if !opts.no_perms {
+            opts.perms = true;
+        }
+        if !opts.no_times {
+            opts.times = true;
+        }
+        if !opts.no_group {
+            opts.group = true;
+        }
+        if !opts.no_owner {
+            opts.owner = true;
+        }
+        if !opts.no_devices {
+            opts.devices = true;
+        }
+        if !opts.no_specials {
+            opts.specials = true;
+        }
     }
     let matcher = build_matcher(&opts, matches)?;
     let addr_family = if opts.ipv4 {
@@ -1147,6 +1231,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     };
 
     parse_sockopts(&opts.sockopts).map_err(EngineError::Other)?;
+
+    let retries = opts.retries.unwrap_or(0);
+    let retry_delay = opts.retry_delay.unwrap_or_else(|| Duration::from_secs(1));
 
     #[cfg(unix)]
     {
@@ -1292,7 +1379,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     }
 
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
-        let list = ["md5", "sha1"];
+        let list = ["md4", "md5", "sha1"];
         rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
     }
 
@@ -1542,7 +1629,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         progress: opts.progress || opts.partial_progress,
         human_readable: opts.human_readable,
         itemize_changes: opts.itemize_changes,
-        out_format: opts.out_format.clone(),
+        out_format: opts.out_format.as_ref().map(|s| parse_escapes(s)),
         partial_dir: opts.partial_dir.clone(),
         temp_dir: opts.temp_dir.clone(),
         append: opts.append,
@@ -1575,6 +1662,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         sockopts: opts.sockopts.clone(),
         remote_options: remote_opts.clone(),
         write_batch: opts.write_batch.clone(),
+        read_batch: opts.read_batch.clone(),
         copy_devices: opts.copy_devices,
         write_devices: opts.write_devices,
         fsync: opts.fsync,
@@ -1610,7 +1698,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 },
                 RemoteSpec::Local(dst),
             ) => {
-                let mut _session = spawn_daemon_session(
+                let mut _session = spawn_daemon_session_with_retry(
                     &host,
                     &module,
                     opts.port,
@@ -1618,6 +1706,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.no_motd,
                     opts.timeout,
                     opts.connect_timeout,
+                    retries,
+                    retry_delay,
                     addr_family,
                     &opts.sockopts,
                     &sync_opts,
@@ -1687,6 +1777,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     addr_family,
                     opts.protocol.unwrap_or(31),
                     caps_send,
+                    None,
                 )
                 .map_err(EngineError::from)?;
                 #[cfg(not(any(feature = "xattr", feature = "acl")))]
@@ -1718,7 +1809,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     module: Some(module),
                 },
             ) => {
-                let mut _session = spawn_daemon_session(
+                let mut _session = spawn_daemon_session_with_retry(
                     &host,
                     &module,
                     opts.port,
@@ -1726,6 +1817,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     opts.no_motd,
                     opts.timeout,
                     opts.connect_timeout,
+                    retries,
+                    retry_delay,
                     addr_family,
                     &opts.sockopts,
                     &sync_opts,
@@ -1795,6 +1888,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     addr_family,
                     opts.protocol.unwrap_or(31),
                     caps_send,
+                    None,
                 )
                 .map_err(EngineError::from)?;
                 #[cfg(not(any(feature = "xattr", feature = "acl")))]
@@ -1921,7 +2015,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         Stats::default()
                     }
                     (Some(sm), Some(dm)) => {
-                        let mut dst_session = spawn_daemon_session(
+                        let mut dst_session = spawn_daemon_session_with_retry(
                             &dst_host,
                             &dm,
                             opts.port,
@@ -1929,6 +2023,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.no_motd,
                             opts.timeout,
                             opts.connect_timeout,
+                            retries,
+                            retry_delay,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -1936,7 +2032,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
                         )?;
-                        let mut src_session = spawn_daemon_session(
+                        let mut src_session = spawn_daemon_session_with_retry(
                             &src_host,
                             &sm,
                             opts.port,
@@ -1944,6 +2040,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.no_motd,
                             opts.timeout,
                             opts.connect_timeout,
+                            retries,
+                            retry_delay,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -1977,7 +2075,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
-                        let mut src_session = spawn_daemon_session(
+                        let mut src_session = spawn_daemon_session_with_retry(
                             &src_host,
                             &sm,
                             opts.port,
@@ -1985,6 +2083,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.no_motd,
                             opts.timeout,
                             opts.connect_timeout,
+                            retries,
+                            retry_delay,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
@@ -2022,7 +2122,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         Stats::default()
                     }
                     (None, Some(dm)) => {
-                        let mut dst_session = spawn_daemon_session(
+                        let mut dst_session = spawn_daemon_session_with_retry(
                             &dst_host,
                             &dm,
                             opts.port,
@@ -2030,6 +2130,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.no_motd,
                             opts.timeout,
                             opts.connect_timeout,
+                            retries,
+                            retry_delay,
                             addr_family,
                             &opts.sockopts,
                             &sync_opts,
