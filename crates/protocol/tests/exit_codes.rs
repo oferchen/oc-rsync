@@ -96,22 +96,55 @@ fn forward_unknown_exit_code_over_mux_demux() {
 }
 
 #[test]
-fn mux_send_exit_code_channel0() {
+fn mux_send_exit_codes_channel0() {
     let mut mux = Mux::new(Duration::from_millis(50));
     let mut demux = Demux::new(Duration::from_millis(50));
 
     mux.register_channel(0);
     demux.register_channel(0);
 
-    mux.send_exit_code(ExitCode::Partial).unwrap();
+    let codes = [
+        ExitCode::Ok,
+        ExitCode::SyntaxOrUsage,
+        ExitCode::Protocol,
+        ExitCode::FileSelect,
+        ExitCode::Unsupported,
+        ExitCode::StartClient,
+        ExitCode::DaemonConfig,
+        ExitCode::SocketIo,
+        ExitCode::FileIo,
+        ExitCode::StreamIo,
+        ExitCode::MessageIo,
+        ExitCode::Ipc,
+        ExitCode::Crashed,
+        ExitCode::Terminated,
+        ExitCode::Signal1,
+        ExitCode::Signal,
+        ExitCode::WaitPid,
+        ExitCode::Malloc,
+        ExitCode::Partial,
+        ExitCode::Vanished,
+        ExitCode::DelLimit,
+        ExitCode::Timeout,
+        ExitCode::ConnTimeout,
+        ExitCode::CmdFailed,
+        ExitCode::CmdKilled,
+        ExitCode::CmdRun,
+        ExitCode::CmdNotFound,
+    ];
 
-    let frame = mux.poll().expect("frame");
-    let err = demux.ingest(frame).unwrap_err();
-    assert!(matches!(
-        demux.take_exit_code(),
-        Some(Ok(ExitCode::Partial))
-    ));
-    assert_eq!(err.kind(), std::io::ErrorKind::Other);
+    for code in codes {
+        mux.send_exit_code(code).unwrap();
+        let frame = mux.poll().expect("frame");
+        let res = demux.ingest(frame);
+        if code == ExitCode::Ok {
+            res.unwrap();
+        } else {
+            let err = res.unwrap_err();
+            assert_eq!(err.kind(), std::io::ErrorKind::Other);
+        }
+        assert!(matches!(demux.take_exit_code(), Some(Ok(c)) if c == code));
+    }
 }
 
 #[test]

@@ -35,7 +35,7 @@ fn roundtrip_remaining_messages() {
         Message::Attributes(vec![6, 7]),
         Message::FileListEntry(vec![8, 9]),
         Message::Codecs(vec![10, 11]),
-        Message::ErrorExit(12),
+        Message::Exit(12),
         Message::Done,
         Message::KeepAlive,
     ];
