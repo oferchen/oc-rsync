@@ -220,16 +220,6 @@ fn log_name(rel: &Path, link: Option<&Path>, opts: &SyncOptions, default: String
     }
 }
 
-#[cfg(unix)]
-fn hard_link_id(dev: u64, ino: u64) -> u64 {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    let mut hasher = DefaultHasher::new();
-    dev.hash(&mut hasher);
-    ino.hash(&mut hasher);
-    hasher.finish()
-}
-
 fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
     let mut normalized = PathBuf::new();
     for comp in path.as_ref().components() {
@@ -1195,7 +1185,7 @@ pub struct Receiver {
     matcher: Matcher,
     delayed: Vec<(PathBuf, PathBuf, PathBuf)>,
     #[cfg(unix)]
-    link_map: HashMap<u64, (PathBuf, Vec<PathBuf>)>,
+    link_map: meta::HardLinks,
 }
 
 impl Default for Receiver {
@@ -1213,25 +1203,7 @@ impl Receiver {
             matcher: Matcher::default(),
             delayed: Vec::new(),
             #[cfg(unix)]
-            link_map: HashMap::new(),
-        }
-    }
-
-    #[cfg(unix)]
-    fn register_hard_link(&mut self, group: u64, dest: &Path) -> Result<bool> {
-        use std::collections::hash_map::Entry;
-        match self.link_map.entry(group) {
-            Entry::Occupied(mut e) => {
-                let (ref first, ref mut others) = *e.get_mut();
-                if dest != first && !others.iter().any(|p| p == dest) {
-                    others.push(dest.to_path_buf());
-                }
-                Ok(false)
-            }
-            Entry::Vacant(v) => {
-                v.insert((dest.to_path_buf(), Vec::new()));
-                Ok(true)
-            }
+            link_map: meta::HardLinks::default(),
         }
     }
 
@@ -1674,23 +1646,7 @@ impl Receiver {
             self.copy_metadata_now(&src, &dest)?;
         }
         #[cfg(unix)]
-        {
-            for (_, (first, mut others)) in std::mem::take(&mut self.link_map) {
-                let src = if first.exists() {
-                    first
-                } else if let Some(pos) = others.iter().position(|p| p.exists()) {
-                    others.remove(pos)
-                } else {
-                    continue;
-                };
-                for dest in others {
-                    if dest.exists() {
-                        fs::remove_file(&dest).map_err(|e| io_context(&dest, e))?;
-                    }
-                    fs::hard_link(&src, &dest).map_err(|e| io_context(&dest, e))?;
-                }
-            }
-        }
+        self.link_map.finalize()?;
         Ok(())
     }
 }
@@ -2397,8 +2353,8 @@ pub fn sync(
                     if opts.hard_links && src_meta.nlink() > 1 {
                         let dev = walker.devs()[entry.dev];
                         let ino = walker.inodes()[entry.inode];
-                        let group = hard_link_id(dev, ino);
-                        if !receiver.register_hard_link(group, &dest_path)? {
+                        let group = meta::hard_link_id(dev, ino);
+                        if !receiver.link_map.register(group, &dest_path) {
                             if let Some(parent) = dest_path.parent() {
                                 fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
                             }

@@ -7,7 +7,7 @@ fn roundtrip_acl_entries() {
         path: b"file".to_vec(),
         uid: 1,
         gid: 2,
-        group: None,
+        hardlink: None,
         xattrs: Vec::new(),
         acl: vec![1, 0, 0, 0, 0, 7, 0, 0, 0],
         default_acl: vec![1, 0, 0, 0, 0, 7, 0, 0, 0],

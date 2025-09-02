@@ -9,7 +9,7 @@ pub struct Entry {
     pub path: Vec<u8>,
     pub uid: u32,
     pub gid: u32,
-    pub group: Option<u32>,
+    pub hardlink: Option<u32>,
     pub xattrs: Vec<(Vec<u8>, Vec<u8>)>,
     pub acl: Vec<u8>,
     pub default_acl: Vec<u8>,
@@ -53,7 +53,7 @@ impl Encoder {
         out.extend_from_slice(suffix);
         out.extend_from_slice(&encode_id(entry.uid, &mut self.uid_table));
         out.extend_from_slice(&encode_id(entry.gid, &mut self.gid_table));
-        if let Some(group) = entry.group {
+        if let Some(group) = entry.hardlink {
             out.push(1);
             out.extend_from_slice(&encode_id(group, &mut self.gid_table));
         } else {
@@ -99,7 +99,7 @@ impl Decoder {
             .collect();
         let (uid, rest) = decode_id(input, &mut self.uid_table, true)?;
         let (gid, mut rest) = decode_id(rest, &mut self.gid_table, false)?;
-        let group = if rest.is_empty() {
+        let hardlink = if rest.is_empty() {
             return Err(DecodeError::ShortInput);
         } else {
             let tag = rest[0];
@@ -167,7 +167,7 @@ impl Decoder {
             path,
             uid,
             gid,
-            group,
+            hardlink,
             xattrs,
             acl,
             default_acl,
@@ -236,7 +236,7 @@ mod tests {
                 path: b"dir/file1".to_vec(),
                 uid: 1000,
                 gid: 1000,
-                group: None,
+                hardlink: None,
                 xattrs: vec![(b"user.test".to_vec(), b"val".to_vec())],
                 acl: vec![1, 0, 0, 0, 0, 7, 0, 0, 0],
                 default_acl: Vec::new(),
@@ -245,7 +245,7 @@ mod tests {
                 path: b"dir/file2".to_vec(),
                 uid: 1000,
                 gid: 1001,
-                group: Some(2000),
+                hardlink: Some(2000),
                 xattrs: Vec::new(),
                 acl: Vec::new(),
                 default_acl: vec![1, 0, 0, 0, 0, 7, 0, 0, 0],
@@ -254,7 +254,7 @@ mod tests {
                 path: b"other".to_vec(),
                 uid: 1002,
                 gid: 1001,
-                group: Some(2000),
+                hardlink: Some(2000),
                 xattrs: Vec::new(),
                 acl: Vec::new(),
                 default_acl: Vec::new(),
