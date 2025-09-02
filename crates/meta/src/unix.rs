@@ -368,8 +368,8 @@ impl Metadata {
         }
 
         let mut need_chmod =
-            (opts.perms || opts.chmod.is_some() || opts.executability) && !is_symlink;
-        let mut mode_val = if opts.perms {
+            (opts.perms || opts.chmod.is_some() || opts.executability || opts.acl) && !is_symlink;
+        let mut mode_val = if opts.perms || opts.acl {
             normalize_mode(self.mode)
         } else {
             normalize_mode(meta.permissions().mode())

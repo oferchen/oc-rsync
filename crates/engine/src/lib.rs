@@ -1137,7 +1137,7 @@ pub struct Receiver {
     matcher: Matcher,
     delayed: Vec<(PathBuf, PathBuf, PathBuf)>,
     #[cfg(unix)]
-    link_map: HashMap<u64, Vec<PathBuf>>,
+    link_map: HashMap<u64, (PathBuf, Vec<PathBuf>)>,
 }
 
 impl Default for Receiver {
@@ -1161,11 +1161,20 @@ impl Receiver {
 
     #[cfg(unix)]
     fn register_hard_link(&mut self, group: u64, dest: &Path) -> Result<bool> {
-        let entry = self.link_map.entry(group).or_default();
-        if !entry.iter().any(|p| p == dest) {
-            entry.push(dest.to_path_buf());
+        use std::collections::hash_map::Entry;
+        match self.link_map.entry(group) {
+            Entry::Occupied(mut e) => {
+                let (ref first, ref mut others) = *e.get_mut();
+                if dest != first && !others.iter().any(|p| p == dest) {
+                    others.push(dest.to_path_buf());
+                }
+                Ok(false)
+            }
+            Entry::Vacant(v) => {
+                v.insert((dest.to_path_buf(), Vec::new()));
+                Ok(true)
+            }
         }
-        Ok(entry.len() == 1)
     }
 
     pub fn apply<I>(&mut self, src: &Path, dest: &Path, _rel: &Path, delta: I) -> Result<PathBuf>
@@ -1522,7 +1531,16 @@ impl Receiver {
                 chmod: self.opts.chmod.clone(),
                 owner: self.opts.owner,
                 group: self.opts.group,
-                perms: self.opts.perms,
+                perms: self.opts.perms || {
+                    #[cfg(feature = "acl")]
+                    {
+                        self.opts.acls
+                    }
+                    #[cfg(not(feature = "acl"))]
+                    {
+                        false
+                    }
+                },
                 executability: self.opts.executability,
                 times: self.opts.times,
                 atimes: self.opts.atimes,
@@ -1599,15 +1617,19 @@ impl Receiver {
         }
         #[cfg(unix)]
         {
-            for (_, mut paths) in std::mem::take(&mut self.link_map) {
-                if let Some(pos) = paths.iter().position(|p| p.exists()) {
-                    let src = paths.remove(pos);
-                    for dest in paths {
-                        if dest.exists() {
-                            fs::remove_file(&dest).map_err(|e| io_context(&dest, e))?;
-                        }
-                        fs::hard_link(&src, &dest).map_err(|e| io_context(&dest, e))?;
+            for (_, (first, mut others)) in std::mem::take(&mut self.link_map) {
+                let src = if first.exists() {
+                    first
+                } else if let Some(pos) = others.iter().position(|p| p.exists()) {
+                    others.remove(pos)
+                } else {
+                    continue;
+                };
+                for dest in others {
+                    if dest.exists() {
+                        fs::remove_file(&dest).map_err(|e| io_context(&dest, e))?;
                     }
+                    fs::hard_link(&src, &dest).map_err(|e| io_context(&dest, e))?;
                 }
             }
         }
