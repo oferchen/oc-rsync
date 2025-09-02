@@ -751,6 +751,63 @@ fn daemon_acls_match_rsync_server() {
     assert_eq!(dacl_oc.entries(), dacl_rs.entries());
 }
 
+#[cfg(all(unix, feature = "acl"))]
+#[test]
+#[serial]
+fn daemon_acls_match_rsync_client() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let srv_oc = tmp.path().join("srv_oc");
+    let srv_rs = tmp.path().join("srv_rs");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&srv_oc).unwrap();
+    fs::create_dir_all(&srv_rs).unwrap();
+
+    let src_file = src.join("file");
+    fs::write(&src_file, b"hi").unwrap();
+
+    let mut acl = PosixACL::read_acl(&src_file).unwrap();
+    acl.set(Qualifier::User(12345), ACL_READ);
+    acl.set(Qualifier::User(23456), ACL_WRITE);
+    acl.write_acl(&src_file).unwrap();
+
+    let mut dacl = PosixACL::new(0o755);
+    dacl.set(Qualifier::User(12345), ACL_READ);
+    dacl.write_default_acl(&src).unwrap();
+
+    let (mut child_oc, port_oc) = spawn_rsync_daemon_acl(&srv_oc);
+    wait_for_daemon(port_oc);
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--acls",
+            &src_arg,
+            &format!("rsync://127.0.0.1:{port_oc}/mod"),
+        ])
+        .assert()
+        .success();
+    let _ = child_oc.kill();
+    let _ = child_oc.wait();
+
+    let (mut child_rs, port_rs) = spawn_rsync_daemon_acl(&srv_rs);
+    wait_for_daemon(port_rs);
+    Command::new("rsync")
+        .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_rs}/mod")])
+        .assert()
+        .success();
+    let _ = child_rs.kill();
+    let _ = child_rs.wait();
+
+    let acl_oc = PosixACL::read_acl(srv_oc.join("file")).unwrap();
+    let acl_rs = PosixACL::read_acl(srv_rs.join("file")).unwrap();
+    assert_eq!(acl_oc.entries(), acl_rs.entries());
+
+    let dacl_oc = PosixACL::read_default_acl(&srv_oc).unwrap();
+    let dacl_rs = PosixACL::read_default_acl(&srv_rs).unwrap();
+    assert_eq!(dacl_oc.entries(), dacl_rs.entries());
+}
+
 #[cfg(unix)]
 #[test]
 #[serial]

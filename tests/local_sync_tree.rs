@@ -324,6 +324,55 @@ fn sync_removes_acls() {
 
 #[cfg(all(unix, feature = "acl"))]
 #[test]
+fn sync_removes_acls_match_rsync() {
+    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst_oc = tmp.path().join("dst_oc");
+    let dst_rs = tmp.path().join("dst_rs");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst_oc).unwrap();
+    fs::create_dir_all(&dst_rs).unwrap();
+
+    let dst_oc_file = dst_oc.join("file");
+    fs::write(&dst_oc_file, b"hi").unwrap();
+    let dst_rs_file = dst_rs.join("file");
+    fs::write(&dst_rs_file, b"hi").unwrap();
+
+    let mut acl = PosixACL::read_acl(&dst_oc_file).unwrap();
+    acl.set(Qualifier::User(12345), ACL_READ);
+    acl.write_acl(&dst_oc_file).unwrap();
+    acl.write_acl(&dst_rs_file).unwrap();
+
+    let mut dacl = PosixACL::new(0o755);
+    dacl.set(Qualifier::User(12345), ACL_READ);
+    dacl.write_default_acl(&dst_oc).unwrap();
+    dacl.write_default_acl(&dst_rs).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--local", "--acls", &src_arg, dst_oc.to_str().unwrap()])
+        .assert()
+        .success();
+
+    Command::new("rsync")
+        .args(["-aA", &src_arg, dst_rs.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let acl_oc = PosixACL::read_acl(&dst_oc_file).unwrap();
+    let acl_rs = PosixACL::read_acl(&dst_rs_file).unwrap();
+    assert_eq!(acl_oc.entries(), acl_rs.entries());
+
+    let dacl_oc = PosixACL::read_default_acl(&dst_oc).unwrap();
+    let dacl_rs = PosixACL::read_default_acl(&dst_rs).unwrap();
+    assert_eq!(dacl_oc.entries(), dacl_rs.entries());
+}
+
+#[cfg(all(unix, feature = "acl"))]
+#[test]
 fn sync_ignores_acls_without_flag() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};
 

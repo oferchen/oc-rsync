@@ -504,20 +504,7 @@ impl Metadata {
             }
             if is_dir {
                 if self.default_acl.is_empty() {
-                    if let Err(err) = remove_default_acl(path) {
-                        match err.raw_os_error() {
-                            Some(code)
-                                if matches!(
-                                    code,
-                                    libc::EPERM
-                                        | libc::EACCES
-                                        | libc::ENOSYS
-                                        | libc::EINVAL
-                                        | libc::ENOTSUP
-                                ) || code == libc::EOPNOTSUPP => {}
-                            _ => return Err(err),
-                        }
-                    }
+                    remove_default_acl(path)?;
                 } else {
                     let mut dacl = posix_acl::PosixACL::empty();
                     for entry in &self.default_acl {
@@ -627,15 +614,40 @@ fn acl_to_io(err: posix_acl::ACLError) -> io::Error {
 }
 
 #[cfg(feature = "acl")]
+fn should_ignore_acl_errno(code: i32) -> bool {
+    matches!(
+        code,
+        libc::EPERM | libc::EACCES | libc::ENOSYS | libc::EINVAL | libc::ENOTSUP | libc::ENODATA
+    ) || code == libc::EOPNOTSUPP
+        || {
+            #[cfg(any(
+                target_os = "macos",
+                target_os = "freebsd",
+                target_os = "dragonfly",
+                target_os = "netbsd",
+                target_os = "openbsd",
+            ))]
+            {
+                code == libc::ENOATTR
+            }
+            #[cfg(not(any(
+                target_os = "macos",
+                target_os = "freebsd",
+                target_os = "dragonfly",
+                target_os = "netbsd",
+                target_os = "openbsd",
+            )))]
+            {
+                false
+            }
+        }
+}
+
+#[cfg(feature = "acl")]
 fn should_ignore_acl_error(err: &posix_acl::ACLError) -> bool {
-    if let Some(code) = err.as_io_error().and_then(|e| e.raw_os_error()) {
-        matches!(
-            code,
-            libc::EPERM | libc::EACCES | libc::ENOSYS | libc::EINVAL | libc::ENOTSUP
-        ) || code == libc::EOPNOTSUPP
-    } else {
-        false
-    }
+    err.as_io_error()
+        .and_then(|e| e.raw_os_error())
+        .is_some_and(should_ignore_acl_errno)
 }
 
 #[cfg(feature = "acl")]
@@ -652,7 +664,11 @@ fn remove_default_acl(path: &Path) -> io::Result<()> {
     if ret == 0 {
         Ok(())
     } else {
-        Err(io::Error::last_os_error())
+        let err = io::Error::last_os_error();
+        match err.raw_os_error() {
+            Some(code) if should_ignore_acl_errno(code) => Ok(()),
+            _ => Err(err),
+        }
     }
 }
 
