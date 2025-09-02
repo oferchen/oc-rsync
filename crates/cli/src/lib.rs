@@ -110,6 +110,8 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
         "0" | "false" | "no" => Ok(false),
         "1" | "true" | "yes" => Ok(true),
         _ => Err("invalid boolean".to_string()),
+    }
+}
 
 pub fn version_string() -> String {
     if let Ok(out) = Command::new("rsync").arg("--version").output() {
