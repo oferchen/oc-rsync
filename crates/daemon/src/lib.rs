@@ -24,13 +24,21 @@ fn parse_list(val: &str) -> Vec<String> {
 }
 
 fn parse_bool(val: &str) -> io::Result<bool> {
-    match val.to_lowercase().as_str() {
-        "1" | "yes" | "true" | "on" => Ok(true),
-        "0" | "no" | "false" | "off" => Ok(false),
-        _ => Err(io::Error::new(
+    if ["1", "yes", "true", "on"]
+        .iter()
+        .any(|v| val.eq_ignore_ascii_case(v))
+    {
+        Ok(true)
+    } else if ["0", "no", "false", "off"]
+        .iter()
+        .any(|v| val.eq_ignore_ascii_case(v))
+    {
+        Ok(false)
+    } else {
+        Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!("invalid boolean: {val}"),
-        )),
+        ))
     }
 }
 
@@ -1264,13 +1272,21 @@ mod tests {
         assert_eq!(err.to_string(), "token too long");
     }
 
-    use super::parse_config;
+    use super::{parse_bool, parse_config};
 
     #[test]
     fn parse_config_invalid_port() {
         let cfg = "port=not-a-number";
         let res = parse_config(cfg);
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn parse_bool_is_case_insensitive() {
+        assert!(parse_bool("TRUE").unwrap());
+        assert!(parse_bool("Yes").unwrap());
+        assert!(!parse_bool("FALSE").unwrap());
+        assert!(!parse_bool("No").unwrap());
     }
 
     #[test]
