@@ -184,6 +184,16 @@ fn iconv_option_sent_to_daemon() {
 }
 
 #[test]
+fn iconv_transcodes_filenames() {
+    let cv = parse_iconv("utf8,latin1").unwrap();
+    let remote = b"f\xC3\xB8o";
+    let local = cv.remote_to_local(remote);
+    assert_eq!(local, b"f\xF8o");
+    let roundtrip = cv.local_to_remote(&local);
+    assert_eq!(roundtrip, remote);
+}
+
+#[test]
 fn client_local_sync() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
