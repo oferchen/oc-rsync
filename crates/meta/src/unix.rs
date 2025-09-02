@@ -247,7 +247,7 @@ impl Metadata {
 
         #[cfg(feature = "acl")]
         let (acl, default_acl) = if opts.acl {
-            read_acl_from_path(path, is_dir, opts.fake_super)?
+            read_acl_from_path(path, is_dir, opts.fake_super, mode)?
         } else {
             (Vec::new(), Vec::new())
         };
@@ -474,13 +474,23 @@ impl Metadata {
         #[cfg(feature = "acl")]
         if opts.acl {
             {
-                let mut acl = posix_acl::PosixACL::empty();
-                for entry in &self.acl {
-                    acl.set(entry.qual, entry.perm);
-                }
-                if let Err(err) = acl.write_acl(path) {
-                    if !should_ignore_acl_error(&err) {
-                        return Err(acl_to_io(err));
+                let cur_mode = normalize_mode(fs::symlink_metadata(path)?.permissions().mode());
+                if self.acl.is_empty() {
+                    let mut acl = posix_acl::PosixACL::new(cur_mode);
+                    if let Err(err) = acl.write_acl(path) {
+                        if !should_ignore_acl_error(&err) {
+                            return Err(acl_to_io(err));
+                        }
+                    }
+                } else {
+                    let mut acl = posix_acl::PosixACL::empty();
+                    for entry in &self.acl {
+                        acl.set(entry.qual, entry.perm);
+                    }
+                    if let Err(err) = acl.write_acl(path) {
+                        if !should_ignore_acl_error(&err) {
+                            return Err(acl_to_io(err));
+                        }
                     }
                 }
             }
@@ -632,10 +642,16 @@ fn remove_default_acl(path: &Path) -> io::Result<()> {
 }
 
 #[cfg(feature = "acl")]
+fn is_trivial_acl(entries: &[posix_acl::ACLEntry], mode: u32) -> bool {
+    posix_acl::PosixACL::new(mode).entries() == entries
+}
+
+#[cfg(feature = "acl")]
 fn read_acl_from_path(
     path: &Path,
     is_dir: bool,
     fake_super: bool,
+    mode: u32,
 ) -> io::Result<(Vec<posix_acl::ACLEntry>, Vec<posix_acl::ACLEntry>)> {
     #[cfg(all(feature = "xattr", feature = "acl"))]
     if fake_super {
@@ -670,7 +686,7 @@ fn read_acl_from_path(
         }
     }
 
-    let acl = match posix_acl::PosixACL::read_acl(path) {
+    let mut acl = match posix_acl::PosixACL::read_acl(path) {
         Ok(acl) => acl.entries(),
         Err(err) => {
             if should_ignore_acl_error(&err) {
@@ -680,6 +696,9 @@ fn read_acl_from_path(
             }
         }
     };
+    if is_trivial_acl(&acl, mode) {
+        acl.clear();
+    }
     let default_acl = if is_dir {
         match posix_acl::PosixACL::read_default_acl(path) {
             Ok(dacl) => dacl.entries(),
