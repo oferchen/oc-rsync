@@ -2,7 +2,8 @@
 
 This page summarizes the operating systems and interoperability scenarios that
 have been exercised with `oc-rsync`. For a detailed status matrix see
-[compat_matrix.md](compat_matrix.md).
+[compat_matrix.md](compat_matrix.md). Cross-platform CI runs targeted tests on
+Linux, macOS, and Windows.
 
 ## Protocol versions
 
@@ -16,9 +17,9 @@ through 32.
 | Linux | primary development and CI platform |
 | Linux (arm64) | native CI runner |
 | Linux (armv7) | cross-compiled in CI |
-| FreeBSD | cross-compiled in CI |
-| macOS | builds and basic local sync verified |
-| Windows | under active development; path and permission handling incomplete |
+| FreeBSD | cross-compiled in CI (no tests) |
+| macOS | CI runner executes targeted tests |
+| Windows | CI runner executes targeted tests; path and permission handling incomplete |
 
 ## Supported Protocol Versions
 
