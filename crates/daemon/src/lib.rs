@@ -319,9 +319,9 @@ pub struct DaemonConfig {
 pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
     let mut cfg = DaemonConfig::default();
     let mut current: Option<Module> = None;
-    for line in contents.lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') || line.starts_with(';') {
+    for raw in contents.lines() {
+        let line = raw.split(['#', ';']).next().unwrap().trim();
+        if line.is_empty() {
             continue;
         }
         if line.starts_with('[') && line.ends_with(']') {
@@ -702,16 +702,35 @@ pub fn chroot_and_drop_privileges(
     gid: u32,
     use_chroot: bool,
 ) -> io::Result<()> {
-    use nix::unistd::{chdir, chroot, setgid, setuid, Gid, Uid};
+    use nix::unistd::{chdir, chroot, getegid, geteuid};
     let canon = fs::canonicalize(path)?;
+    if !fs::metadata(&canon)?.is_dir() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "path is not a directory",
+        ));
+    }
+    let euid = geteuid().as_raw();
+    let egid = getegid().as_raw();
+    if use_chroot && euid != 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "chroot requires root",
+        ));
+    }
+    if (uid != euid || gid != egid) && euid != 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "dropping privileges requires root",
+        ));
+    }
     if use_chroot {
         chroot(&canon).map_err(io::Error::other)?;
         chdir("/").map_err(io::Error::other)?;
     } else {
         chdir(&canon).map_err(io::Error::other)?;
     }
-    setgid(Gid::from_raw(gid)).map_err(io::Error::other)?;
-    setuid(Uid::from_raw(uid)).map_err(io::Error::other)?;
+    drop_privileges(uid, gid)?;
     Ok(())
 }
 
@@ -727,11 +746,20 @@ pub fn chroot_and_drop_privileges(
 
 #[cfg(unix)]
 pub fn drop_privileges(uid: u32, gid: u32) -> io::Result<()> {
-    use nix::unistd::{setgid, setuid, Gid, Uid};
-    if gid != 0 {
+    use nix::unistd::{getegid, geteuid, setgid, setgroups, setuid, Gid, Uid};
+    let cur_uid = geteuid().as_raw();
+    let cur_gid = getegid().as_raw();
+    if (uid != cur_uid || gid != cur_gid) && cur_uid != 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "dropping privileges requires root",
+        ));
+    }
+    if gid != cur_gid {
+        setgroups(&[Gid::from_raw(gid)]).map_err(io::Error::other)?;
         setgid(Gid::from_raw(gid)).map_err(io::Error::other)?;
     }
-    if uid != 0 {
+    if uid != cur_uid {
         setuid(Uid::from_raw(uid)).map_err(io::Error::other)?;
     }
     Ok(())

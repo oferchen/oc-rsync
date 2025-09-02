@@ -1,6 +1,5 @@
 // bin/oc-rsync/src/main.rs
 use std::io::ErrorKind;
-
 use oc_rsync_cli::{cli_command, version_banner, EngineError};
 use protocol::ExitCode;
 
@@ -8,6 +7,21 @@ fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     use clap::error::ErrorKind::*;
     match kind {
         UnknownArgument => ExitCode::Unsupported,
+        InvalidValue
+        | InvalidSubcommand
+        | NoEquals
+        | ValueValidation
+        | TooManyValues
+        | TooFewValues
+        | WrongNumberOfValues
+        | ArgumentConflict
+        | MissingRequiredArgument
+        | MissingSubcommand
+        | InvalidUtf8
+        | DisplayHelp
+        | DisplayHelpOnMissingArgumentOrSubcommand
+        | DisplayVersion => ExitCode::SyntaxOrUsage,
+        Io | Format => ExitCode::FileIo,
         _ => ExitCode::SyntaxOrUsage,
     }
 }
@@ -15,7 +29,7 @@ fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
 fn main() {
     if std::env::args().any(|a| a == "--version" || a == "-V") {
         if !std::env::args().any(|a| a == "--quiet" || a == "-q") {
-            print!("{}", version_banner());
+            print!("{}", version::version_banner());
         }
         return;
     }

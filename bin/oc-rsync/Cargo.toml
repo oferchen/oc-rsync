@@ -2,6 +2,7 @@
 name = "oc-rsync-bin"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [[bin]]
 name = "oc-rsync"
@@ -12,6 +13,9 @@ oc-rsync-cli = { path = "../../crates/cli" }
 engine = { path = "../../crates/engine" }
 logging = { path = "../../crates/logging" }
 protocol = { path = "../../crates/protocol" }
+
+[dev-dependencies]
+assert_cmd = "2"
 
 [features]
 default = []

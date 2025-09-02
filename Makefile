@@ -1,5 +1,5 @@
-.PHONY: verify-comments lint coverage interop test-golden fmt clippy doc test
-	VERIFY_COMMENT_FILES := $(shell git ls-files '*.rs')
+.PHONY: verify-comments lint coverage interop test-golden fmt clippy doc test build version
+        VERIFY_COMMENT_FILES := $(shell git ls-files '*.rs')
 
 verify-comments:
 	@bash scripts/check-comments.sh $(VERIFY_COMMENT_FILES)
@@ -38,6 +38,12 @@ test-golden:
 	bash tests/filter_rule_precedence.sh; \
 	echo "Running tests/partial_transfer_resume.sh"; \
 	bash tests/partial_transfer_resume.sh; \
-	echo "Running tests/partial_dir_transfer_resume.sh"; \
-	bash tests/partial_dir_transfer_resume.sh
+        echo "Running tests/partial_dir_transfer_resume.sh"; \
+        bash tests/partial_dir_transfer_resume.sh
+
+build:
+	RSYNC_UPSTREAM_VER=$(UPSTREAM) OFFICIAL_BUILD=$(OFFICIAL) cargo build -p oc-rsync-bin --bin oc-rsync
+
+version: build
+	./target/debug/oc-rsync --version
 
