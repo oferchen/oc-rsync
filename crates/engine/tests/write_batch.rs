@@ -30,3 +30,41 @@ fn writes_batch_file() {
     assert!(log.contains("files_transferred=1"));
     assert!(log.contains("bytes_transferred=2"));
 }
+
+#[test]
+fn reads_batch_file() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst1 = tmp.path().join("dst1");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst1).unwrap();
+    fs::write(src.join("file"), b"hi").unwrap();
+    let batch = tmp.path().join("batch.log");
+    sync(
+        &src,
+        &dst1,
+        &Matcher::default(),
+        &available_codecs(),
+        &SyncOptions {
+            write_batch: Some(batch.clone()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    fs::write(src.join("file2"), b"later").unwrap();
+    let dst2 = tmp.path().join("dst2");
+    fs::create_dir_all(&dst2).unwrap();
+    sync(
+        &src,
+        &dst2,
+        &Matcher::default(),
+        &available_codecs(),
+        &SyncOptions {
+            read_batch: Some(batch),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(dst2.join("file").exists());
+    assert!(!dst2.join("file2").exists());
+}

@@ -10,7 +10,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | Feature | Supported | Notes |
 | --- | --- | --- |
 | File list path-delta encoding with uid/gid tables | ✅ | Exercised via `filelist` tests |
-
+| Challenge-response token authentication | ✅ | Protocol handshake verifies tokens |
 | Option | Supported | Parity (Y/N) | Message-parity (Y/N) | Parser-parity (Y/N) | Tests | Source | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `--8-bit-output` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
@@ -106,7 +106,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--mkpath` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--modify-window` | ✅ | N | N | N | [tests/modify_window.rs](../tests/modify_window.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | treat close mtimes as equal |
 | `--motd` | ✅ | Y | Y | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--munge-links` | ❌ | N | N | N | — | — | not yet implemented |
+| `--munge-links` | ✅ | N | N | N | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--no-detach` | ❌ | N | N | N | — | — | not yet implemented |
 | `--no-D` | ❌ | N | N | N | [gaps.md](gaps.md) | — | alias for `--no-devices --no-specials` |
 | `--no-OPTION` | ✅ | Y | Y | Y | [crates/cli/tests/cli_parity.rs](../crates/cli/tests/cli_parity.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | disable default option |
@@ -118,7 +118,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--old-dirs` | ❌ | N | N | N | — | — | not yet implemented |
 | `--omit-dir-times` | ✅ | Y | Y | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--omit-link-times` | ✅ | Y | Y | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--one-file-system` | ❌ | N | N | N | — | — | not yet implemented |
+| `--one-file-system` | ✅ | Y | Y | Y | [crates/walk/tests/walk.rs](../crates/walk/tests/walk.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--only-write-batch` | ❌ | N | N | N | — | — | not yet implemented |
 | `--open-noatime` | ❌ | N | N | N | — | — | not yet implemented |
 | `--out-format` | ❌ | N | N | N | — | — | not yet implemented |
@@ -166,5 +166,6 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--version` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--whole-file` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--write-batch` | ✅ | Y | Y | Y | [tests/write_batch.rs](../tests/write_batch.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--read-batch` | ✅ | Y | Y | Y | [tests/write_batch.rs](../tests/write_batch.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--write-devices` | ✅ | Y | Y | Y | [tests/write_devices.rs](../tests/write_devices.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | writes to existing devices |
 | `--xattrs` | ✅ | N | N | N | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires `xattr` feature |

@@ -247,6 +247,23 @@ Implementation details for each flag live in the
 [feature matrix](feature_matrix.md) and the
 [CLI flag reference](cli/flags.md).
 
+### Format escapes
+
+`oc-rsync` understands a small set of escapes in `--out-format` and
+`--log-file-format` strings:
+
+| Escape | Meaning |
+|--------|---------|
+| `%n` | file name |
+| `%L` | symlink target (prefixed by ` -> `) |
+| `%i` | itemized change string |
+| `%o` | operation (`send`, `recv`, `del.`) |
+| `%%` | literal percent sign |
+| `\\n` | newline |
+| `\\t` | tab |
+| `\\` | backslash |
+| `\\0NNN` | octal byte value |
+
 ### Permission tweaks with `--chmod`
 
 The `--chmod=CHMOD` option adjusts permission bits on transferred files. The

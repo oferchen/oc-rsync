@@ -31,6 +31,7 @@ pub mod flist;
 
 const RSYNC_BLOCK_SIZE: usize = 700;
 const RSYNC_MAX_BLOCK_SIZE: usize = 1 << 17;
+const MUNGE_PREFIX: &str = "/rsyncd-munged";
 
 pub fn block_size(len: u64) -> usize {
     if len <= (RSYNC_BLOCK_SIZE * RSYNC_BLOCK_SIZE) as u64 {
@@ -1686,6 +1687,7 @@ pub struct SyncOptions {
     pub update: bool,
     pub existing: bool,
     pub ignore_existing: bool,
+    pub one_file_system: bool,
     pub size_only: bool,
     pub ignore_times: bool,
     pub perms: bool,
@@ -1754,6 +1756,7 @@ pub struct SyncOptions {
     pub sockopts: Vec<String>,
     pub remote_options: Vec<String>,
     pub write_batch: Option<PathBuf>,
+    pub read_batch: Option<PathBuf>,
     pub copy_devices: bool,
     pub write_devices: bool,
     pub quiet: bool,
@@ -1812,6 +1815,7 @@ impl Default for SyncOptions {
             update: false,
             existing: false,
             ignore_existing: false,
+            one_file_system: false,
             size_only: false,
             ignore_times: false,
             strong: StrongHash::Md4,
@@ -1851,6 +1855,7 @@ impl Default for SyncOptions {
             sockopts: Vec::new(),
             remote_options: Vec::new(),
             write_batch: None,
+            read_batch: None,
             copy_devices: false,
             write_devices: false,
             quiet: false,
@@ -1877,6 +1882,9 @@ impl SyncOptions {
         if let Some(dir) = &self.partial_dir {
             self.remote_options
                 .push(format!("--partial-dir={}", dir.display()));
+        }
+        if self.one_file_system {
+            self.remote_options.push("--one-file-system".into());
         }
     }
 }
@@ -1910,6 +1918,7 @@ fn delete_extraneous(
         dst,
         1,
         opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
+        opts.one_file_system,
     );
     let mut state = String::new();
     let mut first_err: Option<EngineError> = None;
@@ -2089,6 +2098,7 @@ pub fn sync(
             &src_root,
             1024,
             opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
+            opts.one_file_system,
         );
         let mut state = String::new();
         for batch in walker {
@@ -2155,6 +2165,38 @@ pub fn sync(
     let mut receiver = Receiver::new(codec, opts.clone());
     receiver.matcher = matcher.clone();
     let mut dir_meta: Vec<(PathBuf, PathBuf)> = Vec::new();
+
+    if let Some(batch_path) = &opts.read_batch {
+        sender.start();
+        let content =
+            fs::read_to_string(batch_path).map_err(|e| EngineError::Other(e.to_string()))?;
+        for line in content.lines() {
+            if line.trim().is_empty() || line.contains('=') {
+                continue;
+            }
+            let rel = Path::new(line);
+            let path = src_root.join(rel);
+            if !path.exists() {
+                continue;
+            }
+            let dest_path = dst.join(rel);
+            if sender.process_file(&path, &dest_path, rel, &mut receiver)? {
+                stats.files_transferred += 1;
+                stats.bytes_transferred +=
+                    fs::metadata(&path).map_err(|e| io_context(&path, e))?.len();
+            }
+        }
+        sender.finish();
+        receiver.finalize()?;
+        if let Some(mut f) = batch_file {
+            let _ = writeln!(
+                f,
+                "files_transferred={} bytes_transferred={}",
+                stats.files_transferred, stats.bytes_transferred
+            );
+        }
+        return Ok(stats);
+    }
     if matches!(opts.delete, Some(DeleteMode::Before)) {
         delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
     }
@@ -2164,6 +2206,7 @@ pub fn sync(
         &src_root,
         1024,
         opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
+        opts.one_file_system,
     );
     while let Some(batch) = walker.next() {
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
@@ -2371,6 +2414,11 @@ pub fn sync(
                     dir_meta.push((path.clone(), dest_path.clone()));
                 } else if file_type.is_symlink() {
                     let mut target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
+                    if opts.munge_links {
+                        if let Ok(stripped) = target.strip_prefix(MUNGE_PREFIX) {
+                            target = stripped.to_path_buf();
+                        }
+                    }
                     let target_path = if target.is_absolute() {
                         normalize_path(&target)
                     } else if let Some(parent) = path.parent() {
@@ -2426,9 +2474,9 @@ pub fn sync(
                     } else if opts.links {
                         if opts.munge_links {
                             if let Ok(stripped) = target.strip_prefix("/") {
-                                target = PathBuf::from("/rsyncd-munged").join(stripped);
+                                target = PathBuf::from(MUNGE_PREFIX).join(stripped);
                             } else {
-                                target = PathBuf::from("/rsyncd-munged").join(&target);
+                                target = PathBuf::from(MUNGE_PREFIX).join(&target);
                             }
                         }
                         let created = fs::symlink_metadata(&dest_path).is_err();

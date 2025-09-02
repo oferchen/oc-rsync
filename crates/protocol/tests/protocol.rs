@@ -65,6 +65,9 @@ fn captured_frames_roundtrip() {
         uid: 0,
         gid: 0,
         group: None,
+        xattrs: vec![(b"user.test".to_vec(), b"1".to_vec())],
+        acl: vec![1, 0, 0, 0, 0, 7, 0, 0, 0],
+        default_acl: Vec::new(),
     };
     let mut fenc = FEncoder::new();
     let payload = fenc.encode_entry(&entry);
@@ -309,6 +312,9 @@ fn filelist_iconv_roundtrip() {
         uid: 0,
         gid: 0,
         group: None,
+        xattrs: Vec::new(),
+        acl: Vec::new(),
+        default_acl: Vec::new(),
     };
     let mut enc = FEncoder::new();
     let msg = Message::from_file_list(&entry, &mut enc, Some(&cv));

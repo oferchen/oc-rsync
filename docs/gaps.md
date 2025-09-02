@@ -11,7 +11,7 @@ when available.
 | Frame multiplexing and keep-alives | ✅ | [crates/protocol/tests/mux_demux.rs](../crates/protocol/tests/mux_demux.rs) | [crates/protocol/src/mux.rs](../crates/protocol/src/mux.rs) |
 | Version negotiation | ✅ | [crates/protocol/tests/server.rs](../crates/protocol/tests/server.rs) | [crates/protocol/src/server.rs](../crates/protocol/src/server.rs) |
 | Exit code propagation | ⚠️ | [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs) | [crates/protocol/src/lib.rs](../crates/protocol/src/lib.rs) |
-| Challenge-response authentication | ❌ | — | — |
+| Challenge-response authentication | ✅ | [crates/protocol/tests/auth.rs](../crates/protocol/tests/auth.rs) | [crates/protocol/src/server.rs](../crates/protocol/src/server.rs) |
 
 ## Checksums
 | Feature | Status | Tests | Source |
@@ -38,14 +38,14 @@ when available.
 | --- | --- | --- | --- |
 | Path-delta encoding with uid/gid tables | ✅ | [crates/engine/tests/flist.rs](../crates/engine/tests/flist.rs) | [crates/filelist/src/lib.rs](../crates/filelist/src/lib.rs) |
 | Group ID preservation | ⚠️ | [crates/engine/tests/flist.rs](../crates/engine/tests/flist.rs) | [crates/filelist/src/lib.rs](../crates/filelist/src/lib.rs) |
-| Extended attributes and ACL entries | ❌ | — | — |
+| Extended attributes and ACL entries | ✅ | [crates/engine/tests/flist.rs](../crates/engine/tests/flist.rs) | [crates/filelist/src/lib.rs](../crates/filelist/src/lib.rs) |
 
 ## Walk
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
 | Batched filesystem traversal | ✅ | [crates/walk/tests/walk.rs](../crates/walk/tests/walk.rs) | [crates/walk/src/lib.rs](../crates/walk/src/lib.rs) |
 | Maximum file-size filtering | ✅ | [crates/walk/tests/walk.rs](../crates/walk/tests/walk.rs) | [crates/walk/src/lib.rs](../crates/walk/src/lib.rs) |
-| `--one-file-system` device boundary | ❌ | — | — |
+| `--one-file-system` device boundary | ✅ | [crates/walk/tests/walk.rs](../crates/walk/tests/walk.rs) | [crates/walk/src/lib.rs](../crates/walk/src/lib.rs) |
 
 ## Metadata
 | Feature | Status | Tests | Source |
@@ -82,7 +82,7 @@ when available.
 | --- | --- | --- | --- |
 | Comprehensive flag parsing via `clap` | ✅ | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | `--log-file-format` (limited subset) | ⚠️ | [tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| `--munge-links` option | ❌ | — | — |
+| `--munge-links` option | ✅ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 
 ## Logging
 | Feature | Status | Tests | Source |

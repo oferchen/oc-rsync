@@ -543,6 +543,11 @@ pub fn parse_config_file(path: &Path) -> io::Result<DaemonConfig> {
     parse_config(&contents)
 }
 
+pub fn load_config(path: Option<&Path>) -> io::Result<DaemonConfig> {
+    let path = path.unwrap_or_else(|| Path::new("/etc/oc-rsyncd.conf"));
+    parse_config_file(path)
+}
+
 pub fn parse_auth_token(token: &str, contents: &str) -> Option<Vec<String>> {
     for raw in contents.lines() {
         let line = raw.split(['#', ';']).next().unwrap().trim();

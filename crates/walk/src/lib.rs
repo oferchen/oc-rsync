@@ -31,6 +31,8 @@ pub struct Walk {
     batch_size: usize,
     max_file_size: Option<u64>,
     links: bool,
+    one_file_system: bool,
+    root_dev: u64,
     uid_map: HashMap<u32, usize>,
     uid_table: Vec<u32>,
     gid_map: HashMap<u32, usize>,
@@ -42,7 +44,24 @@ pub struct Walk {
 }
 
 impl Walk {
-    fn new(root: PathBuf, batch_size: usize, max_file_size: Option<u64>, links: bool) -> Self {
+    fn new(
+        root: PathBuf,
+        batch_size: usize,
+        max_file_size: Option<u64>,
+        links: bool,
+        one_file_system: bool,
+    ) -> Self {
+        #[cfg(unix)]
+        let root_dev = if one_file_system {
+            std::fs::symlink_metadata(&root)
+                .map(|m| m.dev())
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        #[cfg(not(unix))]
+        let root_dev = 0;
+
         Walk {
             iter: WalkDir::new(root)
                 .sort_by(|a, b| a.file_name().cmp(b.file_name()))
@@ -51,6 +70,8 @@ impl Walk {
             batch_size,
             max_file_size,
             links,
+            one_file_system,
+            root_dev,
             uid_map: HashMap::new(),
             uid_table: Vec::new(),
             gid_map: HashMap::new(),
@@ -83,8 +104,14 @@ impl Walk {
     }
 }
 
-pub fn walk(root: impl AsRef<Path>, batch_size: usize, links: bool) -> Walk {
-    Walk::new(root.as_ref().to_path_buf(), batch_size, None, links)
+pub fn walk(root: impl AsRef<Path>, batch_size: usize, links: bool, one_file_system: bool) -> Walk {
+    Walk::new(
+        root.as_ref().to_path_buf(),
+        batch_size,
+        None,
+        links,
+        one_file_system,
+    )
 }
 
 pub fn walk_with_max_size(
@@ -92,12 +119,14 @@ pub fn walk_with_max_size(
     batch_size: usize,
     max_file_size: u64,
     links: bool,
+    one_file_system: bool,
 ) -> Walk {
     Walk::new(
         root.as_ref().to_path_buf(),
         batch_size,
         Some(max_file_size),
         links,
+        one_file_system,
     )
 }
 
@@ -131,6 +160,13 @@ impl Iterator for Walk {
                     let (uid, gid, dev, ino) = (meta.uid(), meta.gid(), meta.dev(), meta.ino());
                     #[cfg(not(unix))]
                     let (uid, gid, dev, ino) = (0u32, 0u32, 0u64, 0u64);
+
+                    if self.one_file_system && dev != self.root_dev {
+                        if file_type.is_dir() {
+                            self.iter.skip_current_dir();
+                        }
+                        continue;
+                    }
 
                     let uid_idx = *self.uid_map.entry(uid).or_insert_with(|| {
                         self.uid_table.push(uid);

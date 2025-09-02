@@ -92,7 +92,7 @@
 | --old-dirs | Ignored |  |
 | --omit-dir-times | Supported |  |
 | --omit-link-times | Supported |  |
-| --one-file-system | Ignored |  |
+| --one-file-system | Supported |  |
 | --only-write-batch | Ignored |  |
 | --open-noatime | Ignored |  |
 | --out-format | Ignored |  |

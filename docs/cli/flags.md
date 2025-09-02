@@ -175,11 +175,11 @@
 |  | --min-size=SIZE | don't transfer any file smaller than SIZE | no |  | no |
 |  | --mkpath | create destination's missing path components | no |  | no |
 | -@ | --modify-window=NUM | set the accuracy for mod-time comparisons | no |  | no |
-|  | --munge-links | munge symlinks to make them safe & unusable | no |  | no |
+|  | --munge-links | munge symlinks to make them safe & unusable | yes |  | no |
 |  | --no-OPTION | turn off an implied OPTION (e.g. --no-D) | no |  | no |
 |  | --no-implied-dirs | don't send implied dirs with --relative | yes |  | no |
 | --old-d | --old-dirs | works like --dirs when talking to old rsync | no |  | no |
-| -x | --one-file-system | don't cross filesystem boundaries | no |  | no |
+| -x | --one-file-system | don't cross filesystem boundaries | yes |  | no |
 |  | --partial | keep partially transferred files | yes |  | no |
 |  | --partial-dir=DIR | put a partially transferred file into DIR | yes |  | no |
 |  | --preallocate | allocate dest files before writing them | yes |  | no |
