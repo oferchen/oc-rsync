@@ -464,8 +464,13 @@ impl Matcher {
         let adjusted = if cvs || path.file_name().is_some_and(|f| f == ".cvsignore") {
             let rel_str = rel.map(|p| p.to_string_lossy().to_string());
             let mut buf = String::new();
-            for token in content.split_whitespace() {
-                if token.starts_with('#') {
+            let iter: Box<dyn Iterator<Item = &str>> = if self.from0 {
+                Box::new(content.split('\0'))
+            } else {
+                Box::new(content.split_whitespace())
+            };
+            for token in iter {
+                if token.is_empty() || token.starts_with('#') {
                     continue;
                 }
                 let pat = if let Some(rel_str) = &rel_str {
@@ -487,9 +492,19 @@ impl Matcher {
         } else {
             if word_split {
                 let mut buf = String::new();
-                for token in content.split_whitespace() {
-                    buf.push_str(token);
-                    buf.push('\n');
+                if self.from0 {
+                    for token in content.split('\0') {
+                        if token.is_empty() {
+                            continue;
+                        }
+                        buf.push_str(token);
+                        buf.push('\n');
+                    }
+                } else {
+                    for token in content.split_whitespace() {
+                        buf.push_str(token);
+                        buf.push('\n');
+                    }
                 }
                 content = buf;
             }
@@ -515,7 +530,12 @@ impl Matcher {
 
                 let rel_str = rel.map(|p| p.to_string_lossy().to_string());
                 let mut buf = String::new();
-                for raw_line in content.lines() {
+                let lines: Box<dyn Iterator<Item = &str>> = if self.from0 {
+                    Box::new(content.split('\0'))
+                } else {
+                    Box::new(content.lines())
+                };
+                for raw_line in lines {
                     let line = raw_line.trim();
                     if line.is_empty() || line.starts_with('#') {
                         continue;
@@ -558,7 +578,12 @@ impl Matcher {
             } else if let Some(rel) = rel {
                 let rel_str = rel.to_string_lossy();
                 let mut buf = String::new();
-                for raw_line in content.lines() {
+                let lines: Box<dyn Iterator<Item = &str>> = if self.from0 {
+                    Box::new(content.split('\0'))
+                } else {
+                    Box::new(content.lines())
+                };
+                for raw_line in lines {
                     let line = raw_line.trim();
                     if line.is_empty() || line.starts_with('#') {
                         continue;
