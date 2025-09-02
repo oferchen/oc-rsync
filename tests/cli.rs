@@ -1443,14 +1443,15 @@ fn hard_links_preserved_via_cli() {
 
 #[cfg(unix)]
 #[test]
-fn numeric_ids_require_privileges() {
+fn numeric_ids_falls_back_when_unprivileged() {
     let dir = tempdir().unwrap();
     let probe = dir.path().join("probe");
     std::fs::write(&probe, b"probe").unwrap();
     let current_uid = get_current_uid();
+    let current_gid = get_current_gid();
     let target_uid = if current_uid == 0 { 1 } else { current_uid + 1 };
     if chown(&probe, Some(Uid::from_raw(target_uid)), None).is_ok() {
-        eprintln!("skipping numeric_ids_require_privileges: has CAP_CHOWN");
+        eprintln!("skipping numeric_ids_falls_back_when_unprivileged: has CAP_CHOWN");
         return;
     }
 
@@ -1462,19 +1463,23 @@ fn numeric_ids_require_privileges() {
     std::fs::write(&file, b"ids").unwrap();
 
     let src_arg = format!("{}/", src_dir.display());
-    let usermap = format!("--usermap={current_uid}:{target_uid}");
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--local",
             "--numeric-ids",
             "--owner",
-            &usermap,
+            "--group",
             &src_arg,
             dst_dir.to_str().unwrap(),
         ])
         .assert()
-        .failure();
+        .success();
+
+    let dst_file = dst_dir.join("id.txt");
+    let meta = std::fs::metadata(&dst_file).unwrap();
+    assert_eq!(meta.uid(), current_uid);
+    assert_eq!(meta.gid(), current_gid);
 }
 
 #[cfg(unix)]

@@ -1218,7 +1218,16 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         } else {
             opts.group || opts.archive
         };
-        if need_owner || need_group || opts.chown.is_some() {
+        let needs_privs = need_owner
+            || need_group
+            || opts.chown.is_some()
+            || !opts.usermap.is_empty()
+            || !opts.groupmap.is_empty();
+        let numeric_fallback = opts.numeric_ids
+            && opts.chown.is_none()
+            && opts.usermap.is_empty()
+            && opts.groupmap.is_empty();
+        if needs_privs && !numeric_fallback {
             use nix::unistd::Uid;
             if !Uid::effective().is_root() {
                 #[cfg(target_os = "linux")]
