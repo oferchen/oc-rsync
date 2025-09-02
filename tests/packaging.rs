@@ -46,13 +46,15 @@ fn service_unit_matches_spec() {
         "ProtectHome=true",
         "Restart=on-failure",
         "RestartSec=2s",
-        "CapabilityBoundingSet=CAP_NET_BIND_SERVICE",
-        "AmbientCapabilities=CAP_NET_BIND_SERVICE",
+        "CapabilityBoundingSet=CAP_NET_BIND_SERVICE CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE",
+        "AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE",
+        "RestrictNamespaces=yes",
         "RuntimeDirectory=oc-rsyncd",
         "LogsDirectory=oc-rsyncd",
         "StateDirectory=oc-rsyncd",
         "ConfigurationDirectory=oc-rsyncd",
-        "ExecStart=/usr/local/bin/oc-rsyncd --no-detach --config=/etc/oc-rsyncd/oc-rsyncd.conf",
+        "ExecStart=/usr/local/bin/oc-rsyncd --no-detach --config=/etc/oc-rsyncd.conf",
+        "Documentation=man:oc-rsyncd(8) man:oc-rsyncd.conf(5) man:oc-rsync(1)",
     ] {
         assert!(
             unit.lines().any(|l| l.trim() == expected),
