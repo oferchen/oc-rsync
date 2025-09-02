@@ -1,6 +1,5 @@
 // bin/oc-rsync/src/main.rs
 mod version;
-
 use logging::LogFormat;
 use std::{io::ErrorKind, path::PathBuf};
 
@@ -33,7 +32,7 @@ fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
 fn main() {
     if std::env::args().any(|a| a == "--version" || a == "-V") {
         if !std::env::args().any(|a| a == "--quiet" || a == "-q") {
-            print!("{}", version::render_version_lines());
+            print!("{}", version::version_banner());
         }
         return;
     }

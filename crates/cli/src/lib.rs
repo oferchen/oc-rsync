@@ -38,9 +38,8 @@ use transport::{
 #[cfg(unix)]
 use users::get_user_by_uid;
 
-pub fn version_string() -> String {
-    let ver = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
-    format!("rsync {ver}")
+pub mod version {
+    include!("../../../bin/oc-rsync/src/version.rs");
 }
 
 fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
@@ -116,47 +115,6 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
         "1" | "true" | "yes" => Ok(true),
         _ => Err("invalid boolean".to_string()),
     }
-}
-
-pub fn version_string() -> String {
-    format!(
-        "oc-rsync {} (rsync {})\n",
-        env!("CARGO_PKG_VERSION"),
-        env!("UPSTREAM_VERSION"),
-    )
-}
-
-#[allow(clippy::vec_init_then_push)]
-pub fn version_banner() -> String {
-    #[allow(unused_mut)]
-    let mut features: Vec<&str> = Vec::new();
-    #[cfg(feature = "xattr")]
-    features.push("xattr");
-    #[cfg(feature = "acl")]
-    features.push("acl");
-    let features = if features.is_empty() {
-        "none".to_string()
-    } else {
-        features.join(", ")
-    };
-    let protocols = SUPPORTED_PROTOCOLS
-        .iter()
-        .map(|p| p.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
-    let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
-    format!(
-        version_string(),
-        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
-        env!("CARGO_PKG_VERSION"),
-        upstream,
-        protocols,
-        features,
-    )
-}
-
-pub fn version_string() -> String {
-    version_banner()
 }
 
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {

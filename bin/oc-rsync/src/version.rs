@@ -1,21 +1,38 @@
 // bin/oc-rsync/src/version.rs
 use protocol::SUPPORTED_PROTOCOLS;
 
-/// Latest rsync protocol version supported by oc-rsync.
-pub const RSYNC_PROTOCOL: u32 = SUPPORTED_PROTOCOLS[0];
-
-/// Render a three-line version string.
-///
-/// Line 1: "oc-rsync <pkg-version> (protocol <RSYNC_PROTOCOL>)"
-/// Line 2: "rsync <upstream-version>"
-/// Line 3: "<git-hash> <official-flag>"
-pub fn render_version_lines() -> String {
-    format!(
-        "oc-rsync {} (protocol {})\nrsync {}\n{} {}\n",
+#[allow(clippy::vec_init_then_push)]
+pub fn render_version_lines() -> Vec<String> {
+    let mut lines = Vec::new();
+    let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
+    lines.push(format!(
+        "oc-rsync {} (rsync {})",
         env!("CARGO_PKG_VERSION"),
-        RSYNC_PROTOCOL,
-        env!("OC_RSYNC_UPSTREAM"),
-        env!("OC_RSYNC_GIT"),
-        env!("OC_RSYNC_OFFICIAL"),
-    )
+        upstream,
+    ));
+    let protocols = SUPPORTED_PROTOCOLS
+        .iter()
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    lines.push(format!("Protocols: {protocols}"));
+    #[allow(unused_mut)]
+    let mut features: Vec<&str> = Vec::new();
+    #[cfg(feature = "xattr")]
+    features.push("xattr");
+    #[cfg(feature = "acl")]
+    features.push("acl");
+    let features = if features.is_empty() {
+        "none".to_string()
+    } else {
+        features.join(", ")
+    };
+    lines.push(format!("Features: {features}"));
+    lines
+}
+
+pub fn version_banner() -> String {
+    let mut lines = render_version_lines();
+    lines.push(String::new());
+    lines.join("\n")
 }
