@@ -593,21 +593,19 @@ fn write_sparse(file: &mut File, data: &[u8]) -> Result<()> {
     Ok(())
 }
 
-struct Progress<'a> {
+struct Progress {
     total: u64,
     written: u64,
     start: std::time::Instant,
     last_print: std::time::Instant,
     human_readable: bool,
-    #[allow(dead_code)]
-    dest: &'a Path,
     quiet: bool,
 }
 
 const PROGRESS_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
-impl<'a> Progress<'a> {
-    fn new(dest: &'a Path, total: u64, human_readable: bool, initial: u64, quiet: bool) -> Self {
+impl Progress {
+    fn new(dest: &Path, total: u64, human_readable: bool, initial: u64, quiet: bool) -> Self {
         if !quiet {
             eprintln!("{}", dest.display());
         }
@@ -618,7 +616,6 @@ impl<'a> Progress<'a> {
             start: now,
             last_print: now - PROGRESS_UPDATE_INTERVAL,
             human_readable,
-            dest,
             quiet,
         }
     }
