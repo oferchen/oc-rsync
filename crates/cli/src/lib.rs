@@ -145,16 +145,18 @@ pub fn parse_iconv(spec: &str) -> std::result::Result<CliCharsetConv, String> {
         .next()
         .ok_or_else(|| "invalid iconv spec".to_string())?;
     let local_label = parts.next().unwrap_or("UTF-8");
-    if Encoding::for_label(remote_label.as_bytes()).is_none()
-        || Encoding::for_label(local_label.as_bytes()).is_none()
-    {
-        return Err(format!(
-            "iconv_open(\"{local_label}\", \"{remote_label}\") failed"
-        ));
-    }
+
+    let remote_enc = Encoding::for_label(remote_label.as_bytes());
+    let local_enc = Encoding::for_label(local_label.as_bytes());
+
+    let remote_enc = remote_enc
+        .ok_or_else(|| format!("iconv_open(\"{local_label}\", \"{remote_label}\") failed"))?;
+    let local_enc = local_enc
+        .ok_or_else(|| format!("iconv_open(\"{local_label}\", \"{remote_label}\") failed"))?;
+
     Ok(CliCharsetConv {
-        conv: CharsetConv::new(Encoding::for_label(remote_label.as_bytes()).unwrap()),
-        local: Encoding::for_label(local_label.as_bytes()).unwrap(),
+        conv: CharsetConv::new(remote_enc),
+        local: local_enc,
     })
 }
 
