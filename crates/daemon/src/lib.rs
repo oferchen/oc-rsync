@@ -11,6 +11,7 @@ use std::time::Duration;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
+use ipnet::IpNet;
 use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
 use sd_notify::{self, NotifyState};
 use transport::{AddressFamily, RateLimitedTransport, TcpTransport, TimeoutTransport, Transport};
@@ -742,6 +743,9 @@ fn host_matches(ip: &IpAddr, pat: &str) -> bool {
     if pat == "*" {
         return true;
     }
+    if let Ok(net) = pat.parse::<IpNet>() {
+        return net.contains(ip);
+    }
     pat.parse::<IpAddr>().is_ok_and(|p| &p == ip)
 }
 
@@ -880,7 +884,9 @@ pub fn handle_connection<T: Transport>(
             } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
                 log_format = Some(v.to_string());
             }
-            if refuse.iter().any(|r| opt.contains(r))
+            if (opt == "--numeric-ids" && !module.numeric_ids)
+                || (opt == "--no-numeric-ids" && module.numeric_ids)
+                || refuse.iter().any(|r| opt.contains(r))
                 || module.refuse_options.iter().any(|r| opt.contains(r))
             {
                 let _ = transport.send(b"@ERROR: option refused");

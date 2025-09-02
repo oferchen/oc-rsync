@@ -4,7 +4,7 @@
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
 use daemon::{
-    chroot_and_drop_privileges, drop_privileges, handle_connection, parse_config,
+    chroot_and_drop_privileges, drop_privileges, handle_connection, host_allowed, parse_config,
     parse_daemon_args, parse_module, Handler, Module,
 };
 use protocol::LATEST_VERSION;
@@ -12,7 +12,7 @@ use serial_test::serial;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::{IpAddr, TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 #[allow(unused_imports)]
@@ -185,6 +185,29 @@ fn pipe_transport(token: &str, module: &str) -> LocalPipeTransport<MultiReader, 
     LocalPipeTransport::new(reader, writer)
 }
 
+fn pipe_transport_opts(
+    token: &str,
+    module: &str,
+    opts: &[&str],
+) -> LocalPipeTransport<MultiReader, Vec<u8>> {
+    let mut parts = vec![
+        LATEST_VERSION.to_be_bytes().to_vec(),
+        format!("{token}\n").into_bytes(),
+        format!("{module}\n").into_bytes(),
+    ];
+    for opt in opts {
+        parts.push(format!("{opt}\n").into_bytes());
+    }
+    parts.push(b"\n".to_vec());
+    let reader = MultiReader {
+        parts,
+        idx: 0,
+        pos: 0,
+    };
+    let writer = Vec::new();
+    LocalPipeTransport::new(reader, writer)
+}
+
 #[test]
 #[serial]
 fn module_authentication_and_hosts_enforced() {
@@ -273,6 +296,108 @@ fn host_deny_blocks_connection() {
     modules.insert(module.name.clone(), module);
     let handler: Arc<Handler> = Arc::new(|_| Ok(()));
     let mut t = pipe_transport("", "data");
+    let err = handle_connection(
+        &mut t,
+        &modules,
+        None,
+        None,
+        None,
+        None,
+        None,
+        true,
+        &[],
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+    )
+    .unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+}
+
+#[test]
+fn host_allow_supports_cidr() {
+    let ip: IpAddr = "127.0.0.1".parse().unwrap();
+    assert!(host_allowed(&ip, &["127.0.0.0/8".into()], &[]));
+    assert!(!host_allowed(&ip, &[], &["127.0.0.0/24".into()]));
+}
+
+#[test]
+fn daemon_refuses_configured_option() {
+    let module = Module {
+        name: "data".into(),
+        path: std::env::current_dir().unwrap(),
+        refuse_options: vec!["--delete".into()],
+        use_chroot: false,
+        ..Module::default()
+    };
+    let mut modules = HashMap::new();
+    modules.insert(module.name.clone(), module);
+    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let mut t = pipe_transport_opts("", "data", &["--delete"]);
+    let err = handle_connection(
+        &mut t,
+        &modules,
+        None,
+        None,
+        None,
+        None,
+        None,
+        true,
+        &[],
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+    )
+    .unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+}
+
+#[test]
+fn daemon_refuses_numeric_ids_option() {
+    let module = Module {
+        name: "data".into(),
+        path: std::env::current_dir().unwrap(),
+        use_chroot: false,
+        ..Module::default()
+    };
+    let mut modules = HashMap::new();
+    modules.insert(module.name.clone(), module);
+    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let mut t = pipe_transport_opts("", "data", &["--numeric-ids"]);
+    let err = handle_connection(
+        &mut t,
+        &modules,
+        None,
+        None,
+        None,
+        None,
+        None,
+        true,
+        &[],
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+    )
+    .unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+}
+
+#[test]
+fn daemon_refuses_no_numeric_ids_option() {
+    let module = Module {
+        name: "data".into(),
+        path: std::env::current_dir().unwrap(),
+        numeric_ids: true,
+        use_chroot: false,
+        ..Module::default()
+    };
+    let mut modules = HashMap::new();
+    modules.insert(module.name.clone(), module);
+    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let mut t = pipe_transport_opts("", "data", &["--no-numeric-ids"]);
     let err = handle_connection(
         &mut t,
         &modules,
