@@ -307,6 +307,9 @@ fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
 }
 
 fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
+    if opts.dry_run {
+        return Ok(());
+    }
     match fs::remove_file(path) {
         Ok(_) => Ok(()),
         Err(e) => {
@@ -321,6 +324,9 @@ fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
 }
 
 fn remove_dir_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
+    if opts.dry_run {
+        return Ok(());
+    }
     let res = if opts.force {
         fs::remove_dir_all(path)
     } else {
@@ -1683,6 +1689,7 @@ pub struct SyncOptions {
     pub compress: bool,
     pub dirs: bool,
     pub no_implied_dirs: bool,
+    pub dry_run: bool,
     pub list_only: bool,
     pub update: bool,
     pub existing: bool,
@@ -1805,6 +1812,7 @@ impl Default for SyncOptions {
             super_user: false,
             fake_super: false,
             no_implied_dirs: false,
+            dry_run: false,
             #[cfg(feature = "xattr")]
             xattrs: false,
             #[cfg(feature = "acl")]
@@ -1867,6 +1875,9 @@ impl Default for SyncOptions {
 
 impl SyncOptions {
     pub fn prepare_remote(&mut self) {
+        if self.dry_run {
+            self.remote_options.push("--dry-run".into());
+        }
         if self.partial {
             self.remote_options.push("--partial".into());
         }
@@ -1952,7 +1963,12 @@ fn delete_extraneous(
                                 return Err(EngineError::Other("max-delete limit exceeded".into()));
                             }
                         }
-                        let res = if opts.backup {
+                        if !opts.quiet {
+                            tracing::info!(target: InfoFlag::Del.target(), "deleting {}", rel.display());
+                        }
+                        let res = if opts.dry_run {
+                            None
+                        } else if opts.backup {
                             let backup_path = if let Some(ref dir) = opts.backup_dir {
                                 dir.join(rel)
                             } else {
@@ -1995,7 +2011,12 @@ fn delete_extraneous(
                             return Err(EngineError::Other("max-delete limit exceeded".into()));
                         }
                     }
-                    let res = if opts.backup {
+                    if !opts.quiet {
+                        tracing::info!(target: InfoFlag::Del.target(), "deleting {}", rel.display());
+                    }
+                    let res = if opts.dry_run {
+                        None
+                    } else if opts.backup {
                         let backup_path = if let Some(ref dir) = opts.backup_dir {
                             dir.join(rel)
                         } else {
@@ -2154,6 +2175,14 @@ pub fn sync(
         return Ok(stats);
     }
 
+    let codec = select_codec(remote, opts);
+    let matcher = matcher.clone().with_root(src_root.clone());
+    if opts.dry_run {
+        if opts.delete.is_some() {
+            delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
+        }
+        return Ok(stats);
+    }
     if !dst.exists() {
         fs::create_dir_all(dst).map_err(|e| {
             std::io::Error::new(
@@ -2172,8 +2201,6 @@ pub fn sync(
         }
     }
 
-    let codec = select_codec(remote, opts);
-    let matcher = matcher.clone().with_root(src_root.clone());
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
     let mut receiver = Receiver::new(codec, opts.clone());
     receiver.matcher = matcher.clone();

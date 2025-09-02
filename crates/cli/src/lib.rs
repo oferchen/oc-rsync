@@ -1297,13 +1297,6 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     if opts.recursive && !opts.quiet {
         println!("recursive mode enabled");
     }
-    if opts.dry_run && !opts.list_only {
-        if !opts.quiet {
-            println!("dry run: skipping synchronization");
-        }
-        return Ok(());
-    }
-
     let src = parse_remote_spec(&src_arg)?;
     let mut dst = parse_remote_spec(&dst_arg)?;
     if opts.mkpath {
@@ -1523,6 +1516,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         compress,
         dirs: opts.dirs,
         no_implied_dirs: opts.no_implied_dirs,
+        dry_run: opts.dry_run,
         list_only: opts.list_only,
         update: opts.update,
         existing: opts.existing,
