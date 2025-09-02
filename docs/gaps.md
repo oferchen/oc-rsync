@@ -51,7 +51,7 @@ when available.
 | --- | --- | --- | --- |
 | Permissions and ownership restoration | ✅ | [crates/meta/tests/chmod.rs](../crates/meta/tests/chmod.rs) | [crates/meta/src/unix.rs](../crates/meta/src/unix.rs) |
 | `--fake-super` xattr fallback | ✅ | [crates/meta/tests/fake_super.rs](../crates/meta/tests/fake_super.rs) | [crates/meta/src/unix.rs](../crates/meta/src/unix.rs) |
-| POSIX ACL preservation | ❌ | — | — |
+| POSIX ACL preservation | ✅ | [crates/meta/tests/acl_roundtrip.rs](../crates/meta/tests/acl_roundtrip.rs) | [crates/meta/src/unix.rs](../crates/meta/src/unix.rs) |
 
 ## Transport
 | Feature | Status | Tests | Source |
