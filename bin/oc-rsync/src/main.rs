@@ -1,6 +1,5 @@
 // bin/oc-rsync/src/main.rs
-mod version;
-
+use oc_rsync_cli::version;
 use oc_rsync_cli::{cli_command, EngineError};
 use protocol::ExitCode;
 use std::io::ErrorKind;

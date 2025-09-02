@@ -1,4 +1,4 @@
-// bin/oc-rsync/src/version.rs
+// crates/cli/src/version.rs
 use protocol::SUPPORTED_PROTOCOLS;
 
 /// Latest rsync protocol version supported by oc-rsync.
