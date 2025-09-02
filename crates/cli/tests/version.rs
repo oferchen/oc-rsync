@@ -23,7 +23,7 @@ fn banner_is_static() {
         format!(
             "oc-rsync {} (rsync {})",
             env!("CARGO_PKG_VERSION"),
-            env!("UPSTREAM_VERSION"),
+            option_env!("UPSTREAM_VERSION").unwrap_or("unknown"),
         ),
         format!("Protocols: {protocols}"),
         format!("Features: {features}"),
