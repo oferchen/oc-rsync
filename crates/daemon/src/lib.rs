@@ -279,6 +279,12 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
         }
         if line.starts_with('[') && line.ends_with(']') {
             if let Some(m) = current.take() {
+                if m.path.as_os_str().is_empty() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("module {} missing path", m.name),
+                    ));
+                }
                 cfg.modules.push(m);
             }
             let name = line[1..line.len() - 1].trim().to_string();
@@ -294,7 +300,8 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             .next()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing key"))?
             .trim()
-            .to_lowercase();
+            .to_lowercase()
+            .replace(['-', '_'], " ");
         let val = parts
             .next()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing value"))?
@@ -369,7 +376,14 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             }
             (true, "path") => {
                 if let Some(m) = current.as_mut() {
-                    m.path = PathBuf::from(val);
+                    let raw = PathBuf::from(&val);
+                    let abs = if raw.is_absolute() {
+                        raw
+                    } else {
+                        env::current_dir()?.join(raw)
+                    };
+                    let canon = fs::canonicalize(abs)?;
+                    m.path = canon;
                 }
             }
             (true, "hosts allow") => {
@@ -428,6 +442,12 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
         }
     }
     if let Some(m) = current.take() {
+        if m.path.as_os_str().is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("module {} missing path", m.name),
+            ));
+        }
         cfg.modules.push(m);
     }
     Ok(cfg)

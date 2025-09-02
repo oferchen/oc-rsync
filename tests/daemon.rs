@@ -4,7 +4,8 @@
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
 use daemon::{
-    chroot_and_drop_privileges, handle_connection, parse_daemon_args, parse_module, Handler, Module,
+    chroot_and_drop_privileges, handle_connection, parse_config, parse_daemon_args, parse_module,
+    Handler, Module,
 };
 use protocol::LATEST_VERSION;
 use serial_test::serial;
@@ -97,6 +98,28 @@ fn parse_module_resolves_named_uid_gid() {
     let module = parse_module(spec).unwrap();
     assert_eq!(module.uid, Some(0));
     assert_eq!(module.gid, Some(0));
+}
+
+#[test]
+fn parse_config_accepts_hyphenated_keys() {
+    let cfg = parse_config("motd-file=/tmp/m\n[data]\npath=/tmp\n").unwrap();
+    assert_eq!(cfg.motd_file, Some(PathBuf::from("/tmp/m")));
+}
+
+#[test]
+fn parse_config_requires_module_path() {
+    assert!(parse_config("[data]\nuid=0\n").is_err());
+}
+
+#[cfg(unix)]
+#[test]
+fn parse_config_resolves_symlink_path() {
+    use std::os::unix::fs::symlink;
+    let dir = tempdir().unwrap();
+    let link = dir.path().join("link");
+    symlink(dir.path(), &link).unwrap();
+    let cfg = parse_config(&format!("[data]\npath={}\n", link.display())).unwrap();
+    assert_eq!(cfg.modules[0].path, fs::canonicalize(&link).unwrap());
 }
 
 #[cfg(unix)]
