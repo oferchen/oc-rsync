@@ -78,3 +78,11 @@ acl = ["engine/acl", "oc-rsync-cli/acl", "meta/acl"]
 cli = []
 # Enables AVX-512 implementations requiring a nightly toolchain
 nightly = ["checksums/nightly", "compress/nightly"]
+
+[profile.release]
+codegen-units = 1         # better optimizations
+lto = "thin"              # good speed/size tradeoff
+strip = "symbols"         # remove symbols (Cargo 1.73+)
+panic = "abort"           # smaller binary if unwinding isn't needed
+opt-level = 3
+
