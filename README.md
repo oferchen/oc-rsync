@@ -122,6 +122,24 @@ daemon:
 - `packaging/oc-rsyncd.conf` – example configuration file
 - `packaging/systemd/oc-rsyncd.service` – systemd service unit
 
+## oc-rsyncd
+
+A dedicated `oc-rsyncd` binary starts the daemon directly and accepts the same
+flags as `oc-rsync --daemon`.
+
+```bash
+oc-rsyncd --module 'data=/srv/export'
+oc-rsyncd --config /etc/oc-rsyncd.conf
+```
+
+See [docs/daemon.md](docs/daemon.md) for more examples, the
+[`oc-rsyncd.conf(5)`](man/oc-rsyncd.conf.5) reference, and the hardened systemd
+unit at
+[`packaging/systemd/oc-rsyncd.service`](packaging/systemd/oc-rsyncd.service).
+
+The regular `oc-rsync` binary can also launch the daemon by supplying the
+`--daemon` flag.
+
 ## Milestone Roadmap
 1. **M1—Bootstrap** – repository builds; `walk` and `checksums` crates generate file signatures.
 2. **M2—Delta Engine** – `engine` drives local delta transfers with metadata preservation.

@@ -1,7 +1,7 @@
 # packaging/systemd/oc-rsyncd.service
 [Unit]
 Description=oc-rsync daemon
-Documentation=man:oc-rsync(1) man:oc-rsyncd.conf(5) man:oc-rsyncd(8)
+Documentation=man:oc-rsyncd(8) man:oc-rsyncd.conf(5) man:oc-rsync(1)
 Wants=network-online.target
 After=network-online.target
 
@@ -10,7 +10,7 @@ Type=notify
 NotifyAccess=main
 User=ocrsync
 Group=ocrsync
-ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd/oc-rsyncd.conf
+ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf
 Restart=on-failure
 RestartSec=2s
 NoNewPrivileges=yes
@@ -31,17 +31,13 @@ RestrictSUIDSGID=yes
 RestrictRealtime=yes
 LockPersonality=yes
 RestrictNamespaces=yes
-CapabilityBoundingSet=CAP_NET_BIND_SERVICE
-AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE
+AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 MemoryDenyWriteExecute=yes
 SystemCallFilter=@system-service
 SystemCallFilter=~@privileged
 SystemCallFilter=~@resources
-RuntimeDirectory=oc-rsyncd
-LogsDirectory=oc-rsyncd
-StateDirectory=oc-rsyncd
-ConfigurationDirectory=oc-rsyncd
 PrivateIPC=yes
 ProtectKernelLogs=yes
 SystemCallArchitectures=native

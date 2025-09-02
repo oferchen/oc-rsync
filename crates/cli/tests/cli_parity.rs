@@ -1,5 +1,5 @@
 // crates/cli/tests/cli_parity.rs
-use oc_rsync_cli::cli_command;
+use oc_rsync_cli::{cli_command, render_help};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use tempfile::tempdir;
@@ -226,7 +226,7 @@ fn help_usage_matches_upstream() {
         .find(|l| l.starts_with("Usage:"))
         .unwrap()
         .to_string();
-    let ours = cli_command().render_help().to_string();
+    let ours = render_help(&cli_command());
     let our_usage = ours
         .lines()
         .find(|l| l.starts_with("Usage:"))
@@ -248,8 +248,10 @@ fn misuse_matches_upstream() {
         .output()
         .unwrap();
     assert_eq!(upstream.status.code(), ours.status.code());
-    let up_lines: Vec<_> = String::from_utf8_lossy(&upstream.stderr).lines().collect();
-    let our_lines: Vec<_> = String::from_utf8_lossy(&ours.stderr).lines().collect();
+    let upstream_stderr = String::from_utf8_lossy(&upstream.stderr).to_string();
+    let ours_stderr = String::from_utf8_lossy(&ours.stderr).to_string();
+    let up_lines: Vec<_> = upstream_stderr.lines().collect();
+    let our_lines: Vec<_> = ours_stderr.lines().collect();
     assert_eq!(our_lines[0], up_lines[0]);
     assert!(our_lines[1].starts_with("rsync error: syntax or usage error (code 1)"));
 }

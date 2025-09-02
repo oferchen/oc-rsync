@@ -3,6 +3,7 @@ use std::io::{self, Read, Write};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
+use ipnet::IpNet;
 use socket2::SockRef;
 
 use crate::{AddressFamily, DaemonTransport, SockOpt, Transport};
@@ -126,7 +127,15 @@ fn host_matches(ip: &IpAddr, pat: &str) -> bool {
     if pat == "*" {
         return true;
     }
-    pat.parse::<IpAddr>().is_ok_and(|p| &p == ip)
+    if let Ok(net) = pat.parse::<IpNet>() {
+        return net.contains(ip);
+    }
+    if let Ok(addr) = pat.parse::<IpAddr>() {
+        return &addr == ip;
+    }
+    (pat, 0)
+        .to_socket_addrs()
+        .is_ok_and(|mut addrs| addrs.any(|a| &a.ip() == ip))
 }
 
 fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
