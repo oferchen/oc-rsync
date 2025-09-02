@@ -1,0 +1,26 @@
+name: Daily Status
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - run: cargo install cargo-llvm-cov
+      - run: mkdir -p reports && cargo llvm-cov --workspace --json --summary-only --output-path reports/coverage.json
+      - run: cargo run --package xtask --bin status
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daily-status
+          path: reports/daily_estimate.md
