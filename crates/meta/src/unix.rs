@@ -466,7 +466,7 @@ impl Metadata {
         }
 
         #[cfg(feature = "xattr")]
-        if opts.xattrs {
+        if opts.xattrs || opts.fake_super {
             crate::apply_xattrs(
                 path,
                 &self.xattrs,

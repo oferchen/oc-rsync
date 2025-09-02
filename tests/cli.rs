@@ -3106,6 +3106,7 @@ fn super_overrides_fake_super() {
     fs::create_dir_all(&src_dir).unwrap();
     fs::create_dir_all(&dst_dir).unwrap();
     fs::write(src_dir.join("file"), b"hi").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
@@ -3113,7 +3114,7 @@ fn super_overrides_fake_super() {
             "-a",
             "--fake-super",
             "--super",
-            src_dir.to_str().unwrap(),
+            &src_arg,
             dst_dir.to_str().unwrap(),
         ])
         .assert()

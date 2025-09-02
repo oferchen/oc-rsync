@@ -22,7 +22,11 @@ use filters::{default_cvs_rules, parse, Matcher, Rule};
 use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use protocol::CharsetConv;
-use protocol::{negotiate_version, ExitCode, SUPPORTED_PROTOCOLS};
+#[cfg(feature = "acl")]
+use protocol::CAP_ACLS;
+#[cfg(feature = "xattr")]
+use protocol::CAP_XATTRS;
+use protocol::{negotiate_version, ExitCode, CAP_CODECS, SUPPORTED_PROTOCOLS};
 use shell_words::split as shell_split;
 use transport::{
     parse_sockopts, AddressFamily, RateLimitedTransport, SockOpt, SshStdioTransport, TcpTransport,
@@ -1037,6 +1041,14 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     if let Some(spec) = &opts.iconv {
         remote_opts.push(format!("--iconv={spec}"));
     }
+    #[cfg(feature = "xattr")]
+    if opts.xattrs {
+        remote_opts.push("--xattrs".into());
+    }
+    #[cfg(feature = "acl")]
+    if opts.acls {
+        remote_opts.push("--acls".into());
+    }
 
     if let Some(cfg) = &opts.config {
         if !opts.quiet {
@@ -1415,7 +1427,36 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 RemoteSpec::Local(dst),
             ) => {
                 let connect_timeout = opts.connect_timeout;
-                let (session, codecs, _caps) = SshStdioTransport::connect_with_rsh(
+                let caps_send = CAP_CODECS
+                    | {
+                        #[cfg(feature = "acl")]
+                        {
+                            if sync_opts.acls {
+                                CAP_ACLS
+                            } else {
+                                0
+                            }
+                        }
+                        #[cfg(not(feature = "acl"))]
+                        {
+                            0
+                        }
+                    }
+                    | {
+                        #[cfg(feature = "xattr")]
+                        {
+                            if sync_opts.xattrs {
+                                CAP_XATTRS
+                            } else {
+                                0
+                            }
+                        }
+                        #[cfg(not(feature = "xattr"))]
+                        {
+                            0
+                        }
+                    };
+                let (session, codecs, caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &src.path,
                     &rsh_cmd.cmd,
@@ -1430,8 +1471,19 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     connect_timeout,
                     addr_family,
                     opts.protocol.unwrap_or(31),
+                    caps_send,
                 )
                 .map_err(EngineError::from)?;
+                #[cfg(not(any(feature = "xattr", feature = "acl")))]
+                let _ = caps;
+                #[cfg(feature = "xattr")]
+                if sync_opts.xattrs && caps & CAP_XATTRS == 0 {
+                    sync_opts.xattrs = false;
+                }
+                #[cfg(feature = "acl")]
+                if sync_opts.acls && caps & CAP_ACLS == 0 {
+                    sync_opts.acls = false;
+                }
                 let (err, _) = session.stderr();
                 if !err.is_empty() {
                     let msg = if let Some(cv) = iconv.as_ref() {
@@ -1483,7 +1535,36 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 },
             ) => {
                 let connect_timeout = opts.connect_timeout;
-                let (session, codecs, _caps) = SshStdioTransport::connect_with_rsh(
+                let caps_send = CAP_CODECS
+                    | {
+                        #[cfg(feature = "acl")]
+                        {
+                            if sync_opts.acls {
+                                CAP_ACLS
+                            } else {
+                                0
+                            }
+                        }
+                        #[cfg(not(feature = "acl"))]
+                        {
+                            0
+                        }
+                    }
+                    | {
+                        #[cfg(feature = "xattr")]
+                        {
+                            if sync_opts.xattrs {
+                                CAP_XATTRS
+                            } else {
+                                0
+                            }
+                        }
+                        #[cfg(not(feature = "xattr"))]
+                        {
+                            0
+                        }
+                    };
+                let (session, codecs, caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &dst.path,
                     &rsh_cmd.cmd,
@@ -1498,8 +1579,19 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     connect_timeout,
                     addr_family,
                     opts.protocol.unwrap_or(31),
+                    caps_send,
                 )
                 .map_err(EngineError::from)?;
+                #[cfg(not(any(feature = "xattr", feature = "acl")))]
+                let _ = caps;
+                #[cfg(feature = "xattr")]
+                if sync_opts.xattrs && caps & CAP_XATTRS == 0 {
+                    sync_opts.xattrs = false;
+                }
+                #[cfg(feature = "acl")]
+                if sync_opts.acls && caps & CAP_ACLS == 0 {
+                    sync_opts.acls = false;
+                }
                 let (err, _) = session.stderr();
                 if !err.is_empty() {
                     let msg = if let Some(cv) = iconv.as_ref() {

@@ -8,7 +8,7 @@ use assert_cmd::Command as AssertCommand;
 use compress::available_codecs;
 #[cfg(unix)]
 use oc_rsync_cli::parse_rsh;
-use protocol::LATEST_VERSION;
+use protocol::{CAP_CODECS, LATEST_VERSION};
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -136,6 +136,7 @@ fn custom_rsh_negotiates_codecs() {
         None,
         None,
         LATEST_VERSION,
+        CAP_CODECS,
     )
     .unwrap();
     drop(session);

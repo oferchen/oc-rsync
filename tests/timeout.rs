@@ -10,7 +10,7 @@ use assert_cmd::Command;
 use engine::{EngineError, SyncOptions};
 use oc_rsync_cli::spawn_daemon_session;
 use predicates::str::contains;
-use protocol::{Demux, ExitCode};
+use protocol::{Demux, ExitCode, CAP_CODECS};
 use transport::{
     rate_limited, ssh::SshStdioTransport, LocalPipeTransport, TcpTransport, TimeoutTransport,
     Transport,
@@ -129,7 +129,7 @@ fn ssh_handshake_timeout() {
         .unwrap();
     t.set_write_timeout(Some(Duration::from_millis(100)))
         .unwrap();
-    let err = SshStdioTransport::handshake(&mut t, &[], &[], 31).unwrap_err();
+    let err = SshStdioTransport::handshake(&mut t, &[], &[], 31, CAP_CODECS).unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::TimedOut);
 }
 

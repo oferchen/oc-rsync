@@ -372,6 +372,49 @@ fn daemon_excludes_filtered_xattrs_rr_client() {
     let _ = child.wait();
 }
 
+#[cfg(all(unix, feature = "xattr"))]
+#[test]
+#[serial]
+fn daemon_xattrs_match_rsync_server() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let srv_oc = tmp.path().join("srv_oc");
+    let srv_rs = tmp.path().join("srv_rs");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&srv_oc).unwrap();
+    fs::create_dir_all(&srv_rs).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    xattr::set(&file, "user.test", b"val").unwrap();
+
+    let (mut child_oc, port_oc) = spawn_daemon(&srv_oc);
+    wait_for_daemon(port_oc);
+    let src_arg = format!("{}/", src.display());
+    Command::new("rsync")
+        .args(["-aX", &src_arg, &format!("rsync://127.0.0.1:{port_oc}/mod")])
+        .assert()
+        .success();
+    let _ = child_oc.kill();
+    let _ = child_oc.wait();
+
+    let (mut child_rs, port_rs) = spawn_rsync_daemon_xattr(&srv_rs);
+    wait_for_daemon(port_rs);
+    Command::new("rsync")
+        .args(["-aX", &src_arg, &format!("rsync://127.0.0.1:{port_rs}/mod")])
+        .assert()
+        .success();
+    let _ = child_rs.kill();
+    let _ = child_rs.wait();
+
+    let val_oc = xattr::get(srv_oc.join("file"), "user.test")
+        .unwrap()
+        .unwrap();
+    let val_rs = xattr::get(srv_rs.join("file"), "user.test")
+        .unwrap()
+        .unwrap();
+    assert_eq!(val_oc, val_rs);
+}
+
 #[cfg(all(unix, feature = "acl"))]
 #[test]
 #[serial]
