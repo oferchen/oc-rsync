@@ -1755,6 +1755,7 @@ pub struct SyncOptions {
     pub sockopts: Vec<String>,
     pub remote_options: Vec<String>,
     pub write_batch: Option<PathBuf>,
+    pub read_batch: Option<PathBuf>,
     pub copy_devices: bool,
     pub write_devices: bool,
     pub quiet: bool,
@@ -1852,6 +1853,7 @@ impl Default for SyncOptions {
             sockopts: Vec::new(),
             remote_options: Vec::new(),
             write_batch: None,
+            read_batch: None,
             copy_devices: false,
             write_devices: false,
             quiet: false,
@@ -2156,6 +2158,38 @@ pub fn sync(
     let mut receiver = Receiver::new(codec, opts.clone());
     receiver.matcher = matcher.clone();
     let mut dir_meta: Vec<(PathBuf, PathBuf)> = Vec::new();
+
+    if let Some(batch_path) = &opts.read_batch {
+        sender.start();
+        let content =
+            fs::read_to_string(batch_path).map_err(|e| EngineError::Other(e.to_string()))?;
+        for line in content.lines() {
+            if line.trim().is_empty() || line.contains('=') {
+                continue;
+            }
+            let rel = Path::new(line);
+            let path = src_root.join(rel);
+            if !path.exists() {
+                continue;
+            }
+            let dest_path = dst.join(rel);
+            if sender.process_file(&path, &dest_path, rel, &mut receiver)? {
+                stats.files_transferred += 1;
+                stats.bytes_transferred +=
+                    fs::metadata(&path).map_err(|e| io_context(&path, e))?.len();
+            }
+        }
+        sender.finish();
+        receiver.finalize()?;
+        if let Some(mut f) = batch_file {
+            let _ = writeln!(
+                f,
+                "files_transferred={} bytes_transferred={}",
+                stats.files_transferred, stats.bytes_transferred
+            );
+        }
+        return Ok(stats);
+    }
     if matches!(opts.delete, Some(DeleteMode::Before)) {
         delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
     }
