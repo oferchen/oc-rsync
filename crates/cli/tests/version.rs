@@ -1,5 +1,5 @@
 // crates/cli/tests/version.rs
-use oc_rsync_cli::version_banner;
+use oc_rsync_cli::version;
 use protocol::SUPPORTED_PROTOCOLS;
 
 #[test]
@@ -19,12 +19,14 @@ fn banner_is_static() {
         .map(|p| p.to_string())
         .collect::<Vec<_>>()
         .join(", ");
-    let expected = format!(
-        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
-        env!("CARGO_PKG_VERSION"),
-        env!("UPSTREAM_VERSION"),
-        protocols,
-        features,
-    );
-    assert_eq!(version_banner(), expected);
+    let expected = vec![
+        format!(
+            "oc-rsync {} (rsync {})",
+            env!("CARGO_PKG_VERSION"),
+            env!("UPSTREAM_VERSION"),
+        ),
+        format!("Protocols: {protocols}"),
+        format!("Features: {features}"),
+    ];
+    assert_eq!(version::render_version_lines(), expected);
 }

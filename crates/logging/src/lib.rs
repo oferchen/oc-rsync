@@ -299,6 +299,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn subscriber(
     format: LogFormat,
     verbose: u8,
@@ -387,6 +388,7 @@ pub fn subscriber(
     Box::new(registry)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn init(
     format: LogFormat,
     verbose: u8,
