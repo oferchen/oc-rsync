@@ -12,6 +12,8 @@ path = "src/main.rs"
 oc-rsync-cli = { path = "../../crates/cli" }
 logging = { path = "../../crates/logging" }
 protocol = { path = "../../crates/protocol" }
+daemon = { path = "../../crates/daemon" }
+transport = { path = "../../crates/transport" }
 clap = { version = "4" }
 
 [dev-dependencies]
