@@ -177,7 +177,7 @@ fn iconv_option_sent_to_daemon() {
         &sync_opts,
         SUPPORTED_PROTOCOLS[0],
         None,
-        Some(&cv),
+        Some(cv.as_ref()),
     )
     .unwrap();
     handle.join().unwrap();

@@ -107,36 +107,39 @@ pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFla
     (info, debug)
 }
 
-pub struct CharsetConv {
-    remote: &'static Encoding,
+pub struct CliCharsetConv {
+    conv: CharsetConv,
     local: &'static Encoding,
 }
 
-impl CharsetConv {
+impl CliCharsetConv {
     pub fn encode_remote(&self, s: &str) -> Vec<u8> {
-        let (res, _, _) = self.remote.encode(s);
-        res.into_owned()
+        self.conv.encode_remote(s)
     }
 
     pub fn decode_remote(&self, b: &[u8]) -> String {
-        let (res, _, _) = self.remote.decode(b);
-        res.into_owned()
+        self.conv.decode_remote(b)
     }
 
     pub fn local_to_remote(&self, b: &[u8]) -> Vec<u8> {
         let (s, _, _) = self.local.decode(b);
-        let (res, _, _) = self.remote.encode(&s);
-        res.into_owned()
+        self.conv.encode_remote(&s)
     }
 
     pub fn remote_to_local(&self, b: &[u8]) -> Vec<u8> {
-        let (s, _, _) = self.remote.decode(b);
+        let s = self.conv.decode_remote(b);
         let (res, _, _) = self.local.encode(&s);
         res.into_owned()
     }
 }
 
-pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
+impl AsRef<CharsetConv> for CliCharsetConv {
+    fn as_ref(&self) -> &CharsetConv {
+        &self.conv
+    }
+}
+
+pub fn parse_iconv(spec: &str) -> std::result::Result<CliCharsetConv, String> {
     let mut parts = spec.split(',');
     let remote_label = parts
         .next()
@@ -149,8 +152,8 @@ pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
             "iconv_open(\"{local_label}\", \"{remote_label}\") failed"
         ));
     }
-    Ok(CharsetConv {
-        remote: Encoding::for_label(remote_label.as_bytes()).unwrap(),
+    Ok(CliCharsetConv {
+        conv: CharsetConv::new(Encoding::for_label(remote_label.as_bytes()).unwrap()),
         local: Encoding::for_label(local_label.as_bytes()).unwrap(),
     })
 }
@@ -1350,7 +1353,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &sync_opts,
                     opts.protocol.unwrap_or(31),
                     opts.early_input.as_deref(),
-                    iconv.as_ref(),
+                    iconv.as_ref().map(|cv| cv.as_ref()),
                 )?;
                 sync(
                     &src.path,
@@ -1418,7 +1421,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     &sync_opts,
                     opts.protocol.unwrap_or(31),
                     opts.early_input.as_deref(),
-                    iconv.as_ref(),
+                    iconv.as_ref().map(|cv| cv.as_ref()),
                 )?;
                 sync(
                     &src.path,
@@ -1581,7 +1584,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &sync_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
-                            iconv.as_ref(),
+                            iconv.as_ref().map(|cv| cv.as_ref()),
                         )?;
                         let mut src_session = spawn_daemon_session(
                             &src_host,
@@ -1596,7 +1599,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &sync_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
-                            iconv.as_ref(),
+                            iconv.as_ref().map(|cv| cv.as_ref()),
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1637,7 +1640,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &sync_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
-                            iconv.as_ref(),
+                            iconv.as_ref().map(|cv| cv.as_ref()),
                         )?;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
@@ -1682,7 +1685,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             &sync_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
-                            iconv.as_ref(),
+                            iconv.as_ref().map(|cv| cv.as_ref()),
                         )?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
                             &src_host,
