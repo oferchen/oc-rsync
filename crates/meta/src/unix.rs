@@ -294,6 +294,8 @@ impl Metadata {
                 } else {
                     self.uid
                 }
+            } else if !Uid::effective().is_root() {
+                Uid::effective().as_raw()
             } else {
                 self.uid
             };
@@ -305,6 +307,8 @@ impl Metadata {
                 } else {
                     self.gid
                 }
+            } else if !Uid::effective().is_root() {
+                Gid::effective().as_raw()
             } else {
                 self.gid
             };
