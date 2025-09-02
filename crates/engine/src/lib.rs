@@ -1592,6 +1592,7 @@ pub struct SyncOptions {
     pub checksum: bool,
     pub compress: bool,
     pub dirs: bool,
+    pub no_implied_dirs: bool,
     pub list_only: bool,
     pub update: bool,
     pub existing: bool,
@@ -1707,6 +1708,7 @@ impl Default for SyncOptions {
             fuzzy: false,
             super_user: false,
             fake_super: false,
+            no_implied_dirs: false,
             #[cfg(feature = "xattr")]
             xattrs: false,
             #[cfg(feature = "acl")]
@@ -2216,6 +2218,27 @@ pub fn sync(
                         .as_ref()
                         .map(|m| m.file_type().is_symlink())
                         .unwrap_or(false);
+                    if opts.no_implied_dirs {
+                        if dest_is_symlink {
+                            let link_target =
+                                fs::read_link(&dest_path).map_err(|e| io_context(&dest_path, e))?;
+                            let target_path = if link_target.is_absolute() {
+                                normalize_path(&link_target)
+                            } else if let Some(parent) = dest_path.parent() {
+                                normalize_path(parent.join(&link_target))
+                            } else {
+                                normalize_path(&link_target)
+                            };
+                            if !target_path.exists() {
+                                fs::create_dir_all(&target_path)
+                                    .map_err(|e| io_context(&target_path, e))?;
+                            }
+                        } else if !dest_path.exists() {
+                            fs::create_dir_all(&dest_path)
+                                .map_err(|e| io_context(&dest_path, e))?;
+                        }
+                        continue;
+                    }
                     let mut created = dest_meta.is_none();
                     if dest_is_symlink {
                         if opts.keep_dirlinks {
