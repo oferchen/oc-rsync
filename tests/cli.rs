@@ -661,10 +661,11 @@ fn temp_dir_cross_filesystem_temp_file_in_dest() {
         let tmp_present = fs::read_dir(&dst_dir)
             .unwrap()
             .filter_map(|e| {
-                let name = e.ok()?.file_name();
+                let entry = e.ok()?;
+                let name = entry.file_name();
                 let name = name.to_string_lossy();
                 if name.starts_with(".a.txt.") {
-                    Some(e.path())
+                    Some(entry.path())
                 } else {
                     None
                 }
@@ -684,7 +685,7 @@ fn temp_dir_cross_filesystem_temp_file_in_dest() {
         "temp file not created in destination during transfer"
     );
     assert!(
-        !tmp_in_tmp.exists(),
+        fs::read_dir(tmp_dir.path()).unwrap().next().is_none(),
         "temp dir used despite differing filesystems"
     );
 
