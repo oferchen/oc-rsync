@@ -19,7 +19,7 @@ fn main() {
             use clap::error::ErrorKind;
             match e.kind() {
                 ErrorKind::DisplayHelp => {
-                    println!("{}", cmd.render_help());
+                    println!("{}", oc_rsync_cli::render_help(&cmd));
                     std::process::exit(0);
                 }
                 _ => {
