@@ -558,8 +558,16 @@ struct ClientOpts {
     #[arg(long, help_heading = "Attributes")]
     xattrs: bool,
     #[cfg(feature = "acl")]
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(
+        short = 'A',
+        long,
+        help_heading = "Attributes",
+        overrides_with = "no_acls"
+    )]
     acls: bool,
+    #[cfg(feature = "acl")]
+    #[arg(long = "no-acls", help_heading = "Attributes", overrides_with = "acls")]
+    no_acls: bool,
     #[arg(long = "fake-super", help_heading = "Attributes")]
     fake_super: bool,
     #[arg(long = "super", help_heading = "Attributes")]
@@ -1239,6 +1247,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let retries = opts.retries.unwrap_or(0);
     let retry_delay = opts.retry_delay.unwrap_or_else(|| Duration::from_secs(1));
 
+    #[cfg(feature = "acl")]
+    let acls = opts.acls && !opts.no_acls;
+
     #[cfg(unix)]
     {
         let need_owner = if opts.no_owner {
@@ -1311,7 +1322,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         remote_opts.push("--xattrs".into());
     }
     #[cfg(feature = "acl")]
-    if opts.acls {
+    if acls {
         remote_opts.push("--acls".into());
     }
 
@@ -1558,7 +1569,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             opts.perms || opts.archive || {
                 #[cfg(feature = "acl")]
                 {
-                    opts.acls
+                    acls
                 }
                 #[cfg(not(feature = "acl"))]
                 {
@@ -1617,7 +1628,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         #[cfg(feature = "xattr")]
         xattrs: opts.xattrs || (opts.fake_super && !opts.super_user),
         #[cfg(feature = "acl")]
-        acls: opts.acls,
+        acls,
         sparse: opts.sparse,
         strong,
         checksum_seed: opts.checksum_seed.unwrap_or(0),

@@ -747,8 +747,8 @@ fn read_acl_from_path(
     Ok((acl, default_acl))
 }
 
-#[cfg(all(feature = "xattr", feature = "acl"))]
-fn encode_acl(entries: &[posix_acl::ACLEntry]) -> Vec<u8> {
+#[cfg(feature = "acl")]
+pub fn encode_acl(entries: &[posix_acl::ACLEntry]) -> Vec<u8> {
     use posix_acl::Qualifier;
     let mut out = Vec::with_capacity(entries.len() * 9);
     for e in entries {
@@ -768,8 +768,8 @@ fn encode_acl(entries: &[posix_acl::ACLEntry]) -> Vec<u8> {
     out
 }
 
-#[cfg(all(feature = "xattr", feature = "acl"))]
-fn decode_acl(data: &[u8]) -> Vec<posix_acl::ACLEntry> {
+#[cfg(feature = "acl")]
+pub fn decode_acl(data: &[u8]) -> Vec<posix_acl::ACLEntry> {
     use posix_acl::Qualifier;
     let mut entries = Vec::new();
     let mut i = 0;
