@@ -2440,6 +2440,35 @@ fn rsync_filter_merges_across_directories() {
 }
 
 #[test]
+fn filter_file_zero_separated_from_stdin() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("keep.txt"), b"k").unwrap();
+    std::fs::write(src.join("omit.txt"), b"o").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--local",
+            "--recursive",
+            "--from0",
+            "--filter-file",
+            "-",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .write_stdin(b"+ /keep.txt\0- *\0" as &[u8])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep.txt").exists());
+    assert!(!dst.join("omit.txt").exists());
+}
+
+#[test]
 fn files_from_zero_separated_list() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
