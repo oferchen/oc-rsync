@@ -259,10 +259,17 @@ Implementation details for each flag live in the
 | `%i` | itemized change string |
 | `%o` | operation (`send`, `recv`, `del.`) |
 | `%%` | literal percent sign |
+| `\\a` | bell |
+| `\\b` | backspace |
+| `\\e` | escape |
+| `\\f` | form feed |
 | `\\n` | newline |
+| `\\r` | carriage return |
 | `\\t` | tab |
+| `\\v` | vertical tab |
 | `\\` | backslash |
 | `\\0NNN` | octal byte value |
+| `\\xHH` | hex byte value |
 
 ### Permission tweaks with `--chmod`
 

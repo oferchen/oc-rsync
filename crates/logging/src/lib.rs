@@ -1,7 +1,8 @@
 // crates/logging/src/lib.rs
+#![allow(clippy::too_many_arguments)]
 use std::fmt;
 use std::fs::OpenOptions;
-#[cfg(unix)]
+#[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 use std::os::unix::net::UnixDatagram;
 use std::path::{Path, PathBuf};
 use tracing::field::{Field, Visit};
@@ -13,6 +14,9 @@ use tracing_subscriber::{
     util::SubscriberInitExt,
     EnvFilter,
 };
+
+mod formatter;
+pub use formatter::RsyncFormatter;
 
 use clap::ValueEnum;
 
@@ -185,38 +189,52 @@ impl DebugFlag {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 struct MessageVisitor {
     msg: String,
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 impl Visit for MessageVisitor {
     fn record_str(&mut self, field: &Field, value: &str) {
-        if !self.msg.is_empty() {
-            self.msg.push(' ');
+        if field.name() == "message" {
+            if !self.msg.is_empty() {
+                self.msg.push(' ');
+            }
+            self.msg.push_str(value);
+        } else {
+            if !self.msg.is_empty() {
+                self.msg.push(' ');
+            }
+            self.msg.push_str(field.name());
+            self.msg.push('=');
+            self.msg.push_str(value);
         }
-        self.msg.push_str(field.name());
-        self.msg.push('=');
-        self.msg.push_str(value);
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-        if !self.msg.is_empty() {
-            self.msg.push(' ');
+        if field.name() == "message" {
+            if !self.msg.is_empty() {
+                self.msg.push(' ');
+            }
+            self.msg.push_str(&format!("{value:?}"));
+        } else {
+            if !self.msg.is_empty() {
+                self.msg.push(' ');
+            }
+            self.msg.push_str(field.name());
+            self.msg.push('=');
+            self.msg.push_str(&format!("{value:?}"));
         }
-        self.msg.push_str(field.name());
-        self.msg.push('=');
-        self.msg.push_str(&format!("{value:?}"));
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "syslog"))]
 struct SyslogLayer {
     sock: UnixDatagram,
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "syslog"))]
 impl SyslogLayer {
     fn new() -> std::io::Result<Self> {
         let path = std::env::var_os("OC_RSYNC_SYSLOG_PATH")
@@ -228,7 +246,7 @@ impl SyslogLayer {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "syslog"))]
 fn syslog_severity(level: Level) -> u8 {
     match level {
         Level::ERROR => 3,
@@ -238,7 +256,7 @@ fn syslog_severity(level: Level) -> u8 {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "syslog"))]
 impl<S> Layer<S> for SyslogLayer
 where
     S: Subscriber,
@@ -255,12 +273,12 @@ where
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "journald"))]
 struct JournaldLayer {
     sock: UnixDatagram,
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "journald"))]
 impl JournaldLayer {
     fn new() -> std::io::Result<Self> {
         let path = std::env::var_os("OC_RSYNC_JOURNALD_PATH")
@@ -272,7 +290,7 @@ impl JournaldLayer {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "journald"))]
 fn journald_priority(level: Level) -> u8 {
     match level {
         Level::ERROR => 3,
@@ -282,7 +300,7 @@ fn journald_priority(level: Level) -> u8 {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "journald"))]
 impl<S> Layer<S> for JournaldLayer
 where
     S: Subscriber,
@@ -299,6 +317,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn subscriber(
     format: LogFormat,
     verbose: u8,
@@ -309,7 +328,7 @@ pub fn subscriber(
     syslog: bool,
     journald: bool,
 ) -> Box<dyn tracing::Subscriber + Send + Sync> {
-    let level = if quiet {
+    let mut level = if quiet {
         LevelFilter::ERROR
     } else if verbose > 2 {
         LevelFilter::TRACE
@@ -320,6 +339,13 @@ pub fn subscriber(
     } else {
         LevelFilter::WARN
     };
+    if !quiet {
+        if !debug.is_empty() && level < LevelFilter::DEBUG {
+            level = LevelFilter::DEBUG;
+        } else if !info.is_empty() && level < LevelFilter::INFO {
+            level = LevelFilter::INFO;
+        }
+    }
     let mut filter = EnvFilter::builder()
         .with_default_directive(level.into())
         .from_env_lossy();
@@ -337,22 +363,35 @@ pub fn subscriber(
         }
     }
 
-    let fmt_layer = tracing_fmt::layer();
+    let fmt_layer = tracing_fmt::layer()
+        .with_target(false)
+        .with_level(false)
+        .without_time();
     let fmt_layer = match format {
         LogFormat::Json => fmt_layer.json().boxed(),
-        LogFormat::Text => fmt_layer.boxed(),
+        LogFormat::Text => fmt_layer.event_format(RsyncFormatter).boxed(),
     };
 
-    #[cfg(unix)]
+    #[cfg(all(unix, feature = "syslog"))]
     let syslog_layer = if syslog {
         SyslogLayer::new().ok()
     } else {
         None
     };
-    #[cfg(unix)]
+    #[cfg(not(all(unix, feature = "syslog")))]
+    let syslog_layer = {
+        let _ = syslog;
+        None
+    };
+    #[cfg(all(unix, feature = "journald"))]
     let journald_layer = if journald {
         JournaldLayer::new().ok()
     } else {
+        None
+    };
+    #[cfg(not(all(unix, feature = "journald")))]
+    let journald_layer = {
+        let _ = journald;
         None
     };
 
@@ -365,7 +404,7 @@ pub fn subscriber(
 
     #[cfg(not(unix))]
     let registry = {
-        let _ = (syslog, journald);
+        let _ = (syslog, journald, syslog_layer, journald_layer);
         tracing_subscriber::registry().with(filter).with(fmt_layer)
     };
 
@@ -387,6 +426,7 @@ pub fn subscriber(
     Box::new(registry)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn init(
     format: LogFormat,
     verbose: u8,
@@ -442,11 +482,27 @@ pub fn parse_escapes(input: &str) -> String {
             match chars.next() {
                 Some('a') => out.push('\x07'),
                 Some('b') => out.push('\x08'),
+                Some('e') => out.push('\x1b'),
                 Some('f') => out.push('\x0c'),
                 Some('n') => out.push('\n'),
                 Some('r') => out.push('\r'),
                 Some('t') => out.push('\t'),
                 Some('v') => out.push('\x0b'),
+                Some('x') => {
+                    let mut val = 0u32;
+                    for _ in 0..2 {
+                        if let Some(peek) = chars.peek().copied() {
+                            if peek.is_ascii_hexdigit() {
+                                val = (val << 4) + chars.next().unwrap().to_digit(16).unwrap();
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    if let Some(ch) = char::from_u32(val) {
+                        out.push(ch);
+                    }
+                }
                 Some('\\') => out.push('\\'),
                 Some(c @ '0'..='7') => {
                     let mut val = c.to_digit(8).unwrap();

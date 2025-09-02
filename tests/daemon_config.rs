@@ -266,6 +266,22 @@ fn parse_config_global_directives() {
 }
 
 #[test]
+fn parse_config_inline_comments_and_modules() {
+    let dir1 = tempfile::tempdir().unwrap();
+    let dir2 = tempfile::tempdir().unwrap();
+    let cfg = format!(
+        "port = 0 # global comment\n[first] ; module one\n    path = {} # path comment\n[second]\n    path = {}\n",
+        dir1.path().display(),
+        dir2.path().display()
+    );
+    let cfg = parse_config(&cfg).unwrap();
+    assert_eq!(cfg.port, Some(0));
+    assert_eq!(cfg.modules.len(), 2);
+    assert_eq!(cfg.modules[0].name, "first");
+    assert_eq!(cfg.modules[1].name, "second");
+}
+
+#[test]
 fn load_config_default_path() {
     let path = Path::new("/etc/oc-rsyncd.conf");
     let backup = fs::read_to_string(path).ok();

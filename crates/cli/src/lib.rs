@@ -38,9 +38,36 @@ use transport::{
 #[cfg(unix)]
 use users::get_user_by_uid;
 
-pub fn version_string() -> String {
-    let ver = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
-    format!("rsync {ver}")
+pub mod version {
+    include!("../../../bin/oc-rsync/src/version.rs");
+}
+
+#[allow(clippy::vec_init_then_push)]
+pub fn version_banner() -> String {
+    #[allow(unused_mut)]
+    let mut features: Vec<&str> = Vec::new();
+    #[cfg(feature = "xattr")]
+    features.push("xattr");
+    #[cfg(feature = "acl")]
+    features.push("acl");
+    let features = if features.is_empty() {
+        "none".to_string()
+    } else {
+        features.join(", ")
+    };
+    let protocols = SUPPORTED_PROTOCOLS
+        .iter()
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
+    format!(
+        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
+        env!("CARGO_PKG_VERSION"),
+        upstream,
+        protocols,
+        features,
+    )
 }
 
 fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
@@ -120,9 +147,9 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
 
 pub fn version_string() -> String {
     format!(
-        "oc-rsync {} (rsync {})\n",
+        "oc-rsync {} (rsync {})",
         env!("CARGO_PKG_VERSION"),
-        env!("UPSTREAM_VERSION"),
+        option_env!("UPSTREAM_VERSION").unwrap_or("unknown"),
     )
 }
 
@@ -144,19 +171,12 @@ pub fn version_banner() -> String {
         .map(|p| p.to_string())
         .collect::<Vec<_>>()
         .join(", ");
-    let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
     format!(
+        "{}\nProtocols: {}\nFeatures: {}\n",
         version_string(),
-        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
-        env!("CARGO_PKG_VERSION"),
-        upstream,
         protocols,
         features,
     )
-}
-
-pub fn version_string() -> String {
-    version_banner()
 }
 
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
@@ -172,6 +192,33 @@ pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFla
         .map(|v| v.copied().collect())
         .unwrap_or_default();
     (info, debug)
+}
+
+fn init_logging(matches: &ArgMatches) {
+    let verbose = matches.get_count("verbose");
+    let quiet = matches.get_flag("quiet");
+    let log_format = *matches
+        .get_one::<LogFormat>("log_format")
+        .unwrap_or(&LogFormat::Text);
+    let log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
+    let log_file_fmt = matches.get_one::<String>("client-log-file-format").cloned();
+    let syslog = matches.get_flag("syslog");
+    let journald = matches.get_flag("journald");
+    let (mut info, mut debug) = parse_logging_flags(matches);
+    if quiet {
+        info.clear();
+        debug.clear();
+    }
+    logging::init(
+        log_format,
+        verbose,
+        &info,
+        &debug,
+        quiet,
+        log_file.map(|p| (p, log_file_fmt)),
+        syslog,
+        journald,
+    );
 }
 
 fn locale_charset() -> Option<String> {
@@ -558,8 +605,16 @@ struct ClientOpts {
     #[arg(long, help_heading = "Attributes")]
     xattrs: bool,
     #[cfg(feature = "acl")]
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(
+        short = 'A',
+        long,
+        help_heading = "Attributes",
+        overrides_with = "no_acls"
+    )]
     acls: bool,
+    #[cfg(feature = "acl")]
+    #[arg(long = "no-acls", help_heading = "Attributes", overrides_with = "acls")]
+    no_acls: bool,
     #[arg(long = "fake-super", help_heading = "Attributes")]
     fake_super: bool,
     #[arg(long = "super", help_heading = "Attributes")]
@@ -622,7 +677,8 @@ struct ClientOpts {
     #[arg(long = "timeout", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     timeout: Option<Duration>,
     #[arg(
-        long = "contimeout",
+        long = "connect-timeout",
+        alias = "contimeout",
         value_name = "SECONDS",
         value_parser = parse_nonzero_duration,
         help_heading = "Misc"
@@ -738,9 +794,19 @@ struct ClientOpts {
         help = "request charset conversion of filenames"
     )]
     iconv: Option<String>,
-    #[arg(long = "write-batch", value_name = "FILE", help_heading = "Misc")]
+    #[arg(
+        long = "write-batch",
+        value_name = "FILE",
+        help_heading = "Misc",
+        conflicts_with = "read_batch"
+    )]
     write_batch: Option<PathBuf>,
-    #[arg(long = "read-batch", value_name = "FILE", help_heading = "Misc")]
+    #[arg(
+        long = "read-batch",
+        value_name = "FILE",
+        help_heading = "Misc",
+        conflicts_with = "write_batch"
+    )]
     read_batch: Option<PathBuf>,
     #[arg(long = "copy-devices", help_heading = "Misc")]
     copy_devices: bool,
@@ -900,6 +966,7 @@ struct ProbeOpts {
 }
 
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
+    init_logging(matches);
     let opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
     if opts.daemon.daemon {
@@ -1239,6 +1306,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     let retries = opts.retries.unwrap_or(0);
     let retry_delay = opts.retry_delay.unwrap_or_else(|| Duration::from_secs(1));
 
+    #[cfg(feature = "acl")]
+    let acls = opts.acls && !opts.no_acls;
+
     #[cfg(unix)]
     {
         let need_owner = if opts.no_owner {
@@ -1311,7 +1381,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         remote_opts.push("--xattrs".into());
     }
     #[cfg(feature = "acl")]
-    if opts.acls {
+    if acls {
         remote_opts.push("--acls".into());
     }
 
@@ -1558,7 +1628,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             opts.perms || opts.archive || {
                 #[cfg(feature = "acl")]
                 {
-                    opts.acls
+                    acls
                 }
                 #[cfg(not(feature = "acl"))]
                 {
@@ -1617,7 +1687,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         #[cfg(feature = "xattr")]
         xattrs: opts.xattrs || (opts.fake_super && !opts.super_user),
         #[cfg(feature = "acl")]
-        acls: opts.acls,
+        acls,
         sparse: opts.sparse,
         strong,
         checksum_seed: opts.checksum_seed.unwrap_or(0),
@@ -2388,7 +2458,9 @@ fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let mut hosts_allow = opts.hosts_allow.clone();
     let mut hosts_deny = opts.hosts_deny.clone();
     let mut log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
-    let log_format = matches.get_one::<String>("client-log-file-format").cloned();
+    let log_format = matches
+        .get_one::<String>("client-log-file-format")
+        .map(|s| parse_escapes(s));
     let mut motd = opts.motd.clone();
     let mut pid_file = opts.pid_file.clone();
     let mut lock_file = opts.lock_file.clone();

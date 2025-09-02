@@ -18,6 +18,8 @@ pub struct SyncConfig {
     pub links: bool,
     pub devices: bool,
     pub specials: bool,
+    #[cfg(feature = "acl")]
+    pub acls: bool,
 }
 
 impl Default for SyncConfig {
@@ -33,6 +35,8 @@ impl Default for SyncConfig {
             links: true,
             devices: true,
             specials: true,
+            #[cfg(feature = "acl")]
+            acls: false,
         }
     }
 }
@@ -99,6 +103,12 @@ impl SyncConfigBuilder {
         self
     }
 
+    #[cfg(feature = "acl")]
+    pub fn acls(mut self, enable: bool) -> Self {
+        self.cfg.acls = enable;
+        self
+    }
+
     pub fn build(self) -> SyncConfig {
         self.cfg
     }
@@ -123,6 +133,8 @@ pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Resu
             links: cfg.links,
             devices: cfg.devices,
             specials: cfg.specials,
+            #[cfg(feature = "acl")]
+            acls: cfg.acls,
             ..SyncOptions::default()
         };
         engine::sync(src, dst, &Matcher::default(), &available_codecs(), &opts)?;

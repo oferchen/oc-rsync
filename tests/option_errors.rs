@@ -52,6 +52,6 @@ fn ipv4_and_ipv6_flags_conflict() {
         ])
         .assert()
         .failure()
-        .code(2)
-        .stderr(contains("cannot be used with"));
+        .code(u8::from(ExitCode::SyntaxOrUsage) as i32)
+        .stderr(contains("rsync error: syntax or usage error (code 1)"));
 }
