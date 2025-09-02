@@ -1,4 +1,6 @@
 // crates/logging/tests/syslog.rs
+#![cfg(all(unix, feature = "syslog"))]
+
 use logging::{subscriber, LogFormat};
 use std::os::unix::net::UnixDatagram;
 use tempfile::tempdir;

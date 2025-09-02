@@ -42,6 +42,34 @@ pub mod version {
     include!("../../../bin/oc-rsync/src/version.rs");
 }
 
+#[allow(clippy::vec_init_then_push)]
+pub fn version_banner() -> String {
+    #[allow(unused_mut)]
+    let mut features: Vec<&str> = Vec::new();
+    #[cfg(feature = "xattr")]
+    features.push("xattr");
+    #[cfg(feature = "acl")]
+    features.push("acl");
+    let features = if features.is_empty() {
+        "none".to_string()
+    } else {
+        features.join(", ")
+    };
+    let protocols = SUPPORTED_PROTOCOLS
+        .iter()
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let upstream = option_env!("UPSTREAM_VERSION").unwrap_or("unknown");
+    format!(
+        "oc-rsync {} (rsync {})\nProtocols: {}\nFeatures: {}\n",
+        env!("CARGO_PKG_VERSION"),
+        upstream,
+        protocols,
+        features,
+    )
+}
+
 fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, filters::ParseError> {
     let mut v = HashSet::new();
     parse_with_options(s, from0, &mut v, 0)
@@ -158,6 +186,33 @@ pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFla
         .map(|v| v.copied().collect())
         .unwrap_or_default();
     (info, debug)
+}
+
+fn init_logging(matches: &ArgMatches) {
+    let verbose = matches.get_count("verbose");
+    let quiet = matches.get_flag("quiet");
+    let log_format = *matches
+        .get_one::<LogFormat>("log_format")
+        .unwrap_or(&LogFormat::Text);
+    let log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
+    let log_file_fmt = matches.get_one::<String>("client-log-file-format").cloned();
+    let syslog = matches.get_flag("syslog");
+    let journald = matches.get_flag("journald");
+    let (mut info, mut debug) = parse_logging_flags(matches);
+    if quiet {
+        info.clear();
+        debug.clear();
+    }
+    logging::init(
+        log_format,
+        verbose,
+        &info,
+        &debug,
+        quiet,
+        log_file.map(|p| (p, log_file_fmt)),
+        syslog,
+        journald,
+    );
 }
 
 fn locale_charset() -> Option<String> {
@@ -897,6 +952,7 @@ struct ProbeOpts {
 }
 
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
+    init_logging(matches);
     let opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
     if opts.daemon.daemon {
