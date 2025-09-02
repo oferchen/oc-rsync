@@ -21,6 +21,7 @@ clap = { version = "4" }
 
 [dev-dependencies]
 assert_cmd = "2"
+tempfile = "3"
 
 [features]
 default = []
