@@ -664,7 +664,7 @@ struct ProbeOpts {
 }
 
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
-    let mut opts =
+    let opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
     if opts.daemon.daemon {
         return run_daemon(opts.daemon, matches);

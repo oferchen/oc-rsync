@@ -267,15 +267,11 @@ fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
 }
 
 fn remove_dir_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
-    use std::io::ErrorKind;
-
-    let res = fs::remove_dir(path).or_else(|e| {
-        if e.kind() == ErrorKind::DirectoryNotEmpty && opts.force {
-            fs::remove_dir_all(path)
-        } else {
-            Err(e)
-        }
-    });
+    let res = if opts.force {
+        fs::remove_dir_all(path)
+    } else {
+        fs::remove_dir(path)
+    };
     match res {
         Ok(_) => Ok(()),
         Err(e) => {
