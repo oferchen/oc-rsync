@@ -57,6 +57,7 @@ meta = { path = "crates/meta" }
 daemon = { path = "crates/daemon" }
 sha2 = "0.10"
 encoding_rs = "0.8"
+insta = { version = "1", features = ["json"] }
 
 [[bin]]
 name = "oc-rsync"

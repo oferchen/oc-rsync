@@ -731,7 +731,7 @@ impl Progress {
         let h = secs / 3600;
         let m = (secs % 3600) / 60;
         let s = secs % 60;
-        let time = format!("{}:{:02}:{:02}", h, m, s);
+        let time = format!("{:>4}:{:02}:{:02}", h, m, s);
         let total_files = TOTAL_FILES.load(Ordering::SeqCst);
         let remaining = total_files.saturating_sub(self.file_idx);
         tracing::info!(
@@ -742,7 +742,7 @@ impl Progress {
             rate = rate.as_str()
         );
         let line = format!(
-            "\r{:>15} {:>3}% {:>13} {:>11} (xfr#{}, to-chk={}/{})",
+            "\r{:>15} {:>3}% {} {} (xfr#{}, to-chk={}/{})",
             bytes, percent, rate, time, self.file_idx, remaining, total_files
         );
         if done {

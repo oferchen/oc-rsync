@@ -555,25 +555,25 @@ pub fn progress_formatter(bytes: u64, human_readable: bool) -> String {
     if human_readable {
         human_bytes(bytes)
     } else {
-        let s = bytes.to_string();
-        let mut out = String::new();
-        for (i, c) in s.chars().rev().enumerate() {
-            if i > 0 && i % 3 == 0 {
-                out.push(',');
-            }
-            out.push(c);
+        let mut n = bytes;
+        let mut parts = Vec::new();
+        while n >= 1000 {
+            parts.push(format!("{:03}", n % 1000));
+            n /= 1000;
         }
-        out.chars().rev().collect()
+        parts.push(n.to_string());
+        parts.reverse();
+        parts.join(",")
     }
 }
 
 pub fn rate_formatter(bytes_per_sec: f64) -> String {
     let mut rate = bytes_per_sec / 1024.0;
     let mut units = "kB/s";
-    if rate >= 1024.0 {
+    if rate > 1024.0 {
         rate /= 1024.0;
         units = "MB/s";
-        if rate >= 1024.0 {
+        if rate > 1024.0 {
             rate /= 1024.0;
             units = "GB/s";
         }
