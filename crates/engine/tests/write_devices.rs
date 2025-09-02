@@ -7,7 +7,7 @@ use std::os::unix::fs::FileTypeExt;
 use compress::available_codecs;
 use engine::{sync, SyncOptions};
 use filters::Matcher;
-use nix::sys::stat::{makedev, mknod, Mode, SFlag};
+use nix::sys::stat::{mknod, Mode, SFlag};
 use tempfile::tempdir;
 
 #[test]
@@ -23,7 +23,7 @@ fn requires_flag_to_write_devices() {
         &dev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
-        makedev(1, 3),
+        meta::makedev(1, 3),
     )
     .unwrap();
 

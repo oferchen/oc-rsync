@@ -4,7 +4,7 @@ use assert_cmd::Command;
 #[cfg(unix)]
 use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
-use nix::sys::stat::{makedev, mknod, Mode, SFlag};
+use nix::sys::stat::{mknod, Mode, SFlag};
 #[cfg(unix)]
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 #[cfg(unix)]
@@ -55,7 +55,7 @@ fn archive_matches_combination_and_rsync() {
         &src.join("dev"),
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o644),
-        makedev(1, 7),
+        meta::makedev(1, 7),
     )
     .unwrap();
 

@@ -11,7 +11,7 @@ use engine::{sync, IdMapper, SyncOptions};
 use filetime::{set_file_atime, set_file_mtime, set_symlink_file_times, FileTime};
 use filters::Matcher;
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
-use nix::sys::stat::{makedev, mknod, Mode, SFlag};
+use nix::sys::stat::{mknod, Mode, SFlag};
 use nix::unistd::{chown, mkfifo, Gid, Uid};
 #[cfg(feature = "acl")]
 use posix_acl::{PosixACL, Qualifier, ACL_READ, ACL_WRITE};
@@ -505,7 +505,7 @@ fn devices_roundtrip() {
         &dev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
-        makedev(1, 3),
+        meta::makedev(1, 3),
     )
     .unwrap();
     sync(
@@ -521,7 +521,7 @@ fn devices_roundtrip() {
     .unwrap();
     let meta = fs::symlink_metadata(dst.join("null")).unwrap();
     assert!(meta.file_type().is_char_device());
-    assert_eq!(meta.rdev(), makedev(1, 3));
+    assert_eq!(meta.rdev(), meta::makedev(1, 3));
 }
 
 #[test]
@@ -536,7 +536,7 @@ fn copy_devices_creates_regular_files() {
         &dev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
-        makedev(1, 3),
+        meta::makedev(1, 3),
     )
     .unwrap();
     sync(
@@ -568,7 +568,7 @@ fn copy_devices_handles_zero() {
         &dev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
-        makedev(1, 5),
+        meta::makedev(1, 5),
     )
     .unwrap();
     sync(
