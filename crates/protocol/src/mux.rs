@@ -27,7 +27,7 @@ impl Mux {
             keepalive,
             channels: IndexMap::new(),
             next: 0,
-            strong_hash: StrongHash::Md5,
+            strong_hash: StrongHash::Md4,
             compressor: Codec::Zlib,
         }
     }
@@ -52,7 +52,12 @@ impl Mux {
     }
 
     pub fn send_exit_code(&self, code: ExitCode) -> Result<(), mpsc::SendError<Message>> {
-        self.send(0, Message::Data(vec![code.into()]))
+        let byte: u8 = code.into();
+        if code == ExitCode::Ok {
+            self.send(0, Message::Data(vec![byte]))
+        } else {
+            self.send(0, Message::ErrorExit(byte))
+        }
     }
 
     pub fn send_error<S: Into<String>>(

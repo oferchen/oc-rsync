@@ -26,7 +26,7 @@ impl Demux {
         Demux {
             timeout,
             channels: IndexMap::new(),
-            strong_hash: StrongHash::Md5,
+            strong_hash: StrongHash::Md4,
             compressor: Codec::Zlib,
             exit_code: None,
             remote_error: None,
@@ -63,8 +63,8 @@ impl Demux {
         }
 
         if id == 0 {
-            if let Message::Data(payload) = &msg {
-                if payload.len() == 1 {
+            match &msg {
+                Message::Data(payload) if payload.len() == 1 => {
                     let code = payload[0];
                     self.exit_code = Some(code);
                     if code != 0 {
@@ -73,6 +73,11 @@ impl Demux {
                         return Ok(());
                     }
                 }
+                Message::ErrorExit(code) => {
+                    self.exit_code = Some(*code);
+                    return Err(std::io::Error::other(format!("remote exit code {}", code)));
+                }
+                _ => {}
             }
         }
 

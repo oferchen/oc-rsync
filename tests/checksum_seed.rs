@@ -22,7 +22,7 @@ fn checksum_seed_changes_strong_checksum() {
     let strong1 = cfg1.checksum(data).strong;
     let hex0: String = strong0.iter().map(|b| format!("{:02x}", b)).collect();
     let hex1: String = strong1.iter().map(|b| format!("{:02x}", b)).collect();
-    assert_eq!(hex0, "be4b47980f89d075f8f7e7a9fab84e29");
-    assert_eq!(hex1, "157438ee5881306a9af554cc9b3e5974");
+    assert_eq!(hex0, "ea91f391e02b5e19f432b43bd87a531d");
+    assert_eq!(hex1, "92e5994e0babddace03f0ff88f767181");
     assert_ne!(hex0, hex1);
 }

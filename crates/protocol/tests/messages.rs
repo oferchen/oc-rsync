@@ -11,15 +11,9 @@ fn roundtrip_additional_messages() {
         Msg::ErrorUtf8,
         Msg::Log,
         Msg::Client,
-        Msg::Redo,
-        Msg::Stats,
         Msg::IoError,
         Msg::IoTimeout,
         Msg::Noop,
-        Msg::ErrorExit,
-        Msg::Success,
-        Msg::Deleted,
-        Msg::NoSend,
     ];
     for m in msgs {
         let payload = b"test".to_vec();

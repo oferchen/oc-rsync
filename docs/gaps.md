@@ -5,7 +5,7 @@ This page enumerates known gaps between **oc-rsync** and upstream
 coverage so progress can be tracked as features land.
 
 ## Protocol
-No known gaps.
+- Feature negotiation covers only a subset of rsync protocol capabilities; ACL and other optional bits are not yet exchanged. [crates/protocol/src/lib.rs](../crates/protocol/src/lib.rs) · [crates/protocol/tests/protocol.rs](../crates/protocol/tests/protocol.rs)
 
 ## Compression
 No known gaps.
@@ -18,8 +18,7 @@ No known gaps. Exit codes map to upstream values. [protocol/src/lib.rs](../crate
 
 ## Metadata
 - `--archive` — composite flag; underlying `--owner`, `--group`, and `--perms` gaps apply. [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) · [tests/archive.rs](../tests/archive.rs)
-- `--acls` — ACL support requires optional feature and lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs)
-- `--links` — symlink handling lacks parity. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)
+- `--acls` — ACL support requires optional feature and lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) · [tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs)
 - `--hard-links` — hard link tracking incomplete. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)
 - `--owner` — ownership restoration lacks parity. [meta/src/unix.rs](../crates/meta/src/unix.rs) · [tests/cli.rs](../tests/cli.rs)
 - `--perms` — permission preservation incomplete. [engine/src/lib.rs](../crates/engine/src/lib.rs) · [tests/cli.rs](../tests/cli.rs)

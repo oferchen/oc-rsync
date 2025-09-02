@@ -139,6 +139,8 @@ struct ClientOpts {
     dirs: bool,
     #[arg(short = 'R', long, help_heading = "Selection")]
     relative: bool,
+    #[arg(long = "no-implied-dirs", help_heading = "Selection")]
+    no_implied_dirs: bool,
     #[arg(short = 'n', long, help_heading = "Selection")]
     dry_run: bool,
     #[arg(long = "list-only", help_heading = "Output")]
@@ -973,6 +975,35 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
     parse_sockopts(&opts.sockopts).map_err(EngineError::Other)?;
 
+    #[cfg(unix)]
+    {
+        let owner_req = matches.value_source("owner") == Some(ValueSource::CommandLine);
+        let group_req = matches.value_source("group") == Some(ValueSource::CommandLine);
+        let chown_req = matches.value_source("chown") == Some(ValueSource::CommandLine);
+        if owner_req || group_req || chown_req {
+            use nix::unistd::Uid;
+            if !Uid::effective().is_root() {
+                #[cfg(target_os = "linux")]
+                {
+                    use caps::{CapSet, Capability};
+                    if !caps::has_cap(None, CapSet::Effective, Capability::CAP_CHOWN)
+                        .unwrap_or(false)
+                    {
+                        return Err(EngineError::Other(
+                            "changing ownership requires root or CAP_CHOWN".into(),
+                        ));
+                    }
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    return Err(EngineError::Other(
+                        "changing ownership requires root".into(),
+                    ));
+                }
+            }
+        }
+    }
+
     let iconv = if let Some(spec) = &opts.iconv {
         Some(parse_iconv(spec).map_err(EngineError::Other)?)
     } else {
@@ -1080,6 +1111,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 
     let strong = if let Some(choice) = opts.checksum_choice.as_deref() {
         match choice {
+            "md4" => StrongHash::Md4,
             "md5" => StrongHash::Md5,
             "sha1" => StrongHash::Sha1,
             other => {
@@ -1087,7 +1119,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             }
         }
     } else if let Ok(list) = env::var("RSYNC_CHECKSUM_LIST") {
-        let mut chosen = StrongHash::Md5;
+        let mut chosen = StrongHash::Md4;
         for name in list.split(',') {
             match name {
                 "sha1" => {
@@ -1098,12 +1130,16 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                     chosen = StrongHash::Md5;
                     break;
                 }
+                "md4" => {
+                    chosen = StrongHash::Md4;
+                    break;
+                }
                 _ => {}
             }
         }
         chosen
     } else {
-        StrongHash::Md5
+        StrongHash::Md4
     };
 
     let src_trailing = match &src {
@@ -1226,6 +1262,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         checksum: opts.checksum,
         compress,
         dirs: opts.dirs,
+        no_implied_dirs: opts.no_implied_dirs,
         list_only: opts.list_only,
         update: opts.update,
         existing: opts.existing,

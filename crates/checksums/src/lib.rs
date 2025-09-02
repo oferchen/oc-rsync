@@ -1,9 +1,10 @@
 // crates/checksums/src/lib.rs
-use md5::Digest;
+use md4::{Digest, Md4};
 use md5::Md5;
 use sha1::Sha1;
 #[derive(Clone, Copy, Debug)]
 pub enum StrongHash {
+    Md4,
     Md5,
     Sha1,
 }
@@ -23,7 +24,7 @@ pub struct ChecksumConfigBuilder {
 impl Default for ChecksumConfigBuilder {
     fn default() -> Self {
         Self {
-            strong: StrongHash::Md5,
+            strong: StrongHash::Md4,
             seed: 0,
         }
     }
@@ -70,6 +71,12 @@ impl ChecksumConfig {
 #[allow(clippy::needless_borrows_for_generic_args)]
 pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
     match alg {
+        StrongHash::Md4 => {
+            let mut hasher = Md4::new();
+            hasher.update(&seed.to_le_bytes());
+            hasher.update(data);
+            hasher.finalize().to_vec()
+        }
         StrongHash::Md5 => {
             let mut hasher = Md5::new();
             hasher.update(&seed.to_le_bytes());
@@ -373,8 +380,11 @@ mod tests {
 
     #[test]
     fn strong_digests() {
+        let digest_md4 = strong_digest(b"hello world", StrongHash::Md4, 0);
+        assert_eq!(hex::encode(digest_md4), "ea91f391e02b5e19f432b43bd87a531d");
+
         let digest_md5 = strong_digest(b"hello world", StrongHash::Md5, 0);
-        assert_eq!(hex::encode(digest_md5), "be4b47980f89d075f8f7e7a9fab84e29",);
+        assert_eq!(hex::encode(digest_md5), "be4b47980f89d075f8f7e7a9fab84e29");
 
         let digest_sha1 = strong_digest(b"hello world", StrongHash::Sha1, 0);
         assert_eq!(
