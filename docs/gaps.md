@@ -53,7 +53,27 @@ No known gaps.
 
 ## CI
 - CI runs only on Linux; other platforms are cross-compiled without tests. [compatibility.md](compatibility.md) · [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh)
-- Interop matrix lacks scenarios for resume and progress flags. [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh)
+Interop matrix scenarios are defined in [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) and must stay in sync with this documentation:
+
+  - `base`
+  - `delete`
+  - `delete_before`
+  - `delete_during`
+  - `delete_after`
+  - `compress`
+  - `rsh`
+  - `drop_connection`
+  - `vanished`
+  - `remote_remote`
+  - `append`
+  - `append_verify`
+  - `partial`
+  - `inplace`
+  - `resume`
+  - `progress`
+  - `resume_progress`
+  - `progress2`
+  - `resume_progress2`
 
 ## Testing
 Many options above lack dedicated coverage; expand tests under
