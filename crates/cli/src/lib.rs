@@ -117,40 +117,6 @@ fn parse_bool(s: &str) -> std::result::Result<bool, String> {
     }
 }
 
-pub fn version_string() -> String {
-    format!(
-        "oc-rsync {} (rsync {})",
-        env!("CARGO_PKG_VERSION"),
-        option_env!("UPSTREAM_VERSION").unwrap_or("unknown"),
-    )
-}
-
-#[allow(clippy::vec_init_then_push)]
-pub fn version_banner() -> String {
-    #[allow(unused_mut)]
-    let mut features: Vec<&str> = Vec::new();
-    #[cfg(feature = "xattr")]
-    features.push("xattr");
-    #[cfg(feature = "acl")]
-    features.push("acl");
-    let features = if features.is_empty() {
-        "none".to_string()
-    } else {
-        features.join(", ")
-    };
-    let protocols = SUPPORTED_PROTOCOLS
-        .iter()
-        .map(|p| p.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!(
-        "{}\nProtocols: {}\nFeatures: {}\n",
-        version_string(),
-        protocols,
-        features,
-    )
-}
-
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")

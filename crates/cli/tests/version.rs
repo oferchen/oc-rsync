@@ -4,29 +4,21 @@ use protocol::SUPPORTED_PROTOCOLS;
 
 #[test]
 fn banner_is_static() {
-    let mut features = Vec::new();
-    #[cfg(feature = "xattr")]
-    features.push("xattr");
-    #[cfg(feature = "acl")]
-    features.push("acl");
-    let features = if features.is_empty() {
-        "none".to_string()
-    } else {
-        features.join(", ")
-    };
-    let protocols = SUPPORTED_PROTOCOLS
-        .iter()
-        .map(|p| p.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
     let expected = vec![
         format!(
-            "oc-rsync {} (rsync {})",
+            "oc-rsync {} (protocol {})",
             env!("CARGO_PKG_VERSION"),
-            option_env!("UPSTREAM_VERSION").unwrap_or("unknown"),
+            SUPPORTED_PROTOCOLS[0],
         ),
-        format!("Protocols: {protocols}"),
-        format!("Features: {features}"),
+        format!(
+            "rsync {}",
+            option_env!("OC_RSYNC_UPSTREAM").unwrap_or("unknown")
+        ),
+        format!(
+            "{} {}",
+            option_env!("OC_RSYNC_GIT").unwrap_or("unknown"),
+            option_env!("OC_RSYNC_OFFICIAL").unwrap_or("unofficial"),
+        ),
     ];
     assert_eq!(version::render_version_lines(), expected);
 }

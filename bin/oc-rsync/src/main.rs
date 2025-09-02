@@ -32,7 +32,7 @@ fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
 fn main() {
     if std::env::args().any(|a| a == "--version" || a == "-V") {
         if !std::env::args().any(|a| a == "--quiet" || a == "-q") {
-            print!("{}", version::render_version_lines());
+            println!("{}", version::render_version_lines().join("\n"));
         }
         return;
     }
