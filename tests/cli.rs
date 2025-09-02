@@ -1,4 +1,4 @@
-// tests/cli.rs - CLI integration tests. Includes Tmpfs helper that skips cross-filesystem tests when tmpfs isn't available.
+// tests/cli.rs
 
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
