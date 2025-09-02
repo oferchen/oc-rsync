@@ -33,6 +33,42 @@ fn parse_bool(val: &str) -> io::Result<bool> {
     }
 }
 
+#[cfg(unix)]
+fn parse_uid(val: &str) -> io::Result<u32> {
+    if let Ok(n) = val.parse::<u32>() {
+        return Ok(n);
+    }
+    use nix::unistd::User;
+    User::from_name(val)
+        .map_err(io::Error::other)?
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "unknown user"))
+        .map(|u| u.uid.as_raw())
+}
+
+#[cfg(not(unix))]
+fn parse_uid(val: &str) -> io::Result<u32> {
+    val.parse::<u32>()
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
+#[cfg(unix)]
+fn parse_gid(val: &str) -> io::Result<u32> {
+    if let Ok(n) = val.parse::<u32>() {
+        return Ok(n);
+    }
+    use nix::unistd::Group;
+    Group::from_name(val)
+        .map_err(io::Error::other)?
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "unknown group"))
+        .map(|g| g.gid.as_raw())
+}
+
+#[cfg(not(unix))]
+fn parse_gid(val: &str) -> io::Result<u32> {
+    val.parse::<u32>()
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Module {
     pub name: String,
@@ -44,6 +80,8 @@ pub struct Module {
     pub timeout: Option<Duration>,
     pub use_chroot: bool,
     pub numeric_ids: bool,
+    pub uid: Option<u32>,
+    pub gid: Option<u32>,
 }
 
 impl Default for Module {
@@ -58,6 +96,8 @@ impl Default for Module {
             timeout: None,
             use_chroot: true,
             numeric_ids: false,
+            uid: None,
+            gid: None,
         }
     }
 }
@@ -124,6 +164,8 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
             }
             "use_chroot" => module.use_chroot = parse_bool(val).map_err(|e| e.to_string())?,
             "numeric_ids" => module.numeric_ids = parse_bool(val).map_err(|e| e.to_string())?,
+            "uid" => module.uid = Some(parse_uid(val).map_err(|e| e.to_string())?),
+            "gid" => module.gid = Some(parse_gid(val).map_err(|e| e.to_string())?),
             _ => return Err(format!("unknown option: {key}")),
         }
     }
@@ -222,6 +264,8 @@ pub struct DaemonConfig {
     pub timeout: Option<Duration>,
     pub use_chroot: Option<bool>,
     pub numeric_ids: Option<bool>,
+    pub uid: Option<u32>,
+    pub gid: Option<u32>,
     pub modules: Vec<Module>,
 }
 
@@ -317,6 +361,12 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             (false, "numeric ids") => {
                 cfg.numeric_ids = Some(parse_bool(&val)?);
             }
+            (false, "uid") => {
+                cfg.uid = Some(parse_uid(&val)?);
+            }
+            (false, "gid") => {
+                cfg.gid = Some(parse_gid(&val)?);
+            }
             (true, "path") => {
                 if let Some(m) = current.as_mut() {
                     m.path = PathBuf::from(val);
@@ -362,6 +412,16 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             (true, "numeric ids") => {
                 if let Some(m) = current.as_mut() {
                     m.numeric_ids = parse_bool(&val)?;
+                }
+            }
+            (true, "uid") => {
+                if let Some(m) = current.as_mut() {
+                    m.uid = Some(parse_uid(&val)?);
+                }
+            }
+            (true, "gid") => {
+                if let Some(m) = current.as_mut() {
+                    m.gid = Some(parse_gid(&val)?);
                 }
             }
             _ => {}
@@ -694,14 +754,16 @@ pub fn handle_connection<T: Transport>(
             transport.set_read_timeout(Some(dur))?;
             transport.set_write_timeout(Some(dur))?;
         }
+        let m_uid = module.uid.unwrap_or(uid);
+        let m_gid = module.gid.unwrap_or(gid);
         serve_module(
             transport,
             module,
             peer,
             log_file.as_deref(),
             log_format.as_deref(),
-            uid,
-            gid,
+            m_uid,
+            m_gid,
         )?;
         handler(transport)
     } else {
@@ -972,6 +1034,20 @@ mod tests {
     fn parse_config_module_numeric_ids() {
         let cfg = parse_config("[data]\npath=/tmp\nnumeric ids = yes").unwrap();
         assert!(cfg.modules[0].numeric_ids);
+    }
+
+    #[test]
+    fn parse_config_module_uid_gid() {
+        let cfg = parse_config("[data]\npath=/tmp\nuid=0\ngid=0\n").unwrap();
+        assert_eq!(cfg.modules[0].uid, Some(0));
+        assert_eq!(cfg.modules[0].gid, Some(0));
+    }
+
+    #[test]
+    fn parse_config_global_uid_gid() {
+        let cfg = parse_config("uid=0\ngid=0\n[data]\npath=/tmp\n").unwrap();
+        assert_eq!(cfg.uid, Some(0));
+        assert_eq!(cfg.gid, Some(0));
     }
 
     #[test]

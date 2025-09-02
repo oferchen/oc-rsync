@@ -67,7 +67,7 @@ creating files, and ownership requests from clients will be ignored.
 
 ## Chroot and privilege drop
 
-Before serving files the daemon confines itself to the module root. On Unix platforms it performs a `chroot` to the module path, changes its working directory to `/`, and drops privileges to the nobody user and group (UID/GID 65534).
+Before serving files the daemon confines itself to the module root. On Unix platforms it performs a `chroot` to the module path, changes its working directory to `/`, and drops privileges to a less privileged user and group (UID/GID 65534 by default). The `uid` and `gid` module directives may override the default IDs for specific exports.
 
 ## Hosts allow/deny lists
 
