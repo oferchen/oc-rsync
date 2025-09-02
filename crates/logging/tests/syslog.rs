@@ -1,7 +1,7 @@
 // crates/logging/tests/syslog.rs
 #![cfg(all(unix, feature = "syslog"))]
 
-use logging::{subscriber, LogFormat};
+use logging::{subscriber, LogFormat, SubscriberConfig};
 use std::os::unix::net::UnixDatagram;
 use tempfile::tempdir;
 use tracing::info;
@@ -13,7 +13,19 @@ fn syslog_emits_message() {
     let path = dir.path().join("sock");
     let server = UnixDatagram::bind(&path).unwrap();
     std::env::set_var("OC_RSYNC_SYSLOG_PATH", &path);
-    let sub = subscriber(LogFormat::Text, 1, &[], &[], false, None, true, false);
+    let cfg = SubscriberConfig::builder()
+        .format(LogFormat::Text)
+        .verbose(1)
+        .info(vec![])
+        .debug(vec![])
+        .quiet(false)
+        .log_file(None)
+        .syslog(true)
+        .journald(false)
+        .colored(true)
+        .timestamps(false)
+        .build();
+    let sub = subscriber(cfg);
     with_default(sub, || {
         info!(target: "test", "hello");
     });

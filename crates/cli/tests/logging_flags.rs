@@ -1,10 +1,33 @@
 // crates/cli/tests/logging_flags.rs
 use assert_cmd::Command;
 use clap::ValueEnum;
+use logging::SubscriberConfig;
 use oc_rsync_cli::{cli_command, parse_logging_flags};
 use tempfile::tempdir;
 use tracing::subscriber::with_default;
 use tracing::Level;
+
+fn make_sub(
+    format: logging::LogFormat,
+    verbose: u8,
+    info: Vec<logging::InfoFlag>,
+    debug: Vec<logging::DebugFlag>,
+    quiet: bool,
+) -> Box<dyn tracing::Subscriber + Send + Sync> {
+    let cfg = SubscriberConfig::builder()
+        .format(format)
+        .verbose(verbose)
+        .info(info)
+        .debug(debug)
+        .quiet(quiet)
+        .log_file(None)
+        .syslog(false)
+        .journald(false)
+        .colored(true)
+        .timestamps(false)
+        .build();
+    logging::subscriber(cfg)
+}
 
 #[test]
 fn verbose_and_log_format_json_parity() {
@@ -44,16 +67,7 @@ fn info_flag_enables_progress() {
         .try_get_matches_from(["oc-rsync", "--info=progress", "src", "dst"])
         .unwrap();
     let (info, _) = parse_logging_flags(&matches);
-    let sub = logging::subscriber(
-        logging::LogFormat::Text,
-        0,
-        &info,
-        &[],
-        false,
-        None,
-        false,
-        false,
-    );
+    let sub = make_sub(logging::LogFormat::Text, 0, info, vec![], false);
     with_default(sub, || {
         assert!(!tracing::enabled!(Level::INFO));
         assert!(!tracing::enabled!(Level::DEBUG));
@@ -75,16 +89,7 @@ fn info_flag_enables_progress2() {
         .unwrap();
     let (info, _) = parse_logging_flags(&matches);
     assert!(info.contains(&logging::InfoFlag::Progress2));
-    let sub = logging::subscriber(
-        logging::LogFormat::Text,
-        0,
-        &info,
-        &[],
-        false,
-        None,
-        false,
-        false,
-    );
+    let sub = make_sub(logging::LogFormat::Text, 0, info, vec![], false);
     with_default(sub, || {
         assert!(tracing::enabled!(
             target: logging::InfoFlag::Progress.target(),
@@ -100,16 +105,7 @@ fn info_flag_enables_stats3() {
         .unwrap();
     let (info, _) = parse_logging_flags(&matches);
     assert!(info.contains(&logging::InfoFlag::Stats3));
-    let sub = logging::subscriber(
-        logging::LogFormat::Text,
-        0,
-        &info,
-        &[],
-        false,
-        None,
-        false,
-        false,
-    );
+    let sub = make_sub(logging::LogFormat::Text, 0, info, vec![], false);
     with_default(sub, || {
         assert!(tracing::enabled!(
             target: logging::InfoFlag::Stats.target(),
@@ -124,16 +120,7 @@ fn debug_flag_enables_flist() {
         .try_get_matches_from(["oc-rsync", "--debug=flist", "src", "dst"])
         .unwrap();
     let (_, debug) = parse_logging_flags(&matches);
-    let sub = logging::subscriber(
-        logging::LogFormat::Text,
-        0,
-        &[],
-        &debug,
-        false,
-        None,
-        false,
-        false,
-    );
+    let sub = make_sub(logging::LogFormat::Text, 0, vec![], debug, false);
     with_default(sub, || {
         assert!(!tracing::enabled!(Level::TRACE));
         assert!(tracing::enabled!(
@@ -177,44 +164,17 @@ fn all_info_flags_parse() {
 
 #[test]
 fn verbose_levels_map_to_tracing() {
-    let sub = logging::subscriber(
-        logging::LogFormat::Text,
-        1,
-        &[],
-        &[],
-        false,
-        None,
-        false,
-        false,
-    );
+    let sub = make_sub(logging::LogFormat::Text, 1, vec![], vec![], false);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::INFO));
         assert!(!tracing::enabled!(Level::DEBUG));
     });
-    let sub = logging::subscriber(
-        logging::LogFormat::Text,
-        2,
-        &[],
-        &[],
-        false,
-        None,
-        false,
-        false,
-    );
+    let sub = make_sub(logging::LogFormat::Text, 2, vec![], vec![], false);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::DEBUG));
         assert!(!tracing::enabled!(Level::TRACE));
     });
-    let sub = logging::subscriber(
-        logging::LogFormat::Text,
-        3,
-        &[],
-        &[],
-        false,
-        None,
-        false,
-        false,
-    );
+    let sub = make_sub(logging::LogFormat::Text, 3, vec![], vec![], false);
     with_default(sub, || {
         assert!(tracing::enabled!(Level::TRACE));
     });
@@ -233,16 +193,7 @@ fn quiet_overrides_logging_flags() {
         ])
         .unwrap();
     let (info, debug) = parse_logging_flags(&matches);
-    let sub = logging::subscriber(
-        logging::LogFormat::Text,
-        0,
-        &info,
-        &debug,
-        true,
-        None,
-        false,
-        false,
-    );
+    let sub = make_sub(logging::LogFormat::Text, 0, info, debug, true);
     with_default(sub, || {
         assert!(!tracing::enabled!(Level::INFO));
         assert!(!tracing::enabled!(Level::DEBUG));

@@ -2,7 +2,7 @@
 use compress::available_codecs;
 use engine::{Result, SyncOptions};
 use filters::Matcher;
-use logging::{subscriber, DebugFlag, InfoFlag, LogFormat};
+use logging::{subscriber, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
 use std::path::Path;
 use tracing::subscriber::with_default;
 
@@ -115,16 +115,19 @@ impl SyncConfigBuilder {
 }
 
 pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Result<()> {
-    let sub = subscriber(
-        cfg.log_format,
-        cfg.verbose,
-        &cfg.info,
-        &cfg.debug,
-        false,
-        None,
-        false,
-        false,
-    );
+    let sub_cfg = SubscriberConfig::builder()
+        .format(cfg.log_format)
+        .verbose(cfg.verbose)
+        .info(cfg.info.clone())
+        .debug(cfg.debug.clone())
+        .quiet(false)
+        .log_file(None)
+        .syslog(false)
+        .journald(false)
+        .colored(true)
+        .timestamps(false)
+        .build();
+    let sub = subscriber(sub_cfg);
     with_default(sub, || -> Result<()> {
         let opts = SyncOptions {
             perms: cfg.perms,

@@ -189,6 +189,104 @@ impl DebugFlag {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct SubscriberConfig {
+    pub format: LogFormat,
+    pub verbose: u8,
+    pub info: Vec<InfoFlag>,
+    pub debug: Vec<DebugFlag>,
+    pub quiet: bool,
+    pub log_file: Option<(PathBuf, Option<String>)>,
+    pub syslog: bool,
+    pub journald: bool,
+    pub colored: bool,
+    pub timestamps: bool,
+}
+
+impl Default for SubscriberConfig {
+    fn default() -> Self {
+        Self {
+            format: LogFormat::Text,
+            verbose: 0,
+            info: Vec::new(),
+            debug: Vec::new(),
+            quiet: false,
+            log_file: None,
+            syslog: false,
+            journald: false,
+            colored: true,
+            timestamps: false,
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct SubscriberConfigBuilder {
+    cfg: SubscriberConfig,
+}
+
+impl SubscriberConfig {
+    pub fn builder() -> SubscriberConfigBuilder {
+        SubscriberConfigBuilder::default()
+    }
+}
+
+impl SubscriberConfigBuilder {
+    pub fn format(mut self, format: LogFormat) -> Self {
+        self.cfg.format = format;
+        self
+    }
+
+    pub fn verbose(mut self, verbose: u8) -> Self {
+        self.cfg.verbose = verbose;
+        self
+    }
+
+    pub fn info(mut self, info: Vec<InfoFlag>) -> Self {
+        self.cfg.info = info;
+        self
+    }
+
+    pub fn debug(mut self, debug: Vec<DebugFlag>) -> Self {
+        self.cfg.debug = debug;
+        self
+    }
+
+    pub fn quiet(mut self, quiet: bool) -> Self {
+        self.cfg.quiet = quiet;
+        self
+    }
+
+    pub fn log_file(mut self, log_file: Option<(PathBuf, Option<String>)>) -> Self {
+        self.cfg.log_file = log_file;
+        self
+    }
+
+    pub fn syslog(mut self, syslog: bool) -> Self {
+        self.cfg.syslog = syslog;
+        self
+    }
+
+    pub fn journald(mut self, journald: bool) -> Self {
+        self.cfg.journald = journald;
+        self
+    }
+
+    pub fn colored(mut self, colored: bool) -> Self {
+        self.cfg.colored = colored;
+        self
+    }
+
+    pub fn timestamps(mut self, timestamps: bool) -> Self {
+        self.cfg.timestamps = timestamps;
+        self
+    }
+
+    pub fn build(self) -> SubscriberConfig {
+        self.cfg
+    }
+}
+
 #[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 struct MessageVisitor {
     msg: String,
@@ -317,17 +415,19 @@ where
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn subscriber(
-    format: LogFormat,
-    verbose: u8,
-    info: &[InfoFlag],
-    debug: &[DebugFlag],
-    quiet: bool,
-    log_file: Option<(PathBuf, Option<String>)>,
-    syslog: bool,
-    journald: bool,
-) -> Box<dyn tracing::Subscriber + Send + Sync> {
+pub fn subscriber(cfg: SubscriberConfig) -> Box<dyn tracing::Subscriber + Send + Sync> {
+    let SubscriberConfig {
+        format,
+        verbose,
+        info,
+        debug,
+        quiet,
+        log_file,
+        syslog,
+        journald,
+        colored,
+        timestamps,
+    } = cfg;
     let mut level = if quiet {
         LevelFilter::ERROR
     } else if verbose > 2 {
@@ -351,25 +451,31 @@ pub fn subscriber(
         .from_env_lossy();
 
     if !quiet {
-        for flag in info {
+        for flag in &info {
             let directive: tracing_subscriber::filter::Directive =
                 format!("{}=info", flag.target()).parse().unwrap();
             filter = filter.add_directive(directive);
         }
-        for flag in debug {
+        for flag in &debug {
             let directive: tracing_subscriber::filter::Directive =
                 format!("{}=trace", flag.target()).parse().unwrap();
             filter = filter.add_directive(directive);
         }
     }
 
-    let fmt_layer = tracing_fmt::layer()
-        .with_target(false)
-        .with_level(false)
-        .without_time();
-    let fmt_layer = match format {
-        LogFormat::Json => fmt_layer.json().boxed(),
-        LogFormat::Text => fmt_layer.event_format(RsyncFormatter).boxed(),
+    let base = tracing_fmt::layer().with_target(false).with_level(false);
+    let base = if colored { base } else { base.with_ansi(false) };
+    let fmt_layer = if timestamps {
+        match format {
+            LogFormat::Json => base.json().boxed(),
+            LogFormat::Text => base.event_format(RsyncFormatter).boxed(),
+        }
+    } else {
+        let base = base.without_time();
+        match format {
+            LogFormat::Json => base.json().boxed(),
+            LogFormat::Text => base.event_format(RsyncFormatter).boxed(),
+        }
     };
 
     #[cfg(all(unix, feature = "syslog"))]
@@ -426,21 +532,8 @@ pub fn subscriber(
     Box::new(registry)
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn init(
-    format: LogFormat,
-    verbose: u8,
-    info: &[InfoFlag],
-    debug: &[DebugFlag],
-    quiet: bool,
-    log_file: Option<(PathBuf, Option<String>)>,
-    syslog: bool,
-    journald: bool,
-) {
-    subscriber(
-        format, verbose, info, debug, quiet, log_file, syslog, journald,
-    )
-    .init();
+pub fn init(cfg: SubscriberConfig) {
+    subscriber(cfg).init();
 }
 
 pub fn human_bytes(bytes: u64) -> String {
