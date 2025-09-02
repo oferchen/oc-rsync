@@ -3,7 +3,7 @@
 This document summarizes parity status across major domains of `oc-rsync`.  Each
 table lists notable features that are either implemented, only partially
 completed, or still missing.  Entries link to the source and corresponding tests
-when available.
+when available. Do not exceed functionality of upstream at https://rsync.samba.org at this stage, prune unused features and/or unreachable code.
 
 ## Protocol
 | Feature | Status | Tests | Source |
@@ -59,7 +59,6 @@ when available.
 | SSH stdio transport | ✅ | [crates/transport/tests/ssh_stdio.rs](../crates/transport/tests/ssh_stdio.rs) | [crates/transport/src/ssh.rs](../crates/transport/src/ssh.rs) |
 | TCP transport with bandwidth limiting | ✅ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) | [crates/transport/src/rate.rs](../crates/transport/src/rate.rs) |
 | Extended socket options | ⚠️ | [crates/transport/tests/sockopts.rs](../crates/transport/tests/sockopts.rs) | [crates/transport/src/tcp.rs](../crates/transport/src/tcp.rs) |
-| Connection retry/backoff | ❌ | — | — |
 
 ## Engine
 | Feature | Status | Tests | Source |
