@@ -24,7 +24,6 @@ edition = "2021"
 [dependencies]
 protocol = { path = "crates/protocol" }
 checksums = { path = "crates/checksums" }
-oc-rsync-cli = { path = "crates/cli" }
 engine = { path = "crates/engine" }
 filters = { path = "crates/filters" }
 compress = { path = "crates/compress" }
@@ -56,6 +55,7 @@ meta = { path = "crates/meta" }
 daemon = { path = "crates/daemon" }
 sha2 = "0.10"
 encoding_rs = "0.8"
+oc-rsync-cli = { path = "crates/cli" }
 
 [[bin]]
 name = "flag_matrix"
@@ -64,6 +64,7 @@ path = "tools/flag_matrix.rs"
 [[bin]]
 name = "gen-completions"
 path = "tools/gen_completions.rs"
+required-features = ["cli"]
 
 [[bin]]
 name = "strip-rs-comments"
@@ -73,5 +74,7 @@ path = "tools/strip_rs_comments.rs"
 default = []
 xattr = ["engine/xattr", "oc-rsync-cli/xattr", "meta/xattr"]
 acl = ["engine/acl", "oc-rsync-cli/acl", "meta/acl"]
+# Enables CLI-only tools
+cli = []
 # Enables AVX-512 implementations requiring a nightly toolchain
 nightly = ["checksums/nightly", "compress/nightly"]
