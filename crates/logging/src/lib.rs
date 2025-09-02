@@ -1,7 +1,8 @@
 // crates/logging/src/lib.rs
+#![allow(clippy::too_many_arguments)]
 use std::fmt;
 use std::fs::OpenOptions;
-#[cfg(unix)]
+#[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 use std::os::unix::net::UnixDatagram;
 use std::path::{Path, PathBuf};
 use tracing::field::{Field, Visit};
@@ -185,12 +186,12 @@ impl DebugFlag {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 struct MessageVisitor {
     msg: String,
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 impl Visit for MessageVisitor {
     fn record_str(&mut self, field: &Field, value: &str) {
         if !self.msg.is_empty() {
@@ -211,12 +212,12 @@ impl Visit for MessageVisitor {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "syslog"))]
 struct SyslogLayer {
     sock: UnixDatagram,
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "syslog"))]
 impl SyslogLayer {
     fn new() -> std::io::Result<Self> {
         let path = std::env::var_os("OC_RSYNC_SYSLOG_PATH")
@@ -228,7 +229,7 @@ impl SyslogLayer {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "syslog"))]
 fn syslog_severity(level: Level) -> u8 {
     match level {
         Level::ERROR => 3,
@@ -238,7 +239,7 @@ fn syslog_severity(level: Level) -> u8 {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "syslog"))]
 impl<S> Layer<S> for SyslogLayer
 where
     S: Subscriber,
@@ -255,12 +256,12 @@ where
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "journald"))]
 struct JournaldLayer {
     sock: UnixDatagram,
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "journald"))]
 impl JournaldLayer {
     fn new() -> std::io::Result<Self> {
         let path = std::env::var_os("OC_RSYNC_JOURNALD_PATH")
@@ -272,7 +273,7 @@ impl JournaldLayer {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "journald"))]
 fn journald_priority(level: Level) -> u8 {
     match level {
         Level::ERROR => 3,
@@ -282,7 +283,7 @@ fn journald_priority(level: Level) -> u8 {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "journald"))]
 impl<S> Layer<S> for JournaldLayer
 where
     S: Subscriber,
@@ -344,16 +345,26 @@ pub fn subscriber(
         LogFormat::Text => fmt_layer.boxed(),
     };
 
-    #[cfg(unix)]
+    #[cfg(all(unix, feature = "syslog"))]
     let syslog_layer = if syslog {
         SyslogLayer::new().ok()
     } else {
         None
     };
-    #[cfg(unix)]
+    #[cfg(not(all(unix, feature = "syslog")))]
+    let syslog_layer = {
+        let _ = syslog;
+        None
+    };
+    #[cfg(all(unix, feature = "journald"))]
     let journald_layer = if journald {
         JournaldLayer::new().ok()
     } else {
+        None
+    };
+    #[cfg(not(all(unix, feature = "journald")))]
+    let journald_layer = {
+        let _ = journald;
         None
     };
 
@@ -366,7 +377,7 @@ pub fn subscriber(
 
     #[cfg(not(unix))]
     let registry = {
-        let _ = (syslog, journald);
+        let _ = (syslog, journald, syslog_layer, journald_layer);
         tracing_subscriber::registry().with(filter).with(fmt_layer)
     };
 

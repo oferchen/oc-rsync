@@ -16,7 +16,7 @@ use std::net::{IpAddr, TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 #[allow(unused_imports)]
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command as StdCommand, Stdio};
 use std::sync::{mpsc, Arc};
 use std::thread::sleep;
@@ -140,6 +140,57 @@ fn chroot_drops_privileges() {
             assert_eq!(std::env::current_dir().unwrap(), PathBuf::from("/"));
             assert_eq!(geteuid().as_raw(), 1);
             assert_eq!(getegid().as_raw(), 1);
+            std::process::exit(0);
+        }
+        Err(_) => panic!("fork failed"),
+    }
+}
+
+#[cfg(unix)]
+#[test]
+#[serial]
+fn chroot_requires_root() {
+    use nix::sys::wait::waitpid;
+    use nix::unistd::{fork, ForkResult};
+    let dir = tempdir().unwrap();
+    match unsafe { fork() } {
+        Ok(ForkResult::Parent { child }) => {
+            let status = waitpid(child, None).unwrap();
+            assert!(matches!(status, nix::sys::wait::WaitStatus::Exited(_, 0)));
+        }
+        Ok(ForkResult::Child) => {
+            drop_privileges(1, 1).unwrap();
+            let err = chroot_and_drop_privileges(dir.path(), 1, 1, true).unwrap_err();
+            assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+            std::process::exit(0);
+        }
+        Err(_) => panic!("fork failed"),
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn chroot_and_drop_privileges_rejects_missing_dir() {
+    let missing = Path::new("/does/not/exist");
+    let err = chroot_and_drop_privileges(missing, 0, 0, true).unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::NotFound);
+}
+
+#[cfg(unix)]
+#[test]
+#[serial]
+fn drop_privileges_requires_root() {
+    use nix::sys::wait::waitpid;
+    use nix::unistd::{fork, ForkResult};
+    match unsafe { fork() } {
+        Ok(ForkResult::Parent { child }) => {
+            let status = waitpid(child, None).unwrap();
+            assert!(matches!(status, nix::sys::wait::WaitStatus::Exited(_, 0)));
+        }
+        Ok(ForkResult::Child) => {
+            drop_privileges(1, 1).unwrap();
+            let err = drop_privileges(2, 2).unwrap_err();
+            assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
             std::process::exit(0);
         }
         Err(_) => panic!("fork failed"),

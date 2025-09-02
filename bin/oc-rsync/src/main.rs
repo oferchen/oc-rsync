@@ -1,14 +1,27 @@
 // bin/oc-rsync/src/main.rs
-use logging::LogFormat;
-use std::{io::ErrorKind, path::PathBuf};
-
-use oc_rsync_cli::{cli_command, parse_logging_flags, version_banner, EngineError};
+use std::io::ErrorKind;
+use oc_rsync_cli::{cli_command, version_banner, EngineError};
 use protocol::ExitCode;
 
 fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     use clap::error::ErrorKind::*;
     match kind {
         UnknownArgument => ExitCode::Unsupported,
+        InvalidValue
+        | InvalidSubcommand
+        | NoEquals
+        | ValueValidation
+        | TooManyValues
+        | TooFewValues
+        | WrongNumberOfValues
+        | ArgumentConflict
+        | MissingRequiredArgument
+        | MissingSubcommand
+        | InvalidUtf8
+        | DisplayHelp
+        | DisplayHelpOnMissingArgumentOrSubcommand
+        | DisplayVersion => ExitCode::SyntaxOrUsage,
+        Io | Format => ExitCode::FileIo,
         _ => ExitCode::SyntaxOrUsage,
     }
 }
@@ -16,7 +29,7 @@ fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
 fn main() {
     if std::env::args().any(|a| a == "--version" || a == "-V") {
         if !std::env::args().any(|a| a == "--quiet" || a == "-q") {
-            print!("{}", version_banner());
+            print!("{}", version::version_banner());
         }
         return;
     }
@@ -52,34 +65,6 @@ fn main() {
                 }
             }
         });
-    let quiet = matches.get_flag("quiet");
-    let verbose = if quiet {
-        0
-    } else {
-        matches.get_count("verbose") as u8
-    };
-    let (mut info, mut debug) = parse_logging_flags(&matches);
-    if quiet {
-        info.clear();
-        debug.clear();
-    }
-    let log_format = *matches
-        .get_one::<LogFormat>("log_format")
-        .unwrap_or(&LogFormat::Text);
-    let log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
-    let log_file_fmt = matches.get_one::<String>("client-log-file-format").cloned();
-    let log_syslog = matches.get_flag("syslog");
-    let log_journald = matches.get_flag("journald");
-    logging::init(
-        log_format,
-        verbose,
-        &info,
-        &debug,
-        quiet,
-        log_file.map(|p| (p, log_file_fmt)),
-        log_syslog,
-        log_journald,
-    );
     if let Err(e) = oc_rsync_cli::run(&matches) {
         eprintln!("{e}");
         let code = match &e {

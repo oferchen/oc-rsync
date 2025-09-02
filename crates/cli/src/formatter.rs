@@ -42,7 +42,7 @@ pub fn render_help(cmd: &Command) -> String {
     let wrap_opts = WrapOptions::new(desc_width).break_words(false);
 
     let mut out = String::new();
-    out.push_str(&crate::version_string());
+    out.push_str(&crate::version::version_banner());
     out.push_str(HELP_PREFIX);
 
     for arg in cmd.get_arguments() {

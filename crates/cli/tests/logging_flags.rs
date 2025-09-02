@@ -35,14 +35,6 @@ fn verbose_and_log_format_json_parity() {
             dst_path.to_str().unwrap(),
         ])
         .unwrap();
-    let verbose = matches.get_count("verbose") as u8;
-    let (info, debug) = parse_logging_flags(&matches);
-    let log_format = *matches
-        .get_one::<logging::LogFormat>("log_format")
-        .unwrap_or(&logging::LogFormat::Text);
-    logging::init(
-        log_format, verbose, &info, &debug, false, None, false, false,
-    );
     oc_rsync_cli::run(&matches).unwrap();
 }
 
