@@ -875,13 +875,13 @@ pub fn cli_command() -> clap::Command {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct PathSpec {
+pub struct PathSpec {
     path: PathBuf,
     trailing_slash: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum RemoteSpec {
+pub enum RemoteSpec {
     Local(PathSpec),
     Remote {
         host: String,
@@ -890,7 +890,7 @@ enum RemoteSpec {
     },
 }
 
-fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
+pub fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
     let (trailing_slash, s) = if input != "/" && input.ends_with('/') {
         (true, &input[..input.len() - 1])
     } else {
@@ -949,10 +949,11 @@ fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
         if idx == 1 {
             let bytes = s.as_bytes();
             if bytes[0].is_ascii_alphabetic()
-                && bytes
-                    .get(2)
-                    .map(|c| *c == b'/' || *c == b'\\')
-                    .unwrap_or(false)
+                && (bytes.len() == 2
+                    || bytes
+                        .get(2)
+                        .map(|c| *c == b'/' || *c == b'\\')
+                        .unwrap_or(false))
             {
                 return Ok(RemoteSpec::Local(PathSpec {
                     path: PathBuf::from(s),
