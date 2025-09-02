@@ -1,3 +1,4 @@
+// crates/cli/src/formatter.rs
 use clap::Command;
 
 const HELP_TEMPLATE: &str =

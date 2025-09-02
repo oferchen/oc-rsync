@@ -1,3 +1,4 @@
+// tests/out_format.rs
 use assert_cmd::Command as TestCommand;
 use std::{fs, process::Command};
 use tempfile::tempdir;
