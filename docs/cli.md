@@ -14,50 +14,61 @@ oc-rsync [OPTIONS] "<SRC>" "<DEST>"
 ### Examples
 
 - Local directory sync:
+
   ```sh
   oc-rsync "./src" "./backup"
   ```
+
 - Remote sync over SSH:
+
   ```sh
   oc-rsync "./src" "user@example.com:/var/www"
   ```
+
 - Dry run with statistics:
+
   ```sh
   oc-rsync -n --stats "./src" "remote:/dst"
   ```
+
 - Sync using an explicit config file:
+
   ```sh
   oc-rsync --config "./oc-rsync.toml" "./src" "remote:/dst"
   ```
+
 - Mirror with exclusions and deletions:
+
   ```sh
   oc-rsync -a --delete --exclude '.cache/' "./src/" "./mirror/"
   ```
+
 - Incremental backup using hard links:
+
   ```sh
   oc-rsync -a --link-dest="../prev" --compare-dest="../base" "./src/" "./snapshot/"
   ```
-  - Tune delta block size:
-    ```sh
-    oc-rsync -B 65536 ./src remote:/dst
-    ```
-  - Emit JSON-formatted logs:
-    ```sh
-    oc-rsync --log-format json -v ./src ./dst
-    ```
-  - Change ownership during transfer (requires root):
-    ```sh
-    sudo oc-rsync --chown=0:0 ./src/ remote:/dst/
-    ```
+
 - Tune delta block size:
+
   ```sh
   oc-rsync -B 65536 "./src" "remote:/dst"
   ```
-- Change ownership during transfer (requires root):
+
+- Emit JSON-formatted logs:
+
   ```sh
-  sudo oc-rsync --chown=0:0 "./src/" "remote:/dst/"
+  oc-rsync --log-format json -v ./src ./dst
   ```
+
+- Change ownership during transfer (requires root):
+
+  ```sh
+  sudo oc-rsync --chown=0:0 ./src/ remote:/dst/
+  ```
+
 - Show version:
+
   ```sh
   oc-rsync --version
   ```
@@ -75,7 +86,10 @@ copied:
 
 ## Options
 
-The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior of stock rsync; `off` means the flag is disabled unless specified. Each entry links to the corresponding row in [`feature_matrix.md`](feature_matrix.md) for implementation status and notes.
+The table below mirrors the full `rsync(1)` flag set. Defaults show the
+behavior of stock rsync; `off` means the flag is disabled unless specified.
+Each entry links to the corresponding row in
+[`feature_matrix.md`](feature_matrix.md) for implementation status and notes.
 
 | Short | Long | Default | Interactions | Matrix |
 |-------|------|---------|-------------|--------|
@@ -229,7 +243,9 @@ The table below mirrors the full `rsync(1)` flag set. Defaults show the behavior
 |  | `--write-devices` | off |  | [matrix](feature_matrix.md#--write-devices) |
 | `-X` | `--xattrs` | off | requires `xattr` feature | [matrix](feature_matrix.md#--xattrs) |
 
-Implementation details for each flag live in the [feature matrix](feature_matrix.md) and the [CLI flag reference](cli/flags.md).
+Implementation details for each flag live in the
+[feature matrix](feature_matrix.md) and the
+[CLI flag reference](cli/flags.md).
 
 ### Permission tweaks with `--chmod`
 
@@ -253,7 +269,7 @@ is parsed using shell-style quoting, allowing multiple arguments and embedded
 quotes much like GNU `rsync`. Leading `VAR=value` tokens set environment
 variables for the spawned command. For example:
 
-```
+```sh
 oc-rsync -e 'RUST_LOG=debug ssh -p 2222 -o "StrictHostKeyChecking=no"' "src" "dst"
 ```
 
@@ -282,7 +298,7 @@ precedence over rules defined higher up.
 
 ### Example
 
-```
+```text
 project/
 ├── .rsync-filter      # contains: - *.tmp
 └── logs/
