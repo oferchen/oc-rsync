@@ -29,32 +29,31 @@ fn progress_parity() {
     std::fs::write(src.join("a.txt"), b"hello").unwrap();
 
     let up = StdCommand::new("rsync")
+        .env("LC_ALL", "C")
+        .env("COLUMNS", "80")
         .args(["-r", "--progress"])
-        .arg(src.join("a.txt"))
+        .arg(format!("{}/", src.display()))
         .arg(&dst_up)
         .output()
         .unwrap();
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
+        .env("LC_ALL", "C")
+        .env("COLUMNS", "80")
         .args([
             "--local",
             "--progress",
-            src.join("a.txt").to_str().unwrap(),
+            format!("{}/", src.display()).as_str(),
             dst_ours.to_str().unwrap(),
         ])
         .output()
         .unwrap();
 
-    let up_line = String::from_utf8_lossy(&up.stderr);
-    let up_line = up_line.split('\r').last().unwrap().trim();
-    let up_fields: Vec<&str> = up_line.split_whitespace().take(3).collect();
+    let up_stderr = String::from_utf8_lossy(&up.stderr).replace('\r', "\n");
+    let our_stderr = String::from_utf8_lossy(&ours.stderr).replace('\r', "\n");
 
-    let our_line = String::from_utf8_lossy(&ours.stderr);
-    let our_line = our_line.split('\r').last().unwrap().trim();
-    let our_fields: Vec<&str> = our_line.split_whitespace().take(3).collect();
-
-    assert_eq!(our_fields, up_fields);
-    insta::assert_snapshot!("progress_parity", our_fields.join(" "));
+    assert_eq!(our_stderr, up_stderr);
+    insta::assert_snapshot!("progress_parity", our_stderr);
 }
 
 #[test]
@@ -68,6 +67,8 @@ fn stats_parity() {
     std::fs::write(src.join("a.txt"), b"hello").unwrap();
 
     let up = StdCommand::new("rsync")
+        .env("LC_ALL", "C")
+        .env("COLUMNS", "80")
         .args(["-r", "--stats"])
         .arg(format!("{}/", src.display()))
         .arg(&dst_up)
@@ -75,6 +76,8 @@ fn stats_parity() {
         .unwrap();
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
+        .env("LC_ALL", "C")
+        .env("COLUMNS", "80")
         .args([
             "--local",
             "--stats",
