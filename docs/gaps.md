@@ -8,7 +8,7 @@ coverage so progress can be tracked as features land.
 No known gaps.
 
 ## Compression
-- `--compress` — zlib and zstd supported; `zlibx` not implemented. [compress/src/lib.rs](../crates/compress/src/lib.rs) · [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs)
+No known gaps.
 
 ## Messages
 Message handling lacks full parity; only a subset of upstream message types is implemented. [protocol/src/lib.rs](../crates/protocol/src/lib.rs) · [crates/protocol/tests/protocol.rs](../crates/protocol/tests/protocol.rs)

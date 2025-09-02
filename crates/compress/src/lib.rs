@@ -5,21 +5,24 @@ use std::path::Path;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Codec {
     Zlib,
+    ZlibX,
     Zstd,
 }
 
 impl Codec {
     pub fn to_byte(self) -> u8 {
         match self {
-            Codec::Zlib => 0,
-            Codec::Zstd => 1,
+            Codec::Zlib => 1,
+            Codec::ZlibX => 2,
+            Codec::Zstd => 4,
         }
     }
 
     pub fn from_byte(b: u8) -> io::Result<Self> {
         match b {
-            0 => Ok(Codec::Zlib),
-            1 => Ok(Codec::Zstd),
+            1 => Ok(Codec::Zlib),
+            2 => Ok(Codec::ZlibX),
+            4 => Ok(Codec::Zstd),
             other => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("unknown codec {other}"),
@@ -29,7 +32,7 @@ impl Codec {
 }
 
 pub fn available_codecs() -> Vec<Codec> {
-    vec![Codec::Zlib, Codec::Zstd]
+    vec![Codec::Zstd, Codec::ZlibX, Codec::Zlib]
 }
 
 pub trait Compressor {
@@ -90,6 +93,42 @@ impl Compressor for Zlib {
 }
 
 impl Decompressor for Zlib {
+    fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
+        let mut decoder = flate2::read::ZlibDecoder::new(data);
+        let mut out = Vec::new();
+        decoder.read_to_end(&mut out)?;
+        Ok(out)
+    }
+}
+
+pub struct ZlibX {
+    level: i32,
+}
+
+impl ZlibX {
+    pub fn new(level: i32) -> Self {
+        Self { level }
+    }
+}
+
+impl Default for ZlibX {
+    fn default() -> Self {
+        Self { level: 6 }
+    }
+}
+
+impl Compressor for ZlibX {
+    fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
+        let mut encoder = flate2::write::ZlibEncoder::new(
+            Vec::new(),
+            flate2::Compression::new(self.level as u32),
+        );
+        encoder.write_all(data)?;
+        encoder.finish()
+    }
+}
+
+impl Decompressor for ZlibX {
     fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         let mut decoder = flate2::read::ZlibDecoder::new(data);
         let mut out = Vec::new();
@@ -259,7 +298,10 @@ mod tests {
         }
     }
     #[test]
-    fn available_codecs_returns_zlib_and_zstd() {
-        assert_eq!(available_codecs(), vec![Codec::Zlib, Codec::Zstd]);
+    fn available_codecs_returns_all_codecs() {
+        assert_eq!(
+            available_codecs(),
+            vec![Codec::Zstd, Codec::ZlibX, Codec::Zlib]
+        );
     }
 }
