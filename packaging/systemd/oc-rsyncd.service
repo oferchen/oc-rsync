@@ -1,7 +1,7 @@
 # packaging/systemd/oc-rsyncd.service
 [Unit]
 Description=oc-rsync daemon
-Documentation=man:oc-rsync(1) man:oc-rsyncd.conf(5)
+Documentation=man:oc-rsync(1) man:oc-rsyncd.conf(5) man:oc-rsyncd(8)
 Wants=network-online.target
 After=network-online.target
 

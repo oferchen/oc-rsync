@@ -31,6 +31,11 @@ fn packaging_includes_service_unit() {
         listing
     );
     assert!(
+        listing.lines().any(|l| l.trim() == "man/oc-rsyncd.8"),
+        "daemon man page missing from package list:\n{}",
+        listing
+    );
+    assert!(
         listing.lines().any(|l| l.trim() == "docs/build_info.md"),
         "build info missing from package list:\n{}",
         listing
