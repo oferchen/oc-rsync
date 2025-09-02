@@ -1,4 +1,6 @@
 // crates/logging/tests/journald.rs
+#![cfg(all(unix, feature = "journald"))]
+
 use logging::{subscriber, LogFormat};
 use std::os::unix::net::UnixDatagram;
 use tempfile::tempdir;
