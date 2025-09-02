@@ -22,7 +22,7 @@ pub use engine::EngineError;
 use engine::{sync, DeleteMode, IdMapper, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, parse_with_options, Matcher, Rule};
 pub use formatter::render_help;
-use logging::{human_bytes, DebugFlag, InfoFlag, LogFormat};
+use logging::{human_bytes, parse_escapes, DebugFlag, InfoFlag, LogFormat};
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use protocol::CharsetConv;
 #[cfg(feature = "acl")]
@@ -138,6 +138,10 @@ pub fn version_banner() -> String {
         protocols,
         features,
     )
+}
+
+pub fn version_string() -> String {
+    version_banner()
 }
 
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
@@ -1535,7 +1539,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         progress: opts.progress || opts.partial_progress,
         human_readable: opts.human_readable,
         itemize_changes: opts.itemize_changes,
-        out_format: opts.out_format.clone(),
+        out_format: opts.out_format.as_ref().map(|s| parse_escapes(s)),
         partial_dir: opts.partial_dir.clone(),
         temp_dir: opts.temp_dir.clone(),
         append: opts.append,
