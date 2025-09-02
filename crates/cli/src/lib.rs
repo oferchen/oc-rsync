@@ -129,6 +129,8 @@ pub fn parse_iconv(spec: &str) -> std::result::Result<CharsetConv, String> {
 struct ClientOpts {
     #[arg(long)]
     local: bool,
+    #[command(flatten)]
+    daemon: DaemonOpts,
     #[arg(short = 'a', long, help_heading = "Selection")]
     archive: bool,
     #[arg(short, long, help_heading = "Selection")]
@@ -628,8 +630,7 @@ fn parse_name_map(specs: &[String], kind: IdKind) -> Result<Option<IdMapper>> {
     }
 }
 
-#[allow(dead_code)]
-#[derive(Parser, Debug)]
+#[derive(Args, Debug)]
 struct DaemonOpts {
     #[arg(long)]
     daemon: bool,
@@ -663,10 +664,10 @@ struct ProbeOpts {
 }
 
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
-    let daemon_opts =
-        DaemonOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
-    if daemon_opts.daemon {
-        return run_daemon(daemon_opts, matches);
+    let mut opts =
+        ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
+    if opts.daemon.daemon {
+        return run_daemon(opts.daemon, matches);
     }
     let probe_opts =
         ProbeOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
@@ -687,7 +688,6 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
 
 pub fn cli_command() -> clap::Command {
     let cmd = ClientOpts::command();
-    let cmd = DaemonOpts::augment_args(cmd);
     ProbeOpts::augment_args(cmd)
 }
 
