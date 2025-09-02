@@ -295,3 +295,21 @@ fn server_rejects_option_after_arg() {
         .expect_err("handshake should fail");
     assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
 }
+
+#[test]
+fn server_surfaces_progress_and_stats() {
+    let mut input = Cursor::new(Vec::new());
+    let mut output = Vec::new();
+    let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
+
+    srv.demux.register_channel(0);
+
+    let prog = protocol::Message::Progress(42).to_frame(0, None);
+    let stats = protocol::Message::Stats(vec![1, 2, 3]).to_frame(0, None);
+
+    srv.demux.ingest(prog).unwrap();
+    srv.demux.ingest(stats).unwrap();
+
+    assert_eq!(srv.take_progress(), vec![42]);
+    assert_eq!(srv.take_stats(), vec![vec![1, 2, 3]]);
+}
