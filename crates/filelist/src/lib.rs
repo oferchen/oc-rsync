@@ -10,6 +10,9 @@ pub struct Entry {
     pub uid: u32,
     pub gid: u32,
     pub group: Option<u32>,
+    pub xattrs: Vec<(Vec<u8>, Vec<u8>)>,
+    pub acl: Vec<u8>,
+    pub default_acl: Vec<u8>,
 }
 
 #[derive(Debug, Default)]
@@ -56,6 +59,17 @@ impl Encoder {
         } else {
             out.push(0);
         }
+        out.push(entry.xattrs.len() as u8);
+        for (name, value) in &entry.xattrs {
+            out.push(name.len() as u8);
+            out.extend_from_slice(name);
+            out.extend_from_slice(&(value.len() as u32).to_le_bytes());
+            out.extend_from_slice(value);
+        }
+        out.extend_from_slice(&(entry.acl.len() as u32).to_le_bytes());
+        out.extend_from_slice(&entry.acl);
+        out.extend_from_slice(&(entry.default_acl.len() as u32).to_le_bytes());
+        out.extend_from_slice(&entry.default_acl);
         self.prev_path = entry.path.clone();
         out
     }
@@ -86,7 +100,7 @@ impl Decoder {
         let (uid, rest) = decode_id(input, &mut self.uid_table, true)?;
         let (gid, mut rest) = decode_id(rest, &mut self.gid_table, false)?;
         let group = if rest.is_empty() {
-            None
+            return Err(DecodeError::ShortInput);
         } else {
             let tag = rest[0];
             rest = &rest[1..];
@@ -102,6 +116,55 @@ impl Decoder {
                 None
             }
         };
+        if rest.is_empty() {
+            return Err(DecodeError::ShortInput);
+        }
+        let xcnt = rest[0] as usize;
+        rest = &rest[1..];
+        let mut xattrs = Vec::new();
+        for _ in 0..xcnt {
+            if rest.is_empty() {
+                return Err(DecodeError::ShortInput);
+            }
+            let nlen = rest[0] as usize;
+            rest = &rest[1..];
+            if rest.len() < nlen {
+                return Err(DecodeError::ShortInput);
+            }
+            let name = rest[..nlen].to_vec();
+            rest = &rest[nlen..];
+            if rest.len() < 4 {
+                return Err(DecodeError::ShortInput);
+            }
+            let vlen = u32::from_le_bytes([rest[0], rest[1], rest[2], rest[3]]) as usize;
+            rest = &rest[4..];
+            if rest.len() < vlen {
+                return Err(DecodeError::ShortInput);
+            }
+            let value = rest[..vlen].to_vec();
+            rest = &rest[vlen..];
+            xattrs.push((name, value));
+        }
+        if rest.len() < 4 {
+            return Err(DecodeError::ShortInput);
+        }
+        let acl_len = u32::from_le_bytes([rest[0], rest[1], rest[2], rest[3]]) as usize;
+        rest = &rest[4..];
+        if rest.len() < acl_len {
+            return Err(DecodeError::ShortInput);
+        }
+        let acl = rest[..acl_len].to_vec();
+        rest = &rest[acl_len..];
+        if rest.len() < 4 {
+            return Err(DecodeError::ShortInput);
+        }
+        let dacl_len = u32::from_le_bytes([rest[0], rest[1], rest[2], rest[3]]) as usize;
+        rest = &rest[4..];
+        if rest.len() < dacl_len {
+            return Err(DecodeError::ShortInput);
+        }
+        let default_acl = rest[..dacl_len].to_vec();
+        rest = &rest[dacl_len..];
         debug_assert!(rest.is_empty());
         self.prev_path = path.clone();
         Ok(Entry {
@@ -109,6 +172,9 @@ impl Decoder {
             uid,
             gid,
             group,
+            xattrs,
+            acl,
+            default_acl,
         })
     }
 }
@@ -175,18 +241,27 @@ mod tests {
                 uid: 1000,
                 gid: 1000,
                 group: None,
+                xattrs: vec![(b"user.test".to_vec(), b"val".to_vec())],
+                acl: vec![1, 0, 0, 0, 0, 7, 0, 0, 0],
+                default_acl: Vec::new(),
             },
             Entry {
                 path: b"dir/file2".to_vec(),
                 uid: 1000,
                 gid: 1001,
                 group: None,
+                xattrs: Vec::new(),
+                acl: Vec::new(),
+                default_acl: vec![1, 0, 0, 0, 0, 7, 0, 0, 0],
             },
             Entry {
                 path: b"other".to_vec(),
                 uid: 1002,
                 gid: 1001,
                 group: None,
+                xattrs: Vec::new(),
+                acl: Vec::new(),
+                default_acl: Vec::new(),
             },
         ];
         let mut enc = Encoder::new();

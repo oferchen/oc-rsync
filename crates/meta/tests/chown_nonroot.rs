@@ -1,6 +1,6 @@
 // crates/meta/tests/chown_nonroot.rs
 use std::fs::{self, Permissions};
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::process::Command;
 
 use meta::{Metadata, Options};

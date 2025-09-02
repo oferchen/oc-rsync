@@ -12,7 +12,7 @@ use sha2::{Digest, Sha256};
 #[cfg(unix)]
 use std::fs;
 #[cfg(unix)]
-use std::os::unix::fs::{symlink, PermissionsExt};
+use std::os::unix::fs::{symlink, FileTypeExt, MetadataExt, PermissionsExt};
 #[cfg(unix)]
 use std::path::Path;
 #[cfg(unix)]
@@ -78,6 +78,23 @@ fn archive_matches_combination_and_rsync() {
         ])
         .assert()
         .success();
+
+    let dst_file = dst_archive.join("dir/file");
+    assert!(dst_file.exists());
+    let meta = fs::symlink_metadata(&dst_file).unwrap();
+    assert_eq!(meta.permissions().mode() & 0o777, 0o640);
+    assert_eq!(
+        FileTime::from_last_modification_time(&meta).unix_seconds(),
+        1_234_567
+    );
+    assert_eq!(meta.uid(), 42);
+    assert_eq!(meta.gid(), 43);
+    let link_target = fs::read_link(dst_archive.join("link")).unwrap();
+    assert_eq!(link_target, Path::new("dir/file"));
+    let fifo_meta = fs::symlink_metadata(dst_archive.join("fifo")).unwrap();
+    assert!(fifo_meta.file_type().is_fifo());
+    let dev_meta = fs::symlink_metadata(dst_archive.join("dev")).unwrap();
+    assert!(dev_meta.file_type().is_char_device());
 
     Command::cargo_bin("oc-rsync")
         .unwrap()

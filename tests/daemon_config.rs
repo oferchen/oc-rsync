@@ -2,6 +2,7 @@
 
 use assert_cmd::prelude::*;
 use assert_cmd::Command;
+use daemon::{load_config, parse_config};
 use protocol::LATEST_VERSION;
 use serial_test::serial;
 use std::fs;
@@ -9,6 +10,7 @@ use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::process::{Child, Command as StdCommand, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
@@ -246,4 +248,42 @@ fn daemon_config_read_only_module_rejects_writes() {
     assert!(String::from_utf8_lossy(&resp[..n]).contains("read only"));
     let _ = child.kill();
     let _ = child.wait();
+}
+
+#[test]
+fn parse_config_global_directives() {
+    let cfg = parse_config(
+        "read only = yes\nlist = no\nmax connections = 5\nrefuse options = delete, compress\n[data]\n    path = /tmp\n",
+    )
+    .unwrap();
+    assert_eq!(cfg.read_only, Some(true));
+    assert_eq!(cfg.list, Some(false));
+    assert_eq!(cfg.max_connections, Some(5));
+    assert_eq!(
+        cfg.refuse_options,
+        vec!["delete".to_string(), "compress".to_string()]
+    );
+}
+
+#[test]
+fn load_config_default_path() {
+    let path = Path::new("/etc/oc-rsyncd.conf");
+    let backup = fs::read_to_string(path).ok();
+    fs::write(path, "port = 873\n").unwrap();
+    let cfg = load_config(None).unwrap();
+    assert_eq!(cfg.port, Some(873));
+    if let Some(contents) = backup {
+        fs::write(path, contents).unwrap();
+    } else {
+        fs::remove_file(path).unwrap();
+    }
+}
+
+#[test]
+fn load_config_custom_path() {
+    let dir = tempfile::tempdir().unwrap();
+    let cfg_path = dir.path().join("rsyncd.conf");
+    fs::write(&cfg_path, "port = 0\n").unwrap();
+    let cfg = load_config(Some(&cfg_path)).unwrap();
+    assert_eq!(cfg.port, Some(0));
 }
