@@ -147,6 +147,22 @@ mod non_unix {
             Ok(())
         }
     }
+
+    #[cfg(feature = "acl")]
+    pub fn read_acl(_path: &Path, _fake_super: bool) -> io::Result<(Vec<ACLEntry>, Vec<ACLEntry>)> {
+        Ok((Vec::new(), Vec::new()))
+    }
+
+    #[cfg(feature = "acl")]
+    pub fn write_acl(
+        _path: &Path,
+        _acl: &[ACLEntry],
+        _default_acl: &[ACLEntry],
+        _fake_super: bool,
+        _super_user: bool,
+    ) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(feature = "xattr")]

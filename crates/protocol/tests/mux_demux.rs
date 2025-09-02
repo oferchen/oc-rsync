@@ -106,7 +106,7 @@ fn error_xfer_sets_remote_error() {
 }
 
 #[test]
-fn progress_and_xattrs() {
+fn progress_attrs_and_xattrs() {
     let mut mux = Mux::new(Duration::from_millis(50));
     let mut demux = Demux::new(Duration::from_millis(50));
 
@@ -115,9 +115,10 @@ fn progress_and_xattrs() {
 
     mux.send_progress(0, 123).unwrap();
     mux.send_xattrs(0, b"user=1".to_vec()).unwrap();
+    mux.send_attrs(0, b"mode=755".to_vec()).unwrap();
 
     let mut frames = Vec::new();
-    while frames.len() < 2 {
+    while frames.len() < 3 {
         if let Some(frame) = mux.poll() {
             frames.push(frame);
         }
@@ -129,6 +130,10 @@ fn progress_and_xattrs() {
 
     assert_eq!(rx.try_recv().unwrap(), Message::Progress(123));
     assert_eq!(rx.try_recv().unwrap(), Message::Xattrs(b"user=1".to_vec()));
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        Message::Attributes(b"mode=755".to_vec())
+    );
 }
 
 #[test]

@@ -255,7 +255,7 @@ impl Metadata {
 
         #[cfg(feature = "acl")]
         let (acl, default_acl) = if opts.acl {
-            read_acl_from_path(path, is_dir, opts.fake_super, mode)?
+            read_acl_inner(path, is_dir, opts.fake_super, mode)?
         } else {
             (Vec::new(), Vec::new())
         };
@@ -678,7 +678,7 @@ fn is_trivial_acl(entries: &[posix_acl::ACLEntry], mode: u32) -> bool {
 }
 
 #[cfg(feature = "acl")]
-fn read_acl_from_path(
+fn read_acl_inner(
     path: &Path,
     is_dir: bool,
     fake_super: bool,
@@ -745,6 +745,74 @@ fn read_acl_from_path(
         Vec::new()
     };
     Ok((acl, default_acl))
+}
+
+#[cfg(feature = "acl")]
+pub fn read_acl(
+    path: &Path,
+    fake_super: bool,
+) -> io::Result<(Vec<posix_acl::ACLEntry>, Vec<posix_acl::ACLEntry>)> {
+    let meta = fs::symlink_metadata(path)?;
+    let mode = normalize_mode(meta.permissions().mode());
+    let is_dir = meta.file_type().is_dir();
+    read_acl_inner(path, is_dir, fake_super, mode)
+}
+
+#[cfg(feature = "acl")]
+pub fn write_acl(
+    path: &Path,
+    acl: &[posix_acl::ACLEntry],
+    default_acl: &[posix_acl::ACLEntry],
+    fake_super: bool,
+    super_user: bool,
+) -> io::Result<()> {
+    let meta = fs::symlink_metadata(path)?;
+    let is_dir = meta.file_type().is_dir();
+    let cur_mode = normalize_mode(meta.permissions().mode());
+
+    {
+        if acl.is_empty() {
+            let mut acl_obj = posix_acl::PosixACL::new(cur_mode);
+            if let Err(err) = acl_obj.write_acl(path) {
+                if !should_ignore_acl_error(&err) {
+                    return Err(acl_to_io(err));
+                }
+            }
+        } else {
+            let mut acl_obj = posix_acl::PosixACL::empty();
+            for entry in acl {
+                acl_obj.set(entry.qual, entry.perm);
+            }
+            if let Err(err) = acl_obj.write_acl(path) {
+                if !should_ignore_acl_error(&err) {
+                    return Err(acl_to_io(err));
+                }
+            }
+        }
+    }
+
+    if is_dir {
+        if default_acl.is_empty() {
+            remove_default_acl(path)?;
+        } else {
+            let mut dacl = posix_acl::PosixACL::empty();
+            for entry in default_acl {
+                dacl.set(entry.qual, entry.perm);
+            }
+            if let Err(err) = dacl.write_default_acl(path) {
+                if !should_ignore_acl_error(&err) {
+                    return Err(acl_to_io(err));
+                }
+            }
+        }
+    }
+
+    #[cfg(all(feature = "xattr", feature = "acl"))]
+    if fake_super && !super_user {
+        store_fake_super_acl(path, acl, if is_dir { default_acl } else { &[] });
+    }
+
+    Ok(())
 }
 
 #[cfg(feature = "acl")]

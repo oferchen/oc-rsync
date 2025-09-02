@@ -132,6 +132,10 @@ impl Mux {
         self.send(id, Message::Xattrs(data))
     }
 
+    pub fn send_attrs(&self, id: u16, data: Vec<u8>) -> Result<(), mpsc::SendError<Message>> {
+        self.send(id, Message::Attributes(data))
+    }
+
     pub fn send_success(&self, id: u16, idx: u32) -> Result<(), mpsc::SendError<Message>> {
         self.send(id, Message::Success(idx))
     }
