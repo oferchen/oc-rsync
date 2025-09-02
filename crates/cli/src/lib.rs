@@ -140,6 +140,10 @@ pub fn version_banner() -> String {
     )
 }
 
+pub fn version_string() -> String {
+    version_banner()
+}
+
 pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")
