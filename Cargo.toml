@@ -35,6 +35,7 @@ logging = { path = "crates/logging" }
 tracing = "0.1"
 filetime = "0.2"
 clap = { version = "4" }
+oc-rsync-cli = { path = "crates/cli" }
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.27", features = ["user", "fs"] }
@@ -55,7 +56,10 @@ meta = { path = "crates/meta" }
 daemon = { path = "crates/daemon" }
 sha2 = "0.10"
 encoding_rs = "0.8"
-oc-rsync-cli = { path = "crates/cli" }
+
+[[bin]]
+name = "oc-rsync"
+path = "bin/oc-rsync/src/main.rs"
 
 [[bin]]
 name = "flag_matrix"
