@@ -23,13 +23,14 @@ pub use daemon::spawn_daemon_session;
 pub use options::cli_command;
 use options::{ClientOpts, ProbeOpts};
 use utils::{
-    init_logging, parse_filters, parse_name_map, parse_remote_specs, parse_rsync_path, RemoteSpec,
+    init_logging, parse_filters, parse_name_map, parse_remote_spec, parse_remote_specs,
+    parse_rsync_path, RemoteSpec,
 };
 pub use utils::{parse_iconv, parse_logging_flags, parse_rsh, print_version_if_requested};
 
 use compress::{available_codecs, Codec};
 pub use engine::EngineError;
-use engine::{pipe_sessions, sync, DeleteMode, Result, StrongHash, SyncOptions};
+use engine::{pipe_sessions, sync, DeleteMode, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, Matcher, Rule};
 pub use formatter::{render_help, ARG_ORDER};
 use logging::{human_bytes, parse_escapes, InfoFlag};
@@ -71,15 +72,60 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     run_client(opts, matches)
 }
 
-fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
-    let src_arg = opts
-        .src
-        .take()
-        .ok_or_else(|| EngineError::Other("missing SRC".into()))?;
-    let dst_arg = opts
-        .dst
-        .take()
-        .ok_or_else(|| EngineError::Other("missing DST".into()))?;
+fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
+    let srcs = if opts.srcs.is_empty() {
+        return Err(EngineError::Other("missing SRC".into()));
+    } else {
+        opts.srcs.clone()
+    };
+    let dst_arg = opts.dst.clone();
+    if srcs.len() > 1 {
+        if let RemoteSpec::Local(ps) = parse_remote_spec(&dst_arg)? {
+            if !ps.path.is_dir() {
+                return Err(EngineError::Other("destination must be a directory".into()));
+            }
+        }
+    }
+    let mut total = Stats::default();
+    for src in srcs {
+        let stats = run_single(opts.clone(), matches, &src, &dst_arg)?;
+        total.files_transferred += stats.files_transferred;
+        total.files_deleted += stats.files_deleted;
+        total.bytes_transferred += stats.bytes_transferred;
+    }
+    if opts.stats && !opts.quiet {
+        println!("Number of deleted files: {}", total.files_deleted);
+        println!(
+            "Number of regular files transferred: {}",
+            total.files_transferred
+        );
+        let bytes = if opts.human_readable {
+            let hb = human_bytes(total.bytes_transferred);
+            if hb.trim_end().ends_with('B') {
+                hb
+            } else {
+                format!("{hb} bytes")
+            }
+        } else {
+            format!("{} bytes", total.bytes_transferred)
+        };
+        println!("Total transferred file size: {bytes}");
+        tracing::info!(
+            target: InfoFlag::Stats.target(),
+            files_transferred = total.files_transferred,
+            files_deleted = total.files_deleted,
+            bytes = total.bytes_transferred
+        );
+    }
+    Ok(())
+}
+
+fn run_single(
+    mut opts: ClientOpts,
+    matches: &ArgMatches,
+    src_arg: &str,
+    dst_arg: &str,
+) -> Result<Stats> {
     if opts.archive {
         opts.recursive = true;
         opts.links = !opts.no_links;
@@ -214,7 +260,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     if opts.verbose > 0 && opts.recursive && !opts.quiet {
         tracing::info!(target: InfoFlag::Misc.target(), "recursive mode enabled");
     }
-    let (src, mut dst) = parse_remote_specs(&src_arg, &dst_arg)?;
+    let (src, mut dst) = parse_remote_specs(src_arg, dst_arg)?;
     if opts.mkpath {
         match &dst {
             RemoteSpec::Local(ps) => {
@@ -1026,31 +1072,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             }
         }
     };
-    if opts.stats && !opts.quiet {
-        println!("Number of deleted files: {}", stats.files_deleted);
-        println!(
-            "Number of regular files transferred: {}",
-            stats.files_transferred
-        );
-        let bytes = if opts.human_readable {
-            let hb = human_bytes(stats.bytes_transferred);
-            if hb.trim_end().ends_with('B') {
-                hb
-            } else {
-                format!("{hb} bytes")
-            }
-        } else {
-            format!("{} bytes", stats.bytes_transferred)
-        };
-        println!("Total transferred file size: {bytes}");
-        tracing::info!(
-            target: InfoFlag::Stats.target(),
-            files_transferred = stats.files_transferred,
-            files_deleted = stats.files_deleted,
-            bytes = stats.bytes_transferred
-        );
-    }
-    Ok(())
+    Ok(stats)
 }
 
 fn check_session_errors(session: &SshStdioTransport, iconv: Option<&CharsetConv>) -> Result<()> {

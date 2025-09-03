@@ -18,7 +18,7 @@ use logging::parse_escapes;
 use protocol::{negotiate_version, CharsetConv};
 use transport::{parse_sockopts, AddressFamily, SockOpt, TcpTransport, Transport};
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct DaemonOpts {
     #[arg(long)]
     pub daemon: bool,
