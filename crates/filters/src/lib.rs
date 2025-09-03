@@ -1667,7 +1667,6 @@ mod tests {
         write!(file, "stdin data").unwrap();
         file.seek(SeekFrom::Start(0)).unwrap();
 
-        // Save original stdin
         let stdin_fd = unsafe { libc::dup(0) };
         assert!(stdin_fd >= 0);
 
@@ -1677,7 +1676,6 @@ mod tests {
 
         let data = read_path_or_stdin(Path::new("-")).unwrap();
 
-        // Restore stdin
         assert!(unsafe { libc::dup2(stdin_fd, 0) } >= 0);
         unsafe { libc::close(stdin_fd) };
 

@@ -69,8 +69,6 @@ pub fn decode_codecs(data: &[u8]) -> io::Result<Vec<Codec>> {
     data.iter().map(|b| Codec::from_byte(*b)).collect()
 }
 
-/// Default list of file extensions that should not be compressed, mirroring
-/// upstream rsync's `--skip-compress` setting.
 pub const DEFAULT_SKIP_COMPRESS: &[&str] = &[
     "3g2", "3gp", "7z", "aac", "ace", "apk", "avi", "bz2", "deb", "dmg", "ear", "f4v", "flac",
     "flv", "gpg", "gz", "iso", "jar", "jpeg", "jpg", "lrz", "lz", "lz4", "lzma", "lzo", "m1a",
