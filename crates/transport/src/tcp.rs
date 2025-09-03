@@ -20,20 +20,34 @@ impl TcpTransport {
         family: Option<AddressFamily>,
     ) -> io::Result<Self> {
         let addrs: Vec<SocketAddr> = (host, port).to_socket_addrs()?.collect();
-        let addr = match family {
-            Some(AddressFamily::V4) => addrs.iter().find(|a| a.is_ipv4()).copied(),
-            Some(AddressFamily::V6) => addrs.iter().find(|a| a.is_ipv6()).copied(),
-            None => addrs.into_iter().next(),
+        let addrs = addrs
+            .into_iter()
+            .filter(|a| match family {
+                Some(AddressFamily::V4) => a.is_ipv4(),
+                Some(AddressFamily::V6) => a.is_ipv6(),
+                None => true,
+            })
+            .collect::<Vec<_>>();
+
+        if addrs.is_empty() {
+            return Err(io::Error::other("invalid address"));
         }
-        .ok_or_else(|| io::Error::other("invalid address"))?;
 
-        let stream = if let Some(dur) = connect_timeout {
-            TcpStream::connect_timeout(&addr, dur)?
-        } else {
-            TcpStream::connect(addr)?
-        };
+        let mut last_err = None;
+        for addr in addrs {
+            let stream_res = if let Some(dur) = connect_timeout {
+                TcpStream::connect_timeout(&addr, dur)
+            } else {
+                TcpStream::connect(addr)
+            };
 
-        Ok(Self { stream })
+            match stream_res {
+                Ok(stream) => return Ok(Self { stream }),
+                Err(e) => last_err = Some(e),
+            }
+        }
+
+        Err(last_err.unwrap_or_else(|| io::Error::other("invalid address")))
     }
 
     pub fn listen(
