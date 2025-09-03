@@ -191,3 +191,25 @@ fn collect_progress_and_stats_messages() {
     assert_eq!(demux.take_progress(), vec![123]);
     assert_eq!(demux.take_stats(), vec![vec![1, 2, 3]]);
 }
+
+#[test]
+fn poll_with_dynamic_channel_removal() {
+    let mut mux = Mux::new(Duration::from_millis(50));
+
+    let tx1 = mux.register_channel(1);
+    let tx2 = mux.register_channel(2);
+
+    tx1.send(Message::Data(b"one".to_vec())).unwrap();
+    tx2.send(Message::Data(b"two".to_vec())).unwrap();
+
+    let frame = mux.poll().expect("frame");
+    assert_eq!(frame.header.channel, 1);
+
+    mux.unregister_channel(2);
+
+    let frame = mux.poll().expect("frame");
+    assert_eq!(frame.header.channel, 1);
+
+    mux.unregister_channel(1);
+    assert!(mux.poll().is_none());
+}

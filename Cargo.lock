@@ -1190,6 +1190,7 @@ dependencies = [
  "filelist",
  "indexmap",
  "subtle",
+ "tracing",
 ]
 
 [[package]]

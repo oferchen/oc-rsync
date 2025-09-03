@@ -2,6 +2,7 @@
 use indexmap::IndexMap;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::time::{Duration, Instant};
+use tracing::warn;
 
 use crate::{ExitCode, Frame, Message};
 use checksums::StrongHash;
@@ -160,6 +161,12 @@ impl Mux {
         self.send(id, Message::IoTimeout(val))
     }
 
+    pub fn unregister_channel(&mut self, id: u16) {
+        if self.channels.swap_remove(&id).is_some() && self.next >= self.channels.len() {
+            self.next = 0;
+        }
+    }
+
     pub fn poll(&mut self) -> Option<Frame> {
         let now = Instant::now();
 
@@ -170,7 +177,10 @@ impl Mux {
         let len = self.channels.len();
         for offset in 0..len {
             let idx = (self.next + offset) % len;
-            let (id, ch) = self.channels.get_index_mut(idx).expect("index in range");
+            let Some((id, ch)) = self.channels.get_index_mut(idx) else {
+                warn!("channel index {idx} missing during poll");
+                continue;
+            };
             let id = *id;
             match ch.receiver.try_recv() {
                 Ok(msg) => {
