@@ -49,7 +49,7 @@ use users::get_user_by_uid;
 pub mod version;
 
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
-    let opts =
+    let mut opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
     if opts.daemon.daemon {
         return run_daemon(opts.daemon, matches);
@@ -60,8 +60,6 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     if probe_opts.probe {
         return run_probe(probe_opts, matches.get_flag("quiet"));
     }
-    let mut opts =
-        ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
     if !opts.old_args && matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
         if let Ok(val) = env::var("RSYNC_PROTECT_ARGS") {
             if val != "0" {
