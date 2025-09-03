@@ -6,7 +6,6 @@ use std::path::Path;
 pub enum Codec {
     Zlib,
     Zstd,
-    Lzo,
 }
 
 impl Codec {
@@ -14,7 +13,6 @@ impl Codec {
         match self {
             Codec::Zlib => 1,
             Codec::Zstd => 4,
-            Codec::Lzo => 5,
         }
     }
 
@@ -22,7 +20,6 @@ impl Codec {
         match b {
             1 => Ok(Codec::Zlib),
             4 => Ok(Codec::Zstd),
-            5 => Ok(Codec::Lzo),
             other => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("unknown codec {other}"),
@@ -32,7 +29,7 @@ impl Codec {
 }
 
 pub fn available_codecs() -> Vec<Codec> {
-    vec![Codec::Zstd, Codec::Lzo, Codec::Zlib]
+    vec![Codec::Zstd, Codec::Zlib]
 }
 
 pub trait Compressor {
@@ -104,40 +101,6 @@ impl Decompressor for Zlib {
 #[derive(Default)]
 pub struct Zstd {
     level: i32,
-}
-
-pub struct Lzo;
-
-impl Compressor for Lzo {
-    fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
-        let mut ctx = rust_lzo::LZOContext::new();
-        let mut out = Vec::with_capacity(rust_lzo::worst_compress(data.len()));
-        match ctx.compress(data, &mut out) {
-            rust_lzo::LZOError::OK => Ok(out),
-            e => Err(io::Error::other(format!("lzo error {}", e as i32))),
-        }
-    }
-}
-
-impl Decompressor for Lzo {
-    fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
-        let mut out = vec![0u8; data.len().saturating_mul(16).max(64)];
-        loop {
-            let (slice, err) = rust_lzo::LZOContext::decompress_to_slice(data, &mut out);
-            match err {
-                rust_lzo::LZOError::OK => return Ok(slice.to_vec()),
-                rust_lzo::LZOError::OUTPUT_OVERRUN => {
-                    let new_len = out.len().checked_mul(2).ok_or_else(|| {
-                        io::Error::new(io::ErrorKind::InvalidData, "lzo output too large")
-                    })?;
-                    out.resize(new_len, 0);
-                }
-                e => {
-                    return Err(io::Error::other(format!("lzo error {}", e as i32)));
-                }
-            }
-        }
-    }
 }
 
 impl Zstd {
@@ -297,9 +260,6 @@ mod tests {
     }
     #[test]
     fn available_codecs_returns_all_codecs() {
-        assert_eq!(
-            available_codecs(),
-            vec![Codec::Zstd, Codec::Lzo, Codec::Zlib]
-        );
+        assert_eq!(available_codecs(), vec![Codec::Zstd, Codec::Zlib]);
     }
 }
