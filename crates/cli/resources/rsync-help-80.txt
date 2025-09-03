@@ -1,6 +1,7 @@
-rsync  version 3.2.7  protocol version 31
+oc-rsync 0.1.0 (protocol 32)
+rsync  version 3.4.1  protocol version 32
 Copyright (C) 1996-2025 by Andrew Tridgell, Wayne Davison, and others.
-Web site: https://rsync.samba.org/
+Web site: https://github.com/oc-rsync/oc-rsync
 Capabilities:
     64-bit files, 64-bit inums, 64-bit timestamps, 64-bit long ints,
     socketpairs, symlinks, symtimes, hardlinks, hardlink-specials,
@@ -15,7 +16,7 @@ Compress list:
 Daemon auth list:
     sha512 sha256 sha1 md5 md4
 
-rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
+oc-rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
 are welcome to redistribute it under certain conditions.  See the GNU
 General Public Licence for details.
 
@@ -179,6 +180,6 @@ Options
 --version, -V            print the version + other info and exit
 --help, -h (*)           show this help (* -h is help only on its own)
 
-Use "rsync --daemon --help" to see the daemon-mode command-line options.
-Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
-See https://rsync.samba.org/ for updates, bug reports, and answers
+Use "oc-rsync --daemon --help" to see the daemon-mode command-line options.
+Please see the oc-rsync(1) and oc-rsyncd.conf(5) manpages for full documentation.
+For project updates and documentation, visit https://github.com/oc-rsync/oc-rsync.
