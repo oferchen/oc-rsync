@@ -28,6 +28,7 @@ fn backups_replaced_and_deleted_files() {
             delete: Some(DeleteMode::During),
             backup: true,
             backup_dir: Some(backup.clone()),
+            backup_suffix: String::new(),
             ..Default::default()
         },
     )
@@ -69,4 +70,34 @@ fn backups_use_custom_suffix() {
     assert_eq!(fs::read(dst.join("file.txt.bak")).unwrap(), b"old");
     assert_eq!(fs::read(dst.join("old.txt.bak")).unwrap(), b"obsolete");
     assert!(!dst.join("old.txt").exists());
+}
+
+#[test]
+fn backup_dir_uses_suffix() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    let backup = tmp.path().join("backup");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(dst.join("file.txt"), b"old").unwrap();
+    std::thread::sleep(std::time::Duration::from_secs(1));
+    fs::write(src.join("file.txt"), b"new").unwrap();
+
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(),
+        &SyncOptions {
+            backup: true,
+            backup_dir: Some(backup.clone()),
+            backup_suffix: ".bak".into(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"new");
+    assert_eq!(fs::read(backup.join("file.txt.bak")).unwrap(), b"old");
 }

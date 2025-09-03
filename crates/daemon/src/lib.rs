@@ -9,6 +9,8 @@ use std::sync::{atomic::AtomicUsize, atomic::Ordering, Arc};
 use std::time::Duration;
 
 #[cfg(unix)]
+use nix::unistd::{fork, setsid, ForkResult};
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
 use ipnet::IpNet;
@@ -708,7 +710,6 @@ pub fn authenticate<T: Transport>(
             ));
         }
         let allowed = authenticate_token(&token_str, auth_path)?;
-        t.send(b"@RSYNCD: OK\n")?;
         Ok((Some(token_str), allowed, no_motd))
     } else if let Some(pw) = password {
         if token_str.is_empty() {
@@ -723,7 +724,6 @@ pub fn authenticate<T: Transport>(
                 "unauthorized",
             ));
         }
-        t.send(b"@RSYNCD: OK\n")?;
         Ok((Some(token_str), Vec::new(), no_motd))
     } else {
         let token_opt = if token_str.is_empty() {
@@ -731,7 +731,6 @@ pub fn authenticate<T: Transport>(
         } else {
             Some(token_str)
         };
-        t.send(b"@RSYNCD: OK\n")?;
         Ok((token_opt, Vec::new(), no_motd))
     }
 }
@@ -928,6 +927,7 @@ pub fn handle_connection<T: Transport>(
             }
         }
     }
+    transport.send(b"@RSYNCD: OK\n")?;
     let name = if token.is_some() && global_allowed.is_empty() && secrets.is_none() {
         token.take().unwrap()
     } else {
@@ -1095,7 +1095,22 @@ pub fn run_daemon(
     gid: u32,
     handler: Arc<Handler>,
     quiet: bool,
+    no_detach: bool,
 ) -> io::Result<()> {
+    #[cfg(not(unix))]
+    let _ = no_detach;
+    #[cfg(unix)]
+    if !no_detach {
+        match unsafe { fork() } {
+            Ok(ForkResult::Parent { .. }) => return Ok(()),
+            Ok(ForkResult::Child) => {
+                setsid().map_err(io::Error::other)?;
+            }
+            Err(e) => {
+                return Err(io::Error::other(e));
+            }
+        }
+    }
     if let Some(path) = &pid_file {
         let mut f = OpenOptions::new()
             .create(true)
