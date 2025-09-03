@@ -115,7 +115,7 @@ jobs:
           name: oc-rsync-${{ matrix.target }}
           path: dist
 
-  upstream-rsync:
+  cli-fixtures:
     needs: lint-test
     runs-on: ubuntu-latest
     steps:
@@ -136,25 +136,18 @@ jobs:
         with:
           path: target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev zlib1g-dev libacl1-dev
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libacl1-dev
       - name: Build oc-rsync
         run: cargo build --release --bin oc-rsync
-      - name: Fetch upstream rsync
-        run: scripts/fetch-rsync.sh
-      - name: Build upstream rsync
+      - name: Validate --help output
         run: |
-          cd rsync-3.4.1
-          ./configure
-          make
-      - name: Diff --version
+          ./target/release/oc-rsync --help > /tmp/oc-rsync-help.txt
+          diff -u tests/fixtures/oc-rsync-help.txt /tmp/oc-rsync-help.txt
+      - name: Validate --version output
         run: |
-          diff <(./target/release/oc-rsync --version) <(rsync-3.4.1/rsync --version) || true
-      - name: Diff --help
-        run: |
-          diff <(./target/release/oc-rsync --help) <(rsync-3.4.1/rsync --help) || true
-      - name: Check option tables
-        run: scripts/check-option-table.sh
+          ./target/release/oc-rsync --version > /tmp/oc-rsync-version.txt
+          diff -u tests/fixtures/oc-rsync-version.txt /tmp/oc-rsync-version.txt
 
   windows:
     needs: lint-test
