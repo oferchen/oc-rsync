@@ -426,6 +426,8 @@ pub(crate) struct ClientOpts {
     pub progress: bool,
     #[arg(long, help_heading = "Misc")]
     pub blocking_io: bool,
+    #[arg(long = "open-noatime", help_heading = "Misc")]
+    pub open_noatime: bool,
     #[arg(
         long = "outbuf",
         value_name = "MODE",

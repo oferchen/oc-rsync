@@ -196,7 +196,7 @@ Each entry links to the corresponding row in
 | `-J` | `--omit-link-times` | off |  | [matrix](feature_matrix.md#--omit-link-times) |
 | `-x` | `--one-file-system` | off |  | [matrix](feature_matrix.md#--one-file-system) |
 |  | `--only-write-batch` | off |  | [matrix](feature_matrix.md#--only-write-batch) |
-|  | `--open-noatime` | off |  | [matrix](feature_matrix.md#--open-noatime) |
+|  | `--open-noatime` | off | avoid changing atime on supported platforms | [matrix](feature_matrix.md#--open-noatime) |
 |  | `--out-format` | off |  | [matrix](feature_matrix.md#--out-format) |
 |  | `--outbuf` | off |  | [matrix](feature_matrix.md#--outbuf) |
 | `-o` | `--owner` | off |  | [matrix](feature_matrix.md#--owner) |

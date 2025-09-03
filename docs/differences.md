@@ -29,7 +29,7 @@ This document is synchronized with [feature_matrix.md](feature_matrix.md) and li
 - `--old-args`: parity with upstream not yet verified; disable modern arg-protection idiom. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--old-d`: parity with upstream not yet verified; alias for `--old-dirs`. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: —.
 - `--old-dirs`: parity with upstream not yet verified; works like --dirs when talking to old rsync. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--open-noatime`: not yet implemented; not yet implemented. Tests: —. Source: —.
+- `--open-noatime`: parity with upstream not yet verified; effective only on platforms supporting `O_NOATIME`. Tests: [crates/engine/tests/open_noatime.rs](../crates/engine/tests/open_noatime.rs)<br>[tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs).
 - `--outbuf`: parity with upstream not yet verified; set stdout buffering. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [bin/oc-rsync/src/main.rs](../bin/oc-rsync/src/main.rs).
 - `--progress`: parity with upstream not yet verified. Tests: [tests/cli.rs#L309](../tests/cli.rs#L309). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--protocol`: parity with upstream not yet verified. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
