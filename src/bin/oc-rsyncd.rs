@@ -2,26 +2,37 @@
 use std::ffi::OsString;
 use std::process::Command;
 
-fn main() {
-    let args: Vec<_> = std::env::args_os().collect();
-    if oc_rsync_cli::print_version_if_requested(args.iter().cloned()) {
-        return;
-    }
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 
+fn main() {
     let oc_rsync = std::env::var_os("OC_RSYNC_BIN")
         .or_else(|| option_env!("CARGO_BIN_EXE_oc-rsync").map(OsString::from))
         .unwrap_or_else(|| OsString::from("oc-rsync"));
-    let status = Command::new(&oc_rsync)
-        .arg("--daemon")
-        .args(&args[1..])
-        .status()
-        .unwrap_or_else(|e| {
-            eprintln!("{e}");
+    let user_args = std::env::args_os().skip(1);
+    #[cfg(windows)]
+    {
+        let status = Command::new(&oc_rsync)
+            .arg("--daemon")
+            .args(user_args)
+            .status()
+            .unwrap_or_else(|e| {
+                eprintln!("{e}");
+                std::process::exit(1);
+            });
+        if let Some(code) = status.code() {
+            std::process::exit(code);
+        } else {
             std::process::exit(1);
-        });
-    if let Some(code) = status.code() {
-        std::process::exit(code);
-    } else {
+        }
+    }
+    #[cfg(unix)]
+    {
+        let err = Command::new(&oc_rsync)
+            .arg("--daemon")
+            .args(user_args)
+            .exec();
+        eprintln!("{err}");
         std::process::exit(1);
     }
 }
