@@ -24,8 +24,8 @@ doc:
 	cargo doc --no-deps --all-features
 
 test:
-	cargo test
-	cargo test --all-features
+	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo test
+	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo test --all-features
 
 coverage:
 	cargo llvm-cov --workspace --doctests \

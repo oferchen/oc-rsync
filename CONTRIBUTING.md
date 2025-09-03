@@ -24,13 +24,13 @@ The Makefile offers shortcuts for common CI checks:
 The CI workflow runs with a consistent environment and enforces comment
 headers:
 
-- Environment variables: `RUSTFLAGS="-Dwarnings"`, `LC_ALL=C`, `LANG=C`, and
-  `COLUMNS=80`.
-- Repository access is read only (`permissions: { contents: read }`) and a
-  concurrency group (`ci-${{ github.ref }}`) cancels in-progress runs for the same
-  ref.
-- Builds cache dependencies using `Swatinem/rust-cache@v2`.
-- After `cargo clippy`, CI runs `make verify-comments` to ensure file header
+- Environment variables: `RUSTFLAGS="-Dwarnings"`, `LC_ALL=C`, `LANG=C`,
+  `COLUMNS=80`, and `TZ=UTC`.
+  - Repository access is read only (`permissions: { contents: read }`) and a
+    concurrency group (`ci-${{ github.ref }}`) cancels in-progress runs for the same
+    ref.
+  - Builds cache dependencies using `Swatinem/rust-cache@v2`.
+  - After `cargo clippy`, CI runs `make verify-comments` to ensure file header
   comments follow the policy.
 
 ## Pull Request Process
@@ -44,6 +44,17 @@ headers:
 - Ensure `cargo test` passes locally.
 - Add or update tests for any new code.
 - Prefer small, focused commits that each pass the test suite.
+
+## Standardized Test Environment
+
+For deterministic CLI help and usage output, run tests with a consistent
+environment:
+
+```bash
+LC_ALL=C LANG=C COLUMNS=80 TZ=UTC make test
+```
+
+The `make test` target exports these variables automatically.
 
 ## Fetching upstream rsync
 Some interop tests require the official rsync sources. Use the helper
