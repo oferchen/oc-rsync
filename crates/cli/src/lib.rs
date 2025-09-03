@@ -32,9 +32,8 @@ pub use engine::EngineError;
 use engine::{pipe_sessions, sync, DeleteMode, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, Matcher, Rule};
 pub use formatter::render_help;
-use logging::{human_bytes, parse_escapes, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
-use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
-use protocol::CharsetConv;
+use logging::{human_bytes, parse_escapes, InfoFlag};
+use meta::{parse_chmod, parse_chown, IdKind};
 #[cfg(feature = "acl")]
 use protocol::CAP_ACLS;
 #[cfg(feature = "xattr")]
