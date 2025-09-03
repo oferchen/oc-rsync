@@ -743,6 +743,7 @@ fn run_single(
                     opts.port,
                     connect_timeout,
                     addr_family,
+                    sync_opts.blocking_io,
                     opts.protocol.unwrap_or(31),
                     caps_send,
                     None,
@@ -852,6 +853,7 @@ fn run_single(
                     opts.port,
                     connect_timeout,
                     addr_family,
+                    sync_opts.blocking_io,
                     opts.protocol.unwrap_or(31),
                     caps_send,
                     None,
@@ -915,6 +917,7 @@ fn run_single(
                             opts.port,
                             connect_timeout,
                             addr_family,
+                            sync_opts.blocking_io,
                         )
                         .map_err(EngineError::from)?;
                         let mut src_session = SshStdioTransport::spawn_with_rsh(
@@ -930,6 +933,7 @@ fn run_single(
                             opts.port,
                             connect_timeout,
                             addr_family,
+                            sync_opts.blocking_io,
                         )
                         .map_err(EngineError::from)?;
 
@@ -999,6 +1003,7 @@ fn run_single(
                             opts.port,
                             opts.connect_timeout,
                             addr_family,
+                            sync_opts.blocking_io,
                         )
                         .map_err(EngineError::from)?;
                         let mut src_session = spawn_daemon_session(
@@ -1057,6 +1062,7 @@ fn run_single(
                             opts.port,
                             opts.connect_timeout,
                             addr_family,
+                            sync_opts.blocking_io,
                         )
                         .map_err(EngineError::from)?;
                         let stats;

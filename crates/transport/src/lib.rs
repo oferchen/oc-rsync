@@ -85,6 +85,7 @@ impl SshStdioTransport {
         _port: Option<u16>,
         _connect_timeout: Option<std::time::Duration>,
         _family: Option<AddressFamily>,
+        _blocking_io: bool,
     ) -> io::Result<Self> {
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
@@ -107,6 +108,7 @@ impl SshStdioTransport {
         _port: Option<u16>,
         _connect_timeout: Option<std::time::Duration>,
         _family: Option<AddressFamily>,
+        _blocking_io: bool,
         _version: u32,
         _caps: u32,
         _token: Option<&str>,
