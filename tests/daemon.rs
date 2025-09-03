@@ -93,6 +93,12 @@ fn parse_module_parses_options() {
     assert!(module.write_only);
 }
 
+#[test]
+fn parse_module_rejects_missing_path() {
+    assert!(parse_module("data=").is_err());
+    assert!(parse_module("data=,comment=hi").is_err());
+}
+
 #[cfg(unix)]
 #[test]
 fn parse_module_resolves_named_uid_gid() {
