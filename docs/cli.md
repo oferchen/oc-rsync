@@ -4,6 +4,7 @@ The `oc-rsync` binary aims to mirror the familiar `rsync` experience. An
 overview of project goals and features is available in the
 [README](../README.md#in-scope-features), and a high-level summary of CLI goals
 lives in the [README's CLI section](../README.md#cli).
+For a complete list of flags and their implementation status, see the [feature matrix](feature_matrix.md), which is the authoritative reference for contributors.
 
 ## Usage
 
@@ -244,9 +245,7 @@ Each entry links to the corresponding row in
 |  | `--write-devices` | off |  | [matrix](feature_matrix.md#--write-devices) |
 | `-X` | `--xattrs` | off | requires `xattr` feature | [matrix](feature_matrix.md#--xattrs) |
 
-Implementation details for each flag live in the
-[feature matrix](feature_matrix.md) and the
-[CLI flag reference](cli/flags.md).
+Implementation details for each flag live in the [feature matrix](feature_matrix.md), the authoritative reference for flag coverage.
 
 ### Format escapes
 

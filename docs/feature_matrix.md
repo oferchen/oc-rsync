@@ -121,7 +121,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--one-file-system` | ✅ | Y | Y | Y | [crates/walk/tests/walk.rs](../crates/walk/tests/walk.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--only-write-batch` | ✅ | Y | Y | Y | [tests/write_batch.rs](../tests/write_batch.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | like --write-batch but w/o updating dest |
 | `--open-noatime` | ❌ | N | N | N | — | — | not yet implemented |
-| `--out-format` | ❌ | N | N | N | — | — | not yet implemented |
+| `--out-format` | ✅ | Y | Y | Y | [tests/out_format.rs](../tests/out_format.rs)<br>[tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/logging/src/lib.rs](../crates/logging/src/lib.rs) | custom output format |
 | `--outbuf` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [bin/oc-rsync/src/main.rs](../bin/oc-rsync/src/main.rs) | set stdout buffering |
 | `--owner` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires root or CAP_CHOWN |
 | `--partial` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/resume.rs](../crates/engine/tests/resume.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
@@ -151,10 +151,10 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--sparse` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | creates holes for long zero runs |
 | `--specials` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--stats` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--stderr` | ❌ | N | N | N | — | — | not yet implemented |
+| `--stderr` | ✅ | Y | Y | Y | [crates/cli/tests/stderr.rs](../crates/cli/tests/stderr.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/logging/src/lib.rs](../crates/logging/src/lib.rs) | control stderr output mode |
 | `--stop-after` | ✅ | N | N | N | [tests/timeout.rs](../tests/timeout.rs) | [crates/cli/src/options.rs](../crates/cli/src/options.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |  |
 | `--stop-at` | ✅ | N | N | N | [tests/timeout.rs](../tests/timeout.rs) | [crates/cli/src/options.rs](../crates/cli/src/options.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |  |
-| `--suffix` | ❌ | N | N | N | — | — | not yet implemented |
+| `--suffix` | ✅ | Y | Y | Y | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs) | backup filename suffix |
 | `--super` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | overrides `--fake-super` |
 | `--temp-dir` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires same filesystem for atomic rename |
 | `--timeout` | ✅ | N | N | N | [tests/timeout.rs](../tests/timeout.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | idle and I/O timeout |
