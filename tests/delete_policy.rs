@@ -118,8 +118,8 @@ fn remove_source_files_via_cli() {
 fn ignore_errors_allows_deletion_failure() {
     use std::os::unix::fs::PermissionsExt;
 
+    #[cfg(unix)]
     if Uid::effective().is_root() {
-        eprintln!("skipping: requires non-root privileges");
         return;
     }
 

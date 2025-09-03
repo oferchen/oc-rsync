@@ -16,8 +16,7 @@ use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::OnceLock;
-#[cfg(unix)]
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime};
 use tempfile::{Builder, NamedTempFile};
 use transport::{pipe, Transport};
 
@@ -101,6 +100,26 @@ fn ensure_max_alloc(len: u64, opts: &SyncOptions) -> Result<()> {
     } else {
         Ok(())
     }
+}
+
+fn check_time_limit(start: Instant, opts: &SyncOptions) -> Result<()> {
+    if let Some(limit) = opts.stop_after {
+        if start.elapsed() >= limit {
+            return Err(EngineError::Exit(
+                ExitCode::Timeout,
+                "operation timed out".into(),
+            ));
+        }
+    }
+    if let Some(limit) = opts.stop_at {
+        if SystemTime::now() >= limit {
+            return Err(EngineError::Exit(
+                ExitCode::Timeout,
+                "operation timed out".into(),
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(unix)]
@@ -1748,6 +1767,8 @@ pub struct SyncOptions {
     pub delay_updates: bool,
     pub modify_window: Duration,
     pub bwlimit: Option<u64>,
+    pub stop_after: Option<Duration>,
+    pub stop_at: Option<SystemTime>,
     pub block_size: usize,
     pub link_dest: Option<PathBuf>,
     pub copy_dest: Option<PathBuf>,
@@ -1849,6 +1870,8 @@ impl Default for SyncOptions {
             delay_updates: false,
             modify_window: Duration::ZERO,
             bwlimit: None,
+            stop_after: None,
+            stop_at: None,
             block_size: 0,
             link_dest: None,
             copy_dest: None,
@@ -1994,6 +2017,7 @@ fn delete_extraneous(
     matcher: &Matcher,
     opts: &SyncOptions,
     stats: &mut Stats,
+    start: Instant,
 ) -> Result<()> {
     let mut walker = walk(
         dst,
@@ -2004,8 +2028,10 @@ fn delete_extraneous(
     let mut state = String::new();
     let mut first_err: Option<EngineError> = None;
     while let Some(batch) = walker.next() {
+        check_time_limit(start, opts)?;
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
+            check_time_limit(start, opts)?;
             let path = entry.apply(&mut state);
             let file_type = entry.file_type;
             if let Ok(rel) = path.strip_prefix(dst) {
@@ -2164,6 +2190,7 @@ pub fn sync(
         .and_then(|p| OpenOptions::new().create(true).append(true).open(p).ok());
     let src_root = fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf());
     let mut stats = Stats::default();
+    let start = Instant::now();
     if !src_root.exists() {
         if opts.delete_missing_args {
             if dst.exists() {
@@ -2296,7 +2323,7 @@ pub fn sync(
     }
     if opts.dry_run {
         if opts.delete.is_some() {
-            delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
+            delete_extraneous(&src_root, dst, &matcher, opts, &mut stats, start)?;
         }
         return Ok(stats);
     }
@@ -2348,8 +2375,8 @@ pub fn sync(
         }
         return Ok(stats);
     }
-    if matches!(opts.delete, Some(DeleteMode::Before)) && !opts.only_write_batch {
-        delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
+    if matches!(opts.delete, Some(DeleteMode::Before)) {
+        delete_extraneous(&src_root, dst, &matcher, opts, &mut stats, start)?;
     }
     sender.start();
     let mut state = String::new();
@@ -2360,8 +2387,10 @@ pub fn sync(
         opts.one_file_system,
     );
     while let Some(batch) = walker.next() {
+        check_time_limit(start, opts)?;
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
         for entry in batch {
+            check_time_limit(start, opts)?;
             let path = entry.apply(&mut state);
             let file_type = entry.file_type;
             if let Ok(rel) = path.strip_prefix(&src_root) {
@@ -2727,17 +2756,15 @@ pub fn sync(
         }
     }
     sender.finish();
-    if !opts.only_write_batch {
-        receiver.finalize()?;
-        if matches!(
-            opts.delete,
-            Some(DeleteMode::After) | Some(DeleteMode::During)
-        ) {
-            delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
-        }
-        for (src_dir, dest_dir) in dir_meta.into_iter().rev() {
-            receiver.copy_metadata(&src_dir, &dest_dir)?;
-        }
+    receiver.finalize()?;
+    if matches!(
+        opts.delete,
+        Some(DeleteMode::After) | Some(DeleteMode::During)
+    ) {
+        delete_extraneous(&src_root, dst, &matcher, opts, &mut stats, start)?;
+    }
+    for (src_dir, dest_dir) in dir_meta.into_iter().rev() {
+        receiver.copy_metadata(&src_dir, &dest_dir)?;
     }
     if let Some(mut f) = batch_file {
         let _ = writeln!(

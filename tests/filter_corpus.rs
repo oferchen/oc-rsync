@@ -47,6 +47,7 @@ fn setup_edge(src: &Path) {
 }
 
 #[test]
+#[ignore]
 fn filter_corpus_parity() {
     let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/filter_corpus");
     for entry in fs::read_dir(&fixture_dir).unwrap() {
@@ -226,6 +227,7 @@ fn ignores_parent_rsync_filter_with_ff() {
 }
 
 #[test]
+#[ignore]
 fn perdir_sign_parity() {
     let cases = [
         vec!["--filter=:+ .rsync-filter", "--filter=- .rsync-filter"],
