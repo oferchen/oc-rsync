@@ -599,7 +599,16 @@ pub fn parse_config_file(path: &Path) -> io::Result<DaemonConfig> {
 }
 
 pub fn load_config(path: Option<&Path>) -> io::Result<DaemonConfig> {
-    let path = path.unwrap_or_else(|| Path::new("/etc/oc-rsyncd.conf"));
+    let default;
+    let path = match path {
+        Some(p) => p,
+        None => {
+            default = env::var("OC_RSYNC_CONFIG_PATH")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from("/etc/oc-rsyncd.conf"));
+            &default
+        }
+    };
     parse_config_file(path)
 }
 

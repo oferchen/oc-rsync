@@ -10,7 +10,7 @@ use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Child, Command as StdCommand, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
@@ -369,16 +369,20 @@ fn parse_config_value_contains_comment_chars_inside_quotes() {
 }
 
 #[test]
+#[serial]
 fn load_config_default_path() {
-    let path = Path::new("/etc/oc-rsyncd.conf");
-    let backup = fs::read_to_string(path).ok();
-    fs::write(path, "port = 873\n").unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let cfg_path = dir.path().join("rsyncd.conf");
+    fs::write(&cfg_path, "port = 873\n").unwrap();
+    let var = "OC_RSYNC_CONFIG_PATH";
+    let prev = std::env::var(var).ok();
+    std::env::set_var(var, &cfg_path);
     let cfg = load_config(None).unwrap();
     assert_eq!(cfg.port, Some(873));
-    if let Some(contents) = backup {
-        fs::write(path, contents).unwrap();
+    if let Some(v) = prev {
+        std::env::set_var(var, v);
     } else {
-        fs::remove_file(path).unwrap();
+        std::env::remove_var(var);
     }
 }
 
