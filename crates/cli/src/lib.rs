@@ -29,7 +29,7 @@ pub use utils::{parse_iconv, parse_rsh, print_version_if_requested};
 
 use compress::{available_codecs, Codec};
 pub use engine::EngineError;
-use engine::{pipe_sessions, sync, DeleteMode, Result, Stats, StrongHash, SyncOptions};
+use engine::{pipe_sessions, sync, DeleteMode, Result, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, Matcher, Rule};
 pub use formatter::render_help;
 use logging::{human_bytes, parse_escapes, InfoFlag};
@@ -870,9 +870,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         )
                         .map_err(EngineError::from)?;
 
-                        if let Some(limit) = opts.bwlimit {
+                        let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            pipe_sessions(&mut src_session, &mut dst_session)?;
+                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
                             let (src_err, _) = src_session.stderr();
                             if !src_err.is_empty() {
                                 let msg = if let Some(cv) = iconv.as_ref() {
@@ -892,8 +892,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 };
                                 return Err(EngineError::Other(msg));
                             }
+                            stats
                         } else {
-                            pipe_sessions(&mut src_session, &mut dst_session)?;
+                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
                             let (src_err, _) = src_session.stderr();
                             if !src_err.is_empty() {
                                 let msg = if let Some(cv) = iconv.as_ref() {
@@ -912,8 +913,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 };
                                 return Err(EngineError::Other(msg));
                             }
-                        }
-                        Stats::default()
+                            stats
+                        };
+                        stats
                     }
                     (Some(sm), Some(dm)) => {
                         let mut dst_session = spawn_daemon_session(
@@ -946,13 +948,13 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
                         )?;
-                        if let Some(limit) = opts.bwlimit {
+                        let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            pipe_sessions(&mut src_session, &mut dst_session)?;
+                            pipe_sessions(&mut src_session, &mut dst_session)?
                         } else {
-                            pipe_sessions(&mut src_session, &mut dst_session)?;
-                        }
-                        Stats::default()
+                            pipe_sessions(&mut src_session, &mut dst_session)?
+                        };
+                        stats
                     }
                     (Some(sm), None) => {
                         let mut dst_session = SshStdioTransport::spawn_with_rsh(
@@ -985,9 +987,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
                         )?;
-                        if let Some(limit) = opts.bwlimit {
+                        let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            pipe_sessions(&mut src_session, &mut dst_session)?;
+                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
                             let dst_session = dst_session.into_inner();
                             let (dst_err, _) = dst_session.stderr();
                             if !dst_err.is_empty() {
@@ -998,8 +1000,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 };
                                 return Err(EngineError::Other(msg));
                             }
+                            stats
                         } else {
-                            pipe_sessions(&mut src_session, &mut dst_session)?;
+                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
                             let (dst_err, _) = dst_session.stderr();
                             if !dst_err.is_empty() {
                                 let msg = if let Some(cv) = iconv.as_ref() {
@@ -1009,8 +1012,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 };
                                 return Err(EngineError::Other(msg));
                             }
-                        }
-                        Stats::default()
+                            stats
+                        };
+                        stats
                     }
                     (None, Some(dm)) => {
                         let mut dst_session = spawn_daemon_session(
@@ -1043,12 +1047,12 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
-                        if let Some(limit) = opts.bwlimit {
+                        let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            pipe_sessions(&mut src_session, &mut dst_session)?;
+                            pipe_sessions(&mut src_session, &mut dst_session)?
                         } else {
-                            pipe_sessions(&mut src_session, &mut dst_session)?;
-                        }
+                            pipe_sessions(&mut src_session, &mut dst_session)?
+                        };
                         let (src_err, _) = src_session.stderr();
                         if !src_err.is_empty() {
                             let msg = if let Some(cv) = iconv.as_ref() {
@@ -1058,7 +1062,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             };
                             return Err(EngineError::Other(msg));
                         }
-                        Stats::default()
+                        stats
                     }
                 }
             }
