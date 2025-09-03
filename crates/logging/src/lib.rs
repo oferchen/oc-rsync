@@ -2,6 +2,8 @@
 #![allow(clippy::too_many_arguments)]
 use std::fmt;
 use std::fs::OpenOptions;
+#[cfg(unix)]
+use std::os::unix::ffi::OsStrExt;
 #[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 use std::os::unix::net::UnixDatagram;
 use std::path::{Path, PathBuf};
@@ -584,6 +586,29 @@ pub fn rate_formatter(bytes_per_sec: f64) -> String {
     format!("{:>7.2}{}", rate, units)
 }
 
+fn escape_bytes(bytes: &[u8], eight_bit_output: bool) -> String {
+    let mut out = Vec::new();
+    for &b in bytes {
+        if (b < 0x20 && b != b'\t') || b == 0x7f || (!eight_bit_output && b >= 0x80) {
+            out.extend_from_slice(format!("\\#{:03o}", b).as_bytes());
+        } else {
+            out.push(b);
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+pub fn escape_path(path: &Path, eight_bit_output: bool) -> String {
+    #[cfg(unix)]
+    {
+        escape_bytes(path.as_os_str().as_bytes(), eight_bit_output)
+    }
+    #[cfg(not(unix))]
+    {
+        escape_bytes(path.to_string_lossy().as_bytes(), eight_bit_output)
+    }
+}
+
 pub fn parse_escapes(input: &str) -> String {
     let mut out = String::new();
     let mut chars = input.chars().peekable();
@@ -644,6 +669,7 @@ pub fn render_out_format(
     name: &Path,
     link: Option<&Path>,
     itemized: Option<&str>,
+    eight_bit_output: bool,
 ) -> String {
     let fmt = parse_escapes(format);
     let mut out = String::new();
@@ -652,11 +678,11 @@ pub fn render_out_format(
         if c == '%' {
             if let Some(n) = chars.next() {
                 match n {
-                    'n' => out.push_str(&name.to_string_lossy()),
+                    'n' => out.push_str(&escape_path(name, eight_bit_output)),
                     'L' => {
                         if let Some(l) = link {
                             out.push_str(" -> ");
-                            out.push_str(&l.to_string_lossy());
+                            out.push_str(&escape_path(l, eight_bit_output));
                         }
                     }
                     'i' => {
