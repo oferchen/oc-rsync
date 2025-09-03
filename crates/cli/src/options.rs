@@ -570,15 +570,23 @@ pub(crate) struct ClientOpts {
         long = "write-batch",
         value_name = "FILE",
         help_heading = "Misc",
-        conflicts_with = "read_batch"
+        conflicts_with_all = ["read_batch", "only_write_batch"]
     )]
     pub write_batch: Option<PathBuf>,
+    #[arg(
+        long = "only-write-batch",
+        value_name = "FILE",
+        help_heading = "Misc",
+        help = "like --write-batch but w/o updating dest",
+        conflicts_with_all = ["write_batch", "read_batch"]
+    )]
+    pub only_write_batch: Option<PathBuf>,
     #[arg(
         long = "read-batch",
         value_name = "FILE",
         help_heading = "Misc",
         help = "read a batched update from FILE",
-        conflicts_with = "write_batch"
+        conflicts_with_all = ["write_batch", "only_write_batch"]
     )]
     pub read_batch: Option<PathBuf>,
     #[arg(long = "copy-devices", help_heading = "Misc")]
