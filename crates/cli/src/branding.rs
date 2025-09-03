@@ -1,7 +1,14 @@
 // crates/cli/src/branding.rs
 use std::env;
 
-pub const DEFAULT_HELP_PREFIX: &str = r#"rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
+pub const DEFAULT_BRAND_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const DEFAULT_BRAND_CREDITS: &str =
+    "Automatic Rust re-implementation of rsync semantics by Ofer Chen (2025). Not affiliated with Samba.";
+
+pub const DEFAULT_HELP_PREFIX: &str = r#"{prog} {version}
+{credits}
+
+rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
 are welcome to redistribute it under certain conditions.  See the GNU
 General Public Licence for details.
 
@@ -22,9 +29,9 @@ Options
 "#;
 
 pub const DEFAULT_HELP_SUFFIX: &str = r#"
-Use "{prog} --daemon --help" to see the daemon-mode command-line options.
-Please see the {prog}(1) and {prog}d.conf(5) manpages for full documentation.
-For project updates and documentation, visit https://github.com/oc-rsync/oc-rsync.
+Use "rsync --daemon --help" to see the daemon-mode command-line options.
+Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
+See https://rsync.samba.org/ for updates, bug reports, and answers
 "#;
 
 pub fn program_name() -> String {
@@ -37,6 +44,26 @@ pub fn program_name() -> String {
         .unwrap_or_else(|_| "oc-rsync".to_string())
 }
 
+pub fn brand_version() -> String {
+    env::var("OC_RSYNC_BRAND_VERSION")
+        .or_else(|_| {
+            option_env!("OC_RSYNC_BRAND_VERSION")
+                .map(str::to_string)
+                .ok_or(env::VarError::NotPresent)
+        })
+        .unwrap_or_else(|_| DEFAULT_BRAND_VERSION.to_string())
+}
+
+pub fn brand_credits() -> String {
+    env::var("OC_RSYNC_BRAND_CREDITS")
+        .or_else(|_| {
+            option_env!("OC_RSYNC_BRAND_CREDITS")
+                .map(str::to_string)
+                .ok_or(env::VarError::NotPresent)
+        })
+        .unwrap_or_else(|_| DEFAULT_BRAND_CREDITS.to_string())
+}
+
 pub fn help_prefix() -> String {
     env::var("OC_RSYNC_BRAND_HEADER")
         .or_else(|_| {
@@ -44,7 +71,7 @@ pub fn help_prefix() -> String {
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
-        .unwrap_or_else(|_| DEFAULT_HELP_PREFIX.replace("rsync", &program_name()))
+        .unwrap_or_else(|_| DEFAULT_HELP_PREFIX.to_string())
 }
 
 pub fn help_suffix() -> String {
@@ -54,5 +81,5 @@ pub fn help_suffix() -> String {
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
-        .unwrap_or_else(|_| DEFAULT_HELP_SUFFIX.replace("{prog}", &program_name()))
+        .unwrap_or_else(|_| DEFAULT_HELP_SUFFIX.to_string())
 }
