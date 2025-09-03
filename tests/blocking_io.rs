@@ -44,7 +44,6 @@ fn version_matches_upstream_nonblocking() {
         .output()
         .unwrap();
     assert!(up_output.status.success());
-
     let ours = sanitize(&oc_output.stdout);
     if ours.is_empty() {
         return;
