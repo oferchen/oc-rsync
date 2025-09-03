@@ -21,7 +21,7 @@ when available. Do not exceed functionality of upstream at https://rsync.samba.o
 ## Compression
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
-| zstd, lz4, zlibx and zlib codecs | ✅ | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/lib.rs](../crates/compress/src/lib.rs) |
+| zstd and zlib codecs | ✅ | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/lib.rs](../crates/compress/src/lib.rs) |
 | `--skip-compress` suffix handling | ✅ | [tests/skip_compress.rs](../tests/skip_compress.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | Additional codecs (e.g. lzo) | ❌ | — | — |
 

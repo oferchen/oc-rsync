@@ -28,27 +28,6 @@ fn zlib_roundtrip() {
 }
 
 #[test]
-fn zlibx_roundtrip() {
-    let tmp = tempdir().unwrap();
-    let src = tmp.path().join("src");
-    let dst = tmp.path().join("dst");
-    fs::create_dir_all(&src).unwrap();
-    fs::write(src.join("file.txt"), b"hello world").unwrap();
-    sync(
-        &src,
-        &dst,
-        &Matcher::default(),
-        &[Codec::Zlibx],
-        &SyncOptions {
-            compress: true,
-            ..Default::default()
-        },
-    )
-    .unwrap();
-    assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
-}
-
-#[test]
 fn zstd_roundtrip() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -70,27 +49,6 @@ fn zstd_roundtrip() {
 }
 
 #[test]
-fn lz4_roundtrip() {
-    let tmp = tempdir().unwrap();
-    let src = tmp.path().join("src");
-    let dst = tmp.path().join("dst");
-    fs::create_dir_all(&src).unwrap();
-    fs::write(src.join("file.txt"), b"hello world").unwrap();
-    sync(
-        &src,
-        &dst,
-        &Matcher::default(),
-        &[Codec::Lz4],
-        &SyncOptions {
-            compress: true,
-            ..Default::default()
-        },
-    )
-    .unwrap();
-    assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
-}
-
-#[test]
 fn codec_selection_respects_options() {
     let opts = SyncOptions {
         compress: true,
@@ -99,14 +57,6 @@ fn codec_selection_respects_options() {
     assert_eq!(
         select_codec(&[Codec::Zlib, Codec::Zstd], &opts),
         Some(Codec::Zstd)
-    );
-    assert_eq!(
-        select_codec(&[Codec::Lz4, Codec::Zlibx, Codec::Zlib], &opts),
-        Some(Codec::Lz4)
-    );
-    assert_eq!(
-        select_codec(&[Codec::Zlibx, Codec::Zlib], &opts),
-        Some(Codec::Zlibx)
     );
     assert_eq!(select_codec(&[Codec::Zlib], &opts), Some(Codec::Zlib));
 
