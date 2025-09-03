@@ -13,6 +13,7 @@ use std::time::Duration;
 use clap::parser::ValueSource;
 use clap::{ArgMatches, FromArgMatches};
 
+pub mod branding;
 pub mod daemon;
 mod formatter;
 pub mod options;

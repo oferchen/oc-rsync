@@ -1008,6 +1008,7 @@ dependencies = [
  "engine",
  "logging",
  "oc-rsync-cli",
+ "predicates",
  "protocol",
  "tempfile",
 ]
