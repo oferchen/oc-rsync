@@ -3,8 +3,11 @@ use std::fs;
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::thread;
+use std::time::Duration;
 use tempfile::tempdir;
-use transport::{pipe, SshStdioTransport, TcpTransport};
+use transport::{
+    pipe, LocalPipeTransport, SshStdioTransport, TcpTransport, TimeoutTransport, Transport,
+};
 
 fn wait_for<F: Fn() -> bool>(cond: F) {
     let start = std::time::Instant::now();
@@ -69,4 +72,89 @@ fn pipe_tcp_transports() {
     dst_handle.join().unwrap();
     let out = fs::read(dst).unwrap();
     assert_eq!(out, b"daemon_remote");
+}
+
+struct SlowReceiveTransport {
+    data: Vec<u8>,
+    delay: Duration,
+    pos: usize,
+}
+
+impl SlowReceiveTransport {
+    fn new(data: Vec<u8>, delay: Duration) -> Self {
+        Self {
+            data,
+            delay,
+            pos: 0,
+        }
+    }
+}
+
+impl Transport for SlowReceiveTransport {
+    fn send(&mut self, _data: &[u8]) -> std::io::Result<()> {
+        Ok(())
+    }
+
+    fn receive(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        if self.pos >= self.data.len() {
+            return Ok(0);
+        }
+        std::thread::sleep(self.delay);
+        let n = std::cmp::min(buf.len(), self.data.len() - self.pos);
+        buf[..n].copy_from_slice(&self.data[self.pos..self.pos + n]);
+        self.pos += n;
+        Ok(n)
+    }
+}
+
+struct SlowSendTransport<W> {
+    inner: W,
+    delay: Duration,
+}
+
+impl<W> SlowSendTransport<W> {
+    fn new(inner: W, delay: Duration) -> Self {
+        Self { inner, delay }
+    }
+
+    fn into_inner(self) -> W {
+        self.inner
+    }
+}
+
+impl<W: Write> Transport for SlowSendTransport<W> {
+    fn send(&mut self, data: &[u8]) -> std::io::Result<()> {
+        std::thread::sleep(self.delay);
+        self.inner.write_all(data)
+    }
+
+    fn receive(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+        Ok(0)
+    }
+}
+
+#[test]
+fn pipe_refreshes_timeouts_on_slow_receive() {
+    let src_inner = SlowReceiveTransport::new(b"x".to_vec(), Duration::from_millis(100));
+    let mut src = TimeoutTransport::new(src_inner, Some(Duration::from_millis(50))).unwrap();
+    let dst_inner = LocalPipeTransport::new(std::io::empty(), Vec::new());
+    let mut dst = TimeoutTransport::new(dst_inner, Some(Duration::from_millis(50))).unwrap();
+
+    let bytes = pipe(&mut src, &mut dst).unwrap();
+    assert_eq!(bytes, 1);
+    let (_, writer) = dst.into_inner().into_inner();
+    assert_eq!(writer, b"x");
+}
+
+#[test]
+fn pipe_refreshes_timeouts_on_slow_send() {
+    let src_inner = LocalPipeTransport::new(&b"y"[..], std::io::sink());
+    let mut src = TimeoutTransport::new(src_inner, Some(Duration::from_millis(50))).unwrap();
+    let dst_inner = SlowSendTransport::new(Vec::new(), Duration::from_millis(100));
+    let mut dst = TimeoutTransport::new(dst_inner, Some(Duration::from_millis(50))).unwrap();
+
+    let bytes = pipe(&mut src, &mut dst).unwrap();
+    assert_eq!(bytes, 1);
+    let writer = dst.into_inner().into_inner();
+    assert_eq!(writer, b"y");
 }

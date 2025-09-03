@@ -26,7 +26,11 @@ where
         if n == 0 {
             break;
         }
+        src.update_timeout();
+        dst.update_timeout();
         dst.send(&buf[..n])?;
+        src.update_timeout();
+        dst.update_timeout();
         total += n as u64;
     }
     Ok(total)
