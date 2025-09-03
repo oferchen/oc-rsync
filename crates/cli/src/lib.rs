@@ -1065,9 +1065,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         }
     };
     if opts.stats && !opts.quiet {
-        if stats.files_deleted > 0 {
-            println!("Number of deleted files: {}", stats.files_deleted);
-        }
+        println!("Number of deleted files: {}", stats.files_deleted);
         println!(
             "Number of regular files transferred: {}",
             stats.files_transferred
