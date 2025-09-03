@@ -77,8 +77,11 @@ impl Demux {
 
     pub fn ingest(&mut self, frame: Frame) -> std::io::Result<()> {
         let id = frame.header.channel;
-        let msg = Message::from_frame(frame.clone(), None)?;
+        let msg = Message::from_frame(frame, None)?;
+        self.ingest_message(id, msg)
+    }
 
+    pub fn ingest_message(&mut self, id: u16, msg: Message) -> std::io::Result<()> {
         match &msg {
             Message::ErrorXfer(text) => {
                 self.error_xfers.push(text.clone());

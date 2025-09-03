@@ -647,7 +647,7 @@ fn ignore_times_forces_update() {
 }
 
 #[test]
-fn local_sync_without_flag_fails() {
+fn local_sync_without_flag_succeeds() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
@@ -656,7 +656,7 @@ fn local_sync_without_flag_fails() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args([&src_arg, dst_dir.to_str().unwrap()]);
-    cmd.assert().failure();
+    cmd.assert().success();
 }
 
 #[test]
