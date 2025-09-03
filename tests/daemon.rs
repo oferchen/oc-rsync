@@ -131,6 +131,11 @@ fn chroot_drops_privileges() {
     use nix::sys::wait::waitpid;
     use nix::unistd::{fork, getegid, geteuid, ForkResult};
 
+    if geteuid().as_raw() != 0 {
+        eprintln!("skipping chroot_drops_privileges: requires root");
+        return;
+    }
+
     let dir = tempdir().unwrap();
     match unsafe { fork() } {
         Ok(ForkResult::Parent { child }) => {
@@ -153,7 +158,12 @@ fn chroot_drops_privileges() {
 #[serial]
 fn chroot_requires_root() {
     use nix::sys::wait::waitpid;
-    use nix::unistd::{fork, ForkResult};
+    use nix::unistd::{fork, geteuid, ForkResult};
+
+    if geteuid().as_raw() != 0 {
+        eprintln!("skipping chroot_requires_root: requires root");
+        return;
+    }
     let dir = tempdir().unwrap();
     match unsafe { fork() } {
         Ok(ForkResult::Parent { child }) => {
