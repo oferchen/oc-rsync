@@ -43,7 +43,7 @@ jobs:
         with:
           tool: cargo-llvm-cov
       - name: Test with coverage
-        run: cargo llvm-cov --all-features --fail-under-lines 95
+        run: cargo llvm-cov --all-features --fail-under-lines 95 --fail-under-functions 95
       - name: Validate interop matrix docs
         run: scripts/check-run-matrix-docs.sh
       - name: Check CLI help against docs
