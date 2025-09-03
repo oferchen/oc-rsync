@@ -10,7 +10,7 @@ fn iconv_help_matches_upstream() {
     let our_line = ours.lines().find(|l| l.contains("--iconv")).unwrap().trim();
 
     let help = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/rsync-help-80.txt"),
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/rsync-help-80.txt"),
     )
     .unwrap();
     let upstream_line = help.lines().find(|l| l.contains("--iconv")).unwrap().trim();
