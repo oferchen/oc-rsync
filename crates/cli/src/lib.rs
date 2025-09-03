@@ -338,8 +338,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         RemoteSpec::Remote { path, .. } => &path.path,
     };
     let dst_is_dir = match &dst {
-        RemoteSpec::Local(p) => p.trailing_slash || p.path.is_dir(),
-        RemoteSpec::Remote { path, .. } => path.trailing_slash,
+        RemoteSpec::Local(p) => p.path.is_dir(),
+        RemoteSpec::Remote { .. } => true,
     };
     if opts.relative {
         let rel = if src_path.is_absolute() {
