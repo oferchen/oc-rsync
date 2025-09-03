@@ -274,3 +274,26 @@ pub fn render_help(cmd: &Command) -> String {
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::options::cli_command;
+
+    #[test]
+    fn arg_order_matches_arguments() {
+        let cmd = cli_command();
+        let args: Vec<_> = cmd
+            .get_arguments()
+            .filter(|a| !a.is_hide_set() && !a.is_positional())
+            .collect();
+
+        for arg in &args {
+            let id = arg.get_id().as_str();
+            let count = ARG_ORDER.iter().filter(|&&v| v == id).count();
+            assert_eq!(count, 1, "{id} appears {count} times in ARG_ORDER");
+        }
+
+        assert_eq!(ARG_ORDER.len(), args.len());
+    }
+}
