@@ -8,7 +8,8 @@ use std::env;
 fn help_columns_80() {
     env::set_var("COLUMNS", "80");
     let out = render_help(&cli_command());
-    insta::assert_snapshot!("help_columns_80", out);
+    let expected = include_str!("../../../tests/fixtures/rsync-help.txt").trim_end();
+    assert_eq!(out, expected);
 }
 
 #[test]
@@ -16,5 +17,6 @@ fn help_columns_80() {
 fn help_columns_120() {
     env::set_var("COLUMNS", "120");
     let out = render_help(&cli_command());
-    insta::assert_snapshot!("help_columns_120", out);
+    let expected = include_str!("../../../tests/fixtures/rsync-help-120.txt").trim_end();
+    assert_eq!(out, expected);
 }

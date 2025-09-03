@@ -3,8 +3,6 @@ use clap::Command;
 use std::env;
 use textwrap::{wrap, Options as WrapOptions};
 
-use crate::version::version_banner;
-
 const RSYNC_HELP: &str = include_str!("../../../tests/fixtures/rsync-help.txt");
 
 const HELP_PREFIX: &str = "rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you\nare welcome to redistribute it under certain conditions.  See the GNU\nGeneral Public Licence for details.\n\nrsync is a file transfer program capable of efficient remote update\nvia a fast differencing algorithm.\n\nUsage: rsync [OPTION]... SRC [SRC]... DEST\n  or   rsync [OPTION]... SRC [SRC]... [USER@]HOST:DEST\n  or   rsync [OPTION]... SRC [SRC]... [USER@]HOST::DEST\n  or   rsync [OPTION]... SRC [SRC]... rsync://[USER@]HOST[:PORT]/DEST\n  or   rsync [OPTION]... [USER@]HOST:SRC [DEST]\n  or   rsync [OPTION]... [USER@]HOST::SRC [DEST]\n  or   rsync [OPTION]... rsync://[USER@]HOST[:PORT]/SRC [DEST]\nThe ':' usages connect via remote shell, while '::' & 'rsync://' usages connect\nto an rsync daemon, and require SRC or DEST to start with a module name.\n\nOptions\n";
@@ -175,6 +173,8 @@ pub fn render_help(cmd: &Command) -> String {
     if width == 80 {
         return RSYNC_HELP.trim_end().to_owned();
     }
+    let banner_end = RSYNC_HELP.find(HELP_PREFIX).unwrap_or(0);
+    let version_banner = &RSYNC_HELP[..banner_end];
     let spec_width = 23;
     let desc_width = if width > spec_width + 2 {
         width - spec_width - 2
@@ -184,7 +184,7 @@ pub fn render_help(cmd: &Command) -> String {
     let wrap_opts = WrapOptions::new(desc_width).break_words(false);
 
     let mut out = String::new();
-    out.push_str(&version_banner());
+    out.push_str(version_banner);
     out.push_str(HELP_PREFIX);
 
     let args: Vec<_> = cmd.get_arguments().collect();
