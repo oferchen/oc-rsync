@@ -847,6 +847,12 @@ fn stats_parity() {
         .output()
         .unwrap();
 
+    assert!(
+        ours.status.success(),
+        "oc-rsync failed: {}",
+        String::from_utf8_lossy(&ours.stderr)
+    );
+
     let up_stdout = String::from_utf8_lossy(&up.stdout);
     let mut up_stats: Vec<String> = up_stdout
         .lines()
