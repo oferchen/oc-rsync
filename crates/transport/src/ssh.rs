@@ -60,6 +60,7 @@ impl SshStdioTransport {
     pub fn spawn_server<I, S>(
         host: &str,
         server_args: I,
+        remote_opts: &[String],
         known_hosts: Option<&Path>,
         strict_host_key_checking: bool,
         port: Option<u16>,
@@ -99,6 +100,7 @@ impl SshStdioTransport {
         cmd.arg(host);
         cmd.arg("rsync");
         cmd.arg("--server");
+        cmd.args(remote_opts);
         cmd.args(server_args);
 
         Self::spawn_from_command(cmd)

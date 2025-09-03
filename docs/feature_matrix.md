@@ -137,7 +137,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--read-batch` | ✅ | Y | Y | Y | [tests/write_batch.rs](../tests/write_batch.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--recursive` | ✅ | Y | Y | Y | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--relative` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--remote-option` | ✅ | N | N | N | [tests/interop/remote_option.rs](../tests/interop/remote_option.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--remote-option` | ✅ | Y | Y | Y | [tests/interop/remote_option.rs](../tests/interop/remote_option.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--remove-source-files` | ✅ | Y | Y | Y | [tests/delete_policy.rs](../tests/delete_policy.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--rsh` | ✅ | Y | Y | Y | [tests/rsh.rs](../tests/rsh.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | supports quoting, env vars, and `RSYNC_RSH` |
 | `--rsync-path` | ✅ | Y | Y | Y | [tests/rsh.rs](../tests/rsh.rs)<br>[tests/rsync_path.rs](../tests/rsync_path.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | accepts remote commands with env vars |

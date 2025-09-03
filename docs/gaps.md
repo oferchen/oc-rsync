@@ -10,7 +10,7 @@ when available. Do not exceed functionality of upstream at https://rsync.samba.o
 | --- | --- | --- | --- |
 | Comprehensive flag parsing and help text parity | ✅ | [tests/cli.rs](../tests/cli.rs)<br>[tests/help_output.rs](../tests/help_output.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | Composite `--archive` flag expansion | ⚠️ | [tests/archive.rs](../tests/archive.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| Remote-only option parsing (`--remote-option`) | ❌ | — | — |
+| Remote-only option parsing (`--remote-option`) | ✅ | [tests/interop/remote_option.rs](../tests/interop/remote_option.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 
 _Future contributors: update this section when adding or fixing CLI parser behaviors._
 
