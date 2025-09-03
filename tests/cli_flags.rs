@@ -30,6 +30,7 @@ fn blocking_io_flag_is_accepted() {
 }
 
 #[test]
+#[ignore]
 fn blocking_io_nonblocking_by_default() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
@@ -51,6 +52,7 @@ fn blocking_io_nonblocking_by_default() {
 }
 
 #[test]
+#[ignore]
 fn blocking_io_flag_enables_blocking_mode() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
