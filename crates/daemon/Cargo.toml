@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 transport = { path = "../transport" }
-nix = { version = "0.27", features = ["user", "fs"] }
+nix = { version = "0.27", features = ["user", "fs", "process"] }
 protocol = { path = "../protocol" }
 sd-notify = "0.4"
 ipnet = "2"

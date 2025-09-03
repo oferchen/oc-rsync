@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crate::daemon::DaemonOpts;
+pub use crate::daemon::DaemonOpts;
 use crate::formatter;
 use crate::utils::{parse_duration, parse_nonzero_duration, parse_size};
 use clap::{ArgAction, Args, CommandFactory, Parser, ValueEnum};

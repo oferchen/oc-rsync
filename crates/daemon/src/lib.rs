@@ -9,6 +9,8 @@ use std::sync::{atomic::AtomicUsize, atomic::Ordering, Arc};
 use std::time::Duration;
 
 #[cfg(unix)]
+use nix::unistd::{fork, setsid, ForkResult};
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
 use ipnet::IpNet;
@@ -1093,7 +1095,22 @@ pub fn run_daemon(
     gid: u32,
     handler: Arc<Handler>,
     quiet: bool,
+    no_detach: bool,
 ) -> io::Result<()> {
+    #[cfg(not(unix))]
+    let _ = no_detach;
+    #[cfg(unix)]
+    if !no_detach {
+        match unsafe { fork() } {
+            Ok(ForkResult::Parent { .. }) => return Ok(()),
+            Ok(ForkResult::Child) => {
+                setsid().map_err(io::Error::other)?;
+            }
+            Err(e) => {
+                return Err(io::Error::other(e));
+            }
+        }
+    }
     if let Some(path) = &pid_file {
         let mut f = OpenOptions::new()
             .create(true)

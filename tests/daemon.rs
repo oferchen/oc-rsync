@@ -614,6 +614,7 @@ fn spawn_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -644,6 +645,7 @@ fn spawn_daemon_with_timeout(timeout: u64) -> io::Result<(Child, u16, tempfile::
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -720,7 +722,12 @@ fn daemon_allows_path_traversal_without_chroot() {
     fs::write(&cfg_path, cfg).unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
+        .args([
+            "--daemon",
+            "--no-detach",
+            "--config",
+            cfg_path.to_str().unwrap(),
+        ])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
@@ -819,6 +826,7 @@ fn spawn_daemon_with_address(addr: &str) -> io::Result<(Child, u16, tempfile::Te
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -853,7 +861,12 @@ fn spawn_daemon_with_config_address(addr: &str) -> io::Result<(Child, u16, tempf
     fs::write(&cfg_path, cfg).unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
+        .args([
+            "--daemon",
+            "--no-detach",
+            "--config",
+            cfg_path.to_str().unwrap(),
+        ])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
@@ -875,6 +888,7 @@ fn spawn_daemon_ipv4() -> io::Result<(Child, u16, tempfile::TempDir)> {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -902,6 +916,7 @@ fn spawn_daemon_ipv6() -> io::Result<(Child, u16, tempfile::TempDir)> {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -1130,6 +1145,7 @@ fn daemon_runs_with_numeric_ids() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -1208,6 +1224,7 @@ fn daemon_rejects_world_readable_secrets_file() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -1255,6 +1272,7 @@ fn daemon_rejects_invalid_token() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -1302,6 +1320,7 @@ fn daemon_rejects_missing_token() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -1349,6 +1368,7 @@ fn daemon_rejects_unauthorized_module() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -1400,6 +1420,7 @@ fn daemon_accepts_authorized_client() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -1458,7 +1479,12 @@ fn daemon_accepts_listed_auth_user() {
     fs::write(&cfg_path, cfg).unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
+        .args([
+            "--daemon",
+            "--no-detach",
+            "--config",
+            cfg_path.to_str().unwrap(),
+        ])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
@@ -1513,7 +1539,12 @@ fn daemon_rejects_unlisted_auth_user() {
     fs::write(&cfg_path, cfg).unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
+        .args([
+            "--daemon",
+            "--no-detach",
+            "--config",
+            cfg_path.to_str().unwrap(),
+        ])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
@@ -1565,6 +1596,7 @@ fn daemon_parses_secrets_file_with_comments() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -1619,6 +1651,7 @@ fn client_authenticates_with_password_file() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", dir.path().display()),
             "--port",
@@ -1665,6 +1698,7 @@ fn daemon_respects_host_allow_and_deny_lists() {
             .unwrap()
             .args([
                 "--daemon",
+                "--no-detach",
                 "--module",
                 "data=/tmp",
                 "--port",
@@ -1696,6 +1730,7 @@ fn daemon_respects_host_allow_and_deny_lists() {
             .unwrap()
             .args([
                 "--daemon",
+                "--no-detach",
                 "--module",
                 "data=/tmp",
                 "--port",
@@ -1746,6 +1781,7 @@ fn daemon_respects_module_host_lists() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--config",
             cfg.to_str().unwrap(),
             "--port",
@@ -1772,6 +1808,7 @@ fn daemon_respects_module_host_lists() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--config",
             cfg.to_str().unwrap(),
             "--port",
@@ -1815,6 +1852,7 @@ fn daemon_displays_motd() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             "data=/tmp",
             "--port",
@@ -1865,6 +1903,7 @@ fn daemon_suppresses_motd_when_requested() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             "data=/tmp",
             "--port",
@@ -1913,6 +1952,7 @@ fn client_respects_no_motd() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("data={}", src.display()),
             "--port",
@@ -1968,6 +2008,7 @@ fn daemon_writes_log_file() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             "data=/tmp",
             "--port",
@@ -2020,6 +2061,7 @@ fn daemon_honors_bwlimit() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             "data=/tmp",
             "--port",
@@ -2065,6 +2107,7 @@ fn daemon_hides_unlisted_modules() {
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!("hidden={},list=no", hidden.display()),
             "--module",
@@ -2098,6 +2141,26 @@ fn daemon_hides_unlisted_modules() {
     let listing = String::from_utf8_lossy(&resp[..n]);
     assert!(listing.contains("visible"));
     assert!(!listing.contains("hidden"));
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_stays_foreground_with_no_detach() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let (mut child, port, _dir) = match spawn_daemon() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
+    wait_for_daemon(port);
+    assert!(child.try_wait().unwrap().is_none());
     let _ = child.kill();
     let _ = child.wait();
 }
