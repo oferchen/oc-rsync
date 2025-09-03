@@ -177,7 +177,8 @@ impl<R: Read, W: Write> Server<R, W> {
         if self.caps & CAP_CODECS != 0 {
             match Frame::decode(&mut self.reader) {
                 Ok(frame) => {
-                    let msg = Message::from_frame(frame.clone(), None)?;
+                    let id = frame.header.channel;
+                    let msg = Message::from_frame(frame, None)?;
                     if let Message::Codecs(buf) = msg {
                         peer_codecs = decode_codecs(&buf)?;
                         let payload = encode_codecs(codecs);
@@ -185,7 +186,7 @@ impl<R: Read, W: Write> Server<R, W> {
                         frame.encode(&mut self.writer)?;
                         self.writer.flush()?;
                     } else {
-                        self.demux.ingest(frame)?;
+                        self.demux.ingest_message(id, msg)?;
                     }
                 }
                 Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {}
