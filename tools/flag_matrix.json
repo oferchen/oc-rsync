@@ -441,12 +441,12 @@
   },
   {
     "flag": "--old-args",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--old-dirs",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {

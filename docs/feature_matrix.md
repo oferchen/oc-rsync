@@ -113,9 +113,9 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--no-implied-dirs` | ✅ | Y | Y | Y | [tests/no_implied_dirs.rs](../tests/no_implied_dirs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | preserves existing symlinked directories |
 | `--no-motd` | ✅ | Y | Y | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |  |
 | `--numeric-ids` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--old-args` | ❌ | N | N | N | — | — | not yet implemented |
-| `--old-d` | ❌ | N | N | N | [gaps.md](gaps.md) | — | alias for `--old-dirs` |
-| `--old-dirs` | ❌ | N | N | N | — | — | not yet implemented |
+| `--old-args` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | disable modern arg-protection idiom |
+| `--old-d` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | — | alias for `--old-dirs` |
+| `--old-dirs` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | works like --dirs when talking to old rsync |
 | `--omit-dir-times` | ✅ | Y | Y | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--omit-link-times` | ✅ | Y | Y | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--one-file-system` | ✅ | Y | Y | Y | [crates/walk/tests/walk.rs](../crates/walk/tests/walk.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |

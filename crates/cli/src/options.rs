@@ -28,6 +28,13 @@ pub(crate) struct ClientOpts {
     pub recursive: bool,
     #[arg(short = 'd', long, help_heading = "Selection")]
     pub dirs: bool,
+    #[arg(
+        long = "old-dirs",
+        visible_alias = "old-d",
+        help_heading = "Selection",
+        help = "works like --dirs when talking to old rsync"
+    )]
+    pub old_dirs: bool,
     #[arg(short = 'R', long, help_heading = "Selection")]
     pub relative: bool,
     #[arg(long = "no-implied-dirs", help_heading = "Selection")]
@@ -525,6 +532,13 @@ pub(crate) struct ClientOpts {
         help = "send OPTION to the remote side only"
     )]
     pub remote_option: Vec<String>,
+    #[arg(
+        long = "old-args",
+        help_heading = "Misc",
+        help = "disable the modern arg-protection idiom",
+        conflicts_with = "secluded_args"
+    )]
+    pub old_args: bool,
     #[arg(
         short = 's',
         long = "secluded-args",

@@ -89,8 +89,8 @@
 | --no-implied-dirs | Ignored |  |
 | --no-motd | Supported |  |
 | --numeric-ids | Supported |  |
-| --old-args | Ignored |  |
-| --old-dirs | Ignored |  |
+| --old-args | Supported |  |
+| --old-dirs | Supported |  |
 | --omit-dir-times | Supported |  |
 | --omit-link-times | Supported |  |
 | --one-file-system | Supported |  |

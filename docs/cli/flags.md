@@ -75,7 +75,7 @@
 | -0 | --from0 | all *-from/filter files are delimited by 0s | no |  | no |
 |  | --include-from=FILE | read include patterns from FILE | no |  | no |
 |  | --include=PATTERN | don't exclude files matching PATTERN | no |  | no |
-|  | --old-args | disable the modern arg-protection idiom | no |  | no |
+|  | --old-args | disable the modern arg-protection idiom | yes |  | no |
 | -s | --secluded-args | use the protocol to safely send the args | no |  | no |
 |  | --trust-sender | trust the remote sender's file list | no |  | no |
 | -F |  | same as --filter='dir-merge /.rsync-filter' repeated: --filter='- .rsync-filter' | no |  | no |
@@ -177,7 +177,7 @@
 |  | --munge-links | munge symlinks to make them safe & unusable | yes |  | no |
 |  | --no-OPTION | turn off an implied OPTION (e.g. --no-D) | no |  | no |
 |  | --no-implied-dirs | don't send implied dirs with --relative | yes |  | no |
-| --old-d | --old-dirs | works like --dirs when talking to old rsync | no |  | no |
+| --old-d | --old-dirs | works like --dirs when talking to old rsync | yes |  | no |
 | -x | --one-file-system | don't cross filesystem boundaries | yes |  | no |
 |  | --partial | keep partially transferred files | yes |  | no |
 |  | --partial-dir=DIR | put a partially transferred file into DIR | yes |  | no |
