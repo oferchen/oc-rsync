@@ -47,6 +47,7 @@ pub const ARG_ORDER: &[&str] = &[
     "write_devices",
     "specials",
     "devices_specials",
+    "no_D",
     "times",
     "atimes",
     "crtimes",
