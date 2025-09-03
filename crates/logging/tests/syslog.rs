@@ -32,6 +32,7 @@ fn syslog_emits_message() {
     let mut buf = [0u8; 256];
     let (n, _) = server.recv_from(&mut buf).unwrap();
     let msg = std::str::from_utf8(&buf[..n]).unwrap();
-    assert!(msg.contains("hello"));
+    let expected = format!("<14>rsync[{}]: hello", std::process::id());
+    assert_eq!(msg, expected);
     std::env::remove_var("OC_RSYNC_SYSLOG_PATH");
 }
