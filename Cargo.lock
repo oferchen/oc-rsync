@@ -378,6 +378,7 @@ name = "daemon"
 version = "0.1.0"
 dependencies = [
  "ipnet",
+ "logging",
  "nix 0.27.1",
  "protocol",
  "sd-notify",

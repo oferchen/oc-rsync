@@ -9,6 +9,7 @@ nix = { version = "0.27", features = ["user", "fs", "process"] }
 protocol = { path = "../protocol" }
 sd-notify = "0.4"
 ipnet = "2"
+logging = { path = "../logging" }
 
 [dev-dependencies]
 tempfile = "3"

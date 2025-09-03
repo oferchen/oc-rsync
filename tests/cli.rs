@@ -797,13 +797,9 @@ fn progress_parity() {
     assert_eq!(up_parts.first(), our_parts.first());
     assert_eq!(up_parts.get(1), our_parts.get(1));
     assert!(our_parts.get(2).is_some_and(|s| s.ends_with("KB/s")));
-    let rate_placeholder: String = our_parts[2]
-        .chars()
-        .map(|c| if c.is_ascii_digit() { 'X' } else { c })
-        .collect();
     let normalized = format!(
         "{:>15} {:>4} {} {}",
-        our_parts[0], our_parts[1], rate_placeholder, our_parts[3]
+        our_parts[0], our_parts[1], "XKB/s", our_parts[3]
     );
     insta::assert_snapshot!("progress_parity", normalized);
 }

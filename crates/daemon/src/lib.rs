@@ -14,6 +14,7 @@ use nix::unistd::{fork, setsid, ForkResult};
 use std::os::unix::fs::PermissionsExt;
 
 use ipnet::IpNet;
+use logging::{DebugFlag, InfoFlag, LogFormat, StderrMode, SubscriberConfig};
 use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
 use sd_notify::{self, NotifyState};
 use transport::{AddressFamily, RateLimitedTransport, TcpTransport, TimeoutTransport, Transport};
@@ -78,6 +79,29 @@ fn parse_gid(val: &str) -> io::Result<u32> {
 fn parse_gid(val: &str) -> io::Result<u32> {
     val.parse::<u32>()
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
+pub fn init_logging(
+    log_file: Option<&Path>,
+    log_format: Option<&str>,
+    syslog: bool,
+    journald: bool,
+    quiet: bool,
+) {
+    let cfg = SubscriberConfig::builder()
+        .format(LogFormat::Text)
+        .verbose(0)
+        .info(Vec::<InfoFlag>::new())
+        .debug(Vec::<DebugFlag>::new())
+        .quiet(quiet)
+        .stderr(StderrMode::Errors)
+        .log_file(log_file.map(|p| (p.to_path_buf(), log_format.map(|s| s.to_string()))))
+        .syslog(syslog)
+        .journald(journald)
+        .colored(false)
+        .timestamps(true)
+        .build();
+    logging::init(cfg);
 }
 
 #[derive(Debug)]
@@ -1079,6 +1103,8 @@ pub fn run_daemon(
     hosts_deny: Vec<String>,
     log_file: Option<PathBuf>,
     log_format: Option<String>,
+    syslog: bool,
+    journald: bool,
     motd: Option<PathBuf>,
     pid_file: Option<PathBuf>,
     lock_file: Option<PathBuf>,
@@ -1135,6 +1161,14 @@ pub fn run_daemon(
     if let Some(dir) = state_dir {
         let _ = fs::create_dir_all(dir);
     }
+
+    init_logging(
+        log_file.as_deref(),
+        log_format.as_deref(),
+        syslog,
+        journald,
+        quiet,
+    );
 
     if let Some(addr) = address {
         if let Some(AddressFamily::V4) = family {

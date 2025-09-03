@@ -48,12 +48,12 @@ use users::get_user_by_uid;
 pub mod version;
 
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
-    init_logging(matches);
     let opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
     if opts.daemon.daemon {
         return run_daemon(opts.daemon, matches);
     }
+    init_logging(matches);
     let probe_opts =
         ProbeOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
     if probe_opts.probe {
