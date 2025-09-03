@@ -2075,18 +2075,52 @@ fn archive_implies_recursive() {
 }
 
 #[test]
-fn dry_run_does_not_modify_destination() {
+fn dry_run_parity_destination_untouched() {
+    let rsync = StdCommand::new("rsync")
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .ok();
+    if rsync.is_none() {
+        eprintln!("skipping test: rsync not installed");
+        return;
+    }
+
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
     std::fs::create_dir_all(&src_dir).unwrap();
-    std::fs::write(src_dir.join("file.txt"), b"hello").unwrap();
+    std::fs::write(src_dir.join("new.txt"), b"hello").unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    std::fs::write(dst_dir.join("existing.txt"), b"keep").unwrap();
 
-    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args(["--dry-run", &src_arg, dst_dir.to_str().unwrap()]);
-    cmd.assert().success();
-    assert!(!dst_dir.join("file.txt").exists());
+    let dst_arg = dst_dir.to_str().unwrap();
+
+    let ours = Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .env("LC_ALL", "C")
+        .args(["--recursive", "--dry-run", &src_arg, "--", dst_arg])
+        .output()
+        .unwrap();
+
+    assert!(dst_dir.join("existing.txt").exists());
+    assert_eq!(
+        std::fs::read_to_string(dst_dir.join("existing.txt")).unwrap(),
+        "keep"
+    );
+    assert!(!dst_dir.join("new.txt").exists());
+
+    let up = StdCommand::new("rsync")
+        .env("LC_ALL", "C")
+        .args(["-r", "--dry-run", &src_arg, "--", dst_arg])
+        .output()
+        .unwrap();
+
+    assert_eq!(up.status.code(), ours.status.code());
+    assert_eq!(up.stdout, ours.stdout);
+    assert_eq!(up.stderr, ours.stderr);
 }
 
 #[test]
