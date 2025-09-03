@@ -6,7 +6,7 @@
 |----------|--------|
 | Linux    | ✅ Full support |
 | macOS    | ✅ Full support |
-| Windows  | ⚠️ Initial work pending |
+| Windows  | ⚠️ SSH transport unavailable |
 
 ## Sync Modes
 

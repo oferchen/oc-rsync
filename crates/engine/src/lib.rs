@@ -59,6 +59,18 @@ pub fn block_size(len: u64) -> usize {
     }
 }
 
+fn is_device(file_type: &std::fs::FileType) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::FileTypeExt;
+        file_type.is_block_device() || file_type.is_char_device()
+    }
+    #[cfg(not(unix))]
+    {
+        false
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum EngineError {
     #[error(transparent)]
@@ -1084,31 +1096,29 @@ impl Sender {
                 Err(_) => Box::new(Cursor::new(Vec::new())),
             }
         };
-        let delta: Box<dyn Iterator<Item = Result<Op>> + '_> = if self.opts.copy_devices
-            && (file_type.is_block_device() || file_type.is_char_device())
-            && src_len == 0
-        {
-            Box::new(std::iter::empty())
-        } else if self.opts.whole_file {
-            ensure_max_alloc(block_size.max(8192) as u64, &self.opts)?;
-            let mut buf = vec![0u8; block_size.max(8192)];
-            Box::new(std::iter::from_fn(move || {
-                match src_reader.read(&mut buf) {
-                    Ok(0) => None,
-                    Ok(n) => Some(Ok(Op::Data(buf[..n].to_vec()))),
-                    Err(e) => Some(Err(e.into())),
-                }
-            }))
-        } else {
-            Box::new(compute_delta(
-                &self.cfg,
-                &mut basis_reader,
-                &mut src_reader,
-                block_size,
-                DEFAULT_BASIS_WINDOW,
-                &self.opts,
-            )?)
-        };
+        let delta: Box<dyn Iterator<Item = Result<Op>> + '_> =
+            if self.opts.copy_devices && is_device(&file_type) && src_len == 0 {
+                Box::new(std::iter::empty())
+            } else if self.opts.whole_file {
+                ensure_max_alloc(block_size.max(8192) as u64, &self.opts)?;
+                let mut buf = vec![0u8; block_size.max(8192)];
+                Box::new(std::iter::from_fn(move || {
+                    match src_reader.read(&mut buf) {
+                        Ok(0) => None,
+                        Ok(n) => Some(Ok(Op::Data(buf[..n].to_vec()))),
+                        Err(e) => Some(Err(e.into())),
+                    }
+                }))
+            } else {
+                Box::new(compute_delta(
+                    &self.cfg,
+                    &mut basis_reader,
+                    &mut src_reader,
+                    block_size,
+                    DEFAULT_BASIS_WINDOW,
+                    &self.opts,
+                )?)
+            };
         if self.opts.backup && dest.exists() {
             let backup_path = if let Some(ref dir) = self.opts.backup_dir {
                 let mut p = dir.join(rel);
@@ -1331,7 +1341,7 @@ impl Receiver {
         let mut basis: Box<dyn ReadSeek> = if self.opts.copy_devices || self.opts.write_devices {
             if let Ok(meta) = fs::symlink_metadata(&basis_path) {
                 let ft = meta.file_type();
-                if ft.is_block_device() || ft.is_char_device() {
+                if is_device(&ft) {
                     Box::new(Cursor::new(Vec::new()))
                 } else {
                     match File::open(&basis_path) {
@@ -2392,10 +2402,7 @@ pub fn sync(
                 if opts.dirs && !file_type.is_dir() {
                     continue;
                 }
-                if file_type.is_file()
-                    || (opts.copy_devices
-                        && (file_type.is_char_device() || file_type.is_block_device()))
-                {
+                if file_type.is_file() || (opts.copy_devices && is_device(&file_type)) {
                     let src_meta = fs::metadata(&path).map_err(|e| io_context(&path, e))?;
                     if outside_size_bounds(src_meta.len(), opts) {
                         continue;

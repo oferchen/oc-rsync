@@ -9,7 +9,6 @@ engine = { path = "../engine" }
 protocol = { path = "../protocol" }
 filters = { path = "../filters" }
 transport = { path = "../transport" }
-users = "0.11"
 compress = { path = "../compress" }
 shell-words = "1.1"
 meta = { path = "../meta", default-features = false }
@@ -22,6 +21,7 @@ time = { version = "0.3", features = ["macros", "parsing"] }
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.27", features = ["user", "fs"] }
+users = "0.11"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 caps = "0.5"
