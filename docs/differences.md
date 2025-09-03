@@ -4,7 +4,6 @@ This document is synchronized with [feature_matrix.md](feature_matrix.md) and li
 
 - Default metadata preservation settings (permissions, ownership, devices, and special files) now mirror upstream `rsync` defaults; no deviations are known.
 
-- `--blocking-io`: parity with upstream not yet verified. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--config`: parity with upstream not yet verified. Tests: [tests/daemon_config.rs](../tests/daemon_config.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--copy-as`: parity with upstream not yet verified; requires root or CAP_CHOWN. Tests: [tests/copy_as.rs](../tests/copy_as.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--copy-links`: parity with upstream not yet verified. Tests: [tests/symlink_resolution.rs](../tests/symlink_resolution.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).

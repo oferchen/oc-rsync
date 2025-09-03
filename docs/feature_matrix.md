@@ -27,7 +27,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--backup` | ✅ | Y | Y | Y | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | uses `~` suffix without `--backup-dir` |
 | `--backup-dir` | ✅ | Y | Y | Y | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | implies `--backup` |
 | `--block-size` | ✅ | Y | Y | Y | [tests/block_size.rs](../tests/block_size.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | controls delta block size |
-| `--blocking-io` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--blocking-io` | ✅ | Y | Y | Y | [tests/blocking_io.rs](../tests/blocking_io.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--bwlimit` | ✅ | Y | Y | Y | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | burst = 128×RATE bytes, min sleep = 100 ms |
 | `--cc` | ✅ | Y | Y | Y | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | alias for `--checksum-choice` |
 | `--checksum` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | strong hashes: xxh128, xxh3, xxh64, MD5 (default), SHA-1, MD4 (protocol < 30) |
