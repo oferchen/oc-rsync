@@ -17,6 +17,7 @@ use crate::{AddressFamily, LocalPipeTransport, SshTransport, Transport};
 
 const SSH_IO_BUF_SIZE: usize = 32 * 1024;
 const SSH_STDERR_CAP: usize = 32 * 1024;
+pub const MAX_FRAME_LEN: usize = 16 * 1024 * 1024;
 
 pub struct SshStdioTransport {
     inner: Option<LocalPipeTransport<BufReader<ChildStdout>, ChildStdin>>,
@@ -273,6 +274,9 @@ impl SshStdioTransport {
             let tag = Tag::try_from(hdr[2]).map_err(io::Error::from)?;
             let msg = Msg::try_from(hdr[3]).map_err(io::Error::from)?;
             let len = u32::from_be_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
+            if len > MAX_FRAME_LEN {
+                return Err(io::Error::other("frame length exceeds maximum"));
+            }
             let mut payload = vec![0u8; len];
             let mut off = 0;
             while off < len {
