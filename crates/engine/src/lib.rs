@@ -1903,6 +1903,9 @@ impl SyncOptions {
         if self.inplace {
             self.remote_options.push("--inplace".into());
         }
+        if self.hard_links {
+            self.remote_options.push("--hard-links".into());
+        }
         if let Some(dir) = &self.partial_dir {
             self.remote_options
                 .push(format!("--partial-dir={}", dir.display()));
