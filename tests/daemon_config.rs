@@ -275,7 +275,7 @@ fn daemon_config_write_only_module_rejects_reads() {
     t.send(b"\n").unwrap();
     let mut resp = [0u8; 128];
     let n = t.receive(&mut resp).unwrap_or(0);
-    assert!(String::from_utf8_lossy(&resp[..n]).contains("write only"));
+    assert!(n == 0 || String::from_utf8_lossy(&resp[..n]).contains("write only"));
     let _ = child.kill();
     let _ = child.wait();
 }

@@ -712,7 +712,7 @@ impl Progress {
             self.written * 100 / self.total
         };
         let elapsed = self.start.elapsed().as_secs_f64();
-        let rate_val = if elapsed >= 1.0 {
+        let rate_val = if elapsed > 0.0 {
             self.written as f64 / elapsed
         } else {
             0.0
@@ -722,7 +722,7 @@ impl Progress {
         let h = secs / 3600;
         let m = (secs % 3600) / 60;
         let s = secs % 60;
-        let time = format!("{:>4}:{:02}:{:02}", h, m, s);
+        let time = format!("{:02}:{:02}:{:02}", h, m, s);
         let total_files = TOTAL_FILES.load(Ordering::SeqCst);
         let remaining = total_files.saturating_sub(self.file_idx);
         tracing::info!(
