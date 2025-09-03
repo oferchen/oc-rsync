@@ -6,8 +6,19 @@ on:
   pull_request:
     branches: ["main"]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
+  LC_ALL: C
+  LANG: C
+  COLUMNS: 80
 
 jobs:
   lint-test:
@@ -18,12 +29,15 @@ jobs:
         with:
           toolchain: stable
           override: true
+      - uses: Swatinem/rust-cache@v2
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libacl1-dev
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Verify comments
+        run: make verify-comments
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@v2
         with:
@@ -49,6 +63,7 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
           override: true
+      - uses: Swatinem/rust-cache@v2
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libacl1-dev
       - name: Build release binary

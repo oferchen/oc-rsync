@@ -19,6 +19,20 @@ The Makefile offers shortcuts for common CI checks:
   --fail-under-lines 95 --fail-under-functions 95` to gather test coverage.
 - `make interop` – run the interoperability matrix with `tests/interop/run_matrix.sh`.
 
+## Continuous Integration
+
+The CI workflow runs with a consistent environment and enforces comment
+headers:
+
+- Environment variables: `RUSTFLAGS="-Dwarnings"`, `LC_ALL=C`, `LANG=C`, and
+  `COLUMNS=80`.
+- Repository access is read only (`permissions: { contents: read }`) and a
+  concurrency group (`ci-${{ github.ref }}`) cancels in-progress runs for the same
+  ref.
+- Builds cache dependencies using `Swatinem/rust-cache@v2`.
+- After `cargo clippy`, CI runs `make verify-comments` to ensure file header
+  comments follow the policy.
+
 ## Pull Request Process
 1. Fork the repository and create a topic branch.
 2. Ensure your branch is up to date with the `main` branch.
