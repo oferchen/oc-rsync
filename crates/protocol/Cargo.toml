@@ -11,6 +11,7 @@ checksums = { path = "../checksums" }
 filelist = { path = "../filelist" }
 encoding_rs = "0.8"
 subtle = "2"
+tracing = "0.1"
 
 [features]
 default = []
