@@ -4,18 +4,18 @@
 
 | Platform | Status |
 |----------|--------|
-| Linux    | ✅ Planned full support |
-| macOS    | ✅ Planned full support |
+| Linux    | ✅ Full support |
+| macOS    | ✅ Full support |
 | Windows  | ⚠️ Initial work pending |
 
 ## Sync Modes
 
 | Mode                     | Status | Notes |
 |--------------------------|--------|-------|
-| Local → Local            | ✅ Basic directory sync |
-| Local → Remote (SSH)     | ⚠️ Early interoperability |
-| Local → Remote (daemon)  | ⚠️ Early interoperability |
-| Remote → Remote          | ❌ Not yet implemented |
+| Local → Local            | ✅ Full support | Parity with classic rsync |
+| Local → Remote (SSH)     | ✅ Interoperates with classic rsync | Hardlinks pending |
+| Local → Remote (daemon)  | ✅ Interoperates with classic rsync | Hardlinks pending |
+| Remote → Remote          | ❌ Not yet implemented | — |
 
 ## Remote Feature Coverage
 
