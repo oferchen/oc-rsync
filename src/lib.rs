@@ -319,6 +319,13 @@ mod tests {
         use nix::unistd::{chown, Gid, Uid};
         use std::os::unix::fs::MetadataExt;
 
+        if !Uid::effective().is_root() {
+            println!(
+                "skipping sync_preserves_ownership: requires root privileges to change ownership"
+            );
+            return;
+        }
+
         let (_dir, src_dir, dst_dir) = setup_dirs();
 
         let file = src_dir.join("file.txt");
