@@ -6,7 +6,7 @@ use oc_rsync_cli::branding;
 pub const RSYNC_PROTOCOL: u32 = SUPPORTED_PROTOCOLS[0];
 
 const COPYRIGHT: &str =
-    "Copyright (C) 1996-2022 by Andrew Tridgell, Wayne Davison, and others.";
+    "Copyright (C) 1996-2025 by Andrew Tridgell, Wayne Davison, and others.";
 const WEBSITE: &str = "Web site: https://rsync.samba.org/";
 const CAPABILITIES: &[&str] = &[
     "    64-bit files, 64-bit inums, 64-bit timestamps, 64-bit long ints,",
