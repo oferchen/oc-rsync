@@ -8,6 +8,7 @@ use std::os::unix::ffi::OsStrExt;
 #[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 use std::os::unix::net::UnixDatagram;
 use std::path::{Path, PathBuf};
+use time::{macros::format_description, OffsetDateTime};
 use tracing::field::{Field, Visit};
 use tracing::level_filters::LevelFilter;
 use tracing::{Event, Level, Subscriber};
@@ -738,7 +739,7 @@ pub fn render_out_format(
         if c == '%' {
             if let Some(n) = chars.next() {
                 match n {
-                    'n' => out.push_str(&escape_path(name, eight_bit_output)),
+                    'n' | 'f' => out.push_str(&escape_path(name, eight_bit_output)),
                     'L' => {
                         if let Some(l) = link {
                             out.push_str(" -> ");
@@ -760,6 +761,14 @@ pub fn render_out_format(
                             };
                             out.push_str(op);
                         }
+                    }
+                    'p' => out.push_str(&std::process::id().to_string()),
+                    't' => {
+                        let now = OffsetDateTime::now_local()
+                            .unwrap_or_else(|_| OffsetDateTime::now_utc());
+                        let fmt =
+                            format_description!("[year]/[month]/[day] [hour]:[minute]:[second]");
+                        out.push_str(&now.format(&fmt).unwrap());
                     }
                     '%' => out.push('%'),
                     other => {
