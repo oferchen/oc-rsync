@@ -106,7 +106,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--max-delete` | ✅ | Y | Y | Y | [tests/delete_policy.rs](../tests/delete_policy.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--max-size` | ✅ | N | N | N | [tests/perf_limits.rs](../tests/perf_limits.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--min-size` | ✅ | N | N | N | [tests/perf_limits.rs](../tests/perf_limits.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--mkpath` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--mkpath` | ✅ | Y | Y | Y | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--modify-window` | ✅ | N | N | N | [tests/modify_window.rs](../tests/modify_window.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | treat close mtimes as equal |
 | `--motd` | ✅ | Y | Y | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |  |
 | `--munge-links` | ✅ | N | N | N | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
