@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-flate2 = "1"
-zstd = "0.13"
+flate2 = { version = "1", optional = true }
+zstd = { version = "0.13", optional = true }
 
 [features]
-default = []
+default = ["zlib", "zstd"]
+zlib = ["dep:flate2"]
+zstd = ["dep:zstd"]
 # AVX-512 implementations (requires nightly Rust)
 nightly = []
