@@ -3,7 +3,6 @@
 
 use assert_cmd::cargo::cargo_bin;
 use assert_cmd::Command;
-use hex;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::{self, Read, Write};
