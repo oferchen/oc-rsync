@@ -840,6 +840,7 @@ fn stats_parity() {
         .env("LC_ALL", "C")
         .env("COLUMNS", "80")
         .args([
+            "--recursive",
             "--stats",
             format!("{}/", src.display()).as_str(),
             dst_ours.to_str().unwrap(),
