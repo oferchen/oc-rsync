@@ -569,7 +569,13 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         compare_dest: opts.compare_dest.clone(),
         backup: opts.backup || opts.backup_dir.is_some(),
         backup_dir: opts.backup_dir.clone(),
-        backup_suffix: opts.suffix.clone(),
+        backup_suffix: opts.suffix.clone().unwrap_or_else(|| {
+            if opts.backup_dir.is_some() {
+                String::new()
+            } else {
+                "~".into()
+            }
+        }),
         chmod: if chmod_rules.is_empty() {
             None
         } else {

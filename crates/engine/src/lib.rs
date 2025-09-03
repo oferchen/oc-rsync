@@ -1105,7 +1105,19 @@ impl Sender {
         };
         if self.opts.backup && dest.exists() {
             let backup_path = if let Some(ref dir) = self.opts.backup_dir {
-                dir.join(rel)
+                let mut p = dir.join(rel);
+                if !self.opts.backup_suffix.is_empty() {
+                    if let Some(name) = p.file_name() {
+                        p = p.with_file_name(format!(
+                            "{}{}",
+                            name.to_string_lossy(),
+                            &self.opts.backup_suffix
+                        ));
+                    } else {
+                        p.push(&self.opts.backup_suffix);
+                    }
+                }
+                p
             } else {
                 let name = dest
                     .file_name()
@@ -2010,7 +2022,19 @@ fn delete_extraneous(
                             None
                         } else if opts.backup {
                             let backup_path = if let Some(ref dir) = opts.backup_dir {
-                                dir.join(rel)
+                                let mut p = dir.join(rel);
+                                if !opts.backup_suffix.is_empty() {
+                                    if let Some(name) = p.file_name() {
+                                        p = p.with_file_name(format!(
+                                            "{}{}",
+                                            name.to_string_lossy(),
+                                            &opts.backup_suffix
+                                        ));
+                                    } else {
+                                        p.push(&opts.backup_suffix);
+                                    }
+                                }
+                                p
                             } else {
                                 let name = path
                                     .file_name()
@@ -2062,7 +2086,19 @@ fn delete_extraneous(
                         None
                     } else if opts.backup {
                         let backup_path = if let Some(ref dir) = opts.backup_dir {
-                            dir.join(rel)
+                            let mut p = dir.join(rel);
+                            if !opts.backup_suffix.is_empty() {
+                                if let Some(name) = p.file_name() {
+                                    p = p.with_file_name(format!(
+                                        "{}{}",
+                                        name.to_string_lossy(),
+                                        &opts.backup_suffix
+                                    ));
+                                } else {
+                                    p.push(&opts.backup_suffix);
+                                }
+                            }
+                            p
                         } else {
                             let name = path
                                 .file_name()
@@ -2130,11 +2166,23 @@ pub fn sync(
                 let meta = fs::symlink_metadata(dst).map_err(|e| io_context(dst, e))?;
                 let res = if opts.backup {
                     let backup_path = if let Some(ref dir) = opts.backup_dir {
-                        if let Some(name) = dst.file_name() {
+                        let mut p = if let Some(name) = dst.file_name() {
                             dir.join(name)
                         } else {
                             dir.join(dst)
+                        };
+                        if !opts.backup_suffix.is_empty() {
+                            if let Some(name) = p.file_name() {
+                                p = p.with_file_name(format!(
+                                    "{}{}",
+                                    name.to_string_lossy(),
+                                    &opts.backup_suffix
+                                ));
+                            } else {
+                                p.push(&opts.backup_suffix);
+                            }
                         }
+                        p
                     } else {
                         let name = dst
                             .file_name()

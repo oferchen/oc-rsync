@@ -154,7 +154,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--stderr` | ❌ | N | N | N | — | — | not yet implemented |
 | `--stop-after` | ❌ | N | N | N | — | — | not yet implemented |
 | `--stop-at` | ❌ | N | N | N | — | — | not yet implemented |
-| `--suffix` | ❌ | N | N | N | — | — | not yet implemented |
+| `--suffix` | ✅ | Y | Y | Y | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | custom backup suffix (default ~ w/o --backup-dir) |
 | `--super` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | overrides `--fake-super` |
 | `--temp-dir` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires same filesystem for atomic rename |
 | `--timeout` | ✅ | N | N | N | [tests/timeout.rs](../tests/timeout.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | idle and I/O timeout |

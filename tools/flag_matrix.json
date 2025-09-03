@@ -631,7 +631,7 @@
   },
   {
     "flag": "--suffix",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {

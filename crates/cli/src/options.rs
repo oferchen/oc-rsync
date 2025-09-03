@@ -198,13 +198,8 @@ pub(crate) struct ClientOpts {
     pub backup: bool,
     #[arg(long = "backup-dir", value_name = "DIR", help_heading = "Backup")]
     pub backup_dir: Option<PathBuf>,
-    #[arg(
-        long = "suffix",
-        value_name = "SUFFIX",
-        default_value = "~",
-        help_heading = "Backup"
-    )]
-    pub suffix: String,
+    #[arg(long = "suffix", value_name = "SUFFIX", help_heading = "Backup")]
+    pub suffix: Option<String>,
     #[arg(short = 'c', long, help_heading = "Attributes")]
     pub checksum: bool,
     #[arg(
