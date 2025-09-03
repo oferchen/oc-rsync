@@ -459,7 +459,11 @@ impl Metadata {
                 let cur_atime = FileTime::from_last_access_time(&meta);
                 if opts.atimes {
                     if let Some(atime) = self.atime {
-                        let mtime = if skip_mtime { cur_mtime } else { self.mtime };
+                        let mtime = if opts.times && !skip_mtime {
+                            self.mtime
+                        } else {
+                            cur_mtime
+                        };
                         filetime::set_symlink_file_times(path, atime, mtime)?;
                     } else if opts.times && !skip_mtime {
                         filetime::set_symlink_file_times(path, cur_atime, self.mtime)?;
@@ -469,10 +473,10 @@ impl Metadata {
                 }
             } else if opts.atimes {
                 if let Some(atime) = self.atime {
-                    if skip_mtime {
-                        filetime::set_file_atime(path, atime)?;
-                    } else {
+                    if opts.times && !skip_mtime {
                         filetime::set_file_times(path, atime, self.mtime)?;
+                    } else {
+                        filetime::set_file_atime(path, atime)?;
                     }
                 } else if opts.times && !skip_mtime {
                     filetime::set_file_mtime(path, self.mtime)?;
