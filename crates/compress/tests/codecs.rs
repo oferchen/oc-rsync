@@ -51,10 +51,16 @@ fn encode_decode_roundtrip_and_error() {
 }
 
 #[test]
-fn should_compress_skips_matching_extensions() {
+fn should_compress_respects_default_list() {
     assert!(should_compress(Path::new("file.txt"), &[]));
+    assert!(!should_compress(Path::new("archive.gz"), &[]));
+    assert!(!should_compress(Path::new("IMAGE.JpG"), &[]));
+}
+
+#[test]
+fn should_compress_handles_mixed_case_patterns() {
     assert!(!should_compress(
-        Path::new("archive.gz"),
-        &["gz".to_string()]
+        Path::new("file.TXT"),
+        &["tXt".to_string()]
     ));
 }
