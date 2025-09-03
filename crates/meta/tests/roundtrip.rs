@@ -9,6 +9,10 @@ use nix::unistd::{chown, geteuid, Gid, Uid};
 use std::time::SystemTime;
 use tempfile::tempdir;
 
+mod common;
+use common::full_metadata_opts;
+
+// Requires root privileges to change file ownership; skipped otherwise.
 #[test]
 fn roundtrip_full_metadata() -> std::io::Result<()> {
     let dir = tempdir()?;
@@ -46,15 +50,7 @@ fn roundtrip_full_metadata() -> std::io::Result<()> {
     }
     chown(&dst, Some(Uid::from_raw(1)), Some(Gid::from_raw(1)))?;
 
-    let opts = Options {
-        owner: true,
-        group: true,
-        perms: true,
-        times: true,
-        atimes: true,
-        crtimes: true,
-        ..Default::default()
-    };
+    let opts = full_metadata_opts();
     let meta = Metadata::from_path(&src, opts.clone())?;
     meta.apply(&dst, opts.clone())?;
     let applied = Metadata::from_path(&dst, opts)?;
