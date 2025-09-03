@@ -3,12 +3,20 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crate::daemon::DaemonOpts;
+pub use crate::daemon::DaemonOpts;
 use crate::formatter;
 use crate::utils::{parse_duration, parse_nonzero_duration, parse_size};
 use clap::{ArgAction, Args, CommandFactory, Parser};
 use logging::{DebugFlag, InfoFlag, StderrMode};
 use protocol::SUPPORTED_PROTOCOLS;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+#[clap(rename_all = "UPPER")]
+pub enum OutBuf {
+    N,
+    L,
+    B,
+}
 
 #[derive(Parser, Debug)]
 pub(crate) struct ClientOpts {
@@ -20,6 +28,13 @@ pub(crate) struct ClientOpts {
     pub recursive: bool,
     #[arg(short = 'd', long, help_heading = "Selection")]
     pub dirs: bool,
+    #[arg(
+        long = "old-dirs",
+        visible_alias = "old-d",
+        help_heading = "Selection",
+        help = "works like --dirs when talking to old rsync"
+    )]
+    pub old_dirs: bool,
     #[arg(short = 'R', long, help_heading = "Selection")]
     pub relative: bool,
     #[arg(long = "no-implied-dirs", help_heading = "Selection")]
@@ -191,13 +206,8 @@ pub(crate) struct ClientOpts {
     pub backup: bool,
     #[arg(long = "backup-dir", value_name = "DIR", help_heading = "Backup")]
     pub backup_dir: Option<PathBuf>,
-    #[arg(
-        long = "suffix",
-        value_name = "SUFFIX",
-        default_value = "~",
-        help_heading = "Backup"
-    )]
-    pub suffix: String,
+    #[arg(long = "suffix", value_name = "SUFFIX", help_heading = "Backup")]
+    pub suffix: Option<String>,
     #[arg(short = 'c', long, help_heading = "Attributes")]
     pub checksum: bool,
     #[arg(
@@ -410,6 +420,13 @@ pub(crate) struct ClientOpts {
     pub progress: bool,
     #[arg(long, help_heading = "Misc")]
     pub blocking_io: bool,
+    #[arg(
+        long = "outbuf",
+        value_name = "MODE",
+        value_enum,
+        help_heading = "Misc"
+    )]
+    pub outbuf: Option<OutBuf>,
     #[arg(long, help_heading = "Misc")]
     pub fsync: bool,
     #[arg(short = 'y', long = "fuzzy", help_heading = "Misc")]
@@ -518,6 +535,13 @@ pub(crate) struct ClientOpts {
         help = "send OPTION to the remote side only"
     )]
     pub remote_option: Vec<String>,
+    #[arg(
+        long = "old-args",
+        help_heading = "Misc",
+        help = "disable the modern arg-protection idiom",
+        conflicts_with = "secluded_args"
+    )]
+    pub old_args: bool,
     #[arg(
         short = 's',
         long = "secluded-args",

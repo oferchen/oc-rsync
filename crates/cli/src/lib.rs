@@ -61,7 +61,7 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     }
     let mut opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
-    if matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
+    if !opts.old_args && matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
         if let Ok(val) = env::var("RSYNC_PROTECT_ARGS") {
             if val != "0" {
                 opts.secluded_args = true;
@@ -103,6 +103,9 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         if !opts.no_specials {
             opts.specials = true;
         }
+    }
+    if opts.old_dirs {
+        opts.dirs = true;
     }
     let matcher = build_matcher(&opts, matches)?;
     let addr_family = if opts.ipv4 {
@@ -201,6 +204,13 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     #[cfg(feature = "acl")]
     if acls {
         remote_opts.push("--acls".into());
+    }
+    if opts.old_args {
+        remote_opts.push("--old-args".into());
+    }
+    if opts.old_dirs {
+        remote_opts.push("-r".into());
+        remote_opts.push("--exclude=/*/*".into());
     }
 
     if let Some(cfg) = &opts.config {
@@ -559,7 +569,13 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         compare_dest: opts.compare_dest.clone(),
         backup: opts.backup || opts.backup_dir.is_some(),
         backup_dir: opts.backup_dir.clone(),
-        backup_suffix: opts.suffix.clone(),
+        backup_suffix: opts.suffix.clone().unwrap_or_else(|| {
+            if opts.backup_dir.is_some() {
+                String::new()
+            } else {
+                "~".into()
+            }
+        }),
         chmod: if chmod_rules.is_empty() {
             None
         } else {
