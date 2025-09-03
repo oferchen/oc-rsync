@@ -20,6 +20,7 @@ pub enum OutBuf {
     B,
 }
 
+#[allow(non_snake_case)]
 #[derive(Parser, Debug, Clone)]
 pub(crate) struct ClientOpts {
     #[command(flatten)]
@@ -351,7 +352,11 @@ pub(crate) struct ClientOpts {
     pub munge_links: bool,
     #[arg(short = 'H', long = "hard-links", help_heading = "Attributes")]
     pub hard_links: bool,
-    #[arg(long, help_heading = "Attributes", overrides_with = "no_devices")]
+    #[arg(
+        long,
+        help_heading = "Attributes",
+        overrides_with_all = ["no_devices", "no_D"]
+    )]
     pub devices: bool,
     #[arg(
         long = "no-devices",
@@ -359,7 +364,11 @@ pub(crate) struct ClientOpts {
         overrides_with = "devices"
     )]
     pub no_devices: bool,
-    #[arg(long, help_heading = "Attributes", overrides_with = "no_specials")]
+    #[arg(
+        long,
+        help_heading = "Attributes",
+        overrides_with_all = ["no_specials", "no_D"]
+    )]
     pub specials: bool,
     #[arg(
         long = "no-specials",
@@ -367,8 +376,15 @@ pub(crate) struct ClientOpts {
         overrides_with = "specials"
     )]
     pub no_specials: bool,
-    #[arg(short = 'D', help_heading = "Attributes")]
+    #[arg(short = 'D', help_heading = "Attributes", overrides_with = "no_D")]
     pub devices_specials: bool,
+    #[allow(non_snake_case)]
+    #[arg(
+        long = "no-D",
+        help_heading = "Attributes",
+        overrides_with_all = ["devices", "specials", "devices_specials"]
+    )]
+    pub no_D: bool,
     #[cfg(feature = "xattr")]
     #[arg(long, help_heading = "Attributes")]
     pub xattrs: bool,

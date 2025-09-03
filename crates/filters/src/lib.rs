@@ -1,11 +1,12 @@
 // crates/filters/src/lib.rs
+
 use globset::{Glob, GlobMatcher};
 use logging::InfoFlag;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
-use std::io::Read;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 const MAX_PARSE_DEPTH: usize = 64;
@@ -1544,14 +1545,18 @@ pub fn parse_list(input: &[u8], from0: bool) -> Vec<String> {
     }
 }
 
-pub fn parse_list_file(path: &Path, from0: bool) -> Result<Vec<String>, ParseError> {
-    let data = if path == Path::new("-") {
+fn read_path_or_stdin(path: &Path) -> io::Result<Vec<u8>> {
+    if path == Path::new("-") {
         let mut buf = Vec::new();
         std::io::stdin().read_to_end(&mut buf)?;
-        buf
+        Ok(buf)
     } else {
-        fs::read(path)?
-    };
+        fs::read(path)
+    }
+}
+
+pub fn parse_list_file(path: &Path, from0: bool) -> Result<Vec<String>, ParseError> {
+    let data = read_path_or_stdin(path)?;
     Ok(parse_list(&data, from0))
 }
 
@@ -1596,13 +1601,7 @@ pub fn parse_file(
     visited: &mut HashSet<PathBuf>,
     depth: usize,
 ) -> Result<Vec<Rule>, ParseError> {
-    let data = if path == Path::new("-") {
-        let mut buf = Vec::new();
-        std::io::stdin().read_to_end(&mut buf)?;
-        buf
-    } else {
-        fs::read(path)?
-    };
+    let data = read_path_or_stdin(path)?;
     parse_from_bytes(&data, from0, visited, depth, Some(path.to_path_buf()))
 }
 
@@ -1640,12 +1639,48 @@ pub fn parse_rule_list_file(
     visited: &mut HashSet<PathBuf>,
     depth: usize,
 ) -> Result<Vec<Rule>, ParseError> {
-    let data = if path == Path::new("-") {
-        let mut buf = Vec::new();
-        std::io::stdin().read_to_end(&mut buf)?;
-        buf
-    } else {
-        fs::read(path)?
-    };
+    let data = read_path_or_stdin(path)?;
     parse_rule_list_from_bytes(&data, from0, sign, visited, depth, Some(path.to_path_buf()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::read_path_or_stdin;
+    use std::io::{Seek, SeekFrom, Write};
+    #[cfg(unix)]
+    use std::os::unix::io::IntoRawFd;
+    use std::path::Path;
+    use tempfile::{tempfile, NamedTempFile};
+
+    #[test]
+    fn reads_from_file() {
+        let mut tmp = NamedTempFile::new().unwrap();
+        write!(tmp, "hello world").unwrap();
+        let data = read_path_or_stdin(tmp.path()).unwrap();
+        assert_eq!(data, b"hello world");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn reads_from_stdin() {
+        let mut file = tempfile().unwrap();
+        write!(file, "stdin data").unwrap();
+        file.seek(SeekFrom::Start(0)).unwrap();
+
+        // Save original stdin
+        let stdin_fd = unsafe { libc::dup(0) };
+        assert!(stdin_fd >= 0);
+
+        let file_fd = file.into_raw_fd();
+        assert!(unsafe { libc::dup2(file_fd, 0) } >= 0);
+        unsafe { libc::close(file_fd) };
+
+        let data = read_path_or_stdin(Path::new("-")).unwrap();
+
+        // Restore stdin
+        assert!(unsafe { libc::dup2(stdin_fd, 0) } >= 0);
+        unsafe { libc::close(stdin_fd) };
+
+        assert_eq!(data, b"stdin data");
+    }
 }

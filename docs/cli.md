@@ -184,7 +184,7 @@ Each entry links to the corresponding row in
 |  | `--mkpath` | off |  | [matrix](feature_matrix.md#--mkpath) |
 | `-@` | `--modify-window` | off |  | [matrix](feature_matrix.md#--modify-window) |
 |  | `--munge-links` | off |  | [matrix](feature_matrix.md#--munge-links) |
-|  | `--no-D` | off | alias for `--no-devices --no-specials` | [matrix](feature_matrix.md#--no-d) |
+|  | `--no-D` | off | alias for `--no-devices` and `--no-specials` | [matrix](feature_matrix.md#--no-d) |
 |  | `--no-OPTION` | off |  | [matrix](feature_matrix.md#--no-option) |
 |  | `--no-implied-dirs` | off | skip creating implicit ancestor directories | [matrix](feature_matrix.md#--no-implied-dirs) |
 |  | `--no-motd` | off |  | [matrix](feature_matrix.md#--no-motd) |

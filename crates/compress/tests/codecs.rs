@@ -1,13 +1,22 @@
 // crates/compress/tests/codecs.rs
-use compress::{
-    decode_codecs, encode_codecs, negotiate_codec, should_compress, Codec, Compressor,
-    Decompressor, Zlib, Zstd,
-};
+use compress::{decode_codecs, encode_codecs, negotiate_codec, should_compress, Codec};
+
+#[cfg(any(feature = "zlib", feature = "zstd"))]
+use compress::{Compressor, Decompressor};
+
+#[cfg(feature = "zlib")]
+use compress::Zlib;
+
+#[cfg(feature = "zstd")]
+use compress::Zstd;
+
 use std::io;
 use std::path::Path;
 
+#[cfg(any(feature = "zlib", feature = "zstd"))]
 const DATA: &[u8] = b"The quick brown fox jumps over the lazy dog";
 
+#[cfg(feature = "zlib")]
 #[test]
 fn zlib_roundtrip() {
     let codec = Zlib::default();
@@ -16,6 +25,7 @@ fn zlib_roundtrip() {
     assert_eq!(DATA, decompressed.as_slice());
 }
 
+#[cfg(feature = "zstd")]
 #[test]
 fn zstd_roundtrip() {
     let codec = Zstd::default();
@@ -51,10 +61,16 @@ fn encode_decode_roundtrip_and_error() {
 }
 
 #[test]
-fn should_compress_skips_matching_extensions() {
+fn should_compress_respects_default_list() {
     assert!(should_compress(Path::new("file.txt"), &[]));
+    assert!(!should_compress(Path::new("archive.gz"), &[]));
+    assert!(!should_compress(Path::new("IMAGE.JpG"), &[]));
+}
+
+#[test]
+fn should_compress_handles_mixed_case_patterns() {
     assert!(!should_compress(
-        Path::new("archive.gz"),
-        &["gz".to_string()]
+        Path::new("file.TXT"),
+        &["tXt".to_string()]
     ));
 }

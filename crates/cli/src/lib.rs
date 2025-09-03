@@ -13,6 +13,7 @@ use std::time::Duration;
 use clap::parser::ValueSource;
 use clap::{ArgMatches, FromArgMatches};
 
+pub mod branding;
 pub mod daemon;
 mod formatter;
 pub mod options;
@@ -51,6 +52,10 @@ pub mod version;
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     let mut opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
+    if opts.no_D {
+        opts.no_devices = true;
+        opts.no_specials = true;
+    }
     if opts.daemon.daemon {
         return run_daemon(opts.daemon, matches);
     }
@@ -1314,6 +1319,21 @@ mod tests {
             }
             _ => panic!("expected remote spec"),
         }
+    }
+
+    #[test]
+    fn no_d_alias_sets_no_devices_and_no_specials() {
+        use crate::options::ClientOpts;
+        let matches = cli_command()
+            .try_get_matches_from(["prog", "--no-D", "src", "--", "dst"])
+            .unwrap();
+        let mut opts = ClientOpts::from_arg_matches(&matches).unwrap();
+        if opts.no_D {
+            opts.no_devices = true;
+            opts.no_specials = true;
+        }
+        assert!(opts.no_devices);
+        assert!(opts.no_specials);
     }
 
     #[test]
