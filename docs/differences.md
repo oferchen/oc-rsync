@@ -27,6 +27,7 @@ This document is synchronized with [feature_matrix.md](feature_matrix.md) and li
 - `--open-noatime`: parity with upstream not yet verified; effective only on platforms supporting `O_NOATIME`. Tests: [crates/engine/tests/open_noatime.rs](../crates/engine/tests/open_noatime.rs)<br>[tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs).
 - `--outbuf`: parity with upstream not yet verified; set stdout buffering. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [bin/oc-rsync/src/main.rs](../bin/oc-rsync/src/main.rs).
 - `--progress`: parity with upstream not yet verified. Tests: [tests/cli.rs#L309](../tests/cli.rs#L309). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
+- `-P`: parity with upstream not yet verified; shorthand for `--partial --progress`. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--protocol`: parity with upstream not yet verified. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--relative`: parity with upstream not yet verified. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--secluded-args`: parity with upstream not yet verified. Tests: [tests/secluded_args.rs](../tests/secluded_args.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).

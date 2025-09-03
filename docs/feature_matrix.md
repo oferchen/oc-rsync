@@ -42,7 +42,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--zc` | ✅ | Y | Y | Y | [tests/golden/cli_parity/compress-choice.sh](../tests/golden/cli_parity/compress-choice.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | alias for `--compress-choice` |
 | `--zl` | ✅ | Y | Y | Y | [tests/golden/cli_parity/compress-level.sh](../tests/golden/cli_parity/compress-level.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | alias for `--compress-level` |
 | `--config` | ✅ | N | N | N | [tests/daemon_config.rs](../tests/daemon_config.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--contimeout` | ✅ | Y | Y | Y | [tests/timeout.rs](../tests/timeout.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--connect-timeout` | ✅ | Y | Y | Y | [tests/timeout.rs](../tests/timeout.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | alias `--contimeout` |
 | `--copy-as` | ✅ | N | N | N | [tests/copy_as.rs](../tests/copy_as.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires root or CAP_CHOWN |
 | `--copy-dest` | ✅ | Y | Y | Y | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--copy-devices` | ✅ | Y | Y | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
@@ -62,6 +62,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--delete-during` | ✅ | Y | Y | Y | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--delete-excluded` | ✅ | Y | Y | Y | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--delete-missing-args` | ✅ | Y | Y | Y | [tests/delete_policy.rs](../tests/delete_policy.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `-D` | ✅ | Y | Y | Y | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | shorthand for `--devices --specials` |
 | `--devices` | ✅ | Y | Y | Y | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--dirs` | ✅ | Y | Y | Y | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--dparam` | ✅ | Y | Y | Y | [crates/cli/tests/cli_parity.rs](../crates/cli/tests/cli_parity.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | override global daemon config parameter |
@@ -74,6 +75,8 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--fake-super` | ✅ | N | N | N | [tests/fake_super.rs](../tests/fake_super.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires `xattr` feature |
 | `--files-from` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--filter` | ✅ | Y | Y | Y | [tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--filter-file` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | read rules from file |
+| `-F` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | filter merge shorthand |
 | `--force` | ✅ | Y | Y | Y | [tests/delete_policy.rs](../tests/delete_policy.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--from0` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--fsync` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
@@ -135,6 +138,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--port` | ✅ | Y | Y | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | overrides default port |
 | `--preallocate` | ✅ | Y | Y | Y | [tests/perf_limits.rs](../tests/perf_limits.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--progress` | ✅ | N | N | N | [tests/cli.rs#L309](../tests/cli.rs#L309) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `-P` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | shorthand for `--partial --progress` |
 | `--protocol` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--prune-empty-dirs` | ✅ | Y | Y | Y | [tests/filter_corpus.rs](../tests/filter_corpus.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--quiet` | ✅ | Y | Y | Y | [tests/golden/cli_parity/compression.sh](../tests/golden/cli_parity/compression.sh)<br>[tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh)<br>[tests/golden/cli_parity/selection.sh](../tests/golden/cli_parity/selection.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
