@@ -6,8 +6,8 @@ This document is synchronized with [feature_matrix.md](feature_matrix.md) and li
 
 - `--config`: parity with upstream not yet verified. Tests: [tests/daemon_config.rs](../tests/daemon_config.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--copy-as`: parity with upstream not yet verified; requires root or CAP_CHOWN. Tests: [tests/copy_as.rs](../tests/copy_as.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--copy-links`: parity with upstream not yet verified. Tests: [tests/symlink_resolution.rs](../tests/symlink_resolution.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--copy-unsafe-links`: parity with upstream not yet verified. Tests: [tests/symlink_resolution.rs](../tests/symlink_resolution.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
+- `--copy-links`: fully supported. Tests: [tests/symlink_resolution.rs](../tests/symlink_resolution.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
+- `--copy-unsafe-links`: fully supported. Tests: [tests/symlink_resolution.rs](../tests/symlink_resolution.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--dry-run`: parity with upstream not yet verified. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--early-input`: parity with upstream not yet verified. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--fake-super`: parity with upstream not yet verified; requires `xattr` feature. Tests: [tests/fake_super.rs](../tests/fake_super.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
@@ -24,7 +24,7 @@ This document is synchronized with [feature_matrix.md](feature_matrix.md) and li
 - `--max-size`: parity with upstream not yet verified. Tests: [tests/perf_limits.rs](../tests/perf_limits.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--min-size`: parity with upstream not yet verified. Tests: [tests/perf_limits.rs](../tests/perf_limits.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--modify-window`: parity with upstream not yet verified; treat close mtimes as equal. Tests: [tests/modify_window.rs](../tests/modify_window.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--munge-links`: parity with upstream not yet verified. Tests: [tests/symlink_resolution.rs](../tests/symlink_resolution.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
+- `--munge-links`: fully supported. Tests: [tests/symlink_resolution.rs](../tests/symlink_resolution.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--numeric-ids`: parity with upstream not yet verified. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--old-args`: parity with upstream not yet verified; disable modern arg-protection idiom. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--old-d`: parity with upstream not yet verified; alias for `--old-dirs`. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: —.
@@ -34,7 +34,7 @@ This document is synchronized with [feature_matrix.md](feature_matrix.md) and li
 - `--progress`: parity with upstream not yet verified. Tests: [tests/cli.rs#L309](../tests/cli.rs#L309). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--protocol`: parity with upstream not yet verified. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--relative`: parity with upstream not yet verified. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--safe-links`: parity with upstream not yet verified. Tests: [tests/symlink_resolution.rs](../tests/symlink_resolution.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
+- `--safe-links`: fully supported. Tests: [tests/symlink_resolution.rs](../tests/symlink_resolution.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--secluded-args`: parity with upstream not yet verified. Tests: [tests/secluded_args.rs](../tests/secluded_args.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--server`: parity with upstream not yet verified; negotiates protocol version and codecs. Tests: [crates/protocol/tests/server.rs](../crates/protocol/tests/server.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--sockopts`: parity with upstream not yet verified; supports `SO_KEEPALIVE`, `SO_SNDBUF`, `SO_RCVBUF`, `TCP_NODELAY`, `SO_REUSEADDR`, `SO_BINDTODEVICE`, and `ip:ttl`/`ip:tos`/`ip:hoplimit`. Tests: [tests/sockopts.rs](../tests/sockopts.rs)<br>[crates/transport/tests/sockopts.rs](../crates/transport/tests/sockopts.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
