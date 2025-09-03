@@ -221,7 +221,7 @@ fn demux_error_routing() {
     use std::time::Duration;
 
     let mut mux = Mux::new(Duration::from_secs(1));
-    let tx = mux.register_channel(0);
+    let tx = mux.register_channel(0).unwrap();
     tx.send(Message::ErrorXfer("ex".into())).unwrap();
     tx.send(Message::Error("er".into())).unwrap();
     tx.send(Message::ErrorSocket("so".into())).unwrap();

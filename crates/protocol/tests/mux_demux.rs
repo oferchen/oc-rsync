@@ -9,8 +9,8 @@ fn multiplex_multiple_channels() {
     let mut mux = Mux::new(Duration::from_millis(50));
     let mut demux = Demux::new(Duration::from_millis(100));
 
-    let tx1 = mux.register_channel(1);
-    let tx2 = mux.register_channel(2);
+    let tx1 = mux.register_channel(1).unwrap();
+    let tx2 = mux.register_channel(2).unwrap();
     let rx1 = demux.register_channel(1);
     let rx2 = demux.register_channel(2);
 
@@ -39,7 +39,7 @@ fn keepalive_and_timeout() {
     let mut mux = Mux::new(keepalive);
     let mut demux = Demux::new(timeout);
 
-    let _tx = mux.register_channel(0);
+    let _tx = mux.register_channel(0).unwrap();
     let _rx = demux.register_channel(0);
 
     sleep(Duration::from_millis(20));
@@ -57,8 +57,8 @@ fn keepalive_and_timeout() {
 fn round_robin_fairness() {
     let mut mux = Mux::new(Duration::from_secs(1));
 
-    let tx1 = mux.register_channel(1);
-    let tx2 = mux.register_channel(2);
+    let tx1 = mux.register_channel(1).unwrap();
+    let tx2 = mux.register_channel(2).unwrap();
 
     tx1.send(Message::Data(b"a1".to_vec())).unwrap();
     tx1.send(Message::Data(b"a2".to_vec())).unwrap();
@@ -95,7 +95,7 @@ fn error_xfer_sets_remote_error() {
     let mut mux = Mux::new(Duration::from_millis(50));
     let mut demux = Demux::new(Duration::from_millis(50));
 
-    mux.register_channel(0);
+    mux.register_channel(0).unwrap();
     let _rx = demux.register_channel(0);
 
     mux.send_error_xfer(0, "oops").unwrap();
@@ -110,7 +110,7 @@ fn progress_attrs_and_xattrs() {
     let mut mux = Mux::new(Duration::from_millis(50));
     let mut demux = Demux::new(Duration::from_millis(50));
 
-    mux.register_channel(0);
+    mux.register_channel(0).unwrap();
     let rx = demux.register_channel(0);
 
     mux.send_progress(0, 123).unwrap();
@@ -141,7 +141,7 @@ fn collect_log_messages() {
     let mut mux = Mux::new(Duration::from_millis(50));
     let mut demux = Demux::new(Duration::from_millis(50));
 
-    mux.register_channel(0);
+    mux.register_channel(0).unwrap();
     let _rx = demux.register_channel(0);
 
     mux.send_info(0, "info").unwrap();
@@ -171,7 +171,7 @@ fn collect_progress_and_stats_messages() {
     let mut mux = Mux::new(Duration::from_millis(50));
     let mut demux = Demux::new(Duration::from_millis(50));
 
-    mux.register_channel(0);
+    mux.register_channel(0).unwrap();
     let _rx = demux.register_channel(0);
 
     mux.send_progress(0, 123).unwrap();
@@ -196,8 +196,8 @@ fn collect_progress_and_stats_messages() {
 fn poll_with_dynamic_channel_removal() {
     let mut mux = Mux::new(Duration::from_millis(50));
 
-    let tx1 = mux.register_channel(1);
-    let tx2 = mux.register_channel(2);
+    let tx1 = mux.register_channel(1).unwrap();
+    let tx2 = mux.register_channel(2).unwrap();
 
     tx1.send(Message::Data(b"one".to_vec())).unwrap();
     tx2.send(Message::Data(b"two".to_vec())).unwrap();
