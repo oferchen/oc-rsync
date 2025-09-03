@@ -35,7 +35,7 @@ impl Default for SyncConfig {
             debug: Vec::new(),
             perms: true,
             times: true,
-            atimes: true,
+            atimes: false,
             links: true,
             devices: true,
             specials: true,
@@ -210,8 +210,10 @@ mod tests {
         let (_dir, src_dir, dst_dir) = setup_dirs();
         fs::write(src_dir.join("file.txt"), b"data").unwrap();
 
+        let cfg = SyncConfig::builder().atimes(true).build();
+
         assert!(!dst_dir.exists());
-        synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
+        synchronize_with_config(src_dir.clone(), dst_dir.clone(), &cfg).unwrap();
         assert!(dst_dir.exists());
         assert_eq!(fs::read(dst_dir.join("file.txt")).unwrap(), b"data");
     }
@@ -246,9 +248,8 @@ mod tests {
         let file = src_dir.join("file.txt");
         fs::write(&file, b"hello").unwrap();
         fs::set_permissions(&file, fs::Permissions::from_mode(0o744)).unwrap();
-        let atime = FileTime::from_unix_time(1_000_000, 0);
         let mtime = FileTime::from_unix_time(1_000_100, 0);
-        set_file_times(&file, atime, mtime).unwrap();
+        set_file_times(&file, FileTime::from_unix_time(1_000_000, 0), mtime).unwrap();
 
         assert!(!dst_dir.exists());
         synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
@@ -270,8 +271,10 @@ mod tests {
         let (_dir, src_dir, dst_dir) = setup_dirs();
         fs::write(src_dir.join("file.txt"), b"data").unwrap();
 
+        let cfg = SyncConfig::builder().atimes(true).build();
+
         assert!(!dst_dir.exists());
-        synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
+        synchronize_with_config(src_dir.clone(), dst_dir.clone(), &cfg).unwrap();
         assert!(dst_dir.exists());
 
         let fifo = src_dir.join("fifo");
@@ -280,7 +283,7 @@ mod tests {
         let mtime = FileTime::from_unix_time(2_000_100, 0);
         set_file_times(&fifo, atime, mtime).unwrap();
 
-        synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
+        synchronize_with_config(src_dir.clone(), dst_dir.clone(), &cfg).unwrap();
 
         let dst_path = dst_dir.join("fifo");
         let meta = fs::metadata(&dst_path).unwrap();
@@ -303,9 +306,8 @@ mod tests {
         fs::create_dir(&subdir).unwrap();
         fs::set_permissions(&subdir, fs::Permissions::from_mode(0o711)).unwrap();
         fs::write(subdir.join("file.txt"), b"data").unwrap();
-        let atime = FileTime::from_unix_time(3_000_000, 0);
         let mtime = FileTime::from_unix_time(3_000_100, 0);
-        set_file_times(&subdir, atime, mtime).unwrap();
+        set_file_times(&subdir, FileTime::from_unix_time(3_000_000, 0), mtime).unwrap();
 
         synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
 
