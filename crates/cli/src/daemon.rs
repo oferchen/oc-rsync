@@ -19,7 +19,7 @@ use protocol::{negotiate_version, CharsetConv};
 use transport::{parse_sockopts, AddressFamily, SockOpt, TcpTransport, Transport};
 
 #[derive(Args, Debug)]
-pub(crate) struct DaemonOpts {
+pub struct DaemonOpts {
     #[arg(long)]
     pub daemon: bool,
     #[arg(long = "no-detach")]
@@ -356,6 +356,7 @@ pub(crate) fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
         65534,
         handler,
         quiet,
+        opts.no_detach,
     )
     .map_err(|e| EngineError::Other(format!("daemon failed to bind to port {port}: {e}")))
 }

@@ -299,7 +299,7 @@ fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
 }
 
 fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
-    if opts.dry_run {
+    if opts.dry_run || opts.only_write_batch {
         return Ok(());
     }
     match fs::remove_file(path) {
@@ -316,7 +316,7 @@ fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
 }
 
 fn remove_dir_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
-    if opts.dry_run {
+    if opts.dry_run || opts.only_write_batch {
         return Ok(());
     }
     let res = if opts.force {
@@ -1105,7 +1105,19 @@ impl Sender {
         };
         if self.opts.backup && dest.exists() {
             let backup_path = if let Some(ref dir) = self.opts.backup_dir {
-                dir.join(rel)
+                let mut p = dir.join(rel);
+                if !self.opts.backup_suffix.is_empty() {
+                    if let Some(name) = p.file_name() {
+                        p = p.with_file_name(format!(
+                            "{}{}",
+                            name.to_string_lossy(),
+                            &self.opts.backup_suffix
+                        ));
+                    } else {
+                        p.push(&self.opts.backup_suffix);
+                    }
+                }
+                p
             } else {
                 let name = dest
                     .file_name()
@@ -1170,9 +1182,16 @@ impl Sender {
             }
             Ok(op)
         });
-        recv.apply(path, dest, rel, ops)?;
-        drop(atime_guard);
-        recv.copy_metadata(path, dest)?;
+        if !self.opts.only_write_batch {
+            recv.apply(path, dest, rel, ops)?;
+            drop(atime_guard);
+            recv.copy_metadata(path, dest)?;
+        } else {
+            drop(atime_guard);
+            for op in ops {
+                let _ = op;
+            }
+        }
         Ok(true)
     }
 }
@@ -1746,6 +1765,7 @@ pub struct SyncOptions {
     pub sockopts: Vec<String>,
     pub remote_options: Vec<String>,
     pub write_batch: Option<PathBuf>,
+    pub only_write_batch: bool,
     pub read_batch: Option<PathBuf>,
     pub copy_devices: bool,
     pub write_devices: bool,
@@ -1846,6 +1866,7 @@ impl Default for SyncOptions {
             sockopts: Vec::new(),
             remote_options: Vec::new(),
             write_batch: None,
+            only_write_batch: false,
             read_batch: None,
             copy_devices: false,
             write_devices: false,
@@ -2006,11 +2027,23 @@ fn delete_extraneous(
                                 escape_path(rel, opts.eight_bit_output)
                             );
                         }
-                        let res = if opts.dry_run {
+                        let res = if opts.dry_run || opts.only_write_batch {
                             None
                         } else if opts.backup {
                             let backup_path = if let Some(ref dir) = opts.backup_dir {
-                                dir.join(rel)
+                                let mut p = dir.join(rel);
+                                if !opts.backup_suffix.is_empty() {
+                                    if let Some(name) = p.file_name() {
+                                        p = p.with_file_name(format!(
+                                            "{}{}",
+                                            name.to_string_lossy(),
+                                            &opts.backup_suffix
+                                        ));
+                                    } else {
+                                        p.push(&opts.backup_suffix);
+                                    }
+                                }
+                                p
                             } else {
                                 let name = path
                                     .file_name()
@@ -2058,11 +2091,23 @@ fn delete_extraneous(
                             escape_path(rel, opts.eight_bit_output)
                         );
                     }
-                    let res = if opts.dry_run {
+                    let res = if opts.dry_run || opts.only_write_batch {
                         None
                     } else if opts.backup {
                         let backup_path = if let Some(ref dir) = opts.backup_dir {
-                            dir.join(rel)
+                            let mut p = dir.join(rel);
+                            if !opts.backup_suffix.is_empty() {
+                                if let Some(name) = p.file_name() {
+                                    p = p.with_file_name(format!(
+                                        "{}{}",
+                                        name.to_string_lossy(),
+                                        &opts.backup_suffix
+                                    ));
+                                } else {
+                                    p.push(&opts.backup_suffix);
+                                }
+                            }
+                            p
                         } else {
                             let name = path
                                 .file_name()
@@ -2130,11 +2175,23 @@ pub fn sync(
                 let meta = fs::symlink_metadata(dst).map_err(|e| io_context(dst, e))?;
                 let res = if opts.backup {
                     let backup_path = if let Some(ref dir) = opts.backup_dir {
-                        if let Some(name) = dst.file_name() {
+                        let mut p = if let Some(name) = dst.file_name() {
                             dir.join(name)
                         } else {
                             dir.join(dst)
+                        };
+                        if !opts.backup_suffix.is_empty() {
+                            if let Some(name) = p.file_name() {
+                                p = p.with_file_name(format!(
+                                    "{}{}",
+                                    name.to_string_lossy(),
+                                    &opts.backup_suffix
+                                ));
+                            } else {
+                                p.push(&opts.backup_suffix);
+                            }
                         }
+                        p
                     } else {
                         let name = dst
                             .file_name()
@@ -2243,7 +2300,7 @@ pub fn sync(
         }
         return Ok(stats);
     }
-    if !dst.exists() {
+    if !dst.exists() && !opts.only_write_batch {
         fs::create_dir_all(dst).map_err(|e| {
             std::io::Error::new(
                 e.kind(),
@@ -2291,7 +2348,7 @@ pub fn sync(
         }
         return Ok(stats);
     }
-    if matches!(opts.delete, Some(DeleteMode::Before)) {
+    if matches!(opts.delete, Some(DeleteMode::Before)) && !opts.only_write_batch {
         delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
     }
     sender.start();
@@ -2670,15 +2727,17 @@ pub fn sync(
         }
     }
     sender.finish();
-    receiver.finalize()?;
-    if matches!(
-        opts.delete,
-        Some(DeleteMode::After) | Some(DeleteMode::During)
-    ) {
-        delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
-    }
-    for (src_dir, dest_dir) in dir_meta.into_iter().rev() {
-        receiver.copy_metadata(&src_dir, &dest_dir)?;
+    if !opts.only_write_batch {
+        receiver.finalize()?;
+        if matches!(
+            opts.delete,
+            Some(DeleteMode::After) | Some(DeleteMode::During)
+        ) {
+            delete_extraneous(&src_root, dst, &matcher, opts, &mut stats)?;
+        }
+        for (src_dir, dest_dir) in dir_meta.into_iter().rev() {
+            receiver.copy_metadata(&src_dir, &dest_dir)?;
+        }
     }
     if let Some(mut f) = batch_file {
         let _ = writeln!(
