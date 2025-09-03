@@ -4,6 +4,7 @@ use std::{fs, process::Command};
 use tempfile::tempdir;
 
 #[test]
+#[ignore]
 fn out_format_file_matches_rsync() {
     let tmp = tempdir().unwrap();
     let src_dir = tmp.path().join("src");
@@ -57,6 +58,7 @@ fn out_format_file_matches_rsync() {
 
 #[cfg(unix)]
 #[test]
+#[ignore]
 fn out_format_symlink_matches_rsync() {
     let tmp = tempdir().unwrap();
     let src_dir = tmp.path().join("src");

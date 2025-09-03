@@ -8,7 +8,7 @@ use std::process::Command;
 
 use compress::available_codecs;
 use engine::{sync, IdMapper, SyncOptions};
-use filetime::{set_file_atime, set_file_mtime, set_symlink_file_times, FileTime};
+use filetime::{set_file_atime, set_file_mtime, set_file_times, set_symlink_file_times, FileTime};
 use filters::Matcher;
 use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
 use nix::sys::stat::{mknod, Mode, SFlag};
@@ -193,7 +193,8 @@ fn atimes_roundtrip() {
     let file = src.join("file");
     fs::write(&file, b"hi").unwrap();
     let atime = FileTime::from_unix_time(1_000_000, 987_654_321);
-    set_file_atime(&file, atime).unwrap();
+    let mtime = FileTime::from_unix_time(1_000_000, 123_456_789);
+    set_file_times(&file, atime, mtime).unwrap();
     sync(
         &src,
         &dst,
@@ -209,8 +210,10 @@ fn atimes_roundtrip() {
     let dst_meta = fs::metadata(dst.join("file")).unwrap();
     let src_atime = FileTime::from_last_access_time(&src_meta);
     let dst_atime = FileTime::from_last_access_time(&dst_meta);
+    let dst_mtime = FileTime::from_last_modification_time(&dst_meta);
     assert_eq!(src_atime, atime);
     assert_eq!(dst_atime, atime);
+    assert_ne!(dst_mtime, mtime);
 }
 
 #[test]
