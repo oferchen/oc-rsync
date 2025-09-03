@@ -121,3 +121,30 @@ fn delete_flags_last_one_wins() {
     assert!(matches.get_flag("delete_before"));
     assert!(!matches.get_flag("delete_after"));
 }
+
+#[test]
+fn old_args_flag_is_accepted() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--old-args", "--version"])
+        .assert()
+        .success();
+}
+
+#[test]
+fn old_dirs_flag_is_accepted() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--old-dirs", "--version"])
+        .assert()
+        .success();
+}
+
+#[test]
+fn old_d_alias_is_accepted() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--old-d", "--version"])
+        .assert()
+        .success();
+}
