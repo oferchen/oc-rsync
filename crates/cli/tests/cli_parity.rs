@@ -171,7 +171,7 @@ fn partial_progress_alias_matches_upstream() {
 
 #[test]
 fn dparam_flag_matches_upstream() {
-    let help_output = include_str!("../../../tests/fixtures/rsync-help.txt");
+    let help_output = include_str!("../../../tests/fixtures/rsync-help-80.txt");
     assert!(help_output.contains("--dparam"));
 
     let matches = cli_command()
@@ -218,7 +218,7 @@ fn no_option_alias_matches_upstream() {
 #[test]
 fn help_usage_matches_upstream() {
     let help = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/rsync-help.txt"),
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/rsync-help-80.txt"),
     )
     .unwrap();
     let upstream_usage = help

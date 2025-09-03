@@ -8,7 +8,7 @@ use std::env;
 fn help_columns_80() {
     env::set_var("COLUMNS", "80");
     let out = render_help(&cli_command());
-    let expected = include_str!("../../../tests/fixtures/rsync-help.txt").trim_end();
+    let expected = include_str!("../../../tests/fixtures/rsync-help-80.txt").trim_end();
     assert_eq!(out, expected);
 }
 
