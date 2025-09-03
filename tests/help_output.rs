@@ -67,3 +67,19 @@ fn help_contains_expected_flags() {
         );
     }
 }
+#[test]
+fn help_matches_upstream() {
+    let output = Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .env("COLUMNS", "80")
+        .env("LC_ALL", "C")
+        .env("LANG", "C")
+        .arg("--help")
+        .output()
+        .unwrap();
+
+    let mut ours = String::from_utf8(output.stdout).unwrap();
+    ours = ours.replace("oc-rsync", "rsync");
+    let expected = fs::read_to_string("crates/cli/resources/rsync-help-80.txt").unwrap();
+    assert_eq!(ours, expected, "help output diverges from upstream");
+}
