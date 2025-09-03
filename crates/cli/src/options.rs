@@ -7,7 +7,7 @@ use crate::daemon::DaemonOpts;
 use crate::formatter;
 use crate::utils::{parse_duration, parse_nonzero_duration, parse_size};
 use clap::{ArgAction, Args, CommandFactory, Parser};
-use logging::{DebugFlag, InfoFlag};
+use logging::{DebugFlag, InfoFlag, StderrMode};
 use protocol::SUPPORTED_PROTOCOLS;
 
 #[derive(Parser, Debug)]
@@ -78,6 +78,14 @@ pub(crate) struct ClientOpts {
         help_heading = "Output"
     )]
     pub debug: Vec<DebugFlag>,
+    #[arg(
+        long = "stderr",
+        value_name = "e|a|c",
+        value_enum,
+        default_value_t = StderrMode::Errors,
+        help_heading = "Output",
+    )]
+    pub stderr: StderrMode,
     #[arg(long = "human-readable", help_heading = "Output")]
     pub human_readable: bool,
     #[arg(short, long, help_heading = "Output")]
