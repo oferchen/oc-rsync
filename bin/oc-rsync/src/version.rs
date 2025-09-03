@@ -5,6 +5,10 @@ use oc_rsync_cli::branding;
 
 pub const RSYNC_PROTOCOL: u32 = SUPPORTED_PROTOCOLS[0];
 
+const UPSTREAM_VERSION: &str = match option_env!("UPSTREAM_VERSION") {
+    Some(v) => v,
+    None => "unknown",
+};
 const COPYRIGHT: &str =
     "Copyright (C) 1996-2025 by Andrew Tridgell, Wayne Davison, and others.";
 const WEBSITE: &str = "Web site: https://rsync.samba.org/";
@@ -35,10 +39,7 @@ pub fn render_version_lines() -> Vec<String> {
         env!("CARGO_PKG_VERSION"),
         RSYNC_PROTOCOL
     ));
-    lines.push(format!(
-        "rsync {}",
-        option_env!("RSYNC_UPSTREAM_VER").unwrap_or("unknown")
-    ));
+    lines.push(format!("rsync {UPSTREAM_VERSION}"));
     lines.push(format!(
         "{} {}",
         option_env!("BUILD_REVISION").unwrap_or("unknown"),

@@ -10,7 +10,17 @@ fn banner_is_static() {
             env!("CARGO_PKG_VERSION"),
             SUPPORTED_PROTOCOLS[0],
         ),
-        "compatible with rsync 3.4.1; proto 32".to_string(),
+        {
+            let proto = option_env!("UPSTREAM_PROTOCOLS")
+                .unwrap_or("32,31,30,29")
+                .split(',')
+                .next()
+                .unwrap_or("0");
+            format!(
+                "compatible with rsync {} (protocol {proto})",
+                option_env!("UPSTREAM_VERSION").unwrap_or("unknown"),
+            )
+        },
         format!(
             "{} {}",
             option_env!("BUILD_REVISION").unwrap_or("unknown"),
