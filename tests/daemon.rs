@@ -96,8 +96,13 @@ fn parse_module_parses_options() {
 #[cfg(unix)]
 #[test]
 fn parse_module_resolves_named_uid_gid() {
-    let spec = "data=/tmp,uid=root,gid=root";
-    let module = parse_module(spec).unwrap();
+    let group_name = users::get_group_by_gid(0)
+        .expect("group for gid 0")
+        .name()
+        .to_string_lossy()
+        .into_owned();
+    let spec = format!("data=/tmp,uid=root,gid={group_name}");
+    let module = parse_module(&spec).unwrap();
     assert_eq!(module.uid, Some(0));
     assert_eq!(module.gid, Some(0));
 }
