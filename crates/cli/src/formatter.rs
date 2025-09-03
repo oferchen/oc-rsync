@@ -3,9 +3,34 @@ use clap::Command;
 use std::env;
 use textwrap::{wrap, Options as WrapOptions};
 
-use crate::branding::{self, DEFAULT_HELP_PREFIX, DEFAULT_HELP_SUFFIX};
+use crate::branding;
 
 const RSYNC_HELP: &str = include_str!("../resources/rsync-help-80.txt");
+
+const UPSTREAM_HELP_PREFIX: &str = r#"rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
+are welcome to redistribute it under certain conditions.  See the GNU
+General Public Licence for details.
+
+rsync is a file transfer program capable of efficient remote update
+via a fast differencing algorithm.
+
+Usage: rsync [OPTION]... SRC [SRC]... DEST
+  or   rsync [OPTION]... SRC [SRC]... [USER@]HOST:DEST
+  or   rsync [OPTION]... SRC [SRC]... [USER@]HOST::DEST
+  or   rsync [OPTION]... SRC [SRC]... rsync://[USER@]HOST[:PORT]/DEST
+  or   rsync [OPTION]... [USER@]HOST:SRC [DEST]
+  or   rsync [OPTION]... [USER@]HOST::SRC [DEST]
+  or   rsync [OPTION]... rsync://[USER@]HOST[:PORT]/SRC [DEST]
+The ':' usages connect via remote shell, while '::' & 'rsync://' usages connect
+to an rsync daemon, and require SRC or DEST to start with a module name.
+
+Options
+"#;
+
+const UPSTREAM_HELP_SUFFIX: &str = r#"Use "rsync --daemon --help" to see the daemon-mode command-line options.
+Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
+See https://rsync.samba.org/ for updates, bug reports, and answers
+"#;
 
 pub const ARG_ORDER: &[&str] = &[
     "verbose",
@@ -156,18 +181,28 @@ pub fn apply(mut cmd: Command) -> Command {
 
 pub fn render_help(cmd: &Command) -> String {
     let width = columns();
-    let help_prefix = branding::help_prefix();
-    let help_suffix = branding::help_suffix();
+    let program = branding::program_name();
+    let version = branding::brand_version();
+    let credits = branding::brand_credits();
+    let mut help_prefix = branding::help_prefix();
+    let mut help_suffix = branding::help_suffix();
+    for s in [&mut help_prefix, &mut help_suffix] {
+        *s = s
+            .replace("{prog}", &program)
+            .replace("{version}", &version)
+            .replace("{credits}", &credits);
+    }
     if width == 80 {
-        let mut out = RSYNC_HELP.trim_end().to_owned();
-        if help_prefix != DEFAULT_HELP_PREFIX || help_suffix != DEFAULT_HELP_SUFFIX {
-            out = out.replacen(DEFAULT_HELP_PREFIX, &help_prefix, 1);
-            out = out.replacen(DEFAULT_HELP_SUFFIX, &help_suffix, 1);
-        }
+        let body_start =
+            RSYNC_HELP.find(UPSTREAM_HELP_PREFIX).unwrap() + UPSTREAM_HELP_PREFIX.len();
+        let body_end = RSYNC_HELP.rfind(UPSTREAM_HELP_SUFFIX).unwrap();
+        let body = &RSYNC_HELP[body_start..body_end];
+        let mut out = String::new();
+        out.push_str(&help_prefix);
+        out.push_str(body);
+        out.push_str(&help_suffix);
         return out;
     }
-    let banner_end = RSYNC_HELP.find(DEFAULT_HELP_PREFIX).unwrap_or(0);
-    let version_banner = &RSYNC_HELP[..banner_end];
     let spec_width = 23;
     let desc_width = if width > spec_width + 2 {
         width - spec_width - 2
@@ -178,7 +213,6 @@ pub fn render_help(cmd: &Command) -> String {
         (desc_width > 0).then(|| WrapOptions::new(desc_width.max(1)).break_words(false));
 
     let mut out = String::new();
-    out.push_str(version_banner);
     out.push_str(&help_prefix);
 
     let args: Vec<_> = cmd.get_arguments().collect();
