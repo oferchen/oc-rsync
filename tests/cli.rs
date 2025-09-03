@@ -868,13 +868,20 @@ fn stats_parity() {
             }
         })
         .collect();
+    if up_stats.len() != 3 {
+        eprintln!("skipping test: rsync stats output not recognized");
+        return;
+    }
 
     let our_stdout = String::from_utf8_lossy(&ours.stdout);
     let mut our_stats: Vec<String> = our_stdout
         .lines()
         .filter_map(|l| {
             let l = l.trim_start();
-            if up_stats.iter().any(|u| u == l) {
+            if l.starts_with("Number of deleted files")
+                || l.starts_with("Number of regular files transferred")
+                || l.starts_with("Total transferred file size")
+            {
                 Some(l.to_string())
             } else {
                 None
@@ -882,13 +889,9 @@ fn stats_parity() {
         })
         .collect();
 
-    up_stats.retain(|l| our_stats.iter().any(|o| o == l));
-
-    let mut up_sorted = up_stats.clone();
-    up_sorted.sort();
     our_stats.sort();
-
-    assert_eq!(our_stats, up_sorted);
+    up_stats.sort();
+    assert_eq!(our_stats, up_stats);
     insta::assert_snapshot!("stats_parity", our_stats.join("\n"));
 }
 
