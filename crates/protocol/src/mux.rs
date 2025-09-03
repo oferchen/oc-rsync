@@ -1,5 +1,6 @@
 // crates/protocol/src/mux.rs
 use indexmap::IndexMap;
+use std::fmt;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::time::{Duration, Instant};
 use tracing::warn;
@@ -22,6 +23,23 @@ pub struct Mux {
     pub compressor: Codec,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChannelError {
+    DuplicateId(u16),
+}
+
+impl fmt::Display for ChannelError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ChannelError::DuplicateId(id) => {
+                write!(f, "channel id {id} already registered")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ChannelError {}
+
 impl Mux {
     pub fn new(keepalive: Duration) -> Self {
         Mux {
@@ -33,7 +51,10 @@ impl Mux {
         }
     }
 
-    pub fn register_channel(&mut self, id: u16) -> Sender<Message> {
+    pub fn register_channel(&mut self, id: u16) -> Result<Sender<Message>, ChannelError> {
+        if self.channels.contains_key(&id) {
+            return Err(ChannelError::DuplicateId(id));
+        }
         let (tx, rx) = mpsc::channel();
         let ch = Channel {
             sender: tx.clone(),
@@ -41,7 +62,7 @@ impl Mux {
             last_sent: Instant::now(),
         };
         self.channels.insert(id, ch);
-        tx
+        Ok(tx)
     }
 
     pub fn send(&self, id: u16, msg: Message) -> Result<(), mpsc::SendError<Message>> {

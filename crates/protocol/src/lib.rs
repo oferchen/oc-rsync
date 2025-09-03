@@ -44,7 +44,7 @@ pub mod demux;
 pub mod mux;
 pub mod server;
 pub use demux::Demux;
-pub use mux::Mux;
+pub use mux::{ChannelError, Mux};
 pub use server::Server;
 
 pub const V32: u32 = 32;
