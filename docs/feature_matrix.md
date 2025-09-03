@@ -110,7 +110,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--modify-window` | ✅ | N | N | N | [tests/modify_window.rs](../tests/modify_window.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | treat close mtimes as equal |
 | `--motd` | ✅ | Y | Y | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |  |
 | `--munge-links` | ✅ | N | N | N | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--no-detach` | ❌ | N | N | N | — | — | not yet implemented |
+| `--no-detach` | ✅ | Y | Y | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) | run in the foreground |
 | `--no-D` | ❌ | N | N | N | [gaps.md](gaps.md) | — | alias for `--no-devices --no-specials` |
 | `--no-OPTION` | ✅ | Y | Y | Y | [crates/cli/tests/cli_parity.rs](../crates/cli/tests/cli_parity.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | disable default option |
 | `--no-implied-dirs` | ✅ | Y | Y | Y | [tests/no_implied_dirs.rs](../tests/no_implied_dirs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | preserves existing symlinked directories |
