@@ -138,7 +138,9 @@ impl SyncConfigBuilder {
     }
 }
 
-pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Result<()> {
+pub fn synchronize_with_config<P: AsRef<Path>>(src: P, dst: P, cfg: &SyncConfig) -> Result<()> {
+    let src = src.as_ref();
+    let dst = dst.as_ref();
     let sub_cfg = SubscriberConfig::builder()
         .format(cfg.log_format)
         .verbose(cfg.verbose)
@@ -173,7 +175,7 @@ pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Resu
     })
 }
 
-pub fn synchronize(src: &Path, dst: &Path) -> Result<()> {
+pub fn synchronize<P: AsRef<Path>>(src: P, dst: P) -> Result<()> {
     synchronize_with_config(src, dst, &SyncConfig::default())
 }
 
@@ -198,7 +200,7 @@ mod tests {
         fs::write(src_dir.join("file.txt"), b"hello world").unwrap();
 
         assert!(!dst_dir.exists());
-        synchronize(&src_dir, &dst_dir).unwrap();
+        synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
         assert_eq!(fs::read(dst_dir.join("file.txt")).unwrap(), b"hello world");
     }
 
@@ -208,7 +210,7 @@ mod tests {
         fs::write(src_dir.join("file.txt"), b"data").unwrap();
 
         assert!(!dst_dir.exists());
-        synchronize(&src_dir, &dst_dir).unwrap();
+        synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
         assert!(dst_dir.exists());
         assert_eq!(fs::read(dst_dir.join("file.txt")).unwrap(), b"data");
     }
@@ -224,7 +226,7 @@ mod tests {
         std::os::windows::fs::symlink_file("file.txt", src_dir.join("link")).unwrap();
 
         assert!(!dst_dir.exists());
-        synchronize(&src_dir, &dst_dir).unwrap();
+        synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
 
         let meta = fs::symlink_metadata(dst_dir.join("link")).unwrap();
         assert!(meta.file_type().is_symlink());
@@ -248,7 +250,7 @@ mod tests {
         set_file_times(&file, atime, mtime).unwrap();
 
         assert!(!dst_dir.exists());
-        synchronize(&src_dir, &dst_dir).unwrap();
+        synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
 
         let meta = fs::metadata(dst_dir.join("file.txt")).unwrap();
         assert_eq!(meta.permissions().mode() & 0o777, 0o744);
@@ -268,7 +270,7 @@ mod tests {
         fs::write(src_dir.join("file.txt"), b"data").unwrap();
 
         assert!(!dst_dir.exists());
-        synchronize(&src_dir, &dst_dir).unwrap();
+        synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
         assert!(dst_dir.exists());
 
         let fifo = src_dir.join("fifo");
@@ -277,7 +279,7 @@ mod tests {
         let mtime = FileTime::from_unix_time(2_000_100, 0);
         set_file_times(&fifo, atime, mtime).unwrap();
 
-        synchronize(&src_dir, &dst_dir).unwrap();
+        synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
 
         let dst_path = dst_dir.join("fifo");
         let meta = fs::metadata(&dst_path).unwrap();
@@ -304,7 +306,7 @@ mod tests {
         let mtime = FileTime::from_unix_time(3_000_100, 0);
         set_file_times(&subdir, atime, mtime).unwrap();
 
-        synchronize(&src_dir, &dst_dir).unwrap();
+        synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
 
         let meta = fs::metadata(dst_dir.join("sub")).unwrap();
         assert!(meta.is_dir());
@@ -325,7 +327,7 @@ mod tests {
         fs::write(&file, b"hello").unwrap();
         chown(&file, Some(Uid::from_raw(1000)), Some(Gid::from_raw(1001))).unwrap();
 
-        synchronize(&src_dir, &dst_dir).unwrap();
+        synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
 
         let meta = fs::metadata(dst_dir.join("file.txt")).unwrap();
         assert_eq!(meta.uid(), 1000);
@@ -342,7 +344,7 @@ mod tests {
         xattr::set(&file, "user.test", b"val").unwrap();
 
         let cfg = SyncConfig::builder().xattrs(true).build();
-        synchronize_with_config(&src_dir, &dst_dir, &cfg).unwrap();
+        synchronize_with_config(src_dir.clone(), dst_dir.clone(), &cfg).unwrap();
 
         let val = xattr::get(dst_dir.join("file.txt"), "user.test")
             .unwrap()
