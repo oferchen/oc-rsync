@@ -20,7 +20,7 @@ pub enum OutBuf {
     B,
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub(crate) struct ClientOpts {
     #[command(flatten)]
     pub daemon: DaemonOpts,
@@ -624,10 +624,14 @@ pub(crate) struct ClientOpts {
     pub sender: bool,
     #[arg(long = "rsync-path", value_name = "PATH", alias = "rsync_path")]
     pub rsync_path: Option<String>,
-    #[arg(value_name = "SRC", required_unless_present_any = ["daemon", "server", "probe"])]
-    pub src: Option<String>,
-    #[arg(value_name = "DST", required_unless_present_any = ["daemon", "server", "probe"])]
-    pub dst: Option<String>,
+    #[arg(
+        value_name = "SRC",
+        required_unless_present_any = ["daemon", "server", "probe"],
+        num_args = 1..
+    )]
+    pub srcs: Vec<String>,
+    #[arg(value_name = "DST", required = true, last = true)]
+    pub dst: String,
     #[arg(short = 'f', long, value_name = "RULE", help_heading = "Selection")]
     pub filter: Vec<String>,
     #[arg(long, value_name = "FILE", help_heading = "Selection")]
@@ -660,12 +664,13 @@ pub(crate) struct ClientOpts {
 pub(crate) struct ProbeOpts {
     #[arg(long)]
     pub probe: bool,
+    #[arg(long, value_name = "ADDR", requires = "probe")]
     pub addr: Option<String>,
     #[arg(long, default_value_t = SUPPORTED_PROTOCOLS[0], value_name = "VER")]
     pub peer_version: u32,
 }
 pub fn cli_command() -> clap::Command {
-    let cmd = ClientOpts::command();
-    let cmd = ProbeOpts::augment_args(cmd);
+    let cmd = ProbeOpts::command();
+    let cmd = ClientOpts::augment_args(cmd);
     formatter::apply(cmd)
 }
