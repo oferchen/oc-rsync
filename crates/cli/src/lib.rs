@@ -437,6 +437,13 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     };
     let uid_map = parse_name_map(&opts.usermap, IdKind::User)?;
     let gid_map = parse_name_map(&opts.groupmap, IdKind::Group)?;
+    let (write_batch, only_write_batch) =
+        match (opts.write_batch.clone(), opts.only_write_batch.clone()) {
+            (Some(p), None) => (Some(p), false),
+            (None, Some(p)) => (Some(p), true),
+            (None, None) => (None, false),
+            _ => unreachable!(),
+        };
     let mut sync_opts = SyncOptions {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
@@ -575,7 +582,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         secluded_args: opts.secluded_args,
         sockopts: opts.sockopts.clone(),
         remote_options: remote_opts.clone(),
-        write_batch: opts.write_batch.clone(),
+        write_batch,
+        only_write_batch,
         read_batch: opts.read_batch.clone(),
         copy_devices: opts.copy_devices,
         write_devices: opts.write_devices,

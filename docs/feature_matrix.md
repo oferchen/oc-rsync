@@ -119,7 +119,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--omit-dir-times` | ✅ | Y | Y | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--omit-link-times` | ✅ | Y | Y | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--one-file-system` | ✅ | Y | Y | Y | [crates/walk/tests/walk.rs](../crates/walk/tests/walk.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--only-write-batch` | ❌ | N | N | N | — | — | not yet implemented |
+| `--only-write-batch` | ✅ | Y | Y | Y | [tests/write_batch.rs](../tests/write_batch.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | like --write-batch but w/o updating dest |
 | `--open-noatime` | ❌ | N | N | N | — | — | not yet implemented |
 | `--out-format` | ❌ | N | N | N | — | — | not yet implemented |
 | `--outbuf` | ❌ | N | N | N | — | — | not yet implemented |
