@@ -313,7 +313,10 @@ impl Metadata {
             expected_uid = uid;
             expected_gid = gid;
 
+            #[cfg(target_os = "linux")]
             let mut can_chown = unistd::Uid::effective().is_root();
+            #[cfg(not(target_os = "linux"))]
+            let can_chown = unistd::Uid::effective().is_root();
             #[cfg(target_os = "linux")]
             {
                 if !can_chown {

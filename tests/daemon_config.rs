@@ -236,6 +236,8 @@ fn daemon_config_read_only_module_rejects_writes() {
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
+    t.send(&0u32.to_be_bytes()).unwrap();
+    t.receive(&mut buf).unwrap();
     t.authenticate(None, false).unwrap();
     let mut ok = [0u8; 64];
     t.receive(&mut ok).unwrap();
@@ -275,6 +277,7 @@ fn daemon_config_write_only_module_rejects_reads() {
     t.send(b"\n").unwrap();
     let mut resp = [0u8; 128];
     let n = t.receive(&mut resp).unwrap_or(0);
+    let msg = String::from_utf8_lossy(&resp[..n]);
     assert!(n == 0 || String::from_utf8_lossy(&resp[..n]).contains("write only"));
     let _ = child.kill();
     let _ = child.wait();

@@ -23,7 +23,7 @@ use transport::{pipe, Transport};
 
 pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
-use compress::{should_compress, Codec, Compressor, Decompressor, Zlib, Zlibx, Zstd};
+use compress::{should_compress, Codec, Compressor, Decompressor, Lz4, Zlib, Zlibx, Zstd};
 use filters::Matcher;
 use logging::{progress_formatter, rate_formatter, InfoFlag};
 use protocol::ExitCode;
@@ -1163,6 +1163,10 @@ impl Sender {
                             let lvl = self.opts.compress_level.unwrap_or(6);
                             Zlibx::new(lvl).compress(d).map_err(EngineError::from)?
                         }
+                        Codec::Lz4 => {
+                            let lvl = self.opts.compress_level.unwrap_or(0);
+                            Lz4::new(lvl).compress(d).map_err(EngineError::from)?
+                        }
                         Codec::Zstd => {
                             let lvl = self.opts.compress_level.unwrap_or(0);
                             Zstd::new(lvl).compress(d).map_err(EngineError::from)?
@@ -1413,6 +1417,7 @@ impl Receiver {
                         Codec::Zlibx => {
                             Zlibx::default().decompress(d).map_err(EngineError::from)?
                         }
+                        Codec::Lz4 => Lz4::default().decompress(d).map_err(EngineError::from)?,
                         Codec::Zstd => Zstd::default().decompress(d).map_err(EngineError::from)?,
                     };
                 }
@@ -1924,7 +1929,7 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     let choices: Vec<Codec> = opts
         .compress_choice
         .clone()
-        .unwrap_or_else(|| vec![Codec::Zstd, Codec::Zlibx, Codec::Zlib]);
+        .unwrap_or_else(|| vec![Codec::Zstd, Codec::Lz4, Codec::Zlibx, Codec::Zlib]);
     choices.into_iter().find(|c| remote.contains(c))
 }
 

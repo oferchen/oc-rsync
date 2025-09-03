@@ -7,6 +7,7 @@ pub enum Codec {
     Zlib,
     Zlibx,
     Zstd,
+    Lz4,
 }
 
 impl Codec {
@@ -15,6 +16,7 @@ impl Codec {
             Codec::Zlib => 1,
             Codec::Zlibx => 2,
             Codec::Zstd => 4,
+            Codec::Lz4 => 8,
         }
     }
 
@@ -23,6 +25,7 @@ impl Codec {
             1 => Ok(Codec::Zlib),
             2 => Ok(Codec::Zlibx),
             4 => Ok(Codec::Zstd),
+            8 => Ok(Codec::Lz4),
             other => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("unknown codec {other}"),
@@ -32,7 +35,7 @@ impl Codec {
 }
 
 pub fn available_codecs() -> Vec<Codec> {
-    vec![Codec::Zstd, Codec::Zlibx, Codec::Zlib]
+    vec![Codec::Zstd, Codec::Lz4, Codec::Zlibx, Codec::Zlib]
 }
 
 pub trait Compressor {
@@ -134,6 +137,31 @@ impl Decompressor for Zlibx {
         let mut out = Vec::new();
         decoder.read_to_end(&mut out)?;
         Ok(out)
+    }
+}
+
+#[derive(Default)]
+pub struct Lz4 {
+    level: i32,
+}
+
+impl Lz4 {
+    pub fn new(level: i32) -> Self {
+        Self { level }
+    }
+}
+
+impl Compressor for Lz4 {
+    fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
+        let _ = self.level;
+        Ok(lz4_flex::block::compress_prepend_size(data))
+    }
+}
+
+impl Decompressor for Lz4 {
+    fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
+        lz4_flex::block::decompress_size_prepended(data)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
     }
 }
 
@@ -301,7 +329,7 @@ mod tests {
     fn available_codecs_returns_all_codecs() {
         assert_eq!(
             available_codecs(),
-            vec![Codec::Zstd, Codec::Zlibx, Codec::Zlib]
+            vec![Codec::Zstd, Codec::Lz4, Codec::Zlibx, Codec::Zlib]
         );
     }
 }
