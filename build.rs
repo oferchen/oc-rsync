@@ -1,4 +1,4 @@
-// bin/oc-rsync/build.rs
+// build.rs
 use std::{env, fs, path::Path};
 
 fn main() {
@@ -13,7 +13,7 @@ fn main() {
     let out_dir = env::var("OUT_DIR").expect("missing OUT_DIR");
     let info_path = Path::new(&out_dir).join("build_info.md");
     let contents = format!(
-        "rsync upstream version: {upstream}\nbuild revision: {revision}\nofficial build: {official}\n"
+        "rsync upstream version: {upstream}\nbuild revision: {revision}\nofficial build: {official}\n",
     );
     fs::write(&info_path, contents).expect("failed to write build_info.md");
     println!("cargo:rustc-env=BUILD_INFO_PATH={}", info_path.display());

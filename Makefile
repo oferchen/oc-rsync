@@ -35,7 +35,7 @@ interop:
 	bash tests/interop/run_matrix.sh
 
 test-golden:
-	env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" cargo build --quiet -p oc-rsync-bin --bin oc-rsync
+	env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" cargo build --quiet -p oc-rsync --bin oc-rsync
 	@set -euo pipefail; \
 	for script in tests/golden/cli_parity/*.sh; do \
 		echo "Running $$script"; \
@@ -55,7 +55,7 @@ test-golden:
 build:
 	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD)"
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
-	cargo build -p oc-rsync-bin --bin oc-rsync --release
+	cargo build -p oc-rsync --bin oc-rsync --release
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
 	cargo build -p oc-rsync --bin oc-rsyncd --release
 
@@ -63,7 +63,7 @@ build:
 build-maxspeed:
 	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD) [maxspeed]"
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
-	cargo build -p oc-rsync-bin --bin oc-rsync --profile maxspeed --release
+	cargo build -p oc-rsync --bin oc-rsync --profile maxspeed --release
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
 	cargo build -p oc-rsync --bin oc-rsyncd --profile maxspeed --release
 
@@ -74,14 +74,14 @@ TARGETS := aarch64-apple-darwin x86_64-apple-darwin x86_64-unknown-linux-gnu x86
 build-%:
 	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD) target=$*"
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
-	cargo build -p oc-rsync-bin --bin oc-rsync --release --target $*
+	cargo build -p oc-rsync --bin oc-rsync --release --target $*
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
 	cargo build -p oc-rsync --bin oc-rsyncd --release --target $*
 
 build-maxspeed-%:
 	@echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD) [maxspeed] target=$*"
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
-	cargo build -p oc-rsync-bin --bin oc-rsync --profile maxspeed --release --target $*
+	cargo build -p oc-rsync --bin oc-rsync --profile maxspeed --release --target $*
 	@env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" \
 	cargo build -p oc-rsync --bin oc-rsyncd --profile maxspeed --release --target $*
 
@@ -92,7 +92,7 @@ version: build
 
 clean: ; @env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" cargo clean; rm -rf dist; rm -f oc-rsync-* oc-rsyncd-*
 
-build-all: ; set -e; for target in $(TARGETS); do echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD) target=$$target"; env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" cargo build -p oc-rsync-bin --bin oc-rsync --bin oc-rsyncd --release --target $$target; done
+build-all: ; set -e; for target in $(TARGETS); do echo "RSYNC_UPSTREAM_VER=$(RSYNC_UPSTREAM_VER) BUILD_REVISION=$(BUILD_REVISION) OFFICIAL_BUILD=$(OFFICIAL_BUILD) target=$$target"; env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" cargo build -p oc-rsync --bin oc-rsync --bin oc-rsyncd --release --target $$target; done
 
 package: ; env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" bash -c 'set -e; mkdir -p dist; for target in $(TARGETS); do for bin in oc-rsync oc-rsyncd; do ext=tar.gz; exe=$$bin; case $$target in *windows*) ext=zip; exe=$$bin.exe ;; esac; archive="dist/$$bin-$$target-$(RSYNC_UPSTREAM_VER)-$(BUILD_REVISION).$$ext"; if [ $$ext = zip ]; then (cd target/$$target/release && zip -j "../../../$$archive" $$exe); else tar -C target/$$target/release -czf $$archive $$exe; fi; sha256sum $$archive > $$archive.sha256; cargo sbom --output $$archive.sbom 2>/dev/null || true; done; done'
 

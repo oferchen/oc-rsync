@@ -99,19 +99,19 @@ The project is organized as a set of focused crates:
 
 ## Building
 
-The CLI entry point resides in the `bin/oc-rsync` crate. Build or run it with Cargo:
+The CLI entry point is built as part of the root crate. Build or run it with Cargo:
 
 ```
-cargo build -p oc-rsync-bin --bin oc-rsync
+cargo build --bin oc-rsync
 # or
-cargo run -p oc-rsync-bin -- "<SRC>" "<DEST>"
+cargo run --bin oc-rsync -- "<SRC>" "<DEST>"
 ```
 
 Support for preserving extended attributes and POSIX ACLs is gated behind
 optional Cargo features. Enable them at build time:
 
 ```
-cargo build -p oc-rsync-bin --bin oc-rsync --features "xattr acl"
+cargo build --bin oc-rsync --features "xattr acl"
 ```
 
 ## Packaging

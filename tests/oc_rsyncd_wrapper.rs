@@ -1,4 +1,4 @@
-// bin/oc-rsync/tests/wrapper.rs
+// tests/oc_rsyncd_wrapper.rs
 use assert_cmd::cargo::{cargo_bin, CommandCargoExt};
 use std::process::Command;
 

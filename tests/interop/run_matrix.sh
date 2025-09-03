@@ -201,7 +201,7 @@ for v in "${CLIENT_VERSIONS[@]}" "${SERVER_VERSIONS[@]}"; do
   if [[ "$v" == "oc-rsync" ]]; then
     if [[ ! -x "$ROOT/target/debug/oc-rsync" ]]; then
       echo "Building oc-rsync" >&2
-      cargo build --quiet -p oc-rsync-bin --bin oc-rsync
+      cargo build --quiet --bin oc-rsync
     fi
   else
     fetch_rsync "$v" >/dev/null

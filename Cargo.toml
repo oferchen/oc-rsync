@@ -11,7 +11,6 @@ members = [
     "crates/transport",
     "crates/daemon",
     "crates/cli",
-    "bin/oc-rsync",
     "crates/logging",
     "xtask",
 ]
@@ -21,6 +20,7 @@ resolver = "2"
 name = "oc-rsync"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [dependencies]
 protocol = { path = "crates/protocol" }
@@ -36,8 +36,8 @@ logging = { path = "crates/logging" }
 tracing = "0.1"
 filetime = "0.2"
 clap = { version = "4" }
-oc-rsync-cli = { path = "crates/cli" }
 libc = "0.2"
+oc-rsync-cli = { path = "crates/cli" }
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.27", features = ["user", "fs"] }

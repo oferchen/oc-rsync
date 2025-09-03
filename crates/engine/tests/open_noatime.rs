@@ -20,7 +20,6 @@ fn open_noatime_preserves_source_access_time() {
     let file = src.join("file.txt");
     fs::write(&file, b"hi").unwrap();
 
-    // Set atime sufficiently old to trigger relatime update on access
     let atime = FileTime::from_unix_time(0, 0);
     let mtime = FileTime::from_system_time(SystemTime::now());
     set_file_times(&file, atime, mtime).unwrap();
