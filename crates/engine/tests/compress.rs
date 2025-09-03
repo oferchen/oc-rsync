@@ -49,34 +49,13 @@ fn zstd_roundtrip() {
 }
 
 #[test]
-fn lzo_roundtrip() {
-    let tmp = tempdir().unwrap();
-    let src = tmp.path().join("src");
-    let dst = tmp.path().join("dst");
-    fs::create_dir_all(&src).unwrap();
-    fs::write(src.join("file.txt"), b"hello world").unwrap();
-    sync(
-        &src,
-        &dst,
-        &Matcher::default(),
-        &[Codec::Lzo],
-        &SyncOptions {
-            compress: true,
-            ..Default::default()
-        },
-    )
-    .unwrap();
-    assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
-}
-
-#[test]
 fn codec_selection_respects_options() {
     let opts = SyncOptions {
         compress: true,
         ..Default::default()
     };
     assert_eq!(
-        select_codec(&[Codec::Zlib, Codec::Lzo, Codec::Zstd], &opts),
+        select_codec(&[Codec::Zlib, Codec::Zstd], &opts),
         Some(Codec::Zstd)
     );
     assert_eq!(select_codec(&[Codec::Zlib], &opts), Some(Codec::Zlib));

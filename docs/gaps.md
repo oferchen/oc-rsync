@@ -41,7 +41,7 @@ _Future contributors: update this section when adding or fixing message behavior
 ## Compression
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
-| zstd, lzo, and zlib codecs | ✅ | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/lib.rs](../crates/compress/src/lib.rs) |
+| zstd and zlib codecs | ✅ | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/lib.rs](../crates/compress/src/lib.rs) |
 | `--skip-compress` suffix handling | ✅ | [tests/skip_compress.rs](../tests/skip_compress.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | Additional codecs (e.g. lz4) | ❌ | — | — |
 
