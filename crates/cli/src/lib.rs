@@ -31,7 +31,7 @@ use compress::{available_codecs, Codec};
 pub use engine::EngineError;
 use engine::{pipe_sessions, sync, DeleteMode, Result, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, Matcher, Rule};
-pub use formatter::render_help;
+pub use formatter::{render_help, ARG_ORDER};
 use logging::{human_bytes, parse_escapes, InfoFlag};
 use meta::{parse_chmod, parse_chown, IdKind};
 #[cfg(feature = "acl")]

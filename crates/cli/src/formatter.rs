@@ -9,11 +9,10 @@ const HELP_PREFIX: &str = "rsync comes with ABSOLUTELY NO WARRANTY.  This is fre
 
 const HELP_SUFFIX: &str = "\nUse \"rsync --daemon --help\" to see the daemon-mode command-line options.\nPlease see the rsync(1) and rsyncd.conf(5) manpages for full documentation.\nSee https://rsync.samba.org/ for updates, bug reports, and answers\n";
 
-const ARG_ORDER: &[&str] = &[
+pub const ARG_ORDER: &[&str] = &[
     "verbose",
     "info",
     "debug",
-    "stderr",
     "quiet",
     "no_motd",
     "checksum",
@@ -29,7 +28,6 @@ const ARG_ORDER: &[&str] = &[
     "append",
     "append_verify",
     "dirs",
-    "old_dirs",
     "mkpath",
     "links",
     "copy_links",
@@ -42,8 +40,6 @@ const ARG_ORDER: &[&str] = &[
     "perms",
     "executability",
     "chmod",
-    "acls",
-    "xattrs",
     "owner",
     "group",
     "devices",
@@ -53,11 +49,9 @@ const ARG_ORDER: &[&str] = &[
     "devices_specials",
     "times",
     "atimes",
-    "open_noatime",
     "crtimes",
     "omit_dir_times",
     "omit_link_times",
-    "super",
     "fake_super",
     "sparse",
     "preallocate",
@@ -71,7 +65,6 @@ const ARG_ORDER: &[&str] = &[
     "existing",
     "ignore_existing",
     "remove_source_files",
-    "del",
     "delete",
     "delete_before",
     "delete_during",
@@ -95,7 +88,7 @@ const ARG_ORDER: &[&str] = &[
     "groupmap",
     "chown",
     "timeout",
-    "contimeout",
+    "connect_timeout",
     "ignore_times",
     "size_only",
     "modify_window",
@@ -110,6 +103,7 @@ const ARG_ORDER: &[&str] = &[
     "skip_compress",
     "cvs_exclude",
     "filter",
+    "filter_file",
     "filter_shorthand",
     "exclude",
     "exclude_from",
@@ -117,7 +111,6 @@ const ARG_ORDER: &[&str] = &[
     "include_from",
     "files_from",
     "from0",
-    "old_args",
     "secluded_args",
     "trust_sender",
     "copy_as",
@@ -125,34 +118,28 @@ const ARG_ORDER: &[&str] = &[
     "port",
     "sockopts",
     "blocking_io",
-    "outbuf",
     "stats",
-    "8_bit_output",
+    "eight_bit_output",
     "human_readable",
     "progress",
     "partial_progress",
     "itemize_changes",
     "remote_option",
     "out_format",
-    "log_file",
-    "log_file_format",
+    "client-log-file",
+    "client-log-file-format",
     "password_file",
     "early_input",
     "list_only",
     "bwlimit",
-    "stop_after",
-    "stop_at",
     "fsync",
     "write_batch",
-    "only_write_batch",
     "read_batch",
     "protocol",
     "iconv",
     "checksum_seed",
     "ipv4",
     "ipv6",
-    "version",
-    "help",
 ];
 
 fn columns() -> usize {
@@ -273,27 +260,4 @@ pub fn render_help(cmd: &Command) -> String {
         out.pop();
     }
     out
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::options::cli_command;
-
-    #[test]
-    fn arg_order_matches_arguments() {
-        let cmd = cli_command();
-        let args: Vec<_> = cmd
-            .get_arguments()
-            .filter(|a| !a.is_hide_set() && !a.is_positional())
-            .collect();
-
-        for arg in &args {
-            let id = arg.get_id().as_str();
-            let count = ARG_ORDER.iter().filter(|&&v| v == id).count();
-            assert_eq!(count, 1, "{id} appears {count} times in ARG_ORDER");
-        }
-
-        assert_eq!(ARG_ORDER.len(), args.len());
-    }
 }
