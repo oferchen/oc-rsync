@@ -82,27 +82,13 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         .ok_or_else(|| EngineError::Other("missing DST".into()))?;
     if opts.archive {
         opts.recursive = true;
-        if !opts.no_links {
-            opts.links = true;
-        }
-        if !opts.no_perms {
-            opts.perms = true;
-        }
-        if !opts.no_times {
-            opts.times = true;
-        }
-        if !opts.no_group {
-            opts.group = true;
-        }
-        if !opts.no_owner {
-            opts.owner = true;
-        }
-        if !opts.no_devices {
-            opts.devices = true;
-        }
-        if !opts.no_specials {
-            opts.specials = true;
-        }
+        opts.links = !opts.no_links;
+        opts.perms = !opts.no_perms;
+        opts.times = !opts.no_times;
+        opts.group = !opts.no_group;
+        opts.owner = !opts.no_owner;
+        opts.devices = !opts.no_devices;
+        opts.specials = !opts.no_specials;
     }
     let matcher = build_matcher(&opts, matches)?;
     let addr_family = if opts.ipv4 {
