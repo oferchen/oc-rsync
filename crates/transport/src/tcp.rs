@@ -85,7 +85,7 @@ impl TcpTransport {
             return Ok(());
         }
         let sock = SockRef::from(&self.stream);
-        for opt in opts {
+        for opt in opts.iter() {
             match opt {
                 SockOpt::KeepAlive(v) => sock.set_keepalive(*v)?,
                 SockOpt::SendBuf(size) => sock.set_send_buffer_size(*size)?,

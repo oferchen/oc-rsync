@@ -96,7 +96,7 @@
 | --only-write-batch | Ignored |  |
 | --open-noatime | Ignored |  |
 | --out-format | Ignored |  |
-| --outbuf | Ignored |  |
+| --outbuf | Supported |  |
 | --owner | Supported |  |
 | --partial | Supported |  |
 | --partial-dir | Supported |  |
