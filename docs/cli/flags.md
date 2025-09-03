@@ -189,7 +189,7 @@
 |  | --safe-links | ignore symlinks that point outside the tree | no |  | no |
 |  | --size-only | skip files that match in size | no |  | no |
 | -S | --sparse | turn sequences of nulls into sparse blocks (requires filesystem support) | yes |  | no |
-|  | --suffix=SUFFIX | backup suffix (default ~ w/o --backup-dir) | no |  | no |
+|  | --suffix=SUFFIX | backup suffix (default ~ w/o --backup-dir) | yes |  | no |
 | -T | --temp-dir=DIR | create temporary files in directory DIR | no |  | no |
 |  | --timeout=SECONDS | set I/O timeout in seconds | yes |  | no |
 | -u | --update | skip files that are newer on the receiver | no |  | no |

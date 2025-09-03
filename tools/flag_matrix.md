@@ -126,7 +126,7 @@
 | --stderr | Ignored |  |
 | --stop-after | Ignored |  |
 | --stop-at | Ignored |  |
-| --suffix | Ignored |  |
+| --suffix | Supported |  |
 | --super | Supported |  |
 | --temp-dir | Supported |  |
 | --timeout | Supported |  |
