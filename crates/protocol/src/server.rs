@@ -3,6 +3,7 @@ use std::io::{self, Read, Write};
 use std::time::Duration;
 
 use checksums::{strong_digest, StrongHash};
+use subtle::ConstantTimeEq;
 
 use crate::{
     negotiate_caps, negotiate_version, Demux, ExitCode, Frame, Message, Mux, UnknownExit,
@@ -151,7 +152,9 @@ impl<R: Read, W: Write> Server<R, W> {
             buf.extend_from_slice(CHALLENGE);
             buf.extend_from_slice(tok.as_bytes());
             let expected = strong_digest(&buf, StrongHash::Md5, 0);
-            if expected[..16] != resp {
+            let expected_arr: [u8; 16] =
+                expected[..16].try_into().expect("MD5 digests are 16 bytes");
+            if expected_arr.ct_eq(&resp).unwrap_u8() != 1 {
                 return Err(io::Error::new(
                     io::ErrorKind::PermissionDenied,
                     "invalid challenge response",

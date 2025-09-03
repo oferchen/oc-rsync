@@ -10,6 +10,7 @@ compress = { path = "../compress" }
 checksums = { path = "../checksums" }
 filelist = { path = "../filelist" }
 encoding_rs = "0.8"
+subtle = "2"
 
 [features]
 default = []
