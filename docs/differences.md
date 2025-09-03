@@ -8,7 +8,7 @@ This document is synchronized with [feature_matrix.md](feature_matrix.md) and li
 - `--copy-as`: parity with upstream not yet verified; requires root or CAP_CHOWN. Tests: [tests/copy_as.rs](../tests/copy_as.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--copy-links`: parity with upstream not yet verified. Tests: [tests/symlink_resolution.rs](../tests/symlink_resolution.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--copy-unsafe-links`: parity with upstream not yet verified. Tests: [tests/symlink_resolution.rs](../tests/symlink_resolution.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--dry-run`: parity with upstream not yet verified. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
+- `--dry-run`: fully supported. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--early-input`: parity with upstream not yet verified. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--fake-super`: parity with upstream not yet verified; requires `xattr` feature. Tests: [tests/fake_super.rs](../tests/fake_super.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--fsync`: parity with upstream not yet verified. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
