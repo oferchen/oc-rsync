@@ -53,3 +53,16 @@ outputs. Regenerate them with:
 LC_ALL=C LANG=C COLUMNS=80 cargo run --bin oc-rsync -- --help > tests/fixtures/oc-rsync-help.txt
 LC_ALL=C LANG=C cargo run --bin oc-rsync -- --version > tests/fixtures/oc-rsync-version.txt
 ```
+
+## Upstream interaction goldens
+
+Some tests compare `oc-rsync`'s behavior against fixtures generated from
+upstream `rsync` output.  To refresh those fixtures, run:
+
+```
+make refresh-upstream-goldens
+```
+
+This target uses a pinned upstream container to regenerate files under
+`tests/fixtures/`.  Tests will fail if these fixtures drift from the committed
+versions.

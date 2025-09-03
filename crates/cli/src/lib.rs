@@ -77,12 +77,11 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
 }
 
 fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
-    let srcs = if opts.srcs.is_empty() {
-        return Err(EngineError::Other("missing SRC".into()));
-    } else {
-        opts.srcs.clone()
-    };
-    let dst_arg = opts.dst.clone();
+    if opts.paths.len() < 2 {
+        return Err(EngineError::Other("missing SRC or DST".into()));
+    }
+    let dst_arg = opts.paths.last().unwrap().clone();
+    let srcs = opts.paths[..opts.paths.len() - 1].to_vec();
     if srcs.len() > 1 {
         if let RemoteSpec::Local(ps) = parse_remote_spec(&dst_arg)? {
             if !ps.path.is_dir() {

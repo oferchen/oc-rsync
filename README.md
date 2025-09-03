@@ -61,6 +61,27 @@ Quick links:
 - [Flags](docs/cli.md#flags)
 - [Configuration precedence](docs/cli.md#configuration-precedence)
 
+### Examples
+
+```bash
+# Local copy
+oc-rsync -aP src/ dst/
+
+# Over SSH on a custom port
+oc-rsync -aP -e 'ssh -p 2222' user@host:/src/ /dst/
+
+# Daemon mode
+oc-rsync -aP rsync://host/module/ /dst/
+
+# Exclude patterns and delete extraneous files
+oc-rsync -aP --delete --exclude 'build/' src/ dst/
+
+# Resume partial transfers and preserve metadata explicitly
+oc-rsync -aP --partial --times --perms src/ dst/
+```
+
+See [docs/cli.md](docs/cli.md) for more details and additional examples.
+
 ### Logging
 
 Library callers can build a [`SyncConfig`] with `SyncConfig::builder()` to
