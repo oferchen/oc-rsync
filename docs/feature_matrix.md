@@ -18,7 +18,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--address` | ✅ | Y | Y | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--append` | ✅ | Y | Y | Y | [tests/resume.rs](../tests/resume.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--append-verify` | ✅ | Y | Y | Y | [tests/resume.rs](../tests/resume.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--archive` | ✅ | N | N | N | [tests/archive.rs](../tests/archive.rs)<br>[tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | composite flag; underlying gaps |
+| `--archive` | ✅ | Y | Y | Y | [tests/archive.rs](../tests/archive.rs)<br>[tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | composite flag; implies `-rlptgoD`; honors `--no-*` |
 | `--atimes` | ✅ | Y | Y | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--backup` | ✅ | Y | Y | Y | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | uses `~` suffix without `--backup-dir` |
 | `--backup-dir` | ✅ | Y | Y | Y | [crates/engine/tests/backup.rs](../crates/engine/tests/backup.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | implies `--backup` |

@@ -1,6 +1,8 @@
 // tests/delete_policy.rs
 
 use assert_cmd::Command;
+#[cfg(unix)]
+use nix::unistd::Uid;
 use std::fs;
 use tempfile::tempdir;
 
@@ -115,6 +117,11 @@ fn remove_source_files_via_cli() {
 #[test]
 fn ignore_errors_allows_deletion_failure() {
     use std::os::unix::fs::PermissionsExt;
+
+    if Uid::effective().is_root() {
+        eprintln!("skipping: requires non-root privileges");
+        return;
+    }
 
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
