@@ -301,6 +301,56 @@ fn server_rejects_option_after_arg() {
 }
 
 #[test]
+fn server_enforces_arg_limits() {
+    let local = available_codecs();
+    let payload = encode_codecs(&local);
+    let frame = protocol::Message::Codecs(payload.clone()).to_frame(0, None);
+    let mut frame_buf = Vec::new();
+    frame.encode(&mut frame_buf).unwrap();
+    let latest = SUPPORTED_PROTOCOLS[0];
+    let mut input = Cursor::new({
+        let mut v = Vec::new();
+        v.extend_from_slice(b"--toolong\0\0\0");
+        v.extend_from_slice(&latest.to_be_bytes());
+        v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
+        v.extend_from_slice(&frame_buf);
+        v
+    });
+    let mut output = Vec::new();
+    let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
+    srv.max_arg_len = 4;
+    let err = srv
+        .handshake(latest, SUPPORTED_CAPS, &local, None)
+        .expect_err("handshake should fail");
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+}
+
+#[test]
+fn server_enforces_env_limits() {
+    let local = available_codecs();
+    let payload = encode_codecs(&local);
+    let frame = protocol::Message::Codecs(payload.clone()).to_frame(0, None);
+    let mut frame_buf = Vec::new();
+    frame.encode(&mut frame_buf).unwrap();
+    let latest = SUPPORTED_PROTOCOLS[0];
+    let mut input = Cursor::new({
+        let mut v = Vec::new();
+        v.extend_from_slice(b"\0X=1\0\0");
+        v.extend_from_slice(&latest.to_be_bytes());
+        v.extend_from_slice(&SUPPORTED_CAPS.to_be_bytes());
+        v.extend_from_slice(&frame_buf);
+        v
+    });
+    let mut output = Vec::new();
+    let mut srv = Server::new(&mut input, &mut output, Duration::from_secs(30));
+    srv.max_env_vars = 0;
+    let err = srv
+        .handshake(latest, SUPPORTED_CAPS, &local, None)
+        .expect_err("handshake should fail");
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+}
+
+#[test]
 fn server_surfaces_progress_and_stats() {
     let mut input = Cursor::new(Vec::new());
     let mut output = Vec::new();
