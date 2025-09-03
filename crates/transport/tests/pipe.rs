@@ -28,7 +28,7 @@ fn pipe_ssh_transports() {
     let mut dst_session =
         SshStdioTransport::spawn("sh", ["-c", &format!("cat > {}", dst.display())]).unwrap();
 
-    pipe(&mut src_session, &mut dst_session).unwrap();
+    let _ = pipe(&mut src_session, &mut dst_session).unwrap();
     drop(dst_session);
     drop(src_session);
     wait_for(|| dst.exists());
@@ -62,7 +62,7 @@ fn pipe_tcp_transports() {
     let mut src_session = TcpTransport::connect("127.0.0.1", src_port, None, None).unwrap();
     let mut dst_session = TcpTransport::connect("127.0.0.1", dst_port, None, None).unwrap();
 
-    pipe(&mut src_session, &mut dst_session).unwrap();
+    let _ = pipe(&mut src_session, &mut dst_session).unwrap();
     drop(dst_session);
     drop(src_session);
     src_handle.join().unwrap();
