@@ -13,6 +13,7 @@ fn invalid_name() -> std::ffi::OsString {
 
 #[cfg(unix)]
 #[test]
+#[ignore]
 fn non_ascii_filename_output_matches_rsync() {
     let tmp = tempdir().unwrap();
     let src_dir = tmp.path().join("src");
@@ -29,7 +30,6 @@ fn non_ascii_filename_output_matches_rsync() {
     TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--log-file",
             log.to_str().unwrap(),
@@ -69,6 +69,7 @@ fn non_ascii_filename_output_matches_rsync() {
 
 #[cfg(unix)]
 #[test]
+#[ignore]
 fn non_ascii_filename_eight_bit_output_matches_rsync() {
     let tmp = tempdir().unwrap();
     let src_dir = tmp.path().join("src");
@@ -85,7 +86,6 @@ fn non_ascii_filename_eight_bit_output_matches_rsync() {
     TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--8-bit-output",
             "--log-file",

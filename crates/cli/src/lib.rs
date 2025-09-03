@@ -31,7 +31,7 @@ use compress::{available_codecs, Codec};
 pub use engine::EngineError;
 use engine::{pipe_sessions, sync, DeleteMode, Result, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, Matcher, Rule};
-pub use formatter::render_help;
+pub use formatter::{render_help, ARG_ORDER};
 use logging::{human_bytes, parse_escapes, InfoFlag};
 use meta::{parse_chmod, parse_chown, IdKind};
 #[cfg(feature = "acl")]
@@ -61,7 +61,7 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     }
     let mut opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
-    if matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
+    if !opts.old_args && matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
         if let Ok(val) = env::var("RSYNC_PROTECT_ARGS") {
             if val != "0" {
                 opts.secluded_args = true;
@@ -82,27 +82,16 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         .ok_or_else(|| EngineError::Other("missing DST".into()))?;
     if opts.archive {
         opts.recursive = true;
-        if !opts.no_links {
-            opts.links = true;
-        }
-        if !opts.no_perms {
-            opts.perms = true;
-        }
-        if !opts.no_times {
-            opts.times = true;
-        }
-        if !opts.no_group {
-            opts.group = true;
-        }
-        if !opts.no_owner {
-            opts.owner = true;
-        }
-        if !opts.no_devices {
-            opts.devices = true;
-        }
-        if !opts.no_specials {
-            opts.specials = true;
-        }
+        opts.links = !opts.no_links;
+        opts.perms = !opts.no_perms;
+        opts.times = !opts.no_times;
+        opts.group = !opts.no_group;
+        opts.owner = !opts.no_owner;
+        opts.devices = !opts.no_devices;
+        opts.specials = !opts.no_specials;
+    }
+    if opts.old_dirs {
+        opts.dirs = true;
     }
     let matcher = build_matcher(&opts, matches)?;
     let addr_family = if opts.ipv4 {
@@ -201,6 +190,13 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     #[cfg(feature = "acl")]
     if acls {
         remote_opts.push("--acls".into());
+    }
+    if opts.old_args {
+        remote_opts.push("--old-args".into());
+    }
+    if opts.old_dirs {
+        remote_opts.push("-r".into());
+        remote_opts.push("--exclude=/*/*".into());
     }
 
     if let Some(cfg) = &opts.config {
@@ -437,6 +433,13 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     };
     let uid_map = parse_name_map(&opts.usermap, IdKind::User)?;
     let gid_map = parse_name_map(&opts.groupmap, IdKind::Group)?;
+    let (write_batch, only_write_batch) =
+        match (opts.write_batch.clone(), opts.only_write_batch.clone()) {
+            (Some(p), None) => (Some(p), false),
+            (None, Some(p)) => (Some(p), true),
+            (None, None) => (None, false),
+            _ => unreachable!(),
+        };
     let mut sync_opts = SyncOptions {
         delete: delete_mode,
         delete_excluded: opts.delete_excluded,
@@ -553,13 +556,21 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         delay_updates: opts.delay_updates,
         modify_window: opts.modify_window.unwrap_or(Duration::ZERO),
         bwlimit: opts.bwlimit,
+        stop_after: opts.stop_after,
+        stop_at: opts.stop_at,
         block_size,
         link_dest: opts.link_dest.clone(),
         copy_dest: opts.copy_dest.clone(),
         compare_dest: opts.compare_dest.clone(),
         backup: opts.backup || opts.backup_dir.is_some(),
         backup_dir: opts.backup_dir.clone(),
-        backup_suffix: opts.suffix.clone(),
+        backup_suffix: opts.suffix.clone().unwrap_or_else(|| {
+            if opts.backup_dir.is_some() {
+                String::new()
+            } else {
+                "~".into()
+            }
+        }),
         chmod: if chmod_rules.is_empty() {
             None
         } else {
@@ -575,7 +586,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         secluded_args: opts.secluded_args,
         sockopts: opts.sockopts.clone(),
         remote_options: remote_opts.clone(),
-        write_batch: opts.write_batch.clone(),
+        write_batch,
+        only_write_batch,
         read_batch: opts.read_batch.clone(),
         copy_devices: opts.copy_devices,
         write_devices: opts.write_devices,

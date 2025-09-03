@@ -441,12 +441,12 @@
   },
   {
     "flag": "--old-args",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {
     "flag": "--old-dirs",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -481,7 +481,7 @@
   },
   {
     "flag": "--outbuf",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {
@@ -631,7 +631,7 @@
   },
   {
     "flag": "--suffix",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {

@@ -75,7 +75,7 @@
 | -0 | --from0 | all *-from/filter files are delimited by 0s | no |  | no |
 |  | --include-from=FILE | read include patterns from FILE | no |  | no |
 |  | --include=PATTERN | don't exclude files matching PATTERN | no |  | no |
-|  | --old-args | disable the modern arg-protection idiom | no |  | no |
+|  | --old-args | disable the modern arg-protection idiom | yes |  | no |
 | -s | --secluded-args | use the protocol to safely send the args | no |  | no |
 |  | --trust-sender | trust the remote sender's file list | no |  | no |
 | -F |  | same as --filter='dir-merge /.rsync-filter' repeated: --filter='- .rsync-filter' | no |  | no |
@@ -89,8 +89,8 @@
 |  | --fsync | fsync every written file | no |  | no |
 |  | --only-write-batch=FILE | like --write-batch but w/o updating dest | no |  | no |
 |  | --read-batch=FILE | read a batched update from FILE | no |  | no |
-|  | --stop-after=MINS | Stop rsync after MINS minutes have elapsed | no |  | no |
-|  | --stop-at=y-m-dTh:m | Stop rsync at the specified point in time | no |  | no |
+|  | --stop-after=MINS | Stop rsync after MINS minutes have elapsed | yes |  | no |
+|  | --stop-at=y-m-dTh:m | Stop rsync at the specified point in time | yes |  | no |
 |  | --write-batch=FILE | write a batched update to FILE | no |  | no |
 | -D |  | same as --devices --specials | no |  | no |
 | -P |  | same as --partial --progress | yes |  | no |
@@ -107,7 +107,7 @@
 |  | --iconv=CONVERT_SPEC | request charset conversion of filenames | no |  | no |
 | -4 | --ipv4 | prefer IPv4 | no |  | no |
 | -6 | --ipv6 | prefer IPv6 | no |  | no |
-|  | --outbuf=N\|L\|B | set out buffering to None, Line, or Block | no |  | no |
+|  | --outbuf=N\|L\|B | set out buffering to None, Line, or Block | yes |  | no |
 |  | --password-file=FILE | read daemon-access password from FILE | yes |  | no |
 |  | --port=PORT | specify double-colon alternate port number | yes |  | no |
 |  | --protocol=NUM | force an older protocol version to be used | no |  | no |
@@ -177,7 +177,7 @@
 |  | --munge-links | munge symlinks to make them safe & unusable | yes |  | no |
 |  | --no-OPTION | turn off an implied OPTION (e.g. --no-D) | no |  | no |
 |  | --no-implied-dirs | don't send implied dirs with --relative | yes |  | no |
-| --old-d | --old-dirs | works like --dirs when talking to old rsync | no |  | no |
+| --old-d | --old-dirs | works like --dirs when talking to old rsync | yes |  | no |
 | -x | --one-file-system | don't cross filesystem boundaries | yes |  | no |
 |  | --partial | keep partially transferred files | yes |  | no |
 |  | --partial-dir=DIR | put a partially transferred file into DIR | yes |  | no |
@@ -189,7 +189,7 @@
 |  | --safe-links | ignore symlinks that point outside the tree | no |  | no |
 |  | --size-only | skip files that match in size | no |  | no |
 | -S | --sparse | turn sequences of nulls into sparse blocks (requires filesystem support) | yes |  | no |
-|  | --suffix=SUFFIX | backup suffix (default ~ w/o --backup-dir) | no |  | no |
+|  | --suffix=SUFFIX | backup suffix (default ~ w/o --backup-dir) | yes |  | no |
 | -T | --temp-dir=DIR | create temporary files in directory DIR | no |  | no |
 |  | --timeout=SECONDS | set I/O timeout in seconds | yes |  | no |
 | -u | --update | skip files that are newer on the receiver | no |  | no |
