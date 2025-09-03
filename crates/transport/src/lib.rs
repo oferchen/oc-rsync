@@ -117,7 +117,7 @@ impl<T: Transport> TimeoutTransport<T> {
 
     fn check_timeout(&self) -> io::Result<()> {
         if let Some(dur) = self.timeout {
-            if self.last.elapsed() > dur {
+            if self.last.elapsed() >= dur {
                 return Err(io::Error::new(
                     io::ErrorKind::TimedOut,
                     "connection timed out",
@@ -287,5 +287,27 @@ fn parse_u64(s: &str) -> Result<u64, String> {
     } else {
         s.parse::<u64>()
             .map_err(|_| "invalid numeric value".to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{self, Cursor};
+
+    #[test]
+    fn timeout_errors_at_exact_duration() {
+        let reader = Cursor::new(Vec::new());
+        let writer = Cursor::new(Vec::new());
+        let dur = Duration::from_millis(100);
+        let mut t =
+            TimeoutTransport::new(LocalPipeTransport::new(reader, writer), Some(dur)).unwrap();
+
+        t.last = Instant::now() - dur + Duration::from_millis(1);
+        t.send(b"ok").unwrap();
+
+        t.last = Instant::now() - dur;
+        let err = t.send(b"fail").err().expect("timeout error");
+        assert_eq!(err.kind(), io::ErrorKind::TimedOut);
     }
 }
