@@ -523,6 +523,7 @@ name = "filters"
 version = "0.1.0"
 dependencies = [
  "globset",
+ "libc",
  "logging",
  "proptest",
  "tempfile",
@@ -1008,6 +1009,7 @@ dependencies = [
  "engine",
  "logging",
  "oc-rsync-cli",
+ "predicates",
  "protocol",
  "tempfile",
 ]
