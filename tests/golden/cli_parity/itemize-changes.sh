@@ -14,7 +14,7 @@ ln -s a.txt "$TMP/src/link"
 
 rsync_output=$(rsync --recursive --links --itemize-changes "$TMP/src/" "$TMP/rsync_dst" 2>&1 | grep -v 'sending incremental file list')
 
-oc_rsync_raw=$("$OC_RSYNC" --local --recursive --links --itemize-changes "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
+oc_rsync_raw=$("$OC_RSYNC" --recursive --links --itemize-changes "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v -e 'recursive mode enabled' || true)
 
 if [ "$rsync_output" != "$oc_rsync_output" ]; then

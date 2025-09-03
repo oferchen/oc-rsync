@@ -18,7 +18,7 @@ head -c 5 "$TMP/src/a.txt" > "$TMP/oc_rsync_dst/a.partial"
 rsync_output=$(rsync --quiet --partial "$TMP/src/a.txt" "$TMP/rsync_dst/" 2>&1)
 rsync_status=$?
 
-oc_rsync_raw=$("$OC_RSYNC" --local --partial "$TMP/src/" "$TMP/oc_rsync_dst/" 2>&1)
+oc_rsync_raw=$("$OC_RSYNC" --partial "$TMP/src/" "$TMP/oc_rsync_dst/" 2>&1)
 oc_rsync_status=$?
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v -e 'recursive mode enabled' || true)
 

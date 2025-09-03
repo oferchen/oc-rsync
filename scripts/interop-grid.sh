@@ -47,7 +47,7 @@ for ((mask=0; mask< (1<<N); mask++)); do
   RSYNC_EXIT=$?
 
   OC_ERR="$TMP/oc.err"
-  "$OC_RSYNC" --local "${args[@]}" "$SRC/" "$OC_DST/" 1>/dev/null 2>"$OC_ERR"
+  "$OC_RSYNC" "${args[@]}" "$SRC/" "$OC_DST/" 1>/dev/null 2>"$OC_ERR"
   OC_EXIT=$?
   set -e
 

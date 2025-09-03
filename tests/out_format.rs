@@ -19,7 +19,6 @@ fn out_format_file_matches_rsync() {
     TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--log-file",
             log.to_str().unwrap(),
@@ -74,7 +73,6 @@ fn out_format_symlink_matches_rsync() {
     TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "-l",
             "--recursive",
             "--log-file",

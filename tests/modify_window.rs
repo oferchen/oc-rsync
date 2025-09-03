@@ -23,12 +23,7 @@ fn modify_window_treats_close_times_as_equal() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--itemize-changes",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--itemize-changes", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout(predicates::str::contains(">f"));
@@ -38,7 +33,6 @@ fn modify_window_treats_close_times_as_equal() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--itemize-changes",
             "--modify-window=2",
             &src_arg,

@@ -14,7 +14,6 @@ fn log_file_writes_messages() {
     TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--log-file",
             log.to_str().unwrap(),
             "-v",
@@ -39,7 +38,6 @@ fn log_file_format_json_writes_json() {
     TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--log-file",
             log.to_str().unwrap(),
             "--log-file-format=json",
@@ -66,7 +64,6 @@ fn log_file_format_tokens() {
     TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--log-file",
             log.to_str().unwrap(),
             "--log-file-format=%t [%p] %o %f",
@@ -102,7 +99,6 @@ fn out_format_writes_custom_message() {
     TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--log-file",
             log.to_str().unwrap(),
             "--out-format=custom:%n",
@@ -133,7 +129,6 @@ fn out_format_supports_all_escapes() {
     TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "-l",
             "--log-file",
             log.to_str().unwrap(),
@@ -169,7 +164,6 @@ fn out_format_escapes_match_rsync() {
     TestCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--log-file",
             log.to_str().unwrap(),
             &format!("--out-format={fmt}"),

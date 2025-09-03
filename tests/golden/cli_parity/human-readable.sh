@@ -14,7 +14,7 @@ dd if=/dev/zero of="$TMP/src/file" bs=1024 count=2 >/dev/null 2>&1
 # Reference copy using rsync
 rsync --stats --recursive "$TMP/src/" "$TMP/rsync_dst/" >/dev/null
 
-oc_rsync_raw=$("$OC_RSYNC" --local --stats --progress --human-readable --recursive "$TMP/src/" "$TMP/oc_rsync_dst/" 2>&1)
+oc_rsync_raw=$("$OC_RSYNC" --stats --progress --human-readable --recursive "$TMP/src/" "$TMP/oc_rsync_dst/" 2>&1)
 oc_rsync_status=$?
 oc_rsync_progress=$(echo "$oc_rsync_raw" | grep -F "$TMP/oc_rsync_dst/file" || true)
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep 'bytes transferred' || true)

@@ -1,4 +1,3 @@
-complete -c oc-rsync -l log-format -r -f -a "text\t''
 json\t''"
 complete -c oc-rsync -l log-file -r -F
 complete -c oc-rsync -l log-file-format -r

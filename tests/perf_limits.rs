@@ -18,7 +18,6 @@ fn max_alloc_limits_large_files() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--max-alloc=1024",
             &src_arg,
@@ -42,7 +41,6 @@ fn max_alloc_zero_is_unlimited() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--max-alloc=0",
             &src_arg,
@@ -65,7 +63,6 @@ fn max_alloc_limits_block_size() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--max-alloc=1024",
             "--block-size=2048",
@@ -90,7 +87,6 @@ fn preallocate_option_creates_files() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--preallocate",
             &src_arg,
@@ -116,7 +112,6 @@ fn max_size_skips_large_files() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--max-size=3k",
             &src_arg,
@@ -143,7 +138,6 @@ fn min_size_skips_small_files() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--min-size=3k",
             &src_arg,
@@ -168,7 +162,7 @@ fn transfers_sub_kilobyte_files() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--recursive", &src_arg, dst.to_str().unwrap()])
+        .args(["--recursive", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 

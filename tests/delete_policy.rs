@@ -19,7 +19,6 @@ fn max_delete_aborts_after_limit() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--delete",
             "--max-delete=1",
@@ -54,7 +53,6 @@ fn max_delete_allows_within_limit() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--delete",
             "--max-delete=2",
@@ -77,7 +75,6 @@ fn delete_missing_args_removes_destination() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--delete-missing-args",
             "missing.txt",
             dst.to_str().unwrap(),
@@ -101,7 +98,6 @@ fn remove_source_files_via_cli() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--remove-source-files",
             &src_arg,
@@ -131,13 +127,7 @@ fn ignore_errors_allows_deletion_failure() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--recursive",
-            "--delete",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--recursive", "--delete", &src_arg, dst.to_str().unwrap()])
         .assert()
         .failure();
     assert!(dst.join("old.txt").exists());
@@ -145,7 +135,6 @@ fn ignore_errors_allows_deletion_failure() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--delete",
             "--ignore-errors",
@@ -172,7 +161,6 @@ fn force_deletes_non_empty_dirs() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--delete",
             "--force",

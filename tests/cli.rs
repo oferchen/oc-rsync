@@ -107,7 +107,6 @@ fn files_from_from0_matches_rsync() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--from0",
             "--files-from",
@@ -167,7 +166,6 @@ fn include_from_from0_matches_rsync() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--from0",
             "--include-from",
@@ -224,7 +222,6 @@ fn exclude_from_from0_matches_rsync() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--from0",
             "--exclude-from",
@@ -280,7 +277,6 @@ fn filter_file_from0_matches_rsync() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--from0",
             "--filter-file",
@@ -331,7 +327,6 @@ fn per_dir_merge_matches_rsync() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "-F",
             "-F",
@@ -410,12 +405,7 @@ fn iconv_invalid_charset_fails() {
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--iconv=FOO",
-            &src_arg,
-            dst_dir.to_str().unwrap(),
-        ])
+        .args(["--iconv=FOO", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .failure()
         .stderr(predicates::str::contains(
@@ -518,7 +508,7 @@ fn client_local_sync() {
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args(["--local", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.args([&src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success().stdout("").stderr("");
 
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
@@ -542,12 +532,7 @@ fn whole_file_direct_copy() {
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args([
-        "--local",
-        "--whole-file",
-        &src_arg,
-        dst_dir.to_str().unwrap(),
-    ]);
+    cmd.args(["--whole-file", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
 
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
@@ -571,12 +556,7 @@ fn ignore_existing_skips_file() {
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--ignore-existing",
-            &src_arg,
-            dst_dir.to_str().unwrap(),
-        ])
+        .args(["--ignore-existing", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .success();
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
@@ -594,7 +574,7 @@ fn existing_skips_new_file() {
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--existing", &src_arg, dst_dir.to_str().unwrap()])
+        .args(["--existing", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .success();
     assert!(!dst_dir.join("a.txt").exists());
@@ -614,7 +594,7 @@ fn existing_updates_existing_file() {
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--existing", &src_arg, dst_dir.to_str().unwrap()])
+        .args(["--existing", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .success();
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
@@ -635,12 +615,7 @@ fn size_only_skips_same_sized_file() {
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--size-only",
-            &src_arg,
-            dst_dir.to_str().unwrap(),
-        ])
+        .args(["--size-only", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .success();
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
@@ -664,12 +639,7 @@ fn ignore_times_forces_update() {
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--ignore-times",
-            &src_arg,
-            dst_dir.to_str().unwrap(),
-        ])
+        .args(["--ignore-times", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .success();
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
@@ -699,14 +669,14 @@ fn leading_dash_directory_requires_separator() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .current_dir(dir.path())
-        .args(["--local", "-src/", "dst"])
+        .args(["-src/", "dst"])
         .assert()
         .failure();
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .current_dir(dir.path())
-        .args(["--local", "--", "-src/", "dst"])
+        .args(["--", "-src/", "dst"])
         .assert()
         .success();
 
@@ -739,7 +709,7 @@ fn relative_preserves_ancestors() {
     std::fs::write(src_root.join("a/b/file.txt"), b"hi").unwrap();
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     cmd.current_dir(dir.path());
-    cmd.args(["--local", "-R", "src/a/b/", "dst"]);
+    cmd.args(["-R", "src/a/b/", "dst"]);
     cmd.assert().success();
 
     let out = std::fs::read(dir.path().join("dst/src/a/b/file.txt")).unwrap();
@@ -756,7 +726,7 @@ fn progress_flag_shows_output() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     let assert = cmd
-        .args(["--local", "--progress", &src_arg, dst_dir.to_str().unwrap()])
+        .args(["--progress", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .success();
     let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
@@ -802,7 +772,6 @@ fn progress_parity() {
         .env("LC_ALL", "C")
         .env("COLUMNS", "80")
         .args([
-            "--local",
             "--progress",
             format!("{}/", src.display()).as_str(),
             dst_ours.to_str().unwrap(),
@@ -871,7 +840,6 @@ fn stats_parity() {
         .env("LC_ALL", "C")
         .env("COLUMNS", "80")
         .args([
-            "--local",
             "--stats",
             format!("{}/", src.display()).as_str(),
             dst_ours.to_str().unwrap(),
@@ -908,7 +876,6 @@ fn progress_flag_human_readable() {
     let src_arg = format!("{}/", src_dir.display());
     let assert = cmd
         .args([
-            "--local",
             "--progress",
             "--human-readable",
             &src_arg,
@@ -940,7 +907,6 @@ fn resumes_from_partial_dir() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args([
-        "--local",
         "--partial",
         "--partial-dir",
         partial_dir.to_str().unwrap(),
@@ -968,7 +934,6 @@ fn resumes_from_partial_dir_with_absolute_path() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args([
-        "--local",
         "--partial",
         "--partial-dir",
         partial_dir.to_str().unwrap(),
@@ -994,7 +959,7 @@ fn resumes_from_partial_file() {
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args(["--local", "--partial", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.args(["--partial", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
 
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
@@ -1016,7 +981,6 @@ fn fails_when_temp_dir_is_file() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args([
-        "--local",
         "--temp-dir",
         tmp_file.to_str().unwrap(),
         &src_arg,
@@ -1042,7 +1006,6 @@ fn temp_files_created_in_temp_dir() {
     let mut child = std::process::Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--partial",
             "--bwlimit",
             "10240",
@@ -1107,7 +1070,6 @@ fn temp_dir_cross_filesystem_temp_file_in_dest() {
     let mut child = std::process::Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--partial",
             "--bwlimit",
             "10240",
@@ -1167,13 +1129,7 @@ fn destination_is_replaced_atomically() {
     let src_arg = format!("{}/", src_dir.display());
     let mut child = std::process::Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--bwlimit",
-            "20000",
-            &src_arg,
-            dst_dir.to_str().unwrap(),
-        ])
+        .args(["--bwlimit", "20000", &src_arg, dst_dir.to_str().unwrap()])
         .spawn()
         .unwrap();
 
@@ -1224,7 +1180,6 @@ fn temp_dir_cross_filesystem_rename() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--temp-dir",
             tmp_dir.path().to_str().unwrap(),
             &src_arg,
@@ -1262,7 +1217,6 @@ fn delay_updates_cross_filesystem_rename() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--delay-updates",
             "--temp-dir",
             tmp_dir.path().to_str().unwrap(),
@@ -1302,7 +1256,6 @@ fn temp_dir_cross_filesystem_finalizes() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--temp-dir",
             tmp_dir.path().to_str().unwrap(),
             &src_arg,
@@ -1362,7 +1315,6 @@ fn temp_dir_cross_filesystem_matches_rsync() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--temp-dir",
             tmp_dir.path().to_str().unwrap(),
@@ -1417,7 +1369,6 @@ fn numeric_ids_are_preserved() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args([
-        "--local",
         "--numeric-ids",
         "--owner",
         "--group",
@@ -1467,7 +1418,6 @@ fn owner_group_and_mode_preserved() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args([
-        "--local",
         "--owner",
         "--group",
         "--perms",
@@ -1520,7 +1470,6 @@ fn owner_group_perms_acls_preserved() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args([
-        "--local",
         "--owner",
         "--group",
         "--perms",
@@ -1554,12 +1503,7 @@ fn hard_links_preserved_via_cli() {
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--hard-links",
-            &src_arg,
-            dst_dir.to_str().unwrap(),
-        ])
+        .args(["--hard-links", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .success();
 
@@ -1597,7 +1541,6 @@ fn numeric_ids_falls_back_when_unprivileged() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--numeric-ids",
             "--owner",
             "--group",
@@ -1636,7 +1579,7 @@ fn owner_requires_privileges() {
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--owner", &src_arg, dst_dir.to_str().unwrap()])
+        .args(["--owner", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .failure()
         .code(u8::from(protocol::ExitCode::StartClient) as i32)
@@ -1688,7 +1631,6 @@ fn user_and_group_ids_are_mapped() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             usermap.as_str(),
             groupmap.as_str(),
             src_arg.as_str(),
@@ -1767,7 +1709,6 @@ fn user_names_are_mapped_even_with_numeric_ids() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--numeric-ids",
             usermap.as_str(),
             src_arg.as_str(),
@@ -1843,7 +1784,6 @@ fn group_names_are_mapped() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             groupmap.as_str(),
             src_arg.as_str(),
             dst_dir.to_str().unwrap(),
@@ -1954,7 +1894,6 @@ fn user_name_to_numeric_id_is_mapped() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             usermap.as_str(),
             src_arg.as_str(),
             dst_dir.to_str().unwrap(),
@@ -2023,7 +1962,6 @@ fn group_id_to_name_is_mapped() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             groupmap.as_str(),
             src_arg.as_str(),
             dst_dir.to_str().unwrap(),
@@ -2044,31 +1982,10 @@ fn verbose_flag_increases_logging() {
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args(["--local", "--verbose", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.args(["--verbose", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert()
         .success()
         .stdout(predicates::str::contains("verbose level set to 1"));
-}
-
-#[test]
-fn log_format_json_outputs_structured_logs() {
-    let dir = tempdir().unwrap();
-    let src_dir = dir.path().join("src");
-    let dst_dir = dir.path().join("dst");
-    std::fs::create_dir_all(&src_dir).unwrap();
-
-    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
-    let src_arg = format!("{}/", src_dir.display());
-    cmd.args([
-        "--local",
-        "--log-format=json",
-        "--verbose",
-        &src_arg,
-        dst_dir.to_str().unwrap(),
-    ]);
-    cmd.assert().success().stdout(predicates::str::contains(
-        "\"message\":\"verbose level set to 1\"",
-    ));
 }
 
 #[test]
@@ -2082,7 +1999,6 @@ fn log_file_format_json_outputs_structured_file() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args([
-        "--local",
         "--log-file",
         log.to_str().unwrap(),
         "--log-file-format=json",
@@ -2105,7 +2021,6 @@ fn quiet_flag_suppresses_output() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args([
-        "--local",
         "--recursive",
         "--quiet",
         "--progress",
@@ -2127,7 +2042,6 @@ fn archive_implies_recursive() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_root.display());
     cmd.args([
-        "--local",
         "-a",
         "--no-o",
         "--no-g",
@@ -2148,7 +2062,7 @@ fn dry_run_does_not_modify_destination() {
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args(["--local", "--dry-run", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.args(["--dry-run", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
     assert!(!dst_dir.join("file.txt").exists());
 }
@@ -2170,11 +2084,7 @@ fn checksum_forces_transfer_cli() {
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            &format!("{}/", src.display()),
-            dst.to_str().unwrap(),
-        ])
+        .args([&format!("{}/", src.display()), dst.to_str().unwrap()])
         .assert()
         .success();
     assert_eq!(std::fs::read(&dst_file).unwrap(), b"bbbb");
@@ -2182,7 +2092,6 @@ fn checksum_forces_transfer_cli() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--checksum",
             &format!("{}/", src.display()),
             dst.to_str().unwrap(),
@@ -2204,7 +2113,6 @@ fn delete_non_empty_dir_without_force_fails() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--delete",
             &format!("{}/", src.display()),
             dst.to_str().unwrap(),
@@ -2228,7 +2136,6 @@ fn force_allows_non_empty_dir_deletion() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--delete",
             "--force",
             &format!("{}/", src.display()),
@@ -2252,7 +2159,6 @@ fn force_removes_nested_non_empty_dirs() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--delete",
             "--force",
             &format!("{}/", src.display()),
@@ -2278,7 +2184,6 @@ fn force_removes_multiple_non_empty_dirs() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--delete",
             "--force",
             &format!("{}/", src.display()),
@@ -2315,7 +2220,7 @@ fn perms_flag_preserves_permissions() {
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args(["--local", "--perms", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.args(["--perms", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
 
     umask(old_umask);
@@ -2348,7 +2253,7 @@ fn default_umask_masks_permissions() {
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", &src_arg, dst_dir.to_str().unwrap()])
+        .args([&src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .success();
 
@@ -2376,12 +2281,7 @@ fn chmod_masks_file_type_bits() {
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args([
-        "--local",
-        "--chmod=100644",
-        &src_arg,
-        dst_dir.to_str().unwrap(),
-    ]);
+    cmd.args(["--chmod=100644", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
 
     let mode = fs::metadata(dst_dir.join("a.txt"))
@@ -2405,7 +2305,6 @@ fn numeric_chmod_leaves_directories_executable() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args([
-        "--local",
         "--recursive",
         "--chmod=100644",
         &src_arg,
@@ -2430,7 +2329,7 @@ fn stats_are_printed() {
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args(["--local", "--stats", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.args(["--stats", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success().stdout(predicates::str::contains(
         "Number of regular files transferred",
     ));
@@ -2448,7 +2347,6 @@ fn config_flag_prints_message() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.args([
-        "--local",
         "--config",
         cfg.to_str().unwrap(),
         &src_arg,
@@ -2473,7 +2371,7 @@ fn no_default_config_used_without_flag() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     cmd.env("HOME", home);
-    cmd.args(["--local", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.args([&src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert()
         .success()
         .stdout(predicates::str::contains("using config file").not());
@@ -2520,7 +2418,6 @@ fn exclude_pattern_skips_files() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--exclude",
             "*.log",
@@ -2549,7 +2446,6 @@ fn exclude_from_file_skips_patterns() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--exclude-from",
             list.to_str().unwrap(),
@@ -2580,7 +2476,6 @@ fn files_from_list_transfers_only_listed_files() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--files-from",
             list.to_str().unwrap(),
@@ -2608,7 +2503,6 @@ fn include_pattern_allows_file() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--include",
             "keep.txt",
@@ -2637,7 +2531,6 @@ fn include_after_exclude_does_not_override() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--exclude",
             "*.log",
@@ -2670,7 +2563,6 @@ fn include_from_file_allows_patterns() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--include-from",
             inc.to_str().unwrap(),
@@ -2699,7 +2591,6 @@ fn per_dir_merge_can_override_later_include() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--filter",
             ": .rsync-filter",
@@ -2729,7 +2620,6 @@ fn include_before_per_dir_merge_allows_file() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--include",
             "skip.txt",
@@ -2760,7 +2650,6 @@ fn exclude_dot_anchor_only_skips_root() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--exclude=./root.txt",
             &src_arg,
@@ -2788,7 +2677,6 @@ fn exclude_complex_pattern_skips_nested_files() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--exclude",
             "dir/**/log[0-9].txt",
@@ -2818,7 +2706,6 @@ fn include_complex_pattern_allows_files() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--include",
             "**/keep?.txt",
@@ -2850,7 +2737,6 @@ fn include_from_before_exclude_allows_file() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--include-from",
             inc.to_str().unwrap(),
@@ -2881,7 +2767,6 @@ fn exclude_before_include_from_skips_file() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--exclude",
             "*",
@@ -2913,7 +2798,6 @@ fn rsync_filter_merges_across_directories() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--filter",
             ": .rsync-filter",
@@ -2945,7 +2829,6 @@ fn filter_file_zero_separated_from_stdin() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--from0",
             "--filter-file",
@@ -2976,7 +2859,6 @@ fn files_from_zero_separated_list() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--from0",
             "--files-from",
@@ -3006,7 +2888,6 @@ fn files_from_zero_separated_list_with_crlf() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--from0",
             "--files-from",
@@ -3036,7 +2917,6 @@ fn exclude_from_zero_separated_list_with_crlf() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--from0",
             "--exclude-from",
@@ -3068,7 +2948,6 @@ fn include_from_zero_separated_list_with_crlf() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--from0",
             "--include-from",
@@ -3100,7 +2979,6 @@ fn include_from_zero_separated_list_allows_hash() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--from0",
             "--include-from",
@@ -3132,7 +3010,6 @@ fn files_from_zero_separated_list_allows_hash() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--from0",
             "--files-from",
@@ -3162,7 +3039,6 @@ fn files_from_list_file() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--files-from",
             list.to_str().unwrap(),
@@ -3191,7 +3067,6 @@ fn files_from_list_handles_crlf_and_comment_spaces() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--files-from",
             list.to_str().unwrap(),
@@ -3219,7 +3094,6 @@ fn files_from_list_includes_directories() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--files-from",
             list.to_str().unwrap(),
@@ -3245,7 +3119,7 @@ fn links_preserve_symlinks() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .args(["--links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3267,7 +3141,7 @@ fn links_copy_dangling_symlink() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .args(["--links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3292,7 +3166,7 @@ fn links_preserve_absolute_symlink() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .args(["--links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3316,7 +3190,7 @@ fn links_replace_and_skip_existing() {
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .args(["--links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
     let meta = std::fs::symlink_metadata(dst.join("link")).unwrap();
@@ -3326,7 +3200,6 @@ fn links_replace_and_skip_existing() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--links",
             "--ignore-existing",
             &src_arg,
@@ -3356,7 +3229,7 @@ fn links_preserve_directory_symlinks() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .args(["--links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3382,7 +3255,6 @@ fn copy_dirlinks_transforms_directory_symlinks() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--links",
             "--copy-dirlinks",
             &src_arg,
@@ -3416,12 +3288,7 @@ fn keep_dirlinks_handles_nested_symlinks() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--keep-dirlinks",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--keep-dirlinks", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3448,7 +3315,7 @@ fn copy_links_resolves_relative_and_absolute_targets() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--copy-links", &src_arg, dst.to_str().unwrap()])
+        .args(["--copy-links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3470,7 +3337,7 @@ fn copy_links_errors_on_dangling_symlink() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--copy-links", &src_arg, dst.to_str().unwrap()])
+        .args(["--copy-links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .failure()
         .stderr(predicates::str::contains("symlink has no referent"));
@@ -3492,13 +3359,7 @@ fn safe_links_resolve_source_symlink() {
     let src_arg = format!("{}/", link.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--links",
-            "--safe-links",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--links", "--safe-links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3521,13 +3382,7 @@ fn safe_links_skip_absolute_symlink() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--links",
-            "--safe-links",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--links", "--safe-links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3547,13 +3402,7 @@ fn safe_links_allow_relative_symlink_within_tree() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--links",
-            "--safe-links",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--links", "--safe-links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3577,7 +3426,7 @@ fn perms_preserve_permissions() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--perms", &src_arg, dst.to_str().unwrap()])
+        .args(["--perms", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3604,7 +3453,7 @@ fn times_preserve_mtime() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--times", &src_arg, dst.to_str().unwrap()])
+        .args(["--times", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3631,7 +3480,7 @@ fn sparse_files_preserved() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--sparse", &src_arg, dst.to_str().unwrap()])
+        .args(["--sparse", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3664,7 +3513,7 @@ fn sparse_files_created() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--sparse", &src_arg, dst.to_str().unwrap()])
+        .args(["--sparse", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3694,7 +3543,7 @@ fn specials_preserve_fifo() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--specials", &src_arg, dst.to_str().unwrap()])
+        .args(["--specials", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -3715,7 +3564,6 @@ fn delete_delay_removes_extraneous_files() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--delete-delay",
             &src_arg,
@@ -3753,7 +3601,6 @@ fn cvs_exclude_skips_ignored_files() {
     cmd.env("CVSIGNORE", "env_ignored");
     cmd.env("HOME", home.path());
     cmd.args([
-        "--local",
         "--recursive",
         "--cvs-exclude",
         &src_arg,
@@ -3787,7 +3634,6 @@ fn super_overrides_fake_super() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "-a",
             "--fake-super",
             "--super",

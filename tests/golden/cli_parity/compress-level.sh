@@ -13,7 +13,7 @@ echo data > "$TMP/src/a.txt"
 rsync_output=$(rsync --quiet --recursive --compress-level=1 "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-oc_rsync_raw=$("$OC_RSYNC" --local --recursive --compress-level=1 "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
+oc_rsync_raw=$("$OC_RSYNC" --recursive --compress-level=1 "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
 oc_rsync_status=$?
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v 'recursive mode enabled' || true)
 
@@ -40,7 +40,7 @@ mkdir -p "$TMP/rsync_dst" "$TMP/oc_rsync_dst"
 rsync_output=$(rsync --quiet --recursive --zl=1 "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-oc_rsync_raw=$("$OC_RSYNC" --local --recursive --zl=1 "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
+oc_rsync_raw=$("$OC_RSYNC" --recursive --zl=1 "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
 oc_rsync_status=$?
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v 'recursive mode enabled' || true)
 

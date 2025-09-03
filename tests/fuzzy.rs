@@ -16,7 +16,6 @@ fn fuzzy_transfers_file() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--fuzzy",
             src_file.to_str().unwrap(),
             dst_dir.to_str().unwrap(),

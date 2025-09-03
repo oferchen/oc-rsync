@@ -48,7 +48,7 @@ rsync_output=$(rsync --quiet --recursive \
 rsync_status=$?
 
 # Run oc-rsync
-oc_rsync_raw=$("$OC_RSYNC" --local --recursive \
+oc_rsync_raw=$("$OC_RSYNC" --recursive \
   --filter=': /.rsync-filter' \
   --filter=': /.gitignore' \
   --filter='- .rsync-filter' \

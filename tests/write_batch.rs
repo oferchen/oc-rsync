@@ -14,7 +14,6 @@ fn creates_batch_file() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--write-batch",
             batch.to_str().unwrap(),
             "-r",
@@ -40,7 +39,6 @@ fn replays_batch_file() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--write-batch",
             batch.to_str().unwrap(),
             "-r",
@@ -54,7 +52,6 @@ fn replays_batch_file() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--read-batch",
             batch.to_str().unwrap(),
             "-r",

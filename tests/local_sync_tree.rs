@@ -46,7 +46,7 @@ fn sync_directory_tree() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", &src_arg, dst.to_str().unwrap()])
+        .args([&src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -71,7 +71,7 @@ fn sync_replaces_symlinked_dir_by_default() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", &src_arg, dst.to_str().unwrap()])
+        .args([&src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -98,12 +98,7 @@ fn sync_keep_dirlinks_preserves_symlinked_dir() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--keep-dirlinks",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--keep-dirlinks", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -128,7 +123,7 @@ fn sync_preserves_xattrs() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--xattrs", &src_arg, dst.to_str().unwrap()])
+        .args(["--xattrs", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -153,13 +148,7 @@ fn sync_preserves_symlink_xattrs() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--links",
-            "--xattrs",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--links", "--xattrs", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -193,7 +182,7 @@ fn sync_preserves_acls() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--acls", &src_arg, dst.to_str().unwrap()])
+        .args(["--acls", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -225,7 +214,7 @@ fn sync_xattrs_match_rsync() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--xattrs", &src_arg, dst_oc.to_str().unwrap()])
+        .args(["--xattrs", &src_arg, dst_oc.to_str().unwrap()])
         .assert()
         .success();
 
@@ -268,7 +257,7 @@ fn sync_acls_match_rsync() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--acls", &src_arg, dst_oc.to_str().unwrap()])
+        .args(["--acls", &src_arg, dst_oc.to_str().unwrap()])
         .assert()
         .success();
 
@@ -311,7 +300,7 @@ fn sync_removes_acls() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--acls", &src_arg, dst.to_str().unwrap()])
+        .args(["--acls", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -353,7 +342,7 @@ fn sync_removes_acls_match_rsync() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--acls", &src_arg, dst_oc.to_str().unwrap()])
+        .args(["--acls", &src_arg, dst_oc.to_str().unwrap()])
         .assert()
         .success();
 
@@ -391,7 +380,7 @@ fn sync_ignores_acls_without_flag() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", &src_arg, dst.to_str().unwrap()])
+        .args([&src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -432,13 +421,7 @@ fn sync_preserves_owner_and_group() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--owner",
-            "--group",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--owner", "--group", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -464,13 +447,7 @@ fn sync_applies_chmod() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--perms",
-            "--chmod=g+r",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--perms", "--chmod=g+r", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -500,7 +477,7 @@ fn sync_preserves_permissions_with_perms() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--perms", &src_arg, dst.to_str().unwrap()])
+        .args(["--perms", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -525,12 +502,7 @@ fn sync_preserves_executability() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--executability",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--executability", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -563,7 +535,7 @@ fn sync_preserves_crtimes() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--crtimes", &src_arg, dst.to_str().unwrap()])
+        .args(["--crtimes", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -594,7 +566,7 @@ fn sync_preserves_atimes() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--atimes", &src_arg, dst.to_str().unwrap()])
+        .args(["--atimes", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -652,7 +624,7 @@ fn sync_creates_device_nodes() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--devices", &src_arg, dst.to_str().unwrap()])
+        .args(["--devices", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -709,7 +681,7 @@ fn sync_copies_device_contents() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--copy-devices", &src_arg, dst.to_str().unwrap()])
+        .args(["--copy-devices", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -755,7 +727,7 @@ fn sync_deletes_device_nodes() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--delete", &src_arg, dst.to_str().unwrap()])
+        .args(["--delete", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
 
@@ -776,7 +748,7 @@ fn sync_preserves_fifos() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--specials", &src_arg, dst.to_str().unwrap()])
+        .args(["--specials", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -802,7 +774,7 @@ fn sync_preserves_hard_links() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--hard-links", &src_arg, dst.to_str().unwrap()])
+        .args(["--hard-links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -832,7 +804,6 @@ fn sync_preserves_multiple_hard_links() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--hard-links",
             "--delay-updates",
             &src_arg,
@@ -870,7 +841,6 @@ fn sync_preserves_hard_links_with_link_dest() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--hard-links",
             "--link-dest",
             link.to_str().unwrap(),
@@ -913,7 +883,7 @@ fn sync_preserves_hard_links_across_dirs() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--hard-links", &src_arg, dst.to_str().unwrap()])
+        .args(["--hard-links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -948,7 +918,7 @@ fn sync_preserves_multiple_hard_link_groups_separately() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--hard-links", &src_arg, dst.to_str().unwrap()])
+        .args(["--hard-links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -989,7 +959,6 @@ fn sync_relinks_existing_hard_link_group_members() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--hard-links",
             "--existing",
             &src_arg,
@@ -1020,7 +989,7 @@ fn sync_preserves_symlinks() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--links", &src_arg, dst.to_str().unwrap()])
+        .args(["--links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -1048,7 +1017,7 @@ fn sync_follows_symlinks() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", "--copy-links", &src_arg, dst.to_str().unwrap()])
+        .args(["--copy-links", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")
@@ -1074,13 +1043,7 @@ fn sync_copy_links_preserves_xattrs() {
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--copy-links",
-            "--xattrs",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
+        .args(["--copy-links", "--xattrs", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
         .stdout("")

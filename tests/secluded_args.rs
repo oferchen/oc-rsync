@@ -13,7 +13,6 @@ fn accepts_secluded_args() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--secluded-args",
             "-r",
             src.to_str().unwrap(),
@@ -32,13 +31,7 @@ fn accepts_s_alias() {
     let dst = dir.path().join("dst");
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "-s",
-            "-r",
-            src.to_str().unwrap(),
-            dst.to_str().unwrap(),
-        ])
+        .args(["-s", "-r", src.to_str().unwrap(), dst.to_str().unwrap()])
         .assert()
         .success();
 }

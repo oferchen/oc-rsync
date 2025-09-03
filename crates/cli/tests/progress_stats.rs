@@ -41,7 +41,6 @@ fn progress_parity() {
         .env("LC_ALL", "C")
         .env("COLUMNS", "80")
         .args([
-            "--local",
             "--progress",
             format!("{}/", src.display()).as_str(),
             dst_ours.to_str().unwrap(),
@@ -100,7 +99,6 @@ fn stats_parity() {
         .env("LC_ALL", "C")
         .env("COLUMNS", "80")
         .args([
-            "--local",
             "--stats",
             format!("{}/", src.display()).as_str(),
             dst_ours.to_str().unwrap(),
