@@ -51,10 +51,12 @@ fn numeric_ids_chown_permission_denied_matches_rsync() -> std::io::Result<()> {
 
     let our_file = our_dest.join("file");
     fs::copy(&src_file, &our_file)?;
-    let mut opts = Options::default();
-    opts.owner = true;
-    opts.group = true;
-    opts.numeric_ids = true;
+    let opts = Options {
+        owner: true,
+        group: true,
+        numeric_ids: true,
+        ..Default::default()
+    };
     meta.apply(&our_file, opts)?;
     let our_meta = fs::symlink_metadata(&our_file)?;
 
