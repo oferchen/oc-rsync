@@ -708,7 +708,6 @@ pub fn authenticate<T: Transport>(
             ));
         }
         let allowed = authenticate_token(&token_str, auth_path)?;
-        t.send(b"@RSYNCD: OK\n")?;
         Ok((Some(token_str), allowed, no_motd))
     } else if let Some(pw) = password {
         if token_str.is_empty() {
@@ -723,7 +722,6 @@ pub fn authenticate<T: Transport>(
                 "unauthorized",
             ));
         }
-        t.send(b"@RSYNCD: OK\n")?;
         Ok((Some(token_str), Vec::new(), no_motd))
     } else {
         let token_opt = if token_str.is_empty() {
@@ -731,7 +729,6 @@ pub fn authenticate<T: Transport>(
         } else {
             Some(token_str)
         };
-        t.send(b"@RSYNCD: OK\n")?;
         Ok((token_opt, Vec::new(), no_motd))
     }
 }
@@ -928,6 +925,7 @@ pub fn handle_connection<T: Transport>(
             }
         }
     }
+    transport.send(b"@RSYNCD: OK\n")?;
     let name = if token.is_some() && global_allowed.is_empty() && secrets.is_none() {
         token.take().unwrap()
     } else {

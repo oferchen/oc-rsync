@@ -1798,7 +1798,6 @@ fn daemon_respects_module_host_lists() {
 
 #[test]
 #[serial]
-#[ignore]
 fn daemon_displays_motd() {
     if require_network().is_err() {
         eprintln!("skipping daemon test: network access required");
@@ -1834,8 +1833,15 @@ fn daemon_displays_motd() {
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
     t.authenticate(None, false).unwrap();
     let mut motd_buf = [0u8; 64];
-    let n = t.receive(&mut motd_buf).unwrap();
-    assert!(String::from_utf8_lossy(&motd_buf[..n]).contains("Hello world"));
+    let mut motd = String::new();
+    loop {
+        let n = t.receive(&mut motd_buf).unwrap();
+        motd.push_str(&String::from_utf8_lossy(&motd_buf[..n]));
+        if motd.ends_with("@RSYNCD: OK\n") {
+            break;
+        }
+    }
+    assert_eq!(motd, "@RSYNCD: Hello world\n@RSYNCD: OK\n");
     let _ = child.kill();
     let _ = child.wait();
 }
