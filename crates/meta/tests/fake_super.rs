@@ -1,10 +1,15 @@
 // crates/meta/tests/fake_super.rs
 #[cfg(all(unix, feature = "xattr"))]
-use meta::{Metadata, Options};
+use meta::Metadata;
 #[cfg(all(unix, feature = "xattr"))]
 use std::fs;
 #[cfg(all(unix, feature = "xattr"))]
 use tempfile::tempdir;
+
+#[cfg(all(unix, feature = "xattr"))]
+mod common;
+#[cfg(all(unix, feature = "xattr"))]
+use common::full_metadata_opts;
 
 #[cfg(all(unix, feature = "xattr"))]
 use nix::unistd::Uid;
@@ -27,14 +32,9 @@ fn fake_super_roundtrip() -> std::io::Result<()> {
         xattr::set(&src, "user.rsync.gid", b"0")?;
         xattr::set(&src, "user.rsync.mode", b"4755")?;
     }
-    let opts = Options {
-        owner: true,
-        group: true,
-        perms: true,
-        fake_super: true,
-        xattrs: true,
-        ..Default::default()
-    };
+    let mut opts = full_metadata_opts();
+    opts.fake_super = true;
+    opts.xattrs = true;
     let meta = Metadata::from_path(&src, opts.clone())?;
     meta.apply(&dst, opts.clone())?;
     #[cfg(feature = "xattr")]
