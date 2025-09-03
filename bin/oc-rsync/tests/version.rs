@@ -1,6 +1,5 @@
 // bin/oc-rsync/tests/version.rs
 use assert_cmd::Command;
-use protocol::SUPPORTED_PROTOCOLS;
 
 fn version_output() -> String {
     let output = Command::cargo_bin("oc-rsync")
@@ -12,15 +11,10 @@ fn version_output() -> String {
 }
 
 #[test]
-fn prints_three_lines() {
+fn matches_upstream_output() {
     let out = version_output();
-    let lines: Vec<_> = out.lines().collect();
-    assert_eq!(lines.len(), 3);
-    assert!(lines[0].contains(env!("CARGO_PKG_VERSION")));
-    assert!(lines[0].contains(&SUPPORTED_PROTOCOLS[0].to_string()));
-    assert!(lines[1].contains(env!("RSYNC_UPSTREAM_VER")));
-    assert!(lines[2].contains(env!("BUILD_REVISION")));
-    assert!(lines[2].contains(env!("OFFICIAL_BUILD")));
+    let expected = include_str!("../../tests/fixtures/rsync-version.txt");
+    assert_eq!(out, expected);
 }
 
 #[test]
