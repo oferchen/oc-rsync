@@ -25,7 +25,7 @@ use options::{ClientOpts, ProbeOpts};
 use utils::{
     init_logging, parse_filters, parse_name_map, parse_remote_specs, parse_rsync_path, RemoteSpec,
 };
-pub use utils::{parse_iconv, parse_rsh, print_version_if_requested};
+pub use utils::{parse_iconv, parse_logging_flags, parse_rsh, print_version_if_requested};
 
 use compress::{available_codecs, Codec};
 pub use engine::EngineError;
@@ -211,8 +211,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             opts.verbose
         );
     }
-    if opts.recursive && !opts.quiet {
-        println!("recursive mode enabled");
+    if opts.verbose > 0 && opts.recursive && !opts.quiet {
+        tracing::info!(target: InfoFlag::Misc.target(), "recursive mode enabled");
     }
     let (src, mut dst) = parse_remote_specs(&src_arg, &dst_arg)?;
     if opts.mkpath {
@@ -1256,7 +1256,8 @@ fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
 mod tests {
     use super::*;
     use crate::utils::{parse_bool, parse_remote_spec, RemoteSpec};
-    use daemon::authenticate;
+    use ::daemon::authenticate;
+    use clap::Parser;
     use engine::SyncOptions;
     use std::path::PathBuf;
 
