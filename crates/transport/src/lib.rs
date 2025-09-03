@@ -175,6 +175,10 @@ pub enum SockOpt {
     ReuseAddr(bool),
     BindToDevice(String),
     IpHopLimit(u32),
+    Linger(Option<Duration>),
+    Broadcast(bool),
+    RcvTimeout(Duration),
+    SndTimeout(Duration),
 }
 
 pub fn parse_sockopts(opts: &[String]) -> Result<Vec<SockOpt>, String> {
@@ -224,6 +228,26 @@ fn parse_sockopt(s: &str) -> Result<SockOpt, String> {
             }
             Ok(SockOpt::BindToDevice(v.to_string()))
         }
+        "SO_LINGER" => {
+            let dur = value
+                .map(|v| parse_u64(v).map(Duration::from_secs))
+                .transpose()?;
+            Ok(SockOpt::Linger(dur))
+        }
+        "SO_BROADCAST" => {
+            let enabled = value.map(|v| v != "0").unwrap_or(true);
+            Ok(SockOpt::Broadcast(enabled))
+        }
+        "SO_RCVTIMEO" => {
+            let v = value.ok_or_else(|| "SO_RCVTIMEO requires a value".to_string())?;
+            let secs = parse_u64(v)?;
+            Ok(SockOpt::RcvTimeout(Duration::from_secs(secs)))
+        }
+        "SO_SNDTIMEO" => {
+            let v = value.ok_or_else(|| "SO_SNDTIMEO requires a value".to_string())?;
+            let secs = parse_u64(v)?;
+            Ok(SockOpt::SndTimeout(Duration::from_secs(secs)))
+        }
         _ => Err(format!("unknown socket option: {name}")),
     }
 }
@@ -252,6 +276,16 @@ fn parse_u32(s: &str) -> Result<u32, String> {
         u32::from_str_radix(hex, 16).map_err(|_| "invalid numeric value".to_string())
     } else {
         s.parse::<u32>()
+            .map_err(|_| "invalid numeric value".to_string())
+    }
+}
+
+fn parse_u64(s: &str) -> Result<u64, String> {
+    let s = s.trim();
+    if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+        u64::from_str_radix(hex, 16).map_err(|_| "invalid numeric value".to_string())
+    } else {
+        s.parse::<u64>()
             .map_err(|_| "invalid numeric value".to_string())
     }
 }

@@ -109,6 +109,10 @@ impl TcpTransport {
                     }
                 }
                 SockOpt::IpHopLimit(v) => sock.set_unicast_hops_v6(*v)?,
+                SockOpt::Linger(dur) => sock.set_linger(*dur)?,
+                SockOpt::Broadcast(v) => sock.set_broadcast(*v)?,
+                SockOpt::RcvTimeout(d) => sock.set_read_timeout(Some(*d))?,
+                SockOpt::SndTimeout(d) => sock.set_write_timeout(Some(*d))?,
             }
         }
         Ok(())
