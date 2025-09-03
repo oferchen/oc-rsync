@@ -1000,16 +1000,15 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
+                        let stats;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            check_session_errors(&src_session, iconv.as_ref())?;
-                            stats
+                            stats = pipe_sessions(&mut src_session, &mut dst_session)?;
                         } else {
-                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            check_session_errors(&src_session, iconv.as_ref())?;
-                            stats
+                            stats = pipe_sessions(&mut src_session, &mut dst_session)?;
                         }
+                        check_session_errors(&src_session, iconv.as_ref())?;
+                        stats
                     }
                 }
             }
