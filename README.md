@@ -1,5 +1,7 @@
 # oc-rsync
 
+This project is an automatic, AI-assisted build and is not affiliated with the Samba project.
+
 oc-rsync is a modular reimplementation of the classic `rsync` utility in Rust. It targets protocol compatibility with rsync 3.4.1 (protocol version 32) and prioritizes absolute compatibility with existing deployments before any enhancements are considered. Differences from upstream are limited to internal, compatibility-neutral optimizations while leveraging Rust's safety and concurrency strengths.
 
 ## Summary
