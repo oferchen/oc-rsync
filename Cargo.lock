@@ -977,6 +977,7 @@ dependencies = [
  "engine",
  "filetime",
  "filters",
+ "hex",
  "insta",
  "libc",
  "logging",
