@@ -56,6 +56,16 @@ pub fn render_version_lines() -> Vec<String> {
     lines.extend(COMPRESS.iter().map(|s| (*s).to_string()));
     lines.push("Daemon auth list:".to_string());
     lines.extend(DAEMON_AUTH.iter().map(|s| (*s).to_string()));
+    lines.push(String::new());
+    lines.push(
+        "rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you"
+            .to_string(),
+    );
+    lines.push(
+        "are welcome to redistribute it under certain conditions.  See the GNU"
+            .to_string(),
+    );
+    lines.push("General Public Licence for details.".to_string());
     lines
 }
 
