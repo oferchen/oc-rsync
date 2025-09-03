@@ -11,6 +11,9 @@ Classic `rsync` protocol versions 29–32 are supported.
 | --- | --- | --- |
 | File list path-delta encoding with uid/gid tables | ✅ | Exercised via `filelist` tests |
 | Challenge-response token authentication | ✅ | Protocol handshake verifies tokens |
+
+## CLI options
+
 | Option | Supported | Parity (Y/N) | Message-parity (Y/N) | Parser-parity (Y/N) | Tests | Source | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `--8-bit-output` | ✅ | Y | Y | Y | [tests/eight_bit_output.rs](../tests/eight_bit_output.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
