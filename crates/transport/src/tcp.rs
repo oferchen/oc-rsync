@@ -90,8 +90,68 @@ impl TcpTransport {
                 SockOpt::KeepAlive(v) => sock.set_keepalive(*v)?,
                 SockOpt::SendBuf(size) => sock.set_send_buffer_size(*size)?,
                 SockOpt::RecvBuf(size) => sock.set_recv_buffer_size(*size)?,
-                SockOpt::IpTtl(v) => sock.set_ttl(*v)?,
-                SockOpt::IpTos(v) => sock.set_tos(*v)?,
+                SockOpt::IpTtl(v) => {
+                    #[cfg(any(
+                        target_os = "android",
+                        target_os = "fuchsia",
+                        target_os = "illumos",
+                        target_os = "linux",
+                        target_os = "macos",
+                        target_os = "ios",
+                        target_os = "freebsd",
+                        target_os = "netbsd",
+                        target_os = "dragonfly",
+                        target_os = "openbsd",
+                        target_os = "windows",
+                    ))]
+                    {
+                        sock.set_ttl(*v)?;
+                    }
+                    #[cfg(not(any(
+                        target_os = "android",
+                        target_os = "fuchsia",
+                        target_os = "illumos",
+                        target_os = "linux",
+                        target_os = "macos",
+                        target_os = "ios",
+                        target_os = "freebsd",
+                        target_os = "netbsd",
+                        target_os = "dragonfly",
+                        target_os = "openbsd",
+                        target_os = "windows",
+                    )))]
+                    {
+                        return Err(io::Error::new(
+                            io::ErrorKind::Unsupported,
+                            "IP_TTL not supported on this platform",
+                        ));
+                    }
+                }
+                SockOpt::IpTos(v) => {
+                    #[cfg(not(any(
+                        target_os = "fuchsia",
+                        target_os = "redox",
+                        target_os = "solaris",
+                        target_os = "illumos",
+                        target_os = "haiku",
+                    )))]
+                    {
+                        sock.set_tos(*v)?;
+                    }
+                    #[cfg(any(
+                        target_os = "fuchsia",
+                        target_os = "redox",
+                        target_os = "solaris",
+                        target_os = "illumos",
+                        target_os = "haiku",
+                    ))]
+                    {
+                        return Err(io::Error::new(
+                            io::ErrorKind::Unsupported,
+                            "IP_TOS not supported on this platform",
+                        ));
+                    }
+                }
                 SockOpt::TcpNoDelay(v) => sock.set_nodelay(*v)?,
                 SockOpt::ReuseAddr(v) => sock.set_reuse_address(*v)?,
                 SockOpt::BindToDevice(iface) => {
@@ -102,13 +162,53 @@ impl TcpTransport {
                     #[cfg(not(any(
                         target_os = "android",
                         target_os = "fuchsia",
-                        target_os = "linux"
+                        target_os = "linux",
                     )))]
                     {
-                        let _ = iface;
+                        return Err(io::Error::new(
+                            io::ErrorKind::Unsupported,
+                            "SO_BINDTODEVICE is only supported on Linux-like systems",
+                        ));
                     }
                 }
-                SockOpt::IpHopLimit(v) => sock.set_unicast_hops_v6(*v)?,
+                SockOpt::IpHopLimit(v) => {
+                    #[cfg(any(
+                        target_os = "android",
+                        target_os = "fuchsia",
+                        target_os = "illumos",
+                        target_os = "linux",
+                        target_os = "macos",
+                        target_os = "ios",
+                        target_os = "freebsd",
+                        target_os = "netbsd",
+                        target_os = "dragonfly",
+                        target_os = "openbsd",
+                        target_os = "windows",
+                    ))]
+                    {
+                        sock.set_unicast_hops_v6(*v)?;
+                    }
+                    #[cfg(not(any(
+                        target_os = "android",
+                        target_os = "fuchsia",
+                        target_os = "illumos",
+                        target_os = "linux",
+                        target_os = "macos",
+                        target_os = "ios",
+                        target_os = "freebsd",
+                        target_os = "netbsd",
+                        target_os = "dragonfly",
+                        target_os = "openbsd",
+                        target_os = "windows",
+                    )))]
+                    {
+                        return Err(io::Error::new(
+                            io::ErrorKind::Unsupported,
+                            "IPV6_UNICAST_HOPS not supported on this platform",
+                        ));
+                    }
+                }
+
                 SockOpt::Linger(dur) => sock.set_linger(*dur)?,
                 SockOpt::Broadcast(v) => sock.set_broadcast(*v)?,
                 SockOpt::RcvTimeout(d) => sock.set_read_timeout(Some(*d))?,

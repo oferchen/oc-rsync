@@ -160,3 +160,95 @@ fn apply_sockopts_linger_broadcast_timeouts() {
     assert_eq!(sock.read_timeout().unwrap(), Some(Duration::from_secs(10)));
     assert_eq!(sock.write_timeout().unwrap(), Some(Duration::from_secs(12)));
 }
+
+#[cfg(target_os = "linux")]
+#[test]
+fn apply_sockopts_ipv4_basic() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    thread::spawn(move || {
+        let _ = listener.accept().unwrap();
+    });
+
+    let stream = TcpStream::connect(addr).unwrap();
+    let inspect = stream.try_clone().unwrap();
+    let transport = TcpTransport::from_stream(stream);
+
+    let opts = vec![
+        SockOpt::KeepAlive(true),
+        SockOpt::SendBuf(8192),
+        SockOpt::RecvBuf(4096),
+        SockOpt::TcpNoDelay(true),
+        SockOpt::ReuseAddr(true),
+        SockOpt::IpTtl(55),
+        SockOpt::IpTos(0x10),
+    ];
+    transport.apply_sockopts(&opts).unwrap();
+
+    let sock = SockRef::from(&inspect);
+    assert!(sock.keepalive().unwrap());
+    assert!(sock.nodelay().unwrap());
+    assert!(sock.reuse_address().unwrap());
+    assert!(sock.send_buffer_size().unwrap() >= 8192);
+    assert!(sock.recv_buffer_size().unwrap() >= 4096);
+    assert_eq!(sock.ttl().unwrap(), 55);
+    assert_eq!(sock.tos().unwrap(), 0x10);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn apply_sockopts_ipv6_hoplimit() {
+    let listener = TcpListener::bind("[::1]:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    thread::spawn(move || {
+        let _ = listener.accept().unwrap();
+    });
+
+    let stream = TcpStream::connect(addr).unwrap();
+    let inspect = stream.try_clone().unwrap();
+    let transport = TcpTransport::from_stream(stream);
+
+    let opts = vec![SockOpt::IpHopLimit(7)];
+    transport.apply_sockopts(&opts).unwrap();
+
+    let sock = SockRef::from(&inspect);
+    assert_eq!(sock.unicast_hops_v6().unwrap(), 7);
+}
+
+#[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+#[test]
+fn apply_sockopt_bind_device() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    thread::spawn(move || {
+        let _ = listener.accept().unwrap();
+    });
+
+    let stream = TcpStream::connect(addr).unwrap();
+    let transport = TcpTransport::from_stream(stream);
+
+    transport
+        .apply_sockopts(&[SockOpt::BindToDevice("lo".into())])
+        .unwrap();
+}
+
+#[cfg(not(any(target_os = "android", target_os = "fuchsia", target_os = "linux")))]
+#[test]
+fn apply_sockopt_bind_device_unsupported() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    thread::spawn(move || {
+        let _ = listener.accept().unwrap();
+    });
+
+    let stream = TcpStream::connect(addr).unwrap();
+    let transport = TcpTransport::from_stream(stream);
+
+    assert!(transport
+        .apply_sockopts(&[SockOpt::BindToDevice("eth0".into())])
+        .is_err());
+}
