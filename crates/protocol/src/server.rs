@@ -19,6 +19,10 @@ pub struct Server<R: Read, W: Write> {
     pub caps: u32,
     pub args: Vec<String>,
     pub env: Vec<(String, String)>,
+    pub max_args: usize,
+    pub max_arg_len: usize,
+    pub max_env_vars: usize,
+    pub max_env_len: usize,
 }
 
 impl<R: Read, W: Write> Server<R, W> {
@@ -32,6 +36,10 @@ impl<R: Read, W: Write> Server<R, W> {
             caps: 0,
             args: Vec::new(),
             env: Vec::new(),
+            max_args: 1024,
+            max_arg_len: 16 * 1024,
+            max_env_vars: 1024,
+            max_env_len: 16 * 1024,
         }
     }
 
@@ -54,6 +62,12 @@ impl<R: Read, W: Write> Server<R, W> {
                 if cur.is_empty() {
                     break;
                 }
+                if cur.len() > self.max_arg_len {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "argument too long",
+                    ));
+                }
                 let s = String::from_utf8(cur.clone())
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
                 if s.starts_with('-') {
@@ -67,9 +81,21 @@ impl<R: Read, W: Write> Server<R, W> {
                     saw_nonopt = true;
                 }
                 self.args.push(s);
+                if self.args.len() > self.max_args {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "too many arguments",
+                    ));
+                }
                 cur.clear();
             } else {
                 cur.push(b[0]);
+                if cur.len() > self.max_arg_len {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "argument too long",
+                    ));
+                }
             }
         }
 
@@ -78,6 +104,12 @@ impl<R: Read, W: Write> Server<R, W> {
             if b[0] == 0 {
                 if cur.is_empty() {
                     break;
+                }
+                if cur.len() > self.max_env_len {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "environment variable too long",
+                    ));
                 }
                 let s = String::from_utf8(cur.clone())
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
@@ -91,9 +123,21 @@ impl<R: Read, W: Write> Server<R, W> {
                 let k = parts.next().unwrap_or_default().to_string();
                 let v = parts.next().unwrap_or_default().to_string();
                 self.env.push((k, v));
+                if self.env.len() > self.max_env_vars {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "too many environment variables",
+                    ));
+                }
                 cur.clear();
             } else {
                 cur.push(b[0]);
+                if cur.len() > self.max_env_len {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "environment variable too long",
+                    ));
+                }
             }
         }
 
