@@ -66,6 +66,29 @@ impl Drop for ChildGuard {
 #[test]
 #[serial]
 #[ignore]
+fn daemon_config_rsync_client() {
+    let dir = tempfile::tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir(&src).unwrap();
+    fs::create_dir(&dst).unwrap();
+    fs::write(src.join("file.txt"), b"data").unwrap();
+    let config = format!("port = 0\n[data]\n    path = {}\n", src.display());
+    let (child, port, _tmp) = spawn_daemon(&config);
+    let _guard = ChildGuard(child);
+    wait_for_daemon(port);
+    let url = format!("rsync://127.0.0.1:{port}/data/");
+    let status = StdCommand::new("rsync")
+        .args(["-r", &url, dst.to_str().unwrap()])
+        .status()
+        .expect("rsync not installed");
+    assert!(status.success());
+    assert!(dst.join("file.txt").exists());
+}
+
+#[test]
+#[serial]
+#[ignore]
 fn daemon_config_authentication() {
     let dir = tempfile::tempdir().unwrap();
     let data = dir.path().join("data");
