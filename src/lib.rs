@@ -335,8 +335,10 @@ mod tests {
         use nix::unistd::{chown, geteuid, Gid, Uid};
         use std::os::unix::fs::MetadataExt;
 
-        if geteuid().as_raw() != 0 {
-            eprintln!("skipping sync_preserves_ownership: requires root");
+        if !Uid::effective().is_root() {
+            println!(
+                "skipping sync_preserves_ownership: requires root privileges to change ownership"
+            );
             return;
         }
 
