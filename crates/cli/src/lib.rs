@@ -870,6 +870,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         )
                         .map_err(EngineError::from)?;
 
+                        #[allow(clippy::let_and_return)]
                         let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
@@ -914,7 +915,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 return Err(EngineError::Other(msg));
                             }
                             stats
-                        }
+                        };
+                        stats
                     }
                     (Some(sm), Some(dm)) => {
                         let mut dst_session = spawn_daemon_session(
@@ -947,12 +949,14 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
                         )?;
+                        #[allow(clippy::let_and_return)]
                         let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             pipe_sessions(&mut src_session, &mut dst_session)?
                         } else {
                             pipe_sessions(&mut src_session, &mut dst_session)?
-                        }
+                        };
+                        stats
                     }
                     (Some(sm), None) => {
                         let mut dst_session = SshStdioTransport::spawn_with_rsh(
@@ -985,6 +989,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
                         )?;
+                        #[allow(clippy::let_and_return)]
                         let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
@@ -1011,7 +1016,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 return Err(EngineError::Other(msg));
                             }
                             stats
-                        }
+                        };
+                        stats
                     }
                     (None, Some(dm)) => {
                         let mut dst_session = spawn_daemon_session(
@@ -1044,6 +1050,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
+                        #[allow(clippy::let_and_return)]
                         let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
@@ -1069,7 +1076,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 return Err(EngineError::Other(msg));
                             }
                             stats
-                        }
+                        };
+                        stats
                     }
                 }
             }
