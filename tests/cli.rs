@@ -772,6 +772,7 @@ fn progress_parity() {
         .env("LC_ALL", "C")
         .env("COLUMNS", "80")
         .args([
+            "--recursive",
             "--progress",
             format!("{}/", src.display()).as_str(),
             dst_ours.to_str().unwrap(),
