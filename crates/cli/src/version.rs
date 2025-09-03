@@ -5,9 +5,17 @@ use crate::branding;
 
 pub const RSYNC_PROTOCOL: u32 = SUPPORTED_PROTOCOLS[0];
 
+const UPSTREAM_VERSION: &str = match option_env!("UPSTREAM_VERSION") {
+    Some(v) => v,
+    None => "unknown",
+};
+const UPSTREAM_PROTOCOLS: &str = match option_env!("UPSTREAM_PROTOCOLS") {
+    Some(v) => v,
+    None => "32,31,30,29",
+};
+
 const COPYRIGHT: &str = "Copyright (C) 2024-2025 oc-rsync contributors.";
 const WEBSITE: &str = "Web site: https://github.com/oc-rsync/oc-rsync";
-const COMPATIBILITY: &str = "compatible with rsync 3.4.1; proto 32";
 const CAPABILITIES: &[&str] = &[
     "    64-bit files, 64-bit inums, 64-bit timestamps, 64-bit long ints,",
     "    socketpairs, symlinks, symtimes, hardlinks, hardlink-specials,",
@@ -27,7 +35,15 @@ pub fn render_version_lines() -> Vec<String> {
         env!("CARGO_PKG_VERSION"),
         RSYNC_PROTOCOL
     ));
-    lines.push(COMPATIBILITY.to_string());
+    let proto = UPSTREAM_PROTOCOLS
+        .split(',')
+        .next()
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(RSYNC_PROTOCOL);
+    lines.push(format!(
+        "compatible with rsync {} (protocol {proto})",
+        UPSTREAM_VERSION
+    ));
     lines.push(format!(
         "{} {}",
         option_env!("BUILD_REVISION").unwrap_or("unknown"),
