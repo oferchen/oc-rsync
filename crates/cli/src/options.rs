@@ -6,9 +6,17 @@ use std::time::Duration;
 use crate::daemon::DaemonOpts;
 use crate::formatter;
 use crate::utils::{parse_duration, parse_nonzero_duration, parse_size};
-use clap::{ArgAction, Args, CommandFactory, Parser};
+use clap::{ArgAction, Args, CommandFactory, Parser, ValueEnum};
 use logging::{DebugFlag, InfoFlag};
 use protocol::SUPPORTED_PROTOCOLS;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+#[clap(rename_all = "UPPER")]
+pub enum OutBuf {
+    N,
+    L,
+    B,
+}
 
 #[derive(Parser, Debug)]
 pub(crate) struct ClientOpts {
@@ -402,6 +410,13 @@ pub(crate) struct ClientOpts {
     pub progress: bool,
     #[arg(long, help_heading = "Misc")]
     pub blocking_io: bool,
+    #[arg(
+        long = "outbuf",
+        value_name = "MODE",
+        value_enum,
+        help_heading = "Misc"
+    )]
+    pub outbuf: Option<OutBuf>,
     #[arg(long, help_heading = "Misc")]
     pub fsync: bool,
     #[arg(short = 'y', long = "fuzzy", help_heading = "Misc")]

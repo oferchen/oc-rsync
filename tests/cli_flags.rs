@@ -22,6 +22,17 @@ fn blocking_io_flag_is_accepted() {
 }
 
 #[test]
+fn outbuf_flag_accepts_modes() {
+    for mode in ["N", "L", "B"] {
+        Command::cargo_bin("oc-rsync")
+            .unwrap()
+            .args([&format!("--outbuf={mode}"), "--version"])
+            .assert()
+            .success();
+    }
+}
+
+#[test]
 fn early_input_flag_accepts_file() {
     let file = NamedTempFile::new().unwrap();
     Command::cargo_bin("oc-rsync")
