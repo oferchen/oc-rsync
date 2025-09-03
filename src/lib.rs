@@ -3,7 +3,7 @@ use compress::available_codecs;
 use engine::{Result, SyncOptions};
 use filters::Matcher;
 use logging::{subscriber, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tracing::subscriber::with_default;
 
 #[derive(Clone)]
@@ -12,6 +12,12 @@ pub struct SyncConfig {
     pub verbose: u8,
     pub info: Vec<InfoFlag>,
     pub debug: Vec<DebugFlag>,
+    pub quiet: bool,
+    pub log_file: Option<(PathBuf, Option<String>)>,
+    pub syslog: bool,
+    pub journald: bool,
+    pub colored: bool,
+    pub timestamps: bool,
     pub perms: bool,
     pub times: bool,
     pub atimes: bool,
@@ -33,6 +39,12 @@ impl Default for SyncConfig {
             verbose: 0,
             info: Vec::new(),
             debug: Vec::new(),
+            quiet: false,
+            log_file: None,
+            syslog: false,
+            journald: false,
+            colored: true,
+            timestamps: false,
             perms: true,
             times: true,
             atimes: true,
@@ -79,6 +91,36 @@ impl SyncConfigBuilder {
 
     pub fn debug(mut self, debug: Vec<DebugFlag>) -> Self {
         self.cfg.debug = debug;
+        self
+    }
+
+    pub fn quiet(mut self, quiet: bool) -> Self {
+        self.cfg.quiet = quiet;
+        self
+    }
+
+    pub fn log_file(mut self, log_file: Option<(PathBuf, Option<String>)>) -> Self {
+        self.cfg.log_file = log_file;
+        self
+    }
+
+    pub fn syslog(mut self, enable: bool) -> Self {
+        self.cfg.syslog = enable;
+        self
+    }
+
+    pub fn journald(mut self, enable: bool) -> Self {
+        self.cfg.journald = enable;
+        self
+    }
+
+    pub fn colored(mut self, enable: bool) -> Self {
+        self.cfg.colored = enable;
+        self
+    }
+
+    pub fn timestamps(mut self, enable: bool) -> Self {
+        self.cfg.timestamps = enable;
         self
     }
 
@@ -147,12 +189,12 @@ pub fn synchronize_with_config<P: AsRef<Path>>(src: P, dst: P, cfg: &SyncConfig)
         .verbose(cfg.verbose)
         .info(cfg.info.clone())
         .debug(cfg.debug.clone())
-        .quiet(false)
-        .log_file(None)
-        .syslog(false)
-        .journald(false)
-        .colored(true)
-        .timestamps(false)
+        .quiet(cfg.quiet)
+        .log_file(cfg.log_file.clone())
+        .syslog(cfg.syslog)
+        .journald(cfg.journald)
+        .colored(cfg.colored)
+        .timestamps(cfg.timestamps)
         .build();
     let sub = subscriber(sub_cfg);
     with_default(sub, || -> Result<()> {
@@ -165,6 +207,7 @@ pub fn synchronize_with_config<P: AsRef<Path>>(src: P, dst: P, cfg: &SyncConfig)
             specials: cfg.specials,
             owner: cfg.owner,
             group: cfg.group,
+            quiet: cfg.quiet,
             #[cfg(feature = "xattr")]
             xattrs: cfg.xattrs,
             #[cfg(feature = "acl")]
@@ -358,5 +401,71 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(&*val, b"val");
+    }
+
+    #[test]
+    fn custom_log_file_and_quiet_settings() {
+        use std::fs;
+
+        let (dir, src_dir, dst_dir1) = setup_dirs();
+        fs::write(src_dir.join("file.txt"), b"hi").unwrap();
+
+        let log1 = dir.path().join("log1.txt");
+        let cfg = SyncConfig::builder()
+            .log_file(Some((log1.clone(), None)))
+            .verbose(1)
+            .timestamps(true)
+            .build();
+        synchronize_with_config(src_dir.clone(), dst_dir1, &cfg).unwrap();
+        let contents = fs::read_to_string(&log1).unwrap();
+        assert!(!contents.is_empty());
+
+        let dst_dir2 = dir.path().join("dst2");
+        let log2 = dir.path().join("log2.txt");
+        let quiet_cfg = SyncConfig::builder()
+            .log_file(Some((log2.clone(), None)))
+            .verbose(1)
+            .quiet(true)
+            .build();
+        synchronize_with_config(src_dir, dst_dir2, &quiet_cfg).unwrap();
+        let contents2 = fs::read_to_string(&log2).unwrap();
+        assert!(contents2.is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn custom_syslog_and_journald_settings() {
+        use std::fs;
+        use std::os::unix::net::UnixDatagram;
+
+        let (dir, src_dir, dst_dir) = setup_dirs();
+        fs::write(src_dir.join("file.txt"), b"hi").unwrap();
+
+        let syslog_path = dir.path().join("syslog.sock");
+        let syslog_server = UnixDatagram::bind(&syslog_path).unwrap();
+        std::env::set_var("OC_RSYNC_SYSLOG_PATH", &syslog_path);
+
+        let journald_path = dir.path().join("journald.sock");
+        let journald_server = UnixDatagram::bind(&journald_path).unwrap();
+        std::env::set_var("OC_RSYNC_JOURNALD_PATH", &journald_path);
+
+        let cfg = SyncConfig::builder()
+            .verbose(1)
+            .syslog(true)
+            .journald(true)
+            .build();
+        synchronize_with_config(src_dir, dst_dir, &cfg).unwrap();
+
+        let mut buf = [0u8; 256];
+        let (n, _) = syslog_server.recv_from(&mut buf).unwrap();
+        let sys_msg = std::str::from_utf8(&buf[..n]).unwrap();
+        assert!(sys_msg.contains("rsync"));
+
+        let (n, _) = journald_server.recv_from(&mut buf).unwrap();
+        let jour_msg = std::str::from_utf8(&buf[..n]).unwrap();
+        assert!(jour_msg.contains("MESSAGE"));
+
+        std::env::remove_var("OC_RSYNC_SYSLOG_PATH");
+        std::env::remove_var("OC_RSYNC_JOURNALD_PATH");
     }
 }
