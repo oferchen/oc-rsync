@@ -1,4 +1,7 @@
 // crates/transport/src/ssh.rs
+#![cfg(unix)]
+#![allow(clippy::duplicated_attributes)]
+
 use nix::poll::{poll, PollFd, PollFlags, PollTimeout};
 use std::ffi::OsStr;
 use std::io::{self, BufReader, Read, Write};
