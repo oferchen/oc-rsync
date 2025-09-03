@@ -26,7 +26,6 @@ This document is synchronized with [feature_matrix.md](feature_matrix.md) and li
 - `--min-size`: parity with upstream not yet verified. Tests: [tests/perf_limits.rs](../tests/perf_limits.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--modify-window`: parity with upstream not yet verified; treat close mtimes as equal. Tests: [tests/modify_window.rs](../tests/modify_window.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--munge-links`: parity with upstream not yet verified. Tests: [tests/symlink_resolution.rs](../tests/symlink_resolution.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--no-D`: not yet implemented; alias for `--no-devices --no-specials`. Tests: [gaps.md](gaps.md). Source: —.
 - `--numeric-ids`: parity with upstream not yet verified. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--old-args`: parity with upstream not yet verified; disable modern arg-protection idiom. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--old-d`: parity with upstream not yet verified; alias for `--old-dirs`. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: —.
