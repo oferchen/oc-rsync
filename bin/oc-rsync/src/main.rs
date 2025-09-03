@@ -33,6 +33,15 @@ fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     }
 }
 
+unsafe fn set_stream_buffer(stream: *mut libc::FILE, mode: libc::c_int) -> std::io::Result<()> {
+    let ret = libc::setvbuf(stream, ptr::null_mut(), mode, 0);
+    if ret == 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error())
+    }
+}
+
 fn main() {
     let args: Vec<_> = std::env::args_os().collect();
     if oc_rsync_cli::print_version_if_requested(args.iter().cloned()) {
@@ -72,7 +81,10 @@ fn main() {
                 OutBuf::L => libc::_IOLBF,
                 OutBuf::B => libc::_IOFBF,
             };
-            libc::setvbuf(stdout, ptr::null_mut(), m, 0);
+            if let Err(err) = set_stream_buffer(stdout, m) {
+                eprintln!("failed to set stdout buffer: {err}");
+                std::process::exit(u8::from(ExitCode::FileIo) as i32);
+            }
         }
     }
     if let Err(e) = oc_rsync_cli::run(&matches) {
@@ -101,6 +113,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::exit_code_from_error_kind;
+    use super::set_stream_buffer;
     use clap::error::ErrorKind::*;
     use protocol::ExitCode;
 
@@ -159,5 +172,15 @@ mod tests {
         assert_eq!(exit_code_from_error_kind(DisplayVersion), ExitCode::Ok);
         assert_eq!(exit_code_from_error_kind(Io), ExitCode::FileIo);
         assert_eq!(exit_code_from_error_kind(Format), ExitCode::FileIo);
+    }
+
+    #[test]
+    fn invalid_setvbuf_returns_error() {
+        unsafe {
+            let file = libc::tmpfile();
+            assert!(!file.is_null());
+            assert!(set_stream_buffer(file, -1).is_err());
+            libc::fclose(file);
+        }
     }
 }
