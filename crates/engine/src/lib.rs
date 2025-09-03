@@ -25,7 +25,7 @@ pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 use compress::{should_compress, Codec, Compressor, Decompressor, Lz4, Zlib, Zlibx, Zstd};
 use filters::Matcher;
-use logging::{progress_formatter, rate_formatter, InfoFlag};
+use logging::{escape_path, progress_formatter, rate_formatter, InfoFlag};
 use protocol::ExitCode;
 use thiserror::Error;
 pub mod flist;
@@ -214,7 +214,8 @@ fn log_name(rel: &Path, link: Option<&Path>, opts: &SyncOptions, default: String
     }
     let itemized = default.split_once(' ').map(|(i, _)| i.to_string());
     if let Some(fmt) = &opts.out_format {
-        let msg = logging::render_out_format(fmt, rel, link, itemized.as_deref());
+        let msg =
+            logging::render_out_format(fmt, rel, link, itemized.as_deref(), opts.eight_bit_output);
         tracing::info!(target: InfoFlag::Name.target(), "{}", msg);
     } else if opts.itemize_changes {
         println!("{}", default);
@@ -2006,7 +2007,11 @@ fn delete_extraneous(
                             }
                         }
                         if !opts.quiet {
-                            tracing::info!(target: InfoFlag::Del.target(), "deleting {}", rel.display());
+                            tracing::info!(
+                                target: InfoFlag::Del.target(),
+                                "deleting {}",
+                                escape_path(rel, opts.eight_bit_output)
+                            );
                         }
                         let res = if opts.dry_run {
                             None
@@ -2054,7 +2059,11 @@ fn delete_extraneous(
                         }
                     }
                     if !opts.quiet {
-                        tracing::info!(target: InfoFlag::Del.target(), "deleting {}", rel.display());
+                        tracing::info!(
+                            target: InfoFlag::Del.target(),
+                            "deleting {}",
+                            escape_path(rel, opts.eight_bit_output)
+                        );
                     }
                     let res = if opts.dry_run {
                         None
@@ -2216,9 +2225,9 @@ pub fn sync(
                         if rel.as_os_str().is_empty() {
                             println!(".");
                         } else if entry.file_type.is_dir() {
-                            println!("{}/", rel.display());
+                            println!("{}/", escape_path(rel, opts.eight_bit_output));
                         } else {
-                            println!("{}", rel.display());
+                            println!("{}", escape_path(rel, opts.eight_bit_output));
                         }
                     }
                 }
@@ -2427,7 +2436,8 @@ pub fn sync(
                             let _ = writeln!(f, "{}", rel.display());
                         }
                         if (opts.out_format.is_some() || opts.itemize_changes) && !opts.quiet {
-                            log_name(rel, None, opts, format!(">f+++++++++ {}", rel.display()));
+                            let name = escape_path(rel, opts.eight_bit_output);
+                            log_name(rel, None, opts, format!(">f+++++++++ {}", name));
                         }
                     }
                     if opts.remove_source_files {
@@ -2500,7 +2510,8 @@ pub fn sync(
                                 .map_err(|e| io_context(&dest_path, std::io::Error::from(e)))?;
                         }
                         if (opts.out_format.is_some() || opts.itemize_changes) && !opts.quiet {
-                            log_name(rel, None, opts, format!("cd+++++++++ {}/", rel.display()));
+                            let name = escape_path(rel, opts.eight_bit_output);
+                            log_name(rel, None, opts, format!("cd+++++++++ {}/", name));
                         }
                     }
                     dir_meta.push((path.clone(), dest_path.clone()));
@@ -2599,15 +2610,13 @@ pub fn sync(
                         if created {
                             stats.files_transferred += 1;
                             if (opts.out_format.is_some() || opts.itemize_changes) && !opts.quiet {
+                                let name = escape_path(rel, opts.eight_bit_output);
+                                let target_name = escape_path(&target, opts.eight_bit_output);
                                 log_name(
                                     rel,
                                     Some(&target),
                                     opts,
-                                    format!(
-                                        "cL+++++++++ {} -> {}",
-                                        rel.display(),
-                                        target.display()
-                                    ),
+                                    format!("cL+++++++++ {} -> {}", name, target_name),
                                 );
                             }
                         }
@@ -2647,12 +2656,8 @@ pub fn sync(
                                 if (opts.out_format.is_some() || opts.itemize_changes)
                                     && !opts.quiet
                                 {
-                                    log_name(
-                                        rel,
-                                        None,
-                                        opts,
-                                        format!("cD+++++++++ {}", rel.display()),
-                                    );
+                                    let name = escape_path(rel, opts.eight_bit_output);
+                                    log_name(rel, None, opts, format!("cD+++++++++ {}", name));
                                 }
                             }
                         } else if file_type.is_fifo() && opts.specials {
