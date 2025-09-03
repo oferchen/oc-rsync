@@ -290,7 +290,6 @@ name = "compress"
 version = "0.1.0"
 dependencies = [
  "flate2",
- "lz4_flex",
  "zstd",
 ]
 
@@ -831,15 +830,6 @@ dependencies = [
  "time",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "lz4_flex"
-version = "0.11.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08ab2867e3eeeca90e844d1940eab391c9dc5228783db2ed999acbc0a9ed375a"
-dependencies = [
- "twox-hash",
 ]
 
 [[package]]
@@ -1707,12 +1697,6 @@ dependencies = [
  "socket2",
  "tempfile",
 ]
-
-[[package]]
-name = "twox-hash"
-version = "2.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b907da542cbced5261bd3256de1b3a1bf340a3d37f93425a07362a1d687de56"
 
 [[package]]
 name = "typenum"
