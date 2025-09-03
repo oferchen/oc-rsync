@@ -28,12 +28,66 @@ fn sync_creates_destination() {
     let (_dir, src_dir, dst_dir) = setup_dirs();
     fs::write(src_dir.join("file.txt"), b"data").unwrap();
 
-    let cfg = SyncConfig::builder().atimes(true).build();
+    let cfg = SyncConfig::builder()
+        .atimes(true)
+        .perms(true)
+        .times(true)
+        .specials(true)
+        .devices(true)
+        .build();
 
     assert!(!dst_dir.exists());
     synchronize_with_config(src_dir.clone(), dst_dir.clone(), &cfg).unwrap();
     assert!(dst_dir.exists());
     assert_eq!(fs::read(dst_dir.join("file.txt")).unwrap(), b"data");
+}
+
+#[cfg(unix)]
+#[test]
+fn defaults_do_not_preserve_permissions_or_ownership() {
+    use nix::unistd::{chown, Gid, Uid};
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+
+    let (_dir, src_dir, dst_dir) = setup_dirs();
+    let file = src_dir.join("file.txt");
+    fs::write(&file, b"hello").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o700)).unwrap();
+    if Uid::effective().is_root() {
+        chown(&file, Some(Uid::from_raw(1000)), Some(Gid::from_raw(1001))).unwrap();
+    }
+
+    synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
+    let meta = fs::metadata(dst_dir.join("file.txt")).unwrap();
+    assert_ne!(meta.permissions().mode() & 0o777, 0o700);
+    if Uid::effective().is_root() {
+        assert_ne!(meta.uid(), 1000);
+        assert_ne!(meta.gid(), 1001);
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn defaults_skip_devices_and_specials() {
+    use nix::sys::stat::{makedev, mknod, Mode, SFlag};
+    use nix::unistd::mkfifo;
+
+    let (_dir, src_dir, dst_dir) = setup_dirs();
+
+    let fifo = src_dir.join("fifo");
+    mkfifo(&fifo, Mode::from_bits_truncate(0o600)).unwrap();
+    let dev = src_dir.join("null");
+    mknod(
+        &dev,
+        SFlag::S_IFCHR,
+        Mode::from_bits_truncate(0o600),
+        makedev(1, 3),
+    )
+    .unwrap();
+
+    synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
+
+    assert!(!dst_dir.join("fifo").exists());
+    assert!(!dst_dir.join("null").exists());
 }
 
 #[cfg(any(unix, windows))]
@@ -47,7 +101,8 @@ fn sync_preserves_symlinks() {
     std::os::windows::fs::symlink_file("file.txt", src_dir.join("link")).unwrap();
 
     assert!(!dst_dir.exists());
-    synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
+    let cfg = SyncConfig::builder().links(true).build();
+    synchronize_with_config(src_dir.clone(), dst_dir.clone(), &cfg).unwrap();
 
     let meta = fs::symlink_metadata(dst_dir.join("link")).unwrap();
     assert!(meta.file_type().is_symlink());
@@ -70,7 +125,8 @@ fn sync_preserves_metadata() {
     set_file_times(&file, FileTime::from_unix_time(1_000_000, 0), mtime).unwrap();
 
     assert!(!dst_dir.exists());
-    synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
+    let cfg = SyncConfig::builder().perms(true).times(true).build();
+    synchronize_with_config(src_dir.clone(), dst_dir.clone(), &cfg).unwrap();
 
     let meta = fs::metadata(dst_dir.join("file.txt")).unwrap();
     assert_eq!(meta.permissions().mode() & 0o777, 0o744);
@@ -88,20 +144,23 @@ fn sync_preserves_fifo() {
 
     let (_dir, src_dir, dst_dir) = setup_dirs();
     fs::write(src_dir.join("file.txt"), b"data").unwrap();
-
-    let cfg = SyncConfig::builder().atimes(true).build();
-
-    assert!(!dst_dir.exists());
-    synchronize_with_config(src_dir.clone(), dst_dir.clone(), &cfg).unwrap();
-    assert!(dst_dir.exists());
-
     let fifo = src_dir.join("fifo");
     mkfifo(&fifo, Mode::from_bits_truncate(0o640)).unwrap();
     let atime = FileTime::from_unix_time(2_000_000, 0);
     let mtime = FileTime::from_unix_time(2_000_100, 0);
     set_file_times(&fifo, atime, mtime).unwrap();
 
+    let cfg = SyncConfig::builder()
+        .atimes(true)
+        .perms(true)
+        .times(true)
+        .specials(true)
+        .devices(true)
+        .build();
+
+    assert!(!dst_dir.exists());
     synchronize_with_config(src_dir.clone(), dst_dir.clone(), &cfg).unwrap();
+    assert!(dst_dir.exists());
 
     let dst_path = dst_dir.join("fifo");
     let meta = fs::metadata(&dst_path).unwrap();
@@ -127,7 +186,8 @@ fn sync_preserves_directory_metadata() {
     let mtime = FileTime::from_unix_time(3_000_100, 0);
     set_file_times(&subdir, FileTime::from_unix_time(3_000_000, 0), mtime).unwrap();
 
-    synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
+    let cfg = SyncConfig::builder().perms(true).times(true).build();
+    synchronize_with_config(src_dir.clone(), dst_dir.clone(), &cfg).unwrap();
 
     let meta = fs::metadata(dst_dir.join("sub")).unwrap();
     assert!(meta.is_dir());
@@ -153,7 +213,8 @@ fn sync_preserves_ownership() {
     fs::write(&file, b"hello").unwrap();
     chown(&file, Some(Uid::from_raw(1000)), Some(Gid::from_raw(1001))).unwrap();
 
-    synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
+    let cfg = SyncConfig::builder().owner(true).group(true).build();
+    synchronize_with_config(src_dir.clone(), dst_dir.clone(), &cfg).unwrap();
 
     let meta = fs::metadata(dst_dir.join("file.txt")).unwrap();
     assert_eq!(meta.uid(), 1000);
