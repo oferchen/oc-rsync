@@ -8,7 +8,7 @@ use crate::formatter;
 use crate::utils::{
     parse_duration, parse_minutes, parse_nonzero_duration, parse_size, parse_stop_at,
 };
-use clap::{ArgAction, Args, CommandFactory, Parser};
+use clap::{ArgAction, Args, CommandFactory, Parser, ValueEnum};
 use logging::{DebugFlag, InfoFlag, StderrMode};
 use protocol::SUPPORTED_PROTOCOLS;
 

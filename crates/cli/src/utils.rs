@@ -138,7 +138,7 @@ pub(crate) fn parse_bool(s: &str) -> std::result::Result<bool, String> {
     }
 }
 
-pub(crate) fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
+pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFlag>) {
     let mut info: Vec<InfoFlag> = matches
         .get_many::<InfoFlag>("info")
         .map(|v| v.copied().collect())
