@@ -107,7 +107,7 @@
 |  | --iconv=CONVERT_SPEC | request charset conversion of filenames | no |  | no |
 | -4 | --ipv4 | prefer IPv4 | no |  | no |
 | -6 | --ipv6 | prefer IPv6 | no |  | no |
-|  | --outbuf=N\|L\|B | set out buffering to None, Line, or Block | no |  | no |
+|  | --outbuf=N\|L\|B | set out buffering to None, Line, or Block | yes |  | no |
 |  | --password-file=FILE | read daemon-access password from FILE | yes |  | no |
 |  | --port=PORT | specify double-colon alternate port number | yes |  | no |
 |  | --protocol=NUM | force an older protocol version to be used | no |  | no |

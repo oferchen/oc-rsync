@@ -481,7 +481,7 @@
   },
   {
     "flag": "--outbuf",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {

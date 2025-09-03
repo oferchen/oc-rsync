@@ -1,7 +1,13 @@
 // bin/oc-rsync/src/main.rs
+use oc_rsync_cli::options::OutBuf;
 use oc_rsync_cli::{cli_command, EngineError};
 use protocol::ExitCode;
 use std::io::ErrorKind;
+use std::ptr;
+
+extern "C" {
+    static mut stdout: *mut libc::FILE;
+}
 
 fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     use clap::error::ErrorKind::*;
@@ -57,6 +63,16 @@ fn main() {
         }
         std::process::exit(u8::from(code) as i32);
     });
+    if let Some(mode) = matches.get_one::<OutBuf>("outbuf") {
+        unsafe {
+            let m = match mode {
+                OutBuf::N => libc::_IONBF,
+                OutBuf::L => libc::_IOLBF,
+                OutBuf::B => libc::_IOFBF,
+            };
+            libc::setvbuf(stdout, ptr::null_mut(), m, 0);
+        }
+    }
     if let Err(e) = oc_rsync_cli::run(&matches) {
         eprintln!("{e}");
         let code = match &e {

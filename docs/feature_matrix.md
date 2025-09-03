@@ -122,7 +122,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--only-write-batch` | ❌ | N | N | N | — | — | not yet implemented |
 | `--open-noatime` | ❌ | N | N | N | — | — | not yet implemented |
 | `--out-format` | ❌ | N | N | N | — | — | not yet implemented |
-| `--outbuf` | ❌ | N | N | N | — | — | not yet implemented |
+| `--outbuf` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [bin/oc-rsync/src/main.rs](../bin/oc-rsync/src/main.rs) | set stdout buffering |
 | `--owner` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires root or CAP_CHOWN |
 | `--partial` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/resume.rs](../crates/engine/tests/resume.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--partial-dir` | ✅ | Y | Y | Y | [tests/resume.rs](../tests/resume.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
