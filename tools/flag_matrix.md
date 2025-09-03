@@ -85,6 +85,7 @@
 | --modify-window | Supported |  |
 | --munge-links | Ignored |  |
 | --no-OPTION | Ignored |  |
+| --no-detach | Supported |  |
 | --no-implied-dirs | Ignored |  |
 | --no-motd | Supported |  |
 | --numeric-ids | Supported |  |
