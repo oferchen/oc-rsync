@@ -337,6 +337,10 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         RemoteSpec::Local(p) => &p.path,
         RemoteSpec::Remote { path, .. } => &path.path,
     };
+    let dst_is_dir = match &dst {
+        RemoteSpec::Local(p) => p.trailing_slash || p.path.is_dir(),
+        RemoteSpec::Remote { path, .. } => path.trailing_slash,
+    };
     if opts.relative {
         let rel = if src_path.is_absolute() {
             src_path.strip_prefix(Path::new("/")).unwrap_or(src_path)
@@ -347,7 +351,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             RemoteSpec::Local(p) => p.path.push(rel),
             RemoteSpec::Remote { path, .. } => path.path.push(rel),
         }
-    } else if !src_trailing {
+    } else if !src_trailing && dst_is_dir {
         let name = src_path
             .file_name()
             .map(|s| s.to_owned())
