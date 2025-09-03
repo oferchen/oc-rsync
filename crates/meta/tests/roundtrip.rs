@@ -1,4 +1,5 @@
 // crates/meta/tests/roundtrip.rs
+
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
@@ -65,7 +66,6 @@ fn roundtrip_full_metadata() -> std::io::Result<()> {
     Ok(())
 }
 
-// Requires root privileges to change file ownership; skipped otherwise.
 #[test]
 fn default_skips_owner_group_perms() -> std::io::Result<()> {
     let dir = tempdir()?;
