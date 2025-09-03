@@ -914,8 +914,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 return Err(EngineError::Other(msg));
                             }
                             stats
-                        };
-                        stats
+                        }
                     }
                     (Some(sm), Some(dm)) => {
                         let mut dst_session = spawn_daemon_session(
@@ -953,8 +952,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             pipe_sessions(&mut src_session, &mut dst_session)?
                         } else {
                             pipe_sessions(&mut src_session, &mut dst_session)?
-                        };
-                        stats
+                        }
                     }
                     (Some(sm), None) => {
                         let mut dst_session = SshStdioTransport::spawn_with_rsh(
@@ -1013,8 +1011,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 return Err(EngineError::Other(msg));
                             }
                             stats
-                        };
-                        stats
+                        }
                     }
                     (None, Some(dm)) => {
                         let mut dst_session = spawn_daemon_session(
@@ -1049,20 +1046,30 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         .map_err(EngineError::from)?;
                         let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            pipe_sessions(&mut src_session, &mut dst_session)?
+                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
+                            let (src_err, _) = src_session.stderr();
+                            if !src_err.is_empty() {
+                                let msg = if let Some(cv) = iconv.as_ref() {
+                                    cv.decode_remote(&src_err)
+                                } else {
+                                    String::from_utf8_lossy(&src_err).into_owned()
+                                };
+                                return Err(EngineError::Other(msg));
+                            }
+                            stats
                         } else {
-                            pipe_sessions(&mut src_session, &mut dst_session)?
-                        };
-                        let (src_err, _) = src_session.stderr();
-                        if !src_err.is_empty() {
-                            let msg = if let Some(cv) = iconv.as_ref() {
-                                cv.decode_remote(&src_err)
-                            } else {
-                                String::from_utf8_lossy(&src_err).into_owned()
-                            };
-                            return Err(EngineError::Other(msg));
+                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
+                            let (src_err, _) = src_session.stderr();
+                            if !src_err.is_empty() {
+                                let msg = if let Some(cv) = iconv.as_ref() {
+                                    cv.decode_remote(&src_err)
+                                } else {
+                                    String::from_utf8_lossy(&src_err).into_owned()
+                                };
+                                return Err(EngineError::Other(msg));
+                            }
+                            stats
                         }
-                        stats
                     }
                 }
             }

@@ -1940,8 +1940,12 @@ where
     S: Transport,
     D: Transport,
 {
-    pipe(src, dst).map_err(|e| EngineError::Other(e.to_string()))?;
-    Ok(Stats::default())
+    let bytes = pipe(src, dst).map_err(|e| EngineError::Other(e.to_string()))?;
+    Ok(Stats {
+        files_transferred: (bytes > 0) as usize,
+        bytes_transferred: bytes,
+        ..Stats::default()
+    })
 }
 
 fn unescape_rsync(path: &str) -> String {

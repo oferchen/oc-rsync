@@ -14,20 +14,22 @@ pub fn rate_limited<T: Transport>(inner: T, bwlimit: u64) -> RateLimitedTranspor
     RateLimitedTransport::new(inner, bwlimit)
 }
 
-pub fn pipe<S, D>(src: &mut S, dst: &mut D) -> io::Result<()>
+pub fn pipe<S, D>(src: &mut S, dst: &mut D) -> io::Result<u64>
 where
     S: Transport,
     D: Transport,
 {
     let mut buf = [0u8; 8192];
+    let mut total = 0u64;
     loop {
         let n = src.receive(&mut buf)?;
         if n == 0 {
             break;
         }
         dst.send(&buf[..n])?;
+        total += n as u64;
     }
-    Ok(())
+    Ok(total)
 }
 
 #[derive(Clone, Copy, Debug)]
