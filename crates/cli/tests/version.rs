@@ -22,3 +22,9 @@ fn banner_is_static() {
     ];
     assert_eq!(version::render_version_lines(), expected);
 }
+
+#[test]
+fn banner_renders_correctly() {
+    let expected = format!("{}\n", version::render_version_lines().join("\n"));
+    assert_eq!(version::version_banner(), expected);
+}
