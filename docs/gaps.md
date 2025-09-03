@@ -18,8 +18,8 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
 | `--out-format` and log file messages | ✅ | [tests/out_format.rs](../tests/out_format.rs)<br>[tests/log_file.rs](../tests/log_file.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs) |
-| System log integration (syslog/journald) | ✅ | [crates/logging/tests/syslog.rs](../crates/logging/tests/syslog.rs)<br>[crates/logging/tests/journald.rs](../crates/logging/tests/journald.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs) |
-| Daemon MOTD/greeting messages | ✅ | [tests/daemon.rs](../tests/daemon.rs)<br>[tests/daemon_config.rs](../tests/daemon_config.rs) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
+| System log integration (syslog/journald) | ⚠️ | [crates/logging/tests/syslog.rs](../crates/logging/tests/syslog.rs)<br>[crates/logging/tests/journald.rs](../crates/logging/tests/journald.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs) |
+| Daemon MOTD/greeting messages | ✅ | [tests/daemon.rs](../tests/daemon.rs) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
 
 _Future contributors: update this section when adding or fixing message behaviors._
 
