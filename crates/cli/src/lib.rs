@@ -38,7 +38,9 @@ use meta::{parse_chmod, parse_chown, IdKind};
 use protocol::CAP_ACLS;
 #[cfg(feature = "xattr")]
 use protocol::CAP_XATTRS;
-use protocol::{negotiate_version, ExitCode, CAP_CODECS, LATEST_VERSION, SUPPORTED_PROTOCOLS, V30};
+use protocol::{
+    negotiate_version, CharsetConv, ExitCode, CAP_CODECS, LATEST_VERSION, SUPPORTED_PROTOCOLS, V30,
+};
 use transport::{parse_sockopts, AddressFamily, RateLimitedTransport, SshStdioTransport};
 #[cfg(unix)]
 use users::get_user_by_uid;
@@ -870,50 +872,17 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         )
                         .map_err(EngineError::from)?;
 
-                        #[allow(clippy::let_and_return)]
-                        let stats = if let Some(limit) = opts.bwlimit {
+                        if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            let (src_err, _) = src_session.stderr();
-                            if !src_err.is_empty() {
-                                let msg = if let Some(cv) = iconv.as_ref() {
-                                    cv.decode_remote(&src_err)
-                                } else {
-                                    String::from_utf8_lossy(&src_err).into_owned()
-                                };
-                                return Err(EngineError::Other(msg));
-                            }
+                            check_session_errors(&src_session, iconv.as_ref())?;
                             let dst_session = dst_session.into_inner();
-                            let (dst_err, _) = dst_session.stderr();
-                            if !dst_err.is_empty() {
-                                let msg = if let Some(cv) = iconv.as_ref() {
-                                    cv.decode_remote(&dst_err)
-                                } else {
-                                    String::from_utf8_lossy(&dst_err).into_owned()
-                                };
-                                return Err(EngineError::Other(msg));
-                            }
+                            check_session_errors(&dst_session, iconv.as_ref())?;
                             stats
                         } else {
                             let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            let (src_err, _) = src_session.stderr();
-                            if !src_err.is_empty() {
-                                let msg = if let Some(cv) = iconv.as_ref() {
-                                    cv.decode_remote(&src_err)
-                                } else {
-                                    String::from_utf8_lossy(&src_err).into_owned()
-                                };
-                                return Err(EngineError::Other(msg));
-                            }
-                            let (dst_err, _) = dst_session.stderr();
-                            if !dst_err.is_empty() {
-                                let msg = if let Some(cv) = iconv.as_ref() {
-                                    cv.decode_remote(&dst_err)
-                                } else {
-                                    String::from_utf8_lossy(&dst_err).into_owned()
-                                };
-                                return Err(EngineError::Other(msg));
-                            }
+                            check_session_errors(&src_session, iconv.as_ref())?;
+                            check_session_errors(&dst_session, iconv.as_ref())?;
                             stats
                         };
                         stats
@@ -949,8 +918,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
                         )?;
-                        #[allow(clippy::let_and_return)]
-                        let stats = if let Some(limit) = opts.bwlimit {
+                        if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             pipe_sessions(&mut src_session, &mut dst_session)?
                         } else {
@@ -989,32 +957,15 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
                         )?;
-                        #[allow(clippy::let_and_return)]
-                        let stats = if let Some(limit) = opts.bwlimit {
+                        if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
                             let dst_session = dst_session.into_inner();
-                            let (dst_err, _) = dst_session.stderr();
-                            if !dst_err.is_empty() {
-                                let msg = if let Some(cv) = iconv.as_ref() {
-                                    cv.decode_remote(&dst_err)
-                                } else {
-                                    String::from_utf8_lossy(&dst_err).into_owned()
-                                };
-                                return Err(EngineError::Other(msg));
-                            }
+                            check_session_errors(&dst_session, iconv.as_ref())?;
                             stats
                         } else {
                             let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            let (dst_err, _) = dst_session.stderr();
-                            if !dst_err.is_empty() {
-                                let msg = if let Some(cv) = iconv.as_ref() {
-                                    cv.decode_remote(&dst_err)
-                                } else {
-                                    String::from_utf8_lossy(&dst_err).into_owned()
-                                };
-                                return Err(EngineError::Other(msg));
-                            }
+                            check_session_errors(&dst_session, iconv.as_ref())?;
                             stats
                         };
                         stats
@@ -1050,31 +1001,14 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
-                        #[allow(clippy::let_and_return)]
-                        let stats = if let Some(limit) = opts.bwlimit {
+                        if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            let (src_err, _) = src_session.stderr();
-                            if !src_err.is_empty() {
-                                let msg = if let Some(cv) = iconv.as_ref() {
-                                    cv.decode_remote(&src_err)
-                                } else {
-                                    String::from_utf8_lossy(&src_err).into_owned()
-                                };
-                                return Err(EngineError::Other(msg));
-                            }
+                            check_session_errors(&src_session, iconv.as_ref())?;
                             stats
                         } else {
                             let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            let (src_err, _) = src_session.stderr();
-                            if !src_err.is_empty() {
-                                let msg = if let Some(cv) = iconv.as_ref() {
-                                    cv.decode_remote(&src_err)
-                                } else {
-                                    String::from_utf8_lossy(&src_err).into_owned()
-                                };
-                                return Err(EngineError::Other(msg));
-                            }
+                            check_session_errors(&src_session, iconv.as_ref())?;
                             stats
                         };
                         stats
@@ -1106,6 +1040,19 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
             files_deleted = stats.files_deleted,
             bytes = stats.bytes_transferred
         );
+    }
+    Ok(())
+}
+
+fn check_session_errors(session: &SshStdioTransport, iconv: Option<&CharsetConv>) -> Result<()> {
+    let (err, _) = session.stderr();
+    if !err.is_empty() {
+        let msg = if let Some(cv) = iconv {
+            cv.decode_remote(&err)
+        } else {
+            String::from_utf8_lossy(&err).into_owned()
+        };
+        return Err(EngineError::Other(msg));
     }
     Ok(())
 }
