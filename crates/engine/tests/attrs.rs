@@ -98,6 +98,52 @@ fn chown_applies() {
 }
 
 #[test]
+fn chown_matches_rsync() {
+    if !Uid::effective().is_root() {
+        println!("Skipping chown_matches_rsync test: requires root");
+        return;
+    }
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst_rrs = tmp.path().join("rrs");
+    let dst_rsync = tmp.path().join("rs");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst_rrs).unwrap();
+    fs::create_dir_all(&dst_rsync).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+
+    sync(
+        &src,
+        &dst_rrs,
+        &Matcher::default(),
+        &available_codecs(),
+        &SyncOptions {
+            owner: true,
+            group: true,
+            chown: Some(parse_chown("1:1").unwrap()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::new("rsync")
+        .arg("-a")
+        .arg("--chown=1:1")
+        .arg(format!("{}/", src.display()))
+        .arg(dst_rsync.to_str().unwrap())
+        .output()
+        .expect("rsync not installed");
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let meta_rrs = fs::metadata(dst_rrs.join("file")).unwrap();
+    let meta_rsync = fs::metadata(dst_rsync.join("file")).unwrap();
+    assert_eq!(meta_rrs.uid(), meta_rsync.uid());
+    assert_eq!(meta_rrs.gid(), meta_rsync.gid());
+}
+
+#[test]
 fn times_roundtrip() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
