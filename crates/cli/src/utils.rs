@@ -60,7 +60,7 @@ pub(crate) fn parse_nonzero_duration(s: &str) -> std::result::Result<Duration, S
     }
 }
 
-const SIZE_SUFFIXES: &[(char, u32)] = &[('k', 10), ('m', 20), ('g', 30)];
+const SIZE_SUFFIXES: &[(char, u32)] = &[('k', 10), ('m', 20), ('g', 30), ('t', 40), ('p', 50)];
 
 pub(crate) fn parse_suffixed<T>(s: &str, shifts: &[(char, u32)]) -> std::result::Result<T, String>
 where
@@ -398,4 +398,22 @@ pub(crate) fn parse_remote_specs(src: &str, dst: &str) -> Result<(RemoteSpec, Re
         }
     }
     Ok((src_spec, dst_spec))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_size;
+
+    #[test]
+    fn parse_size_supports_t_and_p_suffixes() {
+        assert_eq!(parse_size::<u64>("1t").unwrap(), 1u64 << 40);
+        assert_eq!(parse_size::<u64>("1T").unwrap(), 1u64 << 40);
+        assert_eq!(parse_size::<u64>("1p").unwrap(), 1u64 << 50);
+        assert_eq!(parse_size::<u64>("1P").unwrap(), 1u64 << 50);
+    }
+
+    #[test]
+    fn parse_size_overflow() {
+        assert!(parse_size::<u64>("16384p").is_err());
+    }
 }
