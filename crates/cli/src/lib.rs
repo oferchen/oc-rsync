@@ -1064,15 +1064,16 @@ fn run_single(
                             sync_opts.blocking_io,
                         )
                         .map_err(EngineError::from)?;
-                        let stats;
                         if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            stats = pipe_sessions(&mut src_session, &mut dst_session)?;
+                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
+                            check_session_errors(&src_session, iconv.as_ref())?;
+                            stats
                         } else {
-                            stats = pipe_sessions(&mut src_session, &mut dst_session)?;
+                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
+                            check_session_errors(&src_session, iconv.as_ref())?;
+                            stats
                         }
-                        check_session_errors(&src_session, iconv.as_ref())?;
-                        stats
                     }
                 }
             }

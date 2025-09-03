@@ -13,9 +13,9 @@
 | Mode                     | Status | Notes |
 |--------------------------|--------|-------|
 | Local → Local            | ✅ Full support | Parity with classic rsync |
-| Local → Remote (SSH)     | ✅ Interoperates with classic rsync | Parity with classic rsync |
-| Local → Remote (daemon)  | ✅ Interoperates with classic rsync | Parity with classic rsync |
-| Remote → Remote          | ❌ Not yet implemented | — |
+| Local → Remote (SSH)     | ✅ Interoperates with classic rsync | Hardlinks pending |
+| Local → Remote (daemon)  | ✅ Interoperates with classic rsync | Hardlinks pending |
+| Remote → Remote          | ✅ Interoperates with classic rsync | Hardlinks pending |
 
 ## Remote Feature Coverage
 
