@@ -9,7 +9,7 @@ use std::time::Duration;
 use clap::ArgMatches;
 use encoding_rs::Encoding;
 use filters::{parse_with_options, Rule};
-use logging::{DebugFlag, InfoFlag, SubscriberConfig};
+use logging::{DebugFlag, InfoFlag, StderrMode, SubscriberConfig};
 use meta::{parse_id_map, IdKind};
 use protocol::CharsetConv;
 use shell_words::split as shell_split;
@@ -150,11 +150,15 @@ pub(crate) fn init_logging(matches: &ArgMatches) {
         info.clear();
         debug.clear();
     }
+    let stderr_mode = *matches
+        .get_one::<StderrMode>("stderr")
+        .unwrap_or(&StderrMode::Errors);
     let cfg = SubscriberConfig::builder()
         .verbose(verbose)
         .info(info)
         .debug(debug)
         .quiet(quiet)
+        .stderr(stderr_mode)
         .log_file(log_file.map(|p| (p, log_file_fmt)))
         .colored(true)
         .timestamps(false)

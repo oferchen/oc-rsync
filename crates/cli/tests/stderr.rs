@@ -36,3 +36,24 @@ fn invalid_rsh_env_emits_error_on_stderr() {
         .failure();
     assert!(!assert.get_output().stderr.is_empty());
 }
+
+#[test]
+fn client_mode_redirects_error_to_stdout() {
+    let src = tempdir().unwrap();
+    let dst = tempdir().unwrap();
+    let src_path = src.path();
+    let dst_path = dst.path();
+
+    let assert = Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--stderr=client",
+            src_path.to_str().unwrap(),
+            dst_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure();
+    let output = assert.get_output();
+    assert!(output.stderr.is_empty());
+    assert!(!output.stdout.is_empty());
+}

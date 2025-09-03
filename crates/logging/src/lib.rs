@@ -2,6 +2,7 @@
 #![allow(clippy::too_many_arguments)]
 use std::fmt;
 use std::fs::OpenOptions;
+use std::io;
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt;
 #[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
@@ -12,6 +13,7 @@ use tracing::level_filters::LevelFilter;
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::{
     fmt as tracing_fmt,
+    fmt::MakeWriter,
     layer::{Context, Layer, SubscriberExt},
     util::SubscriberInitExt,
     EnvFilter,
@@ -131,6 +133,18 @@ pub enum DebugFlag {
     Time,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum, Default)]
+#[clap(rename_all = "kebab-case")]
+pub enum StderrMode {
+    #[clap(alias = "e")]
+    #[default]
+    Errors,
+    #[clap(alias = "a")]
+    All,
+    #[clap(alias = "c")]
+    Client,
+}
+
 impl DebugFlag {
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -198,6 +212,7 @@ pub struct SubscriberConfig {
     pub info: Vec<InfoFlag>,
     pub debug: Vec<DebugFlag>,
     pub quiet: bool,
+    pub stderr: StderrMode,
     pub log_file: Option<(PathBuf, Option<String>)>,
     pub syslog: bool,
     pub journald: bool,
@@ -213,6 +228,7 @@ impl Default for SubscriberConfig {
             info: Vec::new(),
             debug: Vec::new(),
             quiet: false,
+            stderr: StderrMode::Errors,
             log_file: None,
             syslog: false,
             journald: false,
@@ -256,6 +272,11 @@ impl SubscriberConfigBuilder {
 
     pub fn quiet(mut self, quiet: bool) -> Self {
         self.cfg.quiet = quiet;
+        self
+    }
+
+    pub fn stderr(mut self, stderr: StderrMode) -> Self {
+        self.cfg.stderr = stderr;
         self
     }
 
@@ -421,6 +442,36 @@ where
     }
 }
 
+#[derive(Clone, Copy)]
+struct LogWriter {
+    mode: StderrMode,
+}
+
+impl<'a> MakeWriter<'a> for LogWriter {
+    type Writer = Box<dyn io::Write + Send + 'a>;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        match self.mode {
+            StderrMode::All => Box::new(io::stderr()),
+            _ => Box::new(io::stdout()),
+        }
+    }
+
+    fn make_writer_for(&'a self, meta: &tracing::Metadata<'_>) -> Self::Writer {
+        match self.mode {
+            StderrMode::All => Box::new(io::stderr()),
+            StderrMode::Client => Box::new(io::stdout()),
+            StderrMode::Errors => {
+                if meta.level() == &Level::ERROR {
+                    Box::new(io::stderr())
+                } else {
+                    Box::new(io::stdout())
+                }
+            }
+        }
+    }
+}
+
 pub fn subscriber(cfg: SubscriberConfig) -> Box<dyn tracing::Subscriber + Send + Sync> {
     let SubscriberConfig {
         format,
@@ -428,6 +479,7 @@ pub fn subscriber(cfg: SubscriberConfig) -> Box<dyn tracing::Subscriber + Send +
         info,
         debug,
         quiet,
+        stderr,
         log_file,
         syslog,
         journald,
@@ -469,7 +521,11 @@ pub fn subscriber(cfg: SubscriberConfig) -> Box<dyn tracing::Subscriber + Send +
         }
     }
 
-    let base = tracing_fmt::layer().with_target(false).with_level(false);
+    let writer = LogWriter { mode: stderr };
+    let base = tracing_fmt::layer()
+        .with_writer(writer)
+        .with_target(false)
+        .with_level(false);
     let base = if colored { base } else { base.with_ansi(false) };
     let fmt_layer = if timestamps {
         match format {
