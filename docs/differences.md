@@ -20,8 +20,8 @@ This document is synchronized with [feature_matrix.md](feature_matrix.md) and li
 - `--ignore-missing-args`: parity with upstream not yet verified. Tests: [tests/ignore_missing_args.rs](../tests/ignore_missing_args.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--ignore-times`: parity with upstream not yet verified. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--info`: parity with upstream not yet verified. Tests: [crates/logging/tests/info_flags.rs](../crates/logging/tests/info_flags.rs)<br>[crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--log-file`: parity with upstream not yet verified; limited format support. Tests: [tests/log_file.rs](../tests/log_file.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--log-file-format`: parity with upstream not yet verified; limited format support. Tests: [tests/log_file.rs](../tests/log_file.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
+- `--log-file`: fully supported. Tests: [tests/log_file.rs](../tests/log_file.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
+- `--log-file-format`: fully supported. Tests: [tests/log_file.rs](../tests/log_file.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--max-size`: parity with upstream not yet verified. Tests: [tests/perf_limits.rs](../tests/perf_limits.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--min-size`: parity with upstream not yet verified. Tests: [tests/perf_limits.rs](../tests/perf_limits.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--modify-window`: parity with upstream not yet verified; treat close mtimes as equal. Tests: [tests/modify_window.rs](../tests/modify_window.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).

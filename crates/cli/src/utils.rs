@@ -155,11 +155,10 @@ pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFla
     (info, debug)
 }
 
-pub(crate) fn init_logging(matches: &ArgMatches) {
+pub(crate) fn init_logging(matches: &ArgMatches, log_file_fmt: Option<String>) {
     let verbose = matches.get_count("verbose");
     let quiet = matches.get_flag("quiet");
     let log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
-    let log_file_fmt = matches.get_one::<String>("client-log-file-format").cloned();
     let syslog = matches.get_flag("syslog");
     let journald = matches.get_flag("journald");
     let (mut info, mut debug) = parse_logging_flags(matches);
@@ -170,13 +169,14 @@ pub(crate) fn init_logging(matches: &ArgMatches) {
     let stderr_mode = *matches
         .get_one::<StderrMode>("stderr")
         .unwrap_or(&StderrMode::Errors);
+    let log_file_cfg = log_file.map(|p| (p, log_file_fmt));
     let cfg = SubscriberConfig::builder()
         .verbose(verbose)
         .info(info)
         .debug(debug)
         .quiet(quiet)
         .stderr(stderr_mode)
-        .log_file(log_file.map(|p| (p, log_file_fmt)))
+        .log_file(log_file_cfg)
         .syslog(syslog)
         .journald(journald)
         .colored(true)

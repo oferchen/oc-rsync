@@ -1,4 +1,5 @@
 // crates/logging/src/formatter.rs
+use crate::parse_escapes;
 use std::collections::HashMap;
 use std::fmt;
 use time::{macros::format_description, OffsetDateTime};
@@ -13,7 +14,10 @@ pub struct RsyncFormatter {
 
 impl RsyncFormatter {
     pub fn new(format: Option<String>) -> Self {
-        let tokens = format.map(|f| parse_tokens(&f));
+        let tokens = format.map(|f| {
+            let fmt = parse_escapes(&f);
+            parse_tokens(&fmt)
+        });
         Self { tokens }
     }
 
@@ -180,7 +184,7 @@ where
         let mut visitor = MsgVisitor::new();
         event.record(&mut visitor);
         if let Some(tokens) = &self.tokens {
-            let mut out = String::new();
+            let mut out = format!("{} [{}] ", format_time(), std::process::id());
             for tok in tokens {
                 match tok {
                     Token::Lit(s) => out.push_str(s),

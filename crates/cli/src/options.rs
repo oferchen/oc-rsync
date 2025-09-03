@@ -75,10 +75,16 @@ pub(crate) struct ClientOpts {
         long = "log-file-format",
         value_name = "FMT",
         help_heading = "Output",
-        id = "client-log-file-format"
+        id = "client-log-file-format",
+        allow_hyphen_values = true
     )]
     pub log_file_format: Option<String>,
-    #[arg(long = "out-format", value_name = "FORMAT", help_heading = "Output")]
+    #[arg(
+        long = "out-format",
+        value_name = "FORMAT",
+        help_heading = "Output",
+        allow_hyphen_values = true
+    )]
     pub out_format: Option<String>,
     #[arg(
         long,
