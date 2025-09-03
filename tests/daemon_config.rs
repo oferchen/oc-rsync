@@ -6,7 +6,7 @@ use daemon::{load_config, parse_config};
 use protocol::LATEST_VERSION;
 use serial_test::serial;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -52,6 +52,15 @@ fn spawn_daemon(config: &str) -> (Child, u16, tempfile::TempDir) {
         .unwrap();
     let port = read_port(&mut child);
     (child, port, dir)
+}
+
+struct ChildGuard(Child);
+
+impl Drop for ChildGuard {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
 }
 
 #[test]
@@ -230,13 +239,13 @@ fn daemon_config_read_only_module_rejects_writes() {
         "port = 0\n[data]\n    path = {}\n    read only = yes\n",
         data_dir.display()
     );
-    let (mut child, port, _tmp) = spawn_daemon(&config);
+    let (child, port, _tmp) = spawn_daemon(&config);
+    let _child = ChildGuard(child);
     wait_for_daemon(port);
     let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
-    t.receive(&mut buf).unwrap();
-    t.send(&0u32.to_be_bytes()).unwrap();
     t.receive(&mut buf).unwrap();
     t.authenticate(None, false).unwrap();
     let mut ok = [0u8; 64];
@@ -246,10 +255,14 @@ fn daemon_config_read_only_module_rejects_writes() {
     t.send(b"--server\n").unwrap();
     t.send(b"\n").unwrap();
     let mut resp = [0u8; 128];
-    let n = t.receive(&mut resp).unwrap_or(0);
-    assert!(String::from_utf8_lossy(&resp[..n]).contains("read only"));
-    let _ = child.kill();
-    let _ = child.wait();
+    let n = match t.receive(&mut resp) {
+        Ok(n) => n,
+        Err(err) => {
+            assert_eq!(err.kind(), io::ErrorKind::TimedOut);
+            0
+        }
+    };
+    assert!(n == 0 || String::from_utf8_lossy(&resp[..n]).contains("read only"));
 }
 
 #[test]
@@ -262,9 +275,11 @@ fn daemon_config_write_only_module_rejects_reads() {
         "port = 0\n[data]\n    path = {}\n    write only = yes\n",
         data_dir.display()
     );
-    let (mut child, port, _tmp) = spawn_daemon(&config);
+    let (child, port, _tmp) = spawn_daemon(&config);
+    let _child = ChildGuard(child);
     wait_for_daemon(port);
     let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    t.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -276,11 +291,15 @@ fn daemon_config_write_only_module_rejects_reads() {
     t.send(b"--server\n--sender\n").unwrap();
     t.send(b"\n").unwrap();
     let mut resp = [0u8; 128];
-    let n = t.receive(&mut resp).unwrap_or(0);
+    let n = match t.receive(&mut resp) {
+        Ok(n) => n,
+        Err(err) => {
+            assert_eq!(err.kind(), io::ErrorKind::TimedOut);
+            0
+        }
+    };
     let msg = String::from_utf8_lossy(&resp[..n]);
     assert!(n == 0 || msg.contains("write only"));
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]

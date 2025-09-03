@@ -56,83 +56,99 @@ impl SyncConfig {
 }
 
 #[derive(Default)]
+#[must_use]
 pub struct SyncConfigBuilder {
     cfg: SyncConfig,
 }
 
 impl SyncConfigBuilder {
+    #[must_use]
     pub fn log_format(mut self, log_format: LogFormat) -> Self {
         self.cfg.log_format = log_format;
         self
     }
 
+    #[must_use]
     pub fn verbose(mut self, verbose: u8) -> Self {
         self.cfg.verbose = verbose;
         self
     }
 
+    #[must_use]
     pub fn info(mut self, info: Vec<InfoFlag>) -> Self {
         self.cfg.info = info;
         self
     }
 
+    #[must_use]
     pub fn debug(mut self, debug: Vec<DebugFlag>) -> Self {
         self.cfg.debug = debug;
         self
     }
 
+    #[must_use]
     pub fn perms(mut self, enable: bool) -> Self {
         self.cfg.perms = enable;
         self
     }
 
+    #[must_use]
     pub fn times(mut self, enable: bool) -> Self {
         self.cfg.times = enable;
         self
     }
 
+    #[must_use]
     pub fn atimes(mut self, enable: bool) -> Self {
         self.cfg.atimes = enable;
         self
     }
 
+    #[must_use]
     pub fn links(mut self, enable: bool) -> Self {
         self.cfg.links = enable;
         self
     }
 
+    #[must_use]
     pub fn devices(mut self, enable: bool) -> Self {
         self.cfg.devices = enable;
         self
     }
 
+    #[must_use]
     pub fn specials(mut self, enable: bool) -> Self {
         self.cfg.specials = enable;
         self
     }
 
+    #[must_use]
     pub fn owner(mut self, enable: bool) -> Self {
         self.cfg.owner = enable;
         self
     }
 
+    #[must_use]
     pub fn group(mut self, enable: bool) -> Self {
         self.cfg.group = enable;
         self
     }
 
     #[cfg(feature = "xattr")]
+    #[must_use]
     pub fn xattrs(mut self, enable: bool) -> Self {
         self.cfg.xattrs = enable;
         self
     }
 
     #[cfg(feature = "acl")]
+    #[must_use]
     pub fn acls(mut self, enable: bool) -> Self {
         self.cfg.acls = enable;
         self
     }
 
+    #[must_use]
     pub fn build(self) -> SyncConfig {
         self.cfg
     }
@@ -316,7 +332,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn sync_preserves_ownership() {
-        use nix::unistd::{chown, Gid, Uid};
+        use nix::unistd::{chown, geteuid, Gid, Uid};
         use std::os::unix::fs::MetadataExt;
 
         if !Uid::effective().is_root() {
