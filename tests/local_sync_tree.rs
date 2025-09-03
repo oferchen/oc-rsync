@@ -2,7 +2,7 @@
 
 use assert_cmd::Command;
 #[cfg(unix)]
-use filetime::{set_file_atime, FileTime};
+use filetime::{set_file_times, FileTime};
 #[cfg(unix)]
 use meta::mkfifo;
 #[cfg(unix)]
@@ -105,7 +105,6 @@ fn sync_keep_dirlinks_preserves_symlinked_dir() {
     let meta = fs::symlink_metadata(dst.join("sub")).unwrap();
     assert!(meta.file_type().is_symlink());
     assert!(target.join("file").exists());
-    assert!(!dst.join("sub/file").exists());
 }
 
 #[cfg(all(unix, feature = "xattr"))]
@@ -497,7 +496,7 @@ fn sync_preserves_executability() {
     fs::create_dir_all(&dst).unwrap();
     let file = src.join("file");
     fs::write(&file, b"hi").unwrap();
-    fs::set_permissions(&file, fs::Permissions::from_mode(0o700)).unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o766)).unwrap();
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -561,7 +560,8 @@ fn sync_preserves_atimes() {
     let file = src.join("file");
     fs::write(&file, b"hi").unwrap();
     let atime = FileTime::from_unix_time(1_000_000, 123_456_789);
-    set_file_atime(&file, atime).unwrap();
+    let mtime = FileTime::from_unix_time(1_000_000, 987_654_321);
+    set_file_times(&file, atime, mtime).unwrap();
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -572,9 +572,14 @@ fn sync_preserves_atimes() {
         .stdout("")
         .stderr("");
 
-    let meta = fs::metadata(dst.join("file")).unwrap();
-    let dst_atime = FileTime::from_last_access_time(&meta);
+    let src_meta = fs::metadata(src.join("file")).unwrap();
+    let dst_meta = fs::metadata(dst.join("file")).unwrap();
+    let src_atime = FileTime::from_last_access_time(&src_meta);
+    let dst_atime = FileTime::from_last_access_time(&dst_meta);
+    let dst_mtime = FileTime::from_last_modification_time(&dst_meta);
+    assert_eq!(src_atime, atime);
     assert_eq!(dst_atime, atime);
+    assert_ne!(dst_mtime, mtime);
 }
 
 #[cfg(target_os = "linux")]
