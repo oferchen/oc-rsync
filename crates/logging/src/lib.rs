@@ -368,7 +368,8 @@ where
             v.msg.push_str(event.metadata().target());
         }
         let pri = 8 + syslog_severity(*event.metadata().level());
-        let data = format!("<{pri}>{}", v.msg);
+        let pid = std::process::id();
+        let data = format!("<{pri}>rsync[{pid}]: {}", v.msg);
         let _ = self.sock.send(data.as_bytes());
     }
 }
@@ -412,7 +413,10 @@ where
             v.msg.push_str(event.metadata().target());
         }
         let prio = journald_priority(*event.metadata().level());
-        let data = format!("PRIORITY={prio}\nMESSAGE={}\n", v.msg);
+        let data = format!(
+            "PRIORITY={prio}\nSYSLOG_IDENTIFIER=rsync\nMESSAGE={}\n",
+            v.msg
+        );
         let _ = self.sock.send(data.as_bytes());
     }
 }
