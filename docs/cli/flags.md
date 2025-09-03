@@ -89,8 +89,8 @@
 |  | --fsync | fsync every written file | no |  | no |
 |  | --only-write-batch=FILE | like --write-batch but w/o updating dest | no |  | no |
 |  | --read-batch=FILE | read a batched update from FILE | no |  | no |
-|  | --stop-after=MINS | Stop rsync after MINS minutes have elapsed | no |  | no |
-|  | --stop-at=y-m-dTh:m | Stop rsync at the specified point in time | no |  | no |
+|  | --stop-after=MINS | Stop rsync after MINS minutes have elapsed | yes |  | no |
+|  | --stop-at=y-m-dTh:m | Stop rsync at the specified point in time | yes |  | no |
 |  | --write-batch=FILE | write a batched update to FILE | no |  | no |
 | -D |  | same as --devices --specials | no |  | no |
 | -P |  | same as --partial --progress | yes |  | no |

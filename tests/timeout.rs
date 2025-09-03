@@ -1,6 +1,7 @@
 // tests/timeout.rs
 #![allow(clippy::err_expect)]
 
+use std::fs;
 use std::io::{self, Cursor};
 use std::net::TcpListener;
 use std::thread;
@@ -11,6 +12,7 @@ use engine::{EngineError, SyncOptions};
 use oc_rsync_cli::spawn_daemon_session;
 use predicates::str::contains;
 use protocol::{Demux, ExitCode, CAP_CODECS};
+use tempfile::tempdir;
 use transport::{
     rate_limited, ssh::SshStdioTransport, LocalPipeTransport, TcpTransport, TimeoutTransport,
     Transport,
@@ -204,4 +206,27 @@ fn ssh_connection_timeout_exit_code() {
         .failure()
         .code(u8::from(ExitCode::ConnTimeout) as i32)
         .stderr(contains("failed to read version"));
+}
+
+#[test]
+fn stop_at_exit_code() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("file.txt"), b"data").unwrap();
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--stop-at=2000-01-01T00:00",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .code(u8::from(ExitCode::Timeout) as i32)
+        .stderr(contains("operation timed out"));
 }

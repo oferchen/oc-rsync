@@ -1,11 +1,13 @@
 // crates/cli/src/options.rs
 
 use std::path::PathBuf;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use crate::daemon::DaemonOpts;
 use crate::formatter;
-use crate::utils::{parse_duration, parse_nonzero_duration, parse_size};
+use crate::utils::{
+    parse_duration, parse_minutes, parse_nonzero_duration, parse_size, parse_stop_at,
+};
 use clap::{ArgAction, Args, CommandFactory, Parser};
 use logging::{DebugFlag, InfoFlag};
 use protocol::SUPPORTED_PROTOCOLS;
@@ -430,6 +432,21 @@ pub(crate) struct ClientOpts {
     pub connect_timeout: Option<Duration>,
     #[arg(long = "modify-window", value_name = "SECONDS", value_parser = parse_duration, help_heading = "Misc")]
     pub modify_window: Option<Duration>,
+    #[arg(
+        long = "stop-after",
+        alias = "time-limit",
+        value_name = "MINS",
+        value_parser = parse_minutes,
+        help_heading = "Misc",
+    )]
+    pub stop_after: Option<Duration>,
+    #[arg(
+        long = "stop-at",
+        value_name = "TIME",
+        value_parser = parse_stop_at,
+        help_heading = "Misc",
+    )]
+    pub stop_at: Option<SystemTime>,
     #[arg(
         long = "protocol",
         value_name = "VER",

@@ -553,6 +553,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         delay_updates: opts.delay_updates,
         modify_window: opts.modify_window.unwrap_or(Duration::ZERO),
         bwlimit: opts.bwlimit,
+        stop_after: opts.stop_after,
+        stop_at: opts.stop_at,
         block_size,
         link_dest: opts.link_dest.clone(),
         copy_dest: opts.copy_dest.clone(),

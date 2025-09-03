@@ -152,8 +152,8 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--specials` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--stats` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--stderr` | ❌ | N | N | N | — | — | not yet implemented |
-| `--stop-after` | ❌ | N | N | N | — | — | not yet implemented |
-| `--stop-at` | ❌ | N | N | N | — | — | not yet implemented |
+| `--stop-after` | ✅ | N | N | N | [tests/timeout.rs](../tests/timeout.rs) | [crates/cli/src/options.rs](../crates/cli/src/options.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |  |
+| `--stop-at` | ✅ | N | N | N | [tests/timeout.rs](../tests/timeout.rs) | [crates/cli/src/options.rs](../crates/cli/src/options.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |  |
 | `--suffix` | ❌ | N | N | N | — | — | not yet implemented |
 | `--super` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | overrides `--fake-super` |
 | `--temp-dir` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires same filesystem for atomic rename |
