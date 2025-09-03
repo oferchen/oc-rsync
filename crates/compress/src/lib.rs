@@ -1,5 +1,12 @@
 // crates/compress/src/lib.rs
-use std::io::{self, Read, Write};
+use std::io;
+
+#[cfg(any(feature = "zlib", feature = "zstd"))]
+use std::io::Read;
+
+#[cfg(feature = "zlib")]
+use std::io::Write;
+
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,7 +36,17 @@ impl Codec {
 }
 
 pub fn available_codecs() -> Vec<Codec> {
-    vec![Codec::Zstd, Codec::Zlib]
+    #[allow(unused_mut)]
+    let mut codecs = Vec::new();
+    #[cfg(feature = "zstd")]
+    {
+        codecs.push(Codec::Zstd);
+    }
+    #[cfg(feature = "zlib")]
+    {
+        codecs.push(Codec::Zlib);
+    }
+    codecs
 }
 
 pub trait Compressor {
@@ -52,32 +69,55 @@ pub fn decode_codecs(data: &[u8]) -> io::Result<Vec<Codec>> {
     data.iter().map(|b| Codec::from_byte(*b)).collect()
 }
 
+/// Default list of file extensions that should not be compressed, mirroring
+/// upstream rsync's `--skip-compress` setting.
+pub const DEFAULT_SKIP_COMPRESS: &[&str] = &[
+    "3g2", "3gp", "7z", "aac", "ace", "apk", "avi", "bz2", "deb", "dmg", "ear", "f4v", "flac",
+    "flv", "gpg", "gz", "iso", "jar", "jpeg", "jpg", "lrz", "lz", "lz4", "lzma", "lzo", "m1a",
+    "m1v", "m2a", "m2ts", "m2v", "m4a", "m4b", "m4p", "m4r", "m4v", "mka", "mkv", "mov", "mp1",
+    "mp2", "mp3", "mp4", "mpa", "mpeg", "mpg", "mpv", "mts", "odb", "odf", "odg", "odi", "odm",
+    "odp", "ods", "odt", "oga", "ogg", "ogm", "ogv", "ogx", "opus", "otg", "oth", "otp", "ots",
+    "ott", "oxt", "png", "qt", "rar", "rpm", "rz", "rzip", "spx", "squashfs", "sxc", "sxd", "sxg",
+    "sxm", "sxw", "sz", "tbz", "tbz2", "tgz", "tlz", "ts", "txz", "tzo", "vob", "war", "webm",
+    "webp", "xz", "z", "zip", "zst",
+];
+
 pub fn should_compress(path: &Path, skip: &[String]) -> bool {
+    let name = match path.file_name().and_then(|n| n.to_str()) {
+        Some(name) => name.to_ascii_lowercase(),
+        None => return true,
+    };
+
     if skip.is_empty() {
-        return true;
+        return !DEFAULT_SKIP_COMPRESS.iter().any(|s| name.ends_with(s));
     }
-    match path.file_name().and_then(|n| n.to_str()) {
-        Some(name) => !skip.iter().any(|s| name.ends_with(s)),
-        None => true,
-    }
+
+    !skip
+        .iter()
+        .map(|s| s.to_ascii_lowercase())
+        .any(|s| name.ends_with(&s))
 }
 
+#[cfg(feature = "zlib")]
 pub struct Zlib {
     level: i32,
 }
 
+#[cfg(feature = "zlib")]
 impl Zlib {
     pub fn new(level: i32) -> Self {
         Self { level }
     }
 }
 
+#[cfg(feature = "zlib")]
 impl Default for Zlib {
     fn default() -> Self {
         Self { level: 6 }
     }
 }
 
+#[cfg(feature = "zlib")]
 impl Compressor for Zlib {
     fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         let mut encoder = flate2::write::ZlibEncoder::new(
@@ -89,6 +129,7 @@ impl Compressor for Zlib {
     }
 }
 
+#[cfg(feature = "zlib")]
 impl Decompressor for Zlib {
     fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         let mut decoder = flate2::read::ZlibDecoder::new(data);
@@ -98,22 +139,26 @@ impl Decompressor for Zlib {
     }
 }
 
+#[cfg(feature = "zstd")]
 #[derive(Default)]
 pub struct Zstd {
     level: i32,
 }
 
+#[cfg(feature = "zstd")]
 impl Zstd {
     pub fn new(level: i32) -> Self {
         Self { level }
     }
 }
 
+#[cfg(feature = "zstd")]
 #[inline]
 fn zstd_compress_scalar(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     zstd::bulk::compress(data, level).map_err(io::Error::other)
 }
 
+#[cfg(feature = "zstd")]
 #[inline]
 fn zstd_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
     let mut decoder = zstd::stream::Decoder::new(data)?;
@@ -122,6 +167,7 @@ fn zstd_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "sse4.2")]
 unsafe fn zstd_compress_sse42(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
@@ -134,6 +180,7 @@ unsafe fn zstd_compress_sse42(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2")]
 unsafe fn zstd_compress_avx2(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
@@ -146,6 +193,7 @@ unsafe fn zstd_compress_avx2(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 #[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "avx512f")]
 unsafe fn zstd_compress_avx512(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
@@ -158,6 +206,7 @@ unsafe fn zstd_compress_avx512(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "sse4.2")]
 unsafe fn zstd_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
@@ -172,6 +221,7 @@ unsafe fn zstd_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2")]
 unsafe fn zstd_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
@@ -186,6 +236,7 @@ unsafe fn zstd_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 #[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "avx512f")]
 unsafe fn zstd_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
@@ -200,6 +251,7 @@ unsafe fn zstd_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 impl Compressor for Zstd {
     fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -219,6 +271,7 @@ impl Compressor for Zstd {
     }
 }
 
+#[cfg(feature = "zstd")]
 impl Decompressor for Zstd {
     fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -241,6 +294,7 @@ impl Decompressor for Zstd {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "zstd")]
     #[test]
     fn zstd_simd_matches_scalar() {
         let data = b"hello world";
@@ -258,8 +312,28 @@ mod tests {
             assert_eq!(zstd_decompress_avx512(&scalar_c).unwrap(), scalar_d);
         }
     }
+
+    #[cfg(all(feature = "zlib", feature = "zstd"))]
     #[test]
     fn available_codecs_returns_all_codecs() {
         assert_eq!(available_codecs(), vec![Codec::Zstd, Codec::Zlib]);
+    }
+
+    #[cfg(all(not(feature = "zlib"), feature = "zstd"))]
+    #[test]
+    fn available_codecs_returns_only_zstd() {
+        assert_eq!(available_codecs(), vec![Codec::Zstd]);
+    }
+
+    #[cfg(all(feature = "zlib", not(feature = "zstd")))]
+    #[test]
+    fn available_codecs_returns_only_zlib() {
+        assert_eq!(available_codecs(), vec![Codec::Zlib]);
+    }
+
+    #[cfg(all(not(feature = "zlib"), not(feature = "zstd")))]
+    #[test]
+    fn available_codecs_returns_empty() {
+        assert!(available_codecs().is_empty());
     }
 }

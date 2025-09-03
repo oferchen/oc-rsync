@@ -1,6 +1,6 @@
 // bin/oc-rsync/src/main.rs
 use oc_rsync_cli::options::OutBuf;
-use oc_rsync_cli::{cli_command, EngineError};
+use oc_rsync_cli::{branding, cli_command, EngineError};
 use protocol::ExitCode;
 use std::io::ErrorKind;
 use std::ptr;
@@ -69,8 +69,9 @@ fn main() {
                 _ => "syntax or usage error",
             };
             let code_num = u8::from(code);
-            eprintln!("rsync: {msg}");
-            eprintln!("rsync error: {desc} (code {code_num})");
+            let prog = branding::program_name();
+            eprintln!("{prog}: {msg}");
+            eprintln!("{prog} error: {desc} (code {code_num})");
         }
         std::process::exit(u8::from(code) as i32);
     });

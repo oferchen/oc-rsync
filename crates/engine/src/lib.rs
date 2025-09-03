@@ -1,14 +1,10 @@
 // crates/engine/src/lib.rs
-#[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
-use nix::fcntl::{fallocate, FallocateFlags};
 #[cfg(unix)]
 use nix::unistd::{chown, Gid, Uid};
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
-#[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
-use std::os::fd::AsRawFd;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
@@ -138,13 +134,10 @@ fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
     use std::os::fd::AsRawFd;
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
-    unsafe {
-        let ret = libc::fallocate(file.as_raw_fd(), 0, 0, len as libc::off_t);
-        if ret == 0 {
-            Ok(())
-        } else {
-            Err(std::io::Error::from_raw_os_error(ret))
-        }
+    {
+        use nix::fcntl::{fallocate, FallocateFlags};
+        fallocate(file.as_raw_fd(), FallocateFlags::empty(), 0, len as i64)
+            .map_err(std::io::Error::from)
     }
 
     #[cfg(target_os = "macos")]
@@ -639,6 +632,9 @@ fn write_sparse(file: &mut File, data: &[u8]) -> Result<()> {
             let len = i - start;
             #[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
             {
+                use nix::fcntl::{fallocate, FallocateFlags};
+                use std::os::fd::AsRawFd;
+
                 let fd = file.as_raw_fd();
                 let offset = file.stream_position()?;
                 let _ = fallocate(
@@ -3071,5 +3067,16 @@ mod tests {
             Op::Data(d) => d.len() <= LIT_CAP,
             _ => false,
         }));
+    }
+
+    #[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
+    #[test]
+    fn preallocate_failure_surfaces_error() {
+        let tmp = tempdir().unwrap();
+        let path = tmp.path().join("file");
+        File::create(&path).unwrap();
+        let file = std::fs::OpenOptions::new().read(true).open(&path).unwrap();
+        let err = preallocate(&file, 1).unwrap_err();
+        assert_eq!(err.raw_os_error(), Some(libc::EBADF));
     }
 }
