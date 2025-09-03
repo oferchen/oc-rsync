@@ -22,9 +22,9 @@ Options
 "#;
 
 pub const DEFAULT_HELP_SUFFIX: &str = r#"
-Use "rsync --daemon --help" to see the daemon-mode command-line options.
-Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
-See https://rsync.samba.org/ for updates, bug reports, and answers
+Use "{prog} --daemon --help" to see the daemon-mode command-line options.
+Please see the {prog}(1) and {prog}d.conf(5) manpages for full documentation.
+For project updates and documentation, visit https://github.com/oc-rsync/oc-rsync.
 "#;
 
 pub fn program_name() -> String {
@@ -34,7 +34,7 @@ pub fn program_name() -> String {
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
-        .unwrap_or_else(|_| "rsync".to_string())
+        .unwrap_or_else(|_| "oc-rsync".to_string())
 }
 
 pub fn help_prefix() -> String {
@@ -54,5 +54,5 @@ pub fn help_suffix() -> String {
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
-        .unwrap_or_else(|_| DEFAULT_HELP_SUFFIX.replace("rsync", &program_name()))
+        .unwrap_or_else(|_| DEFAULT_HELP_SUFFIX.replace("{prog}", &program_name()))
 }

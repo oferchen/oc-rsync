@@ -357,7 +357,7 @@ impl Drop for Tmpfs {
 #[allow(clippy::vec_init_then_push)]
 #[test]
 fn prints_version() {
-    let expected = include_str!("fixtures/rsync-version.txt");
+    let expected = oc_rsync_cli::version::version_banner();
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .arg("--version")

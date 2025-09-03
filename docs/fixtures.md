@@ -2,15 +2,8 @@
 
 The test suite uses fixtures derived from upstream `rsync` to validate CLI parity.
 
-## `rsync-version.txt`
+## Version output
 
-`tests/fixtures/rsync-version.txt` stores the output of `rsync --version` for comparison
-with `oc-rsync --version`.
-
-Regenerate the fixture with:
-
-```sh
-LC_ALL=C COLUMNS=80 rsync --version > tests/fixtures/rsync-version.txt
-```
-
-Setting `LC_ALL` and `COLUMNS` ensures a stable locale and line wrapping.
+`oc-rsync --version` tests compare against the crate's rendered version banner and
+no longer require storing upstream `rsync --version` output. Earlier revisions of the
+project used a `tests/fixtures/rsync-version.txt` snapshot for this purpose.
