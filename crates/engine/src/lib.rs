@@ -385,16 +385,31 @@ pub fn fuzzy_match(dest: &Path) -> Option<PathBuf> {
     best.map(|(_, p)| p)
 }
 
-fn files_identical(a: &Path, b: &Path) -> bool {
+fn open_for_read(path: &Path, opts: &SyncOptions) -> std::io::Result<File> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        if opts.open_noatime {
+            let mut o = OpenOptions::new();
+            o.read(true).custom_flags(libc::O_NOATIME);
+            if let Ok(f) = o.open(path) {
+                return Ok(f);
+            }
+        }
+    }
+    File::open(path)
+}
+
+fn files_identical(a: &Path, b: &Path, opts: &SyncOptions) -> bool {
     if let (Ok(ma), Ok(mb)) = (fs::metadata(a), fs::metadata(b)) {
         if ma.len() != mb.len() {
             return false;
         }
-        let mut fa = match File::open(a) {
+        let mut fa = match open_for_read(a, opts) {
             Ok(f) => f,
             Err(_) => return false,
         };
-        let mut fb = match File::open(b) {
+        let mut fb = match open_for_read(b, opts) {
             Ok(f) => f,
             Err(_) => return false,
         };
@@ -431,11 +446,11 @@ fn last_good_block(
 ) -> Result<u64> {
     let block_size = block_size.max(1);
     ensure_max_alloc(block_size as u64, opts)?;
-    let mut src = match File::open(src) {
+    let mut src = match open_for_read(src, opts) {
         Ok(f) => f,
         Err(_) => return Ok(0),
     };
-    let mut dst = match File::open(dst) {
+    let mut dst = match open_for_read(dst, opts) {
         Ok(f) => f,
         Err(_) => return Ok(0),
     };
@@ -1042,7 +1057,7 @@ impl Sender {
         } else {
             None
         };
-        let src = File::open(path).map_err(|e| io_context(path, e))?;
+        let src = open_for_read(path, &self.opts).map_err(|e| io_context(path, e))?;
         let mut src_reader = BufReader::new(src);
         let file_codec = if should_compress(path, &self.opts.skip_compress) {
             self.codec
@@ -1083,7 +1098,7 @@ impl Sender {
         let mut basis_reader: Box<dyn ReadSeek> = if self.opts.whole_file {
             Box::new(Cursor::new(Vec::new()))
         } else {
-            match File::open(&basis_path) {
+            match open_for_read(&basis_path, &self.opts) {
                 Ok(f) => {
                     let len = f.metadata().map(|m| m.len()).unwrap_or(0);
                     ensure_max_alloc(len, &self.opts)?;
@@ -1339,7 +1354,7 @@ impl Receiver {
                 if is_device(&ft) {
                     Box::new(Cursor::new(Vec::new()))
                 } else {
-                    match File::open(&basis_path) {
+                    match open_for_read(&basis_path, &self.opts) {
                         Ok(f) => {
                             let len = f.metadata().map(|m| m.len()).unwrap_or(0);
                             ensure_max_alloc(len, &self.opts)?;
@@ -1352,7 +1367,7 @@ impl Receiver {
                 Box::new(Cursor::new(Vec::new()))
             }
         } else {
-            match File::open(&basis_path) {
+            match open_for_read(&basis_path, &self.opts) {
                 Ok(f) => {
                     let len = f.metadata().map(|m| m.len()).unwrap_or(0);
                     ensure_max_alloc(len, &self.opts)?;
@@ -1773,6 +1788,7 @@ pub struct SyncOptions {
     pub copy_as: Option<(u32, Option<u32>)>,
     pub eight_bit_output: bool,
     pub blocking_io: bool,
+    pub open_noatime: bool,
     pub early_input: Option<PathBuf>,
     pub secluded_args: bool,
     pub sockopts: Vec<String>,
@@ -1876,6 +1892,7 @@ impl Default for SyncOptions {
             copy_as: None,
             eight_bit_output: false,
             blocking_io: false,
+            open_noatime: false,
             early_input: None,
             secluded_args: false,
             sockopts: Vec::new(),
@@ -2459,7 +2476,7 @@ pub fn sync(
                     if !dest_path.exists() && !partial_exists {
                         if let Some(ref link_dir) = opts.link_dest {
                             let link_path = link_dir.join(rel);
-                            if files_identical(&path, &link_path) {
+                            if files_identical(&path, &link_path, opts) {
                                 if let Some(parent) = dest_path.parent() {
                                     fs::create_dir_all(parent)
                                         .map_err(|e| io_context(parent, e))?;
@@ -2475,7 +2492,7 @@ pub fn sync(
                         }
                         if let Some(ref copy_dir) = opts.copy_dest {
                             let copy_path = copy_dir.join(rel);
-                            if files_identical(&path, &copy_path) {
+                            if files_identical(&path, &copy_path, opts) {
                                 if let Some(parent) = dest_path.parent() {
                                     fs::create_dir_all(parent)
                                         .map_err(|e| io_context(parent, e))?;
@@ -2491,7 +2508,7 @@ pub fn sync(
                         }
                         if let Some(ref compare_dir) = opts.compare_dest {
                             let comp_path = compare_dir.join(rel);
-                            if files_identical(&path, &comp_path) {
+                            if files_identical(&path, &comp_path, opts) {
                                 if opts.remove_source_files {
                                     remove_file_opts(&path, opts)?;
                                 }

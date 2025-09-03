@@ -95,7 +95,7 @@
 | --omit-link-times | Supported |  |
 | --one-file-system | Supported |  |
 | --only-write-batch | Ignored |  |
-| --open-noatime | Ignored |  |
+| --open-noatime | Supported | Linux only |
 | --out-format | Ignored |  |
 | --outbuf | Supported |  |
 | --owner | Supported |  |

@@ -471,8 +471,8 @@
   },
   {
     "flag": "--open-noatime",
-    "status": "Ignored",
-    "notes": ""
+    "status": "Supported",
+    "notes": "Linux only"
   },
   {
     "flag": "--out-format",

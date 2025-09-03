@@ -124,7 +124,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--omit-link-times` | ✅ | Y | Y | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--one-file-system` | ✅ | Y | Y | Y | [crates/walk/tests/walk.rs](../crates/walk/tests/walk.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--only-write-batch` | ✅ | Y | Y | Y | [tests/write_batch.rs](../tests/write_batch.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | like --write-batch but w/o updating dest |
-| `--open-noatime` | ❌ | N | N | N | — | — | not yet implemented |
+| `--open-noatime` | ✅ | Y | Y | Y | [crates/engine/tests/open_noatime.rs](../crates/engine/tests/open_noatime.rs)<br>[tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs) | requires a platform supporting `O_NOATIME` |
 | `--out-format` | ✅ | Y | Y | Y | [tests/out_format.rs](../tests/out_format.rs)<br>[tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/logging/src/lib.rs](../crates/logging/src/lib.rs) | custom output format |
 | `--outbuf` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [bin/oc-rsync/src/main.rs](../bin/oc-rsync/src/main.rs) | set stdout buffering |
 | `--owner` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires root or CAP_CHOWN |

@@ -631,6 +631,7 @@ fn run_single(
         gid_map,
         eight_bit_output: opts.eight_bit_output,
         blocking_io: opts.blocking_io,
+        open_noatime: opts.open_noatime,
         early_input: opts.early_input.clone(),
         secluded_args: opts.secluded_args,
         sockopts: opts.sockopts.clone(),

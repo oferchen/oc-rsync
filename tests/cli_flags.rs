@@ -122,6 +122,15 @@ fn fsync_flag_is_accepted() {
 }
 
 #[test]
+fn open_noatime_flag_is_accepted() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--open-noatime", "--version"])
+        .assert()
+        .success();
+}
+
+#[test]
 fn fuzzy_flag_is_accepted() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
