@@ -2,6 +2,7 @@
 #![cfg(unix)]
 #![allow(clippy::duplicated_attributes)]
 
+use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use nix::poll::{poll, PollFd, PollFlags, PollTimeout};
 use std::ffi::OsStr;
 use std::io::{self, BufReader, Read, Write};
@@ -28,6 +29,7 @@ pub struct SshStdioTransport {
     handle: Option<ProcessHandle>,
     read_timeout: Option<Duration>,
     write_timeout: Option<Duration>,
+    blocking_io: bool,
 }
 
 struct ProcessHandle {
@@ -58,7 +60,7 @@ impl SshStdioTransport {
     {
         let mut cmd = Command::new(program);
         cmd.args(args);
-        Self::spawn_from_command(cmd)
+        Self::spawn_from_command(cmd, false)
     }
 
     pub fn spawn_server<I, S>(
@@ -107,10 +109,10 @@ impl SshStdioTransport {
         cmd.args(remote_opts);
         cmd.args(server_args);
 
-        Self::spawn_from_command(cmd)
+        Self::spawn_from_command(cmd, false)
     }
 
-    pub fn spawn_from_command(mut cmd: Command) -> io::Result<Self> {
+    pub fn spawn_from_command(mut cmd: Command, blocking_io: bool) -> io::Result<Self> {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -164,7 +166,7 @@ impl SshStdioTransport {
             stderr_thread: Some(stderr_thread),
         };
 
-        Ok(Self {
+        let mut t = Self {
             inner: Some(LocalPipeTransport::new(
                 BufReader::with_capacity(SSH_IO_BUF_SIZE, stdout),
                 stdin,
@@ -173,7 +175,21 @@ impl SshStdioTransport {
             handle: Some(handle),
             read_timeout: None,
             write_timeout: None,
-        })
+            blocking_io: false,
+        };
+        t.set_blocking_io(blocking_io)?;
+        Ok(t)
+    }
+
+    pub fn set_blocking_io(&mut self, blocking: bool) -> io::Result<()> {
+        if let Some(pipe) = self.inner.as_mut() {
+            let reader_fd = pipe.reader_mut().get_ref().as_raw_fd();
+            let writer_fd = pipe.writer_mut().as_raw_fd();
+            set_fd_blocking(reader_fd, blocking)?;
+            set_fd_blocking(writer_fd, blocking)?;
+        }
+        self.blocking_io = blocking;
+        Ok(())
     }
 
     pub fn handshake<T: Transport>(
@@ -323,6 +339,7 @@ impl SshStdioTransport {
         port: Option<u16>,
         connect_timeout: Option<Duration>,
         family: Option<AddressFamily>,
+        blocking_io: bool,
     ) -> io::Result<Self> {
         let program = rsh.first().map(|s| s.as_str()).unwrap_or("ssh");
         if program == "ssh" {
@@ -369,7 +386,7 @@ impl SshStdioTransport {
             cmd.arg("--server");
             cmd.args(remote_opts);
             cmd.arg(path.as_os_str());
-            Self::spawn_from_command(cmd)
+            Self::spawn_from_command(cmd, blocking_io)
         } else {
             let mut args = rsh[1..].to_vec();
             let host = if let Some(p) = port {
@@ -392,7 +409,7 @@ impl SshStdioTransport {
             let mut cmd = Command::new(program);
             cmd.args(args);
             cmd.envs(rsh_env.iter().cloned());
-            Self::spawn_from_command(cmd)
+            Self::spawn_from_command(cmd, blocking_io)
         }
     }
 
@@ -411,6 +428,7 @@ impl SshStdioTransport {
         port: Option<u16>,
         connect_timeout: Option<Duration>,
         family: Option<AddressFamily>,
+        blocking_io: bool,
         version: u32,
         caps: u32,
         token: Option<&str>,
@@ -429,6 +447,7 @@ impl SshStdioTransport {
             port,
             connect_timeout,
             family,
+            blocking_io,
         )?;
         if let Some(dur) = connect_timeout {
             let elapsed = start.elapsed();
@@ -472,18 +491,32 @@ fn inner_pipe(inner: Option<&mut InnerPipe>) -> io::Result<&mut InnerPipe> {
     inner.ok_or_else(|| io::Error::other("missing inner transport"))
 }
 
+fn set_fd_blocking(fd: RawFd, blocking: bool) -> io::Result<()> {
+    let flags = OFlag::from_bits_truncate(fcntl(fd, FcntlArg::F_GETFL).map_err(io::Error::from)?);
+    let mut new_flags = flags;
+    if blocking {
+        new_flags.remove(OFlag::O_NONBLOCK);
+    } else {
+        new_flags.insert(OFlag::O_NONBLOCK);
+    }
+    fcntl(fd, FcntlArg::F_SETFL(new_flags)).map_err(io::Error::from)?;
+    Ok(())
+}
+
 fn wait_fd(fd: RawFd, flags: PollFlags, timeout: Option<Duration>) -> io::Result<()> {
-    if let Some(dur) = timeout {
-        let timeout =
-            PollTimeout::try_from(dur).map_err(|_| io::Error::other("timeout overflow"))?;
-        let mut fds = [PollFd::new(unsafe { BorrowedFd::borrow_raw(fd) }, flags)];
-        let res = poll(&mut fds, timeout).map_err(io::Error::from)?;
-        if res == 0 {
-            return Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "operation timed out",
-            ));
+    let timeout = match timeout {
+        Some(dur) => {
+            PollTimeout::try_from(dur).map_err(|_| io::Error::other("timeout overflow"))?
         }
+        None => PollTimeout::NONE,
+    };
+    let mut fds = [PollFd::new(unsafe { BorrowedFd::borrow_raw(fd) }, flags)];
+    let res = poll(&mut fds, timeout).map_err(io::Error::from)?;
+    if res == 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::TimedOut,
+            "operation timed out",
+        ));
     }
     Ok(())
 }
@@ -494,7 +527,9 @@ impl Transport for SshStdioTransport {
         {
             let writer = pipe.writer_mut();
             let fd = writer.as_raw_fd();
-            wait_fd(fd, PollFlags::POLLOUT, self.write_timeout)?;
+            if !self.blocking_io {
+                wait_fd(fd, PollFlags::POLLOUT, self.write_timeout)?;
+            }
             if let Err(err) = writer.write_all(data).and_then(|_| writer.flush()) {
                 let (stderr, _) = self.stderr();
                 if !stderr.is_empty() {
@@ -513,7 +548,9 @@ impl Transport for SshStdioTransport {
         let pipe = inner_pipe(self.inner.as_mut())?;
         let reader = pipe.reader_mut();
         let fd = reader.get_ref().as_raw_fd();
-        wait_fd(fd, PollFlags::POLLIN, self.read_timeout)?;
+        if !self.blocking_io {
+            wait_fd(fd, PollFlags::POLLIN, self.read_timeout)?;
+        }
         match reader.read(buf) {
             Ok(n) => Ok(n),
             Err(err) => {

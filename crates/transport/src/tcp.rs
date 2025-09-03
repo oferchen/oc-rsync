@@ -1,7 +1,10 @@
 // crates/transport/src/tcp.rs
 use std::io::{self, Read, Write};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
+use std::os::fd::{AsRawFd, BorrowedFd, RawFd};
 use std::time::Duration;
+
+use nix::poll::{poll, PollFd, PollFlags, PollTimeout};
 
 use ipnet::IpNet;
 use socket2::SockRef;
@@ -10,6 +13,9 @@ use crate::{AddressFamily, DaemonTransport, SockOpt, Transport};
 
 pub struct TcpTransport {
     stream: TcpStream,
+    read_timeout: Option<Duration>,
+    write_timeout: Option<Duration>,
+    blocking_io: bool,
 }
 
 impl TcpTransport {
@@ -42,7 +48,15 @@ impl TcpTransport {
             };
 
             match stream_res {
-                Ok(stream) => return Ok(Self { stream }),
+                Ok(stream) => {
+                    let _ = stream.set_nonblocking(true);
+                    return Ok(Self {
+                        stream,
+                        read_timeout: None,
+                        write_timeout: None,
+                        blocking_io: false,
+                    });
+                }
                 Err(e) => last_err = Some(e),
             }
         }
@@ -83,7 +97,13 @@ impl TcpTransport {
     }
 
     pub fn from_stream(stream: TcpStream) -> Self {
-        Self { stream }
+        let _ = stream.set_nonblocking(true);
+        Self {
+            stream,
+            read_timeout: None,
+            write_timeout: None,
+            blocking_io: false,
+        }
     }
 
     pub fn authenticate(&mut self, token: Option<&str>, no_motd: bool) -> io::Result<()> {
@@ -270,6 +290,10 @@ fn host_allowed(ip: &IpAddr, allow: &[String], deny: &[String]) -> bool {
 
 impl Transport for TcpTransport {
     fn send(&mut self, data: &[u8]) -> io::Result<()> {
+        if !self.blocking_io {
+            let fd = self.stream.as_raw_fd();
+            wait_fd(fd, PollFlags::POLLOUT, self.write_timeout)?;
+        }
         self.stream.write_all(data).map_err(|e| {
             if e.kind() == io::ErrorKind::WouldBlock {
                 io::Error::new(io::ErrorKind::TimedOut, "operation timed out")
@@ -280,6 +304,10 @@ impl Transport for TcpTransport {
     }
 
     fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if !self.blocking_io {
+            let fd = self.stream.as_raw_fd();
+            wait_fd(fd, PollFlags::POLLIN, self.read_timeout)?;
+        }
         self.stream.read(buf).map_err(|e| {
             if e.kind() == io::ErrorKind::WouldBlock {
                 io::Error::new(io::ErrorKind::TimedOut, "operation timed out")
@@ -290,12 +318,61 @@ impl Transport for TcpTransport {
     }
 
     fn set_read_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
-        self.stream.set_read_timeout(dur)
+        self.read_timeout = dur;
+        if self.blocking_io {
+            self.stream.set_read_timeout(dur)?;
+        } else {
+            self.stream.set_read_timeout(None)?;
+        }
+        Ok(())
     }
 
     fn set_write_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
-        self.stream.set_write_timeout(dur)
+        self.write_timeout = dur;
+        if self.blocking_io {
+            self.stream.set_write_timeout(dur)?;
+        } else {
+            self.stream.set_write_timeout(None)?;
+        }
+        Ok(())
     }
 }
 
 impl DaemonTransport for TcpTransport {}
+
+impl TcpTransport {
+    pub fn set_blocking_io(&mut self, blocking: bool) -> io::Result<()> {
+        self.blocking_io = blocking;
+        self.stream.set_nonblocking(!blocking)?;
+        if blocking {
+            self.stream.set_read_timeout(self.read_timeout)?;
+            self.stream.set_write_timeout(self.write_timeout)?;
+        } else {
+            self.stream.set_read_timeout(None)?;
+            self.stream.set_write_timeout(None)?;
+        }
+        Ok(())
+    }
+
+    pub fn into_inner(self) -> TcpStream {
+        self.stream
+    }
+}
+
+fn wait_fd(fd: RawFd, flags: PollFlags, timeout: Option<Duration>) -> io::Result<()> {
+    let timeout = match timeout {
+        Some(dur) => {
+            PollTimeout::try_from(dur).map_err(|_| io::Error::other("timeout overflow"))?
+        }
+        None => PollTimeout::NONE,
+    };
+    let mut fds = [PollFd::new(unsafe { BorrowedFd::borrow_raw(fd) }, flags)];
+    let res = poll(&mut fds, timeout).map_err(io::Error::from)?;
+    if res == 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::TimedOut,
+            "operation timed out",
+        ));
+    }
+    Ok(())
+}
