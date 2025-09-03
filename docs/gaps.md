@@ -5,6 +5,24 @@ table lists notable features that are either implemented, only partially
 completed, or still missing.  Entries link to the source and corresponding tests
 when available. Do not exceed functionality of upstream at https://rsync.samba.org at this stage, prune unused features and/or unreachable code.
 
+## Parser Parity
+| Feature | Status | Tests | Source |
+| --- | --- | --- | --- |
+| Comprehensive flag parsing and help text parity | ✅ | [tests/cli.rs](../tests/cli.rs)<br>[tests/help_output.rs](../tests/help_output.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| Composite `--archive` flag expansion | ⚠️ | [tests/archive.rs](../tests/archive.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| Remote-only option parsing (`--remote-option`) | ❌ | — | — |
+
+_Future contributors: update this section when adding or fixing CLI parser behaviors._
+
+## Message Parity
+| Feature | Status | Tests | Source |
+| --- | --- | --- | --- |
+| `--out-format` and log file messages | ✅ | [tests/out_format.rs](../tests/out_format.rs)<br>[tests/log_file.rs](../tests/log_file.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs) |
+| System log integration (syslog/journald) | ⚠️ | [crates/logging/tests/syslog.rs](../crates/logging/tests/syslog.rs)<br>[crates/logging/tests/journald.rs](../crates/logging/tests/journald.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs) |
+| Daemon MOTD/greeting messages | ❌ | — | — |
+
+_Future contributors: update this section when adding or fixing message behaviors._
+
 ## Protocol
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
