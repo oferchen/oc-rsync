@@ -52,14 +52,33 @@ pub fn decode_codecs(data: &[u8]) -> io::Result<Vec<Codec>> {
     data.iter().map(|b| Codec::from_byte(*b)).collect()
 }
 
+/// Default list of file extensions that should not be compressed, mirroring
+/// upstream rsync's `--skip-compress` setting.
+pub const DEFAULT_SKIP_COMPRESS: &[&str] = &[
+    "3g2", "3gp", "7z", "aac", "ace", "apk", "avi", "bz2", "deb", "dmg", "ear", "f4v", "flac",
+    "flv", "gpg", "gz", "iso", "jar", "jpeg", "jpg", "lrz", "lz", "lz4", "lzma", "lzo", "m1a",
+    "m1v", "m2a", "m2ts", "m2v", "m4a", "m4b", "m4p", "m4r", "m4v", "mka", "mkv", "mov", "mp1",
+    "mp2", "mp3", "mp4", "mpa", "mpeg", "mpg", "mpv", "mts", "odb", "odf", "odg", "odi", "odm",
+    "odp", "ods", "odt", "oga", "ogg", "ogm", "ogv", "ogx", "opus", "otg", "oth", "otp", "ots",
+    "ott", "oxt", "png", "qt", "rar", "rpm", "rz", "rzip", "spx", "squashfs", "sxc", "sxd", "sxg",
+    "sxm", "sxw", "sz", "tbz", "tbz2", "tgz", "tlz", "ts", "txz", "tzo", "vob", "war", "webm",
+    "webp", "xz", "z", "zip", "zst",
+];
+
 pub fn should_compress(path: &Path, skip: &[String]) -> bool {
+    let name = match path.file_name().and_then(|n| n.to_str()) {
+        Some(name) => name.to_ascii_lowercase(),
+        None => return true,
+    };
+
     if skip.is_empty() {
-        return true;
+        return !DEFAULT_SKIP_COMPRESS.iter().any(|s| name.ends_with(s));
     }
-    match path.file_name().and_then(|n| n.to_str()) {
-        Some(name) => !skip.iter().any(|s| name.ends_with(s)),
-        None => true,
-    }
+
+    !skip
+        .iter()
+        .map(|s| s.to_ascii_lowercase())
+        .any(|s| name.ends_with(&s))
 }
 
 pub struct Zlib {
