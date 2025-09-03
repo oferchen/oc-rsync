@@ -76,7 +76,9 @@ impl TcpTransport {
             if host_allowed(&addr.ip(), hosts_allow, hosts_deny) {
                 return Ok((stream, addr));
             }
+            tracing::warn!(%addr, "rejected connection");
             let _ = stream.shutdown(std::net::Shutdown::Both);
+            std::thread::sleep(Duration::from_millis(1));
         }
     }
 
