@@ -5,10 +5,14 @@ use std::process::Command as StdCommand;
 fn sanitize(output: &[u8]) -> String {
     String::from_utf8_lossy(output)
         .lines()
+        .take_while(|line| !line.trim_end().is_empty())
         .filter(|line| {
             !(line.starts_with("oc-rsync")
                 || line.starts_with("rsync ")
-                || line.contains("official"))
+                || line.contains("official")
+                || line.starts_with("Copyright")
+                || line.starts_with("are welcome")
+                || line.starts_with("General Public"))
         })
         .map(|line| line.trim_end())
         .collect::<Vec<_>>()
