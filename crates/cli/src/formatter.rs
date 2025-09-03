@@ -174,7 +174,8 @@ pub fn render_help(cmd: &Command) -> String {
     } else {
         0
     };
-    let wrap_opts = WrapOptions::new(desc_width).break_words(false);
+    let wrap_opts =
+        (desc_width > 0).then(|| WrapOptions::new(desc_width.max(1)).break_words(false));
 
     let mut out = String::new();
     out.push_str(version_banner);
@@ -220,8 +221,8 @@ pub fn render_help(cmd: &Command) -> String {
         let help = arg.get_help().map(|s| s.to_string()).unwrap_or_default();
         let mut lines = help.split('\n');
         if let Some(first) = lines.next() {
-            let wrapped: Vec<String> = if desc_width > 0 {
-                wrap(first, &wrap_opts)
+            let wrapped: Vec<String> = if let Some(opts) = &wrap_opts {
+                wrap(first, opts)
                     .into_iter()
                     .map(|c| c.into_owned())
                     .collect()
@@ -242,8 +243,8 @@ pub fn render_help(cmd: &Command) -> String {
         }
         for paragraph in lines {
             if !paragraph.is_empty() {
-                let wrapped: Vec<String> = if desc_width > 0 {
-                    wrap(paragraph, &wrap_opts)
+                let wrapped: Vec<String> = if let Some(opts) = &wrap_opts {
+                    wrap(paragraph, opts)
                         .into_iter()
                         .map(|c| c.into_owned())
                         .collect()

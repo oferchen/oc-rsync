@@ -51,7 +51,7 @@ fn forward_exit_codes_over_mux_demux() {
     let mut mux = Mux::new(Duration::from_millis(50));
     let mut demux = Demux::new(Duration::from_millis(50));
 
-    let tx = mux.register_channel(1);
+    let tx = mux.register_channel(1).unwrap();
     let rx = demux.register_channel(1);
 
     let codes = [ExitCode::Ok, ExitCode::Partial, ExitCode::CmdNotFound];
@@ -78,7 +78,7 @@ fn forward_unknown_exit_code_over_mux_demux() {
     let mut mux = Mux::new(Duration::from_millis(50));
     let mut demux = Demux::new(Duration::from_millis(50));
 
-    let tx = mux.register_channel(1);
+    let tx = mux.register_channel(1).unwrap();
     let rx = demux.register_channel(1);
 
     let byte = 99u8;
@@ -100,7 +100,7 @@ fn mux_send_exit_codes_channel0() {
     let mut mux = Mux::new(Duration::from_millis(50));
     let mut demux = Demux::new(Duration::from_millis(50));
 
-    mux.register_channel(0);
+    mux.register_channel(0).unwrap();
     demux.register_channel(0);
 
     let codes = [

@@ -20,3 +20,11 @@ fn help_columns_120() {
     let expected = include_str!("../../../tests/fixtures/rsync-help-120.txt").trim_end();
     assert_eq!(out, expected);
 }
+
+#[test]
+#[serial]
+fn help_columns_small() {
+    env::set_var("COLUMNS", "25");
+    let out = render_help(&cli_command());
+    assert!(!out.is_empty());
+}
