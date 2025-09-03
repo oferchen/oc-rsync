@@ -22,6 +22,7 @@ SCENARIOS=(
   "delete_during --delete-during"
   "delete_after --delete-after"
   "compress --compress"
+  "hard_links --hard-links"
   "rsh"
   "drop_connection"
   "vanished"

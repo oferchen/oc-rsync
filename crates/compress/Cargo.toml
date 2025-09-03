@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 flate2 = "1"
 zstd = "0.13"
-rust-lzo = "0.6.2"
 
 [features]
 default = []

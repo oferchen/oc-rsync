@@ -114,8 +114,8 @@ Each entry links to the corresponding row in
 |  | `--chmod` | off |  | [matrix](feature_matrix.md#--chmod) |
 |  | `--chown` | off |  | [matrix](feature_matrix.md#--chown) |
 |  | `--compare-dest` | off |  | [matrix](feature_matrix.md#--compare-dest) |
-| `-z` | `--compress` | off | negotiates zstd, lzo, or zlib | [matrix](feature_matrix.md#--compress) |
-|  | `--compress-choice` | auto | supports zstd, lzo, and zlib | [matrix](feature_matrix.md#--compress-choice) |
+| `-z` | `--compress` | off | negotiates zstd or zlib | [matrix](feature_matrix.md#--compress) |
+|  | `--compress-choice` | auto | supports zstd and zlib | [matrix](feature_matrix.md#--compress-choice) |
 |  | `--compress-level` | auto | applies to zlib or zstd | [matrix](feature_matrix.md#--compress-level) |
 |  | `--zc` | off | alias for `--compress-choice` | [matrix](feature_matrix.md#--zc) |
 |  | `--zl` | off | alias for `--compress-level` | [matrix](feature_matrix.md#--zl) |
