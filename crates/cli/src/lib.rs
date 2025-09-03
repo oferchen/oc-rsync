@@ -1053,17 +1053,24 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         }
     };
     if opts.stats && !opts.quiet {
-        println!("Number of deleted files: {}", stats.files_deleted);
+        if stats.files_deleted > 0 {
+            println!("Number of deleted files: {}", stats.files_deleted);
+        }
         println!(
             "Number of regular files transferred: {}",
             stats.files_transferred
         );
         let bytes = if opts.human_readable {
-            human_bytes(stats.bytes_transferred)
+            let hb = human_bytes(stats.bytes_transferred);
+            if hb.trim_end().ends_with('B') {
+                hb
+            } else {
+                format!("{hb} bytes")
+            }
         } else {
-            stats.bytes_transferred.to_string()
+            format!("{} bytes", stats.bytes_transferred)
         };
-        println!("Total transferred file size: {} bytes", bytes);
+        println!("Total transferred file size: {bytes}");
         tracing::info!(
             target: InfoFlag::Stats.target(),
             files_transferred = stats.files_transferred,

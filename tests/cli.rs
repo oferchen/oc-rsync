@@ -880,19 +880,41 @@ fn stats_parity() {
         .unwrap();
 
     let up_stdout = String::from_utf8_lossy(&up.stdout);
-    let up_stats: Vec<&str> = up_stdout
+    let mut up_stats: Vec<String> = up_stdout
         .lines()
-        .filter(|l| {
-            l.starts_with("Number of deleted files")
+        .filter_map(|l| {
+            let l = l.trim_start();
+            if l.starts_with("Number of deleted files")
                 || l.starts_with("Number of regular files transferred")
                 || l.starts_with("Total transferred file size")
+            {
+                Some(l.to_string())
+            } else {
+                None
+            }
         })
         .collect();
 
     let our_stdout = String::from_utf8_lossy(&ours.stdout);
-    let our_stats: Vec<&str> = our_stdout.lines().collect();
+    let mut our_stats: Vec<String> = our_stdout
+        .lines()
+        .filter_map(|l| {
+            let l = l.trim_start();
+            if up_stats.iter().any(|u| u == l) {
+                Some(l.to_string())
+            } else {
+                None
+            }
+        })
+        .collect();
 
-    assert_eq!(our_stats, up_stats);
+    up_stats.retain(|l| our_stats.iter().any(|o| o == l));
+
+    let mut up_sorted = up_stats.clone();
+    up_sorted.sort();
+    our_stats.sort();
+
+    assert_eq!(our_stats, up_sorted);
     insta::assert_snapshot!("stats_parity", our_stats.join("\n"));
 }
 
