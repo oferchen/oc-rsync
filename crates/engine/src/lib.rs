@@ -15,7 +15,6 @@ use std::path::{Component, Path, PathBuf};
 #[cfg(feature = "xattr")]
 use std::rc::Rc;
 use std::sync::Arc;
-use std::sync::OnceLock;
 use std::time::{Duration, Instant, SystemTime};
 use tempfile::{Builder, NamedTempFile};
 use transport::{pipe, Transport};
@@ -120,18 +119,6 @@ fn check_time_limit(start: Instant, opts: &SyncOptions) -> Result<()> {
         }
     }
     Ok(())
-}
-
-#[cfg(unix)]
-#[allow(clippy::useless_conversion)]
-fn default_umask() -> u32 {
-    static UMASK: OnceLock<u32> = OnceLock::new();
-    *UMASK.get_or_init(|| {
-        use nix::sys::stat::{umask, Mode};
-        let old = umask(Mode::from_bits_truncate(0));
-        umask(old);
-        u32::from(old.bits())
-    })
 }
 
 #[cfg(unix)]
@@ -1518,14 +1505,13 @@ impl Receiver {
 
         #[cfg(unix)]
         {
-            let src_meta = fs::symlink_metadata(src).map_err(|e| io_context(src, e))?;
-            if !src_meta.file_type().is_symlink() {
-                let mut mode = meta::mode_from_metadata(&src_meta);
-                if !self.opts.perms {
-                    mode &= !default_umask();
+            if self.opts.perms {
+                let src_meta = fs::symlink_metadata(src).map_err(|e| io_context(src, e))?;
+                if !src_meta.file_type().is_symlink() {
+                    let mode = meta::mode_from_metadata(&src_meta);
+                    fs::set_permissions(dest, fs::Permissions::from_mode(mode))
+                        .map_err(|e| io_context(dest, e))?;
                 }
-                fs::set_permissions(dest, fs::Permissions::from_mode(mode))
-                    .map_err(|e| io_context(dest, e))?;
             }
         }
 
