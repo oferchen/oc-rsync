@@ -12,7 +12,7 @@ echo data > "$TMP/src/a.txt"
 
 RSYNC_CHECKSUM_LIST=sha1 rsync_output=$(rsync --quiet --recursive --checksum "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
-RSYNC_CHECKSUM_LIST=sha1 oc_rsync_raw=$("$OC_RSYNC" --local --recursive --checksum "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
+RSYNC_CHECKSUM_LIST=sha1 oc_rsync_raw=$("$OC_RSYNC" --recursive --checksum "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
 oc_rsync_status=$?
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v -e 'recursive mode enabled' || true)
 
@@ -39,7 +39,7 @@ mkdir -p "$TMP/rsync_dst" "$TMP/oc_rsync_dst"
 rsync_output=$(rsync --quiet --recursive --checksum --cc=sha1 "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-oc_rsync_raw=$("$OC_RSYNC" --local --recursive --checksum --cc=sha1 "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
+oc_rsync_raw=$("$OC_RSYNC" --recursive --checksum --cc=sha1 "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
 oc_rsync_status=$?
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v -e 'recursive mode enabled' || true)
 

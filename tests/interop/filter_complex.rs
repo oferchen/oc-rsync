@@ -46,7 +46,7 @@ fn complex_filter_cases_match_rsync() {
         + &String::from_utf8_lossy(&rsync_out.stderr);
 
     let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
-    ours_cmd.args(["--local", "--recursive"]);
+    ours_cmd.args(["--recursive"]);
     ours_cmd.args(&rules);
     ours_cmd.arg(&src_arg);
     ours_cmd.arg(&ours_dst);

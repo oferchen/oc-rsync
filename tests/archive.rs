@@ -71,7 +71,6 @@ fn archive_matches_combination_and_rsync() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "-a",
             &format!("{}/", src.display()),
             dst_archive.to_str().unwrap(),
@@ -99,7 +98,6 @@ fn archive_matches_combination_and_rsync() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--links",
             "--perms",

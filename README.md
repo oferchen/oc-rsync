@@ -61,9 +61,8 @@ Quick links:
 
 ### Logging
 
-Enable structured JSON logs on the command line with `--log-format json`. Library
-callers can build a [`SyncConfig`] with `SyncConfig::builder()` to configure
-logging and metadata preservation flags before passing it to
+Library callers can build a [`SyncConfig`] with `SyncConfig::builder()` to
+configure logging and metadata preservation flags before passing it to
 [`synchronize`]. For example, disabling permission preservation:
 
 ```rust

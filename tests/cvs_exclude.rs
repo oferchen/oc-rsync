@@ -73,7 +73,7 @@ fn cvs_exclude_parity() {
     let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
     ours_cmd.env("CVSIGNORE", "env_ignored");
     ours_cmd.env("HOME", home.path());
-    ours_cmd.args(["--local", "--recursive", "--cvs-exclude"]);
+    ours_cmd.args(["--recursive", "--cvs-exclude"]);
     ours_cmd.arg(&src_arg);
     ours_cmd.arg(&ours_dst);
     let ours_out = ours_cmd.output().unwrap();

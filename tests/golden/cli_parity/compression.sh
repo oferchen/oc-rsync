@@ -13,7 +13,7 @@ echo data > "$TMP/src/a.txt"
 rsync_output=$(rsync --quiet --recursive --compress "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-oc_rsync_raw=$("$OC_RSYNC" --local --recursive --compress "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
+oc_rsync_raw=$("$OC_RSYNC" --recursive --compress "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
 oc_rsync_status=$?
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v -e 'recursive mode enabled' -e 'compression enabled' || true)
 
@@ -42,7 +42,7 @@ echo data > "$TMP/src/a.gz"
 rsync_output=$(rsync --quiet --recursive --compress --skip-compress=gz "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-oc_rsync_raw=$("$OC_RSYNC" --local --recursive --compress --skip-compress=gz "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
+oc_rsync_raw=$("$OC_RSYNC" --recursive --compress --skip-compress=gz "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
 oc_rsync_status=$?
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v -e 'recursive mode enabled' -e 'compression enabled' || true)
 

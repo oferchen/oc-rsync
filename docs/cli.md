@@ -55,12 +55,6 @@ oc-rsync [OPTIONS] "<SRC>" "<DEST>"
   oc-rsync -B 65536 "./src" "remote:/dst"
   ```
 
-- Emit JSON-formatted logs:
-
-  ```sh
-  oc-rsync --log-format json -v ./src ./dst
-  ```
-
 - Change ownership during transfer (requires root):
 
   ```sh

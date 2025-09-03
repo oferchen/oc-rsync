@@ -449,7 +449,7 @@ fn remote_partial_transfer_resumed_by_cli() {
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
-    cmd.args(["--local", "--partial", &src_arg, dst_dir.to_str().unwrap()]);
+    cmd.args(["--partial", &src_arg, dst_dir.to_str().unwrap()]);
     cmd.assert().success();
 
     let out = fs::read(dst_dir.join("a.txt")).unwrap();

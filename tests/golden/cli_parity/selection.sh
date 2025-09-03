@@ -15,7 +15,7 @@ echo bar > "$TMP/src/b.log"
 rsync_output=$(rsync --quiet --recursive --filter='+ *.txt' --filter='- *' "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-oc_rsync_raw=$("$OC_RSYNC" --local --recursive --filter='+ *.txt' --filter='- *' "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
+oc_rsync_raw=$("$OC_RSYNC" --recursive --filter='+ *.txt' --filter='- *' "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
 oc_rsync_status=$?
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v 'recursive mode enabled' || true)
 
@@ -44,7 +44,7 @@ echo data > "$TMP/src/sub/file.txt"
 rsync_output=$(rsync --quiet --dirs "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-oc_rsync_raw=$("$OC_RSYNC" --local --dirs "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
+oc_rsync_raw=$("$OC_RSYNC" --dirs "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
 oc_rsync_status=$?
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v 'recursive mode enabled' || true)
 
@@ -74,7 +74,7 @@ echo bar > "$TMP/src/b.txt"
 rsync_output=$(rsync --list-only "$TMP/src/" "$TMP/rsync_dst" 2>&1 | awk '{print $NF}')
 rsync_status=$?
 
-oc_rsync_output=$("$OC_RSYNC" --local --list-only "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1 | awk '{print $NF}')
+oc_rsync_output=$("$OC_RSYNC" --list-only "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1 | awk '{print $NF}')
 oc_rsync_status=$?
 
 if [ "$rsync_status" -ne "$oc_rsync_status" ]; then
@@ -105,7 +105,7 @@ touch -d '2038-01-01' "$TMP/rsync_dst/file.txt" "$TMP/oc_rsync_dst/file.txt"
 rsync_output=$(rsync --quiet --update "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-oc_rsync_output=$("$OC_RSYNC" --local --update "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
+oc_rsync_output=$("$OC_RSYNC" --update "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
 oc_rsync_status=$?
 
 if [ "$rsync_status" -ne "$oc_rsync_status" ]; then

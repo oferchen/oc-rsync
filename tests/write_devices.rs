@@ -24,7 +24,7 @@ fn write_devices_requires_flag() {
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["--local", file.to_str().unwrap(), "/dev/null"])
+        .args([file.to_str().unwrap(), "/dev/null"])
         .assert()
         .failure();
 
@@ -53,12 +53,7 @@ fn write_devices_parity() {
 
     let ours_out = Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--write-devices",
-            file.to_str().unwrap(),
-            "/dev/null",
-        ])
+        .args(["--write-devices", file.to_str().unwrap(), "/dev/null"])
         .output()
         .unwrap();
     assert!(ours_out.status.success());

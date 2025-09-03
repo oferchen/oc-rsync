@@ -15,7 +15,6 @@ _oc-rsync() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
-'--log-format=[]:LOG_FORMAT:(text json)' \
 '--log-file=[]:FILE:_files' \
 '--log-file-format=[]:FMT:_default' \
 '*--info=[]:FLAGS:(backup copy del flist misc name progress stats)' \
@@ -80,7 +79,6 @@ _oc-rsync() {
 '--lock-file=[]:FILE:_files' \
 '--state-dir=[]:DIR:_files' \
 '--peer-version=[]:VER:_default' \
-'--local[]' \
 '-a[]' \
 '--archive[]' \
 '-r[]' \

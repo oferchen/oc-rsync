@@ -93,7 +93,7 @@ fn filter_corpus_parity() {
             + &String::from_utf8_lossy(&rsync_out.stderr);
 
         let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
-        ours_cmd.args(["--local", "--recursive"]);
+        ours_cmd.args(["--recursive"]);
         ours_cmd.args(&args);
         ours_cmd.arg(&src_arg);
         ours_cmd.arg(&ours_dst);
@@ -150,7 +150,7 @@ fn perdir_rules_excludes_filter_files() {
     assert!(rsync_out.status.success());
 
     let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
-    ours_cmd.args(["--local", "--recursive"]);
+    ours_cmd.args(["--recursive"]);
     ours_cmd.args(&args);
     ours_cmd.arg(&src_arg);
     ours_cmd.arg(&ours_dst);
@@ -202,7 +202,6 @@ fn ignores_parent_rsync_filter_with_ff() {
 
     let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
     ours_cmd.args([
-        "--local",
         "--recursive",
         "--filter=: .rsync-filter",
         "--filter=- .rsync-filter",
@@ -254,7 +253,7 @@ fn perdir_sign_parity() {
             + &String::from_utf8_lossy(&rsync_out.stderr);
 
         let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
-        ours_cmd.args(["--local", "--recursive"]);
+        ours_cmd.args(["--recursive"]);
         ours_cmd.args(&args);
         ours_cmd.arg(&src_arg);
         ours_cmd.arg(&ours_dst);
@@ -318,7 +317,7 @@ fn perdir_stack_parity() {
     assert!(rsync_out.status.success());
 
     let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
-    ours_cmd.args(["--local", "--recursive"]);
+    ours_cmd.args(["--recursive"]);
     ours_cmd.args(args);
     ours_cmd.arg(&src_arg);
     ours_cmd.arg(&ours_dst);

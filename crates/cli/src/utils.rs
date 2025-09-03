@@ -9,7 +9,7 @@ use std::time::Duration;
 use clap::ArgMatches;
 use encoding_rs::Encoding;
 use filters::{parse_with_options, Rule};
-use logging::{DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
+use logging::{DebugFlag, InfoFlag, SubscriberConfig};
 use meta::{parse_id_map, IdKind};
 use protocol::CharsetConv;
 use shell_words::split as shell_split;
@@ -143,27 +143,19 @@ pub(crate) fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<D
 pub(crate) fn init_logging(matches: &ArgMatches) {
     let verbose = matches.get_count("verbose");
     let quiet = matches.get_flag("quiet");
-    let log_format = *matches
-        .get_one::<LogFormat>("log_format")
-        .unwrap_or(&LogFormat::Text);
     let log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
     let log_file_fmt = matches.get_one::<String>("client-log-file-format").cloned();
-    let syslog = matches.get_flag("syslog");
-    let journald = matches.get_flag("journald");
     let (mut info, mut debug) = parse_logging_flags(matches);
     if quiet {
         info.clear();
         debug.clear();
     }
     let cfg = SubscriberConfig::builder()
-        .format(log_format)
         .verbose(verbose)
         .info(info)
         .debug(debug)
         .quiet(quiet)
         .log_file(log_file.map(|p| (p, log_file_fmt)))
-        .syslog(syslog)
-        .journald(journald)
         .colored(true)
         .timestamps(false)
         .build();

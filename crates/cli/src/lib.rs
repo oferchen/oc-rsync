@@ -567,7 +567,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         quiet: opts.quiet,
     };
     sync_opts.prepare_remote();
-    let stats = if opts.local {
+    let local = matches!(&src, RemoteSpec::Local(_)) && matches!(&dst, RemoteSpec::Local(_));
+    let stats = if local {
         match (src, dst) {
             (RemoteSpec::Local(src), RemoteSpec::Local(dst)) => sync(
                 &src.path,
@@ -576,15 +577,11 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                 &available_codecs(),
                 &sync_opts,
             )?,
-            _ => return Err(EngineError::Other("local sync requires local paths".into())),
+            _ => unreachable!(),
         }
     } else {
         match (src, dst) {
-            (RemoteSpec::Local(_), RemoteSpec::Local(_)) => {
-                return Err(EngineError::Other(
-                    "local sync requires --local flag".into(),
-                ))
-            }
+            (RemoteSpec::Local(_), RemoteSpec::Local(_)) => unreachable!(),
             (
                 RemoteSpec::Remote {
                     host,

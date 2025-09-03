@@ -25,7 +25,6 @@ fn fake_super_stores_xattrs() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "-a",
             "--fake-super",
             src_dir.to_str().unwrap(),

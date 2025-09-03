@@ -13,7 +13,6 @@ fn accepts_sockopts() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--sockopts",
             "SO_KEEPALIVE",
             "-r",
@@ -33,7 +32,6 @@ fn rejects_invalid_sockopts() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--sockopts",
             "ip:bad=1",
             "-r",

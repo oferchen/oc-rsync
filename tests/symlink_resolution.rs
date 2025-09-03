@@ -23,7 +23,6 @@ fn copy_links_directory() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--copy-links",
             &format!("{}/", src.display()),
             dst.to_str().unwrap(),
@@ -50,7 +49,6 @@ fn copy_unsafe_links() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--copy-unsafe-links",
             &format!("{}/", src.display()),
             dst.to_str().unwrap(),
@@ -79,7 +77,6 @@ fn safe_links_skip() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--links",
             "--safe-links",
             &format!("{}/", src.display()),
@@ -112,7 +109,6 @@ fn safe_links_resolve_source_symlink() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--links",
             "--safe-links",
             &format!("{}/", link.display()),
@@ -142,7 +138,6 @@ fn munge_links_prefixes_target() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--links",
             "--munge-links",
             &format!("{}/", src.display()),
@@ -170,7 +165,6 @@ fn munge_links_off_preserves_target() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--links",
             &format!("{}/", src.display()),
             dst.to_str().unwrap(),
@@ -194,7 +188,6 @@ fn munge_links_unmunges_existing_prefix() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--links",
             "--munge-links",
             &format!("{}/", src.display()),

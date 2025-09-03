@@ -7,13 +7,11 @@ use crate::daemon::DaemonOpts;
 use crate::formatter;
 use crate::utils::{parse_duration, parse_nonzero_duration, parse_size};
 use clap::{ArgAction, Args, CommandFactory, Parser};
-use logging::{DebugFlag, InfoFlag, LogFormat};
+use logging::{DebugFlag, InfoFlag};
 use protocol::SUPPORTED_PROTOCOLS;
 
 #[derive(Parser, Debug)]
 pub(crate) struct ClientOpts {
-    #[arg(long)]
-    pub local: bool,
     #[command(flatten)]
     pub daemon: DaemonOpts,
     #[arg(short = 'a', long, help_heading = "Selection")]
@@ -48,8 +46,6 @@ pub(crate) struct ClientOpts {
     pub ignore_times: bool,
     #[arg(short, long, action = ArgAction::Count, help_heading = "Output")]
     pub verbose: u8,
-    #[arg(long = "log-format", help_heading = "Output", value_enum)]
-    pub log_format: Option<LogFormat>,
     #[arg(
         long = "log-file",
         value_name = "FILE",
@@ -64,10 +60,6 @@ pub(crate) struct ClientOpts {
         id = "client-log-file-format"
     )]
     pub log_file_format: Option<String>,
-    #[arg(long, help_heading = "Output", env = "OC_RSYNC_SYSLOG")]
-    pub syslog: bool,
-    #[arg(long, help_heading = "Output", env = "OC_RSYNC_JOURNALD")]
-    pub journald: bool,
     #[arg(long = "out-format", value_name = "FORMAT", help_heading = "Output")]
     pub out_format: Option<String>,
     #[arg(

@@ -12,7 +12,6 @@ use tempfile::tempdir;
 mod common;
 use common::full_metadata_opts;
 
-// Requires root privileges to change file ownership; skipped otherwise.
 #[test]
 fn roundtrip_full_metadata() -> std::io::Result<()> {
     let dir = tempdir()?;

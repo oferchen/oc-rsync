@@ -17,7 +17,6 @@ fn skip_compress_option_transfers_files() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--compress",
             "--skip-compress=gz,txt",
             &src_arg,

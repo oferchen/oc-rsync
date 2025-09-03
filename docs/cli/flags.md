@@ -130,7 +130,6 @@
 |  | --list-only | list the files instead of copying them | no |  | no |
 |  | --log-file-format=FMT | log updates using the specified FMT | no |  | no |
 |  | --log-file=FILE | log what we're doing to the specified FILE | no |  | no |
-|  | --log-format=FMT | set log output format (text or json) | yes | default text | yes |
 |  | --no-motd | suppress daemon-mode MOTD | no |  | no |
 |  | --out-format=FORMAT | output updates using the specified FORMAT | no |  | no |
 |  | --progress | show progress during transfer | yes |  | no |

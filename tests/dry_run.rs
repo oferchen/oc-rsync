@@ -28,7 +28,6 @@ fn dry_run_deletions_match_rsync() {
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--recursive",
             "--delete",
             "--dry-run",
@@ -66,7 +65,7 @@ fn dry_run_errors_match_rsync() {
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
         .current_dir(tmp.path())
-        .args(["--local", "--dry-run", "missing.txt", dst.to_str().unwrap()])
+        .args(["--dry-run", "missing.txt", dst.to_str().unwrap()])
         .output()
         .unwrap();
     assert_eq!(rsync.status.code(), ours.status.code());

@@ -28,7 +28,7 @@ run_case() {
   rsync_status=$?
 
   set +e
-  oc_rsync_raw=$("$OC_RSYNC" --local --recursive "${flags[@]}" "$dir/src/" "$dir/oc_rsync_dst" 2>&1)
+  oc_rsync_raw=$("$OC_RSYNC" --recursive "${flags[@]}" "$dir/src/" "$dir/oc_rsync_dst" 2>&1)
   oc_rsync_status=$?
   set -e
   oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v 'recursive mode enabled' || true)

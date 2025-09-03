@@ -22,7 +22,7 @@ rsync_output=$(rsync --quiet --recursive \
   "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-oc_rsync_raw=$("$OC_RSYNC" --local --recursive \
+oc_rsync_raw=$("$OC_RSYNC" --recursive \
   --filter='- /root.txt' \
   --filter='- tmp/' \
   --filter='+ */' \

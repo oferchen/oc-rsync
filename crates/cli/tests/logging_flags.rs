@@ -1,9 +1,7 @@
 // crates/cli/tests/logging_flags.rs
-use assert_cmd::Command;
 use clap::ValueEnum;
 use logging::SubscriberConfig;
 use oc_rsync_cli::{cli_command, parse_logging_flags};
-use tempfile::tempdir;
 use tracing::subscriber::with_default;
 use tracing::Level;
 
@@ -21,44 +19,10 @@ fn make_sub(
         .debug(debug)
         .quiet(quiet)
         .log_file(None)
-        .syslog(false)
-        .journald(false)
         .colored(true)
         .timestamps(false)
         .build();
     logging::subscriber(cfg)
-}
-
-#[test]
-fn verbose_and_log_format_json_parity() {
-    let src = tempdir().unwrap();
-    let dst = tempdir().unwrap();
-    let src_path = src.path();
-    let dst_path = dst.path();
-
-    Command::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            "--verbose",
-            "--log-format=json",
-            "--dry-run",
-            src_path.to_str().unwrap(),
-            dst_path.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-
-    let matches = cli_command()
-        .try_get_matches_from([
-            "oc-rsync",
-            "--verbose",
-            "--log-format=json",
-            "--dry-run",
-            src_path.to_str().unwrap(),
-            dst_path.to_str().unwrap(),
-        ])
-        .unwrap();
-    oc_rsync_cli::run(&matches).unwrap();
 }
 
 #[test]

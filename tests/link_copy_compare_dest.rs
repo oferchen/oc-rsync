@@ -51,7 +51,6 @@ fn link_dest_matches_rsync() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--link-dest",
             link.to_str().unwrap(),
             &format!("{}/", src.display()),
@@ -98,7 +97,6 @@ fn copy_dest_matches_rsync() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--copy-dest",
             copy.to_str().unwrap(),
             &format!("{}/", src.display()),
@@ -144,7 +142,6 @@ fn compare_dest_matches_rsync() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--compare-dest",
             cmp.to_str().unwrap(),
             &format!("{}/", src.display()),

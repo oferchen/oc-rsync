@@ -43,12 +43,7 @@ fn copy_as_sets_owner_and_group() {
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--copy-as=1:1",
-            &src_arg,
-            dst_dir.to_str().unwrap(),
-        ])
+        .args(["--copy-as=1:1", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .success();
 
@@ -78,12 +73,7 @@ fn copy_as_uses_default_group() {
     let src_arg = format!("{}/", src_dir.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([
-            "--local",
-            "--copy-as=1",
-            &src_arg,
-            dst_dir.to_str().unwrap(),
-        ])
+        .args(["--copy-as=1", &src_arg, dst_dir.to_str().unwrap()])
         .assert()
         .success();
 
@@ -114,7 +104,6 @@ fn copy_as_preserves_mode() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
-            "--local",
             "--copy-as=1:1",
             "--perms",
             &src_arg,

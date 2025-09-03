@@ -34,13 +34,7 @@ fn preserves_symlinked_implied_dirs() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .current_dir(&src_root)
-        .args([
-            "--local",
-            "--relative",
-            "--no-implied-dirs",
-            rel_path,
-            &oc_dest,
-        ])
+        .args(["--relative", "--no-implied-dirs", rel_path, &oc_dest])
         .assert()
         .success();
 

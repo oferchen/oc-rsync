@@ -13,7 +13,7 @@ echo data > "$TMP/src/a.txt"
 rsync_output=$(rsync --quiet --recursive --perms --chmod=go-rwx "$TMP/src/" "$TMP/rsync_dst" 2>&1)
 rsync_status=$?
 
-oc_rsync_raw=$("$OC_RSYNC" --local --recursive --perms --chmod=go-rwx "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
+oc_rsync_raw=$("$OC_RSYNC" --recursive --perms --chmod=go-rwx "$TMP/src/" "$TMP/oc_rsync_dst" 2>&1)
 oc_rsync_status=$?
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v -e 'recursive mode enabled' || true)
 
