@@ -16,6 +16,7 @@ use std::os::unix::fs::PermissionsExt;
 use ipnet::IpNet;
 use logging::{DebugFlag, InfoFlag, LogFormat, StderrMode, SubscriberConfig};
 use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
+#[cfg(unix)]
 use sd_notify::{self, NotifyState};
 use transport::{AddressFamily, RateLimitedTransport, TcpTransport, TimeoutTransport, Transport};
 
@@ -1194,6 +1195,7 @@ pub fn run_daemon(
         Err(e) => {
             let errno = e.raw_os_error().unwrap_or(1) as u32;
             let status = format!("listen failed: {e}");
+            #[cfg(unix)]
             let _ = sd_notify::notify(
                 false,
                 &[NotifyState::Status(&status), NotifyState::Errno(errno)],
@@ -1205,6 +1207,7 @@ pub fn run_daemon(
         println!("{}", real_port);
         io::stdout().flush()?;
     }
+    #[cfg(unix)]
     std::thread::spawn(|| {
         let _ = sd_notify::notify(false, &[NotifyState::Ready]);
     });
