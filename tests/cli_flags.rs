@@ -1,6 +1,7 @@
 // tests/cli_flags.rs
 use assert_cmd::Command;
 use oc_rsync_cli::cli_command;
+use std::process::Command as StdCommand;
 use tempfile::NamedTempFile;
 
 #[test]
@@ -95,6 +96,17 @@ fn mkpath_flag_is_accepted() {
         .args(["--mkpath", "--version"])
         .assert()
         .success();
+}
+
+#[test]
+fn mkpath_missing_args_matches_rsync() {
+    let rsync = StdCommand::new("rsync").arg("--mkpath").output().unwrap();
+    let oc = Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .arg("--mkpath")
+        .output()
+        .unwrap();
+    assert_eq!(rsync.status.success(), oc.status.success());
 }
 
 #[test]
