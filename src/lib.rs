@@ -319,7 +319,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn sync_preserves_ownership() {
-        use nix::unistd::{chown, geteuid, Gid, Uid};
+        use nix::unistd::{chown, Gid, Uid};
         use std::os::unix::fs::MetadataExt;
 
         if !Uid::effective().is_root() {
