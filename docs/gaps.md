@@ -10,7 +10,7 @@ when available. Do not exceed functionality of upstream at https://rsync.samba.o
 | --- | --- | --- | --- |
 | Comprehensive flag parsing and help text parity | ✅ | [tests/cli.rs](../tests/cli.rs)<br>[tests/help_output.rs](../tests/help_output.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | Composite `--archive` flag expansion | ⚠️ | [tests/archive.rs](../tests/archive.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| Remote-only option parsing (`--remote-option`) | ❌ | — | — |
+| Remote-only option parsing (`--remote-option`) | ✅ | [tests/cli.rs](../tests/cli.rs)<br>[tests/interop/remote_option.rs](../tests/interop/remote_option.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 
 _Future contributors: update this section when adding or fixing CLI parser behaviors._
 
@@ -19,7 +19,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | --- | --- | --- | --- |
 | `--out-format` and log file messages | ✅ | [tests/out_format.rs](../tests/out_format.rs)<br>[tests/log_file.rs](../tests/log_file.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs) |
 | System log integration (syslog/journald) | ✅ | [crates/logging/tests/syslog.rs](../crates/logging/tests/syslog.rs)<br>[crates/logging/tests/journald.rs](../crates/logging/tests/journald.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs) |
-| Daemon MOTD/greeting messages | ❌ | — | — |
+| Daemon MOTD/greeting messages | ✅ | [tests/daemon.rs](../tests/daemon.rs)<br>[tests/daemon_config.rs](../tests/daemon_config.rs) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
 
 _Future contributors: update this section when adding or fixing message behaviors._
 
