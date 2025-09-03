@@ -166,7 +166,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--update` | ✅ | N | N | N | [crates/engine/tests/update.rs](../crates/engine/tests/update.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--usermap` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires root or CAP_CHOWN |
 | `--verbose` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--version` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--version` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--whole-file` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--write-batch` | ✅ | Y | Y | Y | [tests/write_batch.rs](../tests/write_batch.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--write-devices` | ✅ | Y | Y | Y | [tests/write_devices.rs](../tests/write_devices.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | writes to existing devices |

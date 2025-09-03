@@ -18,6 +18,8 @@ use engine::{EngineError, IdMapper, Result};
 
 use time::{macros::format_description, PrimitiveDateTime};
 
+const RSYNC_VERSION_TEXT: &str = include_str!("../resources/rsync-version.txt");
+
 pub fn print_version_if_requested<I>(args: I) -> bool
 where
     I: IntoIterator<Item = OsString>,
@@ -33,7 +35,7 @@ where
     }
     if show_version {
         if !quiet {
-            println!("{}", crate::version::render_version_lines().join("\n"));
+            print!("{}", RSYNC_VERSION_TEXT);
         }
         true
     } else {

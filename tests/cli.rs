@@ -357,14 +357,7 @@ impl Drop for Tmpfs {
 #[allow(clippy::vec_init_then_push)]
 #[test]
 fn prints_version() {
-    let expected = format!(
-        "oc-rsync {} (protocol {})\nrsync {}\n{} {}\n",
-        env!("CARGO_PKG_VERSION"),
-        SUPPORTED_PROTOCOLS[0],
-        option_env!("RSYNC_UPSTREAM_VER").unwrap_or("unknown"),
-        option_env!("BUILD_REVISION").unwrap_or("unknown"),
-        option_env!("OFFICIAL_BUILD").unwrap_or("unofficial"),
-    );
+    let expected = include_str!("fixtures/rsync-version.txt");
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .arg("--version")
