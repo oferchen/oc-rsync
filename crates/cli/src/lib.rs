@@ -870,7 +870,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                         )
                         .map_err(EngineError::from)?;
 
-                        if let Some(limit) = opts.bwlimit {
+                        let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
                             let (src_err, _) = src_session.stderr();
@@ -947,7 +947,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
                         )?;
-                        if let Some(limit) = opts.bwlimit {
+                        let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             pipe_sessions(&mut src_session, &mut dst_session)?
                         } else {
@@ -985,7 +985,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
                         )?;
-                        if let Some(limit) = opts.bwlimit {
+                        let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
                             let dst_session = dst_session.into_inner();
@@ -1044,7 +1044,7 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             addr_family,
                         )
                         .map_err(EngineError::from)?;
-                        if let Some(limit) = opts.bwlimit {
+                        let stats = if let Some(limit) = opts.bwlimit {
                             let mut dst_session = RateLimitedTransport::new(dst_session, limit);
                             let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
                             let (src_err, _) = src_session.stderr();

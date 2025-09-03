@@ -1,10 +1,6 @@
----
-source: crates/cli/tests/help.rs
-expression: out
----
-oc-rsync 0.1.0 (protocol 32)
-rsync unknown
-unknown unofficial
+oc-rsync compatible with rsync  version 3.4.1  protocol version 32
+Copyright (C) 2025 by Ofer Chen.
+
 rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
 are welcome to redistribute it under certain conditions.  See the GNU
 General Public Licence for details.
@@ -49,7 +45,7 @@ Options
 --munge-links            munge symlinks to make them safe & unusable
 --copy-dirlinks, -k      
 --keep-dirlinks, -K      
---hard-links             
+--hard-links, -H         
 --perms, -p              
 --executability, -E      
 --chmod=CHMOD            
@@ -142,12 +138,13 @@ Options
 --bwlimit=RATE           
 --fsync                  
 --write-batch=FILE       
---read-batch=FILE        
+--read-batch=FILE        read a batched update from FILE
 --protocol=VER           force an older protocol version
 --iconv=CONVERT_SPEC     request charset conversion of filenames
 --checksum-seed=NUM      set block/file checksum seed (advanced)
 --ipv4, -4               
 --ipv6, -6               
+--help, -h               Print help
 
 Use "rsync --daemon --help" to see the daemon-mode command-line options.
 Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
