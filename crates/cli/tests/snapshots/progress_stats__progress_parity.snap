@@ -1,5 +1,5 @@
 ---
 source: crates/cli/tests/progress_stats.rs
-expression: our_line
+expression: normalized
 ---
-              5 100%    0.00kB/s    0:00:00
+              5 100% XX.XXKB/s 00:00:00

@@ -4,13 +4,14 @@ use std::os::unix::fs::PermissionsExt;
 
 use filetime::FileTime;
 use meta::{Metadata, Options};
-use nix::unistd::{chown, Gid, Uid};
+use nix::unistd::{chown, geteuid, Gid, Uid};
 use std::time::SystemTime;
 use tempfile::tempdir;
 
 mod common;
 use common::full_metadata_opts;
 
+// Requires root privileges to change file ownership; skipped otherwise.
 #[test]
 fn roundtrip_full_metadata() -> std::io::Result<()> {
     let dir = tempdir()?;
@@ -42,6 +43,10 @@ fn roundtrip_full_metadata() -> std::io::Result<()> {
         FileTime::from_unix_time(1, 0),
         FileTime::from_unix_time(1, 0),
     )?;
+    if geteuid().as_raw() != 0 {
+        eprintln!("skipping roundtrip_full_metadata: requires root");
+        return Ok(());
+    }
     chown(&dst, Some(Uid::from_raw(1)), Some(Gid::from_raw(1)))?;
 
     let opts = full_metadata_opts();
@@ -60,6 +65,7 @@ fn roundtrip_full_metadata() -> std::io::Result<()> {
     Ok(())
 }
 
+// Requires root privileges to change file ownership; skipped otherwise.
 #[test]
 fn default_skips_owner_group_perms() -> std::io::Result<()> {
     let dir = tempdir()?;
@@ -81,6 +87,10 @@ fn default_skips_owner_group_perms() -> std::io::Result<()> {
         nix::sys::stat::Mode::from_bits_truncate(0o600),
         nix::sys::stat::FchmodatFlags::NoFollowSymlink,
     )?;
+    if geteuid().as_raw() != 0 {
+        eprintln!("skipping default_skips_owner_group_perms: requires root");
+        return Ok(());
+    }
     chown(&dst, Some(Uid::from_raw(1)), Some(Gid::from_raw(1)))?;
 
     let orig = Metadata::from_path(&dst, Options::default())?;
