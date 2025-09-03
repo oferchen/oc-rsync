@@ -18,6 +18,10 @@ pub struct SyncConfig {
     pub links: bool,
     pub devices: bool,
     pub specials: bool,
+    pub owner: bool,
+    pub group: bool,
+    #[cfg(feature = "xattr")]
+    pub xattrs: bool,
     #[cfg(feature = "acl")]
     pub acls: bool,
 }
@@ -35,6 +39,10 @@ impl Default for SyncConfig {
             links: true,
             devices: true,
             specials: true,
+            owner: true,
+            group: true,
+            #[cfg(feature = "xattr")]
+            xattrs: false,
             #[cfg(feature = "acl")]
             acls: false,
         }
@@ -103,6 +111,22 @@ impl SyncConfigBuilder {
         self
     }
 
+    pub fn owner(mut self, enable: bool) -> Self {
+        self.cfg.owner = enable;
+        self
+    }
+
+    pub fn group(mut self, enable: bool) -> Self {
+        self.cfg.group = enable;
+        self
+    }
+
+    #[cfg(feature = "xattr")]
+    pub fn xattrs(mut self, enable: bool) -> Self {
+        self.cfg.xattrs = enable;
+        self
+    }
+
     #[cfg(feature = "acl")]
     pub fn acls(mut self, enable: bool) -> Self {
         self.cfg.acls = enable;
@@ -136,6 +160,10 @@ pub fn synchronize_with_config(src: &Path, dst: &Path, cfg: &SyncConfig) -> Resu
             links: cfg.links,
             devices: cfg.devices,
             specials: cfg.specials,
+            owner: cfg.owner,
+            group: cfg.group,
+            #[cfg(feature = "xattr")]
+            xattrs: cfg.xattrs,
             #[cfg(feature = "acl")]
             acls: cfg.acls,
             ..SyncOptions::default()
@@ -283,5 +311,42 @@ mod tests {
         assert_eq!(meta.permissions().mode() & 0o777, 0o711);
         let dst_mtime = FileTime::from_last_modification_time(&meta);
         assert_eq!(dst_mtime, mtime);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sync_preserves_ownership() {
+        use nix::unistd::{chown, Gid, Uid};
+        use std::os::unix::fs::MetadataExt;
+
+        let (_dir, src_dir, dst_dir) = setup_dirs();
+
+        let file = src_dir.join("file.txt");
+        fs::write(&file, b"hello").unwrap();
+        chown(&file, Some(Uid::from_raw(1000)), Some(Gid::from_raw(1001))).unwrap();
+
+        synchronize(&src_dir, &dst_dir).unwrap();
+
+        let meta = fs::metadata(dst_dir.join("file.txt")).unwrap();
+        assert_eq!(meta.uid(), 1000);
+        assert_eq!(meta.gid(), 1001);
+    }
+
+    #[cfg(all(unix, feature = "xattr"))]
+    #[test]
+    fn sync_preserves_xattrs() {
+        let (_dir, src_dir, dst_dir) = setup_dirs();
+
+        let file = src_dir.join("file.txt");
+        fs::write(&file, b"hello").unwrap();
+        xattr::set(&file, "user.test", b"val").unwrap();
+
+        let cfg = SyncConfig::builder().xattrs(true).build();
+        synchronize_with_config(&src_dir, &dst_dir, &cfg).unwrap();
+
+        let val = xattr::get(dst_dir.join("file.txt"), "user.test")
+            .unwrap()
+            .unwrap();
+        assert_eq!(&*val, b"val");
     }
 }
