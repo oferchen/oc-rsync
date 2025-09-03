@@ -290,6 +290,7 @@ name = "compress"
 version = "0.1.0"
 dependencies = [
  "flate2",
+ "rust-lzo",
  "zstd",
 ]
 
@@ -1292,6 +1293,15 @@ name = "regex-syntax"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "caf4aa5b0f434c91fe5c7f1ecb6a5ece2130b02ad2a590589dda5146df959001"
+
+[[package]]
+name = "rust-lzo"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf191ab1b954757cb5bb7f366e17d80daaa06010f1fdde7a3a7db052c1ecd1a8"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "rustc_lexer"
