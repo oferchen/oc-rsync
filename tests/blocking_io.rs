@@ -10,6 +10,8 @@ fn sanitize(output: &[u8]) -> String {
             !(line.starts_with("oc-rsync")
                 || line.starts_with("rsync ")
                 || line.contains("official")
+                || line.starts_with("compatible with")
+                || line.starts_with("Web site:")
                 || line.starts_with("Copyright")
                 || line.starts_with("are welcome")
                 || line.starts_with("General Public"))

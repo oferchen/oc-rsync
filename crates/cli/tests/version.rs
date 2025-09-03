@@ -10,10 +10,7 @@ fn banner_is_static() {
             env!("CARGO_PKG_VERSION"),
             SUPPORTED_PROTOCOLS[0],
         ),
-        format!(
-            "rsync {}",
-            option_env!("RSYNC_UPSTREAM_VER").unwrap_or("unknown")
-        ),
+        "compatible with rsync 3.4.1; proto 32".to_string(),
         format!(
             "{} {}",
             option_env!("BUILD_REVISION").unwrap_or("unknown"),
@@ -21,9 +18,8 @@ fn banner_is_static() {
         ),
     ];
     expected.extend(
-        include_str!("fixtures/rsync-version.txt")
+        include_str!("fixtures/oc-rsync-version-tail.txt")
             .lines()
-            .skip(1)
             .map(|l| l.to_string()),
     );
     assert_eq!(version::render_version_lines(), expected);
@@ -33,10 +29,11 @@ fn banner_is_static() {
 fn banner_matches_rsync() {
     let upstream: Vec<_> = include_str!("fixtures/rsync-version.txt")
         .lines()
-        .skip(1)
+        .skip(3)
+        .take_while(|l| !l.is_empty())
         .collect();
     let ours = version::render_version_lines();
-    assert_eq!(&ours[3..], upstream);
+    assert_eq!(&ours[5..5 + upstream.len()], upstream);
 }
 
 #[test]

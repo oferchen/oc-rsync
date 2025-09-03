@@ -5,8 +5,9 @@ use crate::branding;
 
 pub const RSYNC_PROTOCOL: u32 = SUPPORTED_PROTOCOLS[0];
 
-const COPYRIGHT: &str = "Copyright (C) 1996-2025 by Andrew Tridgell, Wayne Davison, and others.";
-const WEBSITE: &str = "Web site: https://rsync.samba.org/";
+const COPYRIGHT: &str = "Copyright (C) 2024-2025 oc-rsync contributors.";
+const WEBSITE: &str = "Web site: https://github.com/oc-rsync/oc-rsync";
+const COMPATIBILITY: &str = "compatible with rsync 3.4.1; proto 32";
 const CAPABILITIES: &[&str] = &[
     "    64-bit files, 64-bit inums, 64-bit timestamps, 64-bit long ints,",
     "    socketpairs, symlinks, symtimes, hardlinks, hardlink-specials,",
@@ -26,10 +27,7 @@ pub fn render_version_lines() -> Vec<String> {
         env!("CARGO_PKG_VERSION"),
         RSYNC_PROTOCOL
     ));
-    lines.push(format!(
-        "rsync {}",
-        option_env!("RSYNC_UPSTREAM_VER").unwrap_or("unknown")
-    ));
+    lines.push(COMPATIBILITY.to_string());
     lines.push(format!(
         "{} {}",
         option_env!("BUILD_REVISION").unwrap_or("unknown"),
@@ -48,9 +46,10 @@ pub fn render_version_lines() -> Vec<String> {
     lines.push("Daemon auth list:".to_string());
     lines.extend(DAEMON_AUTH.iter().map(|s| (*s).to_string()));
     lines.push(String::new());
-    lines.push(
-        "rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you".to_string(),
-    );
+    lines.push(format!(
+        "{} comes with ABSOLUTELY NO WARRANTY.  This is free software, and you",
+        branding::program_name()
+    ));
     lines.push("are welcome to redistribute it under certain conditions.  See the GNU".to_string());
     lines.push("General Public Licence for details.".to_string());
     lines
