@@ -1,12 +1,15 @@
 // bin/oc-rsync/src/version.rs
 use protocol::SUPPORTED_PROTOCOLS;
 
+use oc_rsync_cli::branding;
+
 pub const RSYNC_PROTOCOL: u32 = SUPPORTED_PROTOCOLS[0];
 
 pub fn render_version_lines() -> Vec<String> {
     vec![
         format!(
-            "oc-rsync {} (protocol {})",
+            "{} {} (protocol {})",
+            branding::program_name(),
             env!("CARGO_PKG_VERSION"),
             RSYNC_PROTOCOL
         ),

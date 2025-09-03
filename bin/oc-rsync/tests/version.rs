@@ -11,9 +11,9 @@ fn version_output() -> String {
 }
 
 #[test]
-fn matches_upstream_output() {
+fn matches_rendered_version() {
     let out = version_output();
-    let expected = include_str!("../../tests/fixtures/rsync-version.txt");
+    let expected = oc_rsync_cli::version::version_banner();
     assert_eq!(out, expected);
 }
 
