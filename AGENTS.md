@@ -32,7 +32,7 @@ This document describes the agents, their responsibilities, and how they collabo
 ### 3. **CompressionAgent**
 - **Role**: Handles data compression and decompression streams.
 - **Responsibilities**:
-  - Support zlib, zlibx, and zstd (compatibility-first).
+   - Support zlib and zstd (compatibility-first).
   - Further compression options may be considered after parity with upstream is reached.
   - Parse and apply `--compress-choice`, `--compress-level`, and `--skip-compress` arguments.
   - Maintain throughput and low latency for large trees.
