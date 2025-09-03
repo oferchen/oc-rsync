@@ -104,7 +104,9 @@ fn sync_keep_dirlinks_preserves_symlinked_dir() {
 
     let meta = fs::symlink_metadata(dst.join("sub")).unwrap();
     assert!(meta.file_type().is_symlink());
+    assert_eq!(fs::read_link(dst.join("sub")).unwrap(), target);
     assert!(target.join("file").exists());
+    assert!(dst.join("sub/file").exists());
 }
 
 #[cfg(all(unix, feature = "xattr"))]
