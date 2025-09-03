@@ -47,18 +47,20 @@ tempfile = "3"
 assert_cmd = "2"
 predicates = "3"
 serial_test = "2"
-nix = { version = "0.27", features = ["user", "fs", "process"] }
-xattr = "1.3"
-posix-acl = "1.2"
 transport = { path = "crates/transport" }
 shell-words = "1.1"
 wait-timeout = "0.2"
-users = "0.11"
 meta = { path = "crates/meta" }
 daemon = { path = "crates/daemon" }
 sha2 = "0.10"
 encoding_rs = "0.8"
 insta = { version = "1", features = ["json"] }
+
+[target.'cfg(unix)'.dev-dependencies]
+nix = { version = "0.27", features = ["user", "fs", "process"] }
+users = "0.11"
+xattr = "1.3"
+posix-acl = "1.2"
 
 [[bin]]
 name = "oc-rsync"

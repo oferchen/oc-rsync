@@ -2145,6 +2145,45 @@ fn daemon_hides_unlisted_modules() {
     let _ = child.wait();
 }
 
+#[cfg(unix)]
+#[test]
+#[serial]
+fn daemon_preserves_hard_links_remote_source() {
+    use std::os::unix::fs::MetadataExt;
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let (mut child, port, dir) = match spawn_daemon() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
+    wait_for_daemon(port);
+    let src = dir.path();
+    let f1 = src.join("a");
+    fs::write(&f1, b"hi").unwrap();
+    let f2 = src.join("b");
+    fs::hard_link(&f1, &f2).unwrap();
+    let dst = tempfile::tempdir().unwrap();
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "-aH",
+            &format!("rsync://127.0.0.1:{port}/data/"),
+            dst.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let ino1 = fs::metadata(dst.path().join("a")).unwrap().ino();
+    let ino2 = fs::metadata(dst.path().join("b")).unwrap().ino();
+    assert_eq!(ino1, ino2);
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 #[test]
 #[serial]
 fn daemon_stays_foreground_with_no_detach() {

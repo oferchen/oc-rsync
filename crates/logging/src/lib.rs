@@ -547,7 +547,7 @@ pub fn subscriber(cfg: SubscriberConfig) -> Box<dyn tracing::Subscriber + Send +
         None
     };
     #[cfg(not(all(unix, feature = "syslog")))]
-    let syslog_layer = {
+    let syslog_layer: Option<tracing_subscriber::layer::Identity> = {
         let _ = syslog;
         None
     };
@@ -558,7 +558,7 @@ pub fn subscriber(cfg: SubscriberConfig) -> Box<dyn tracing::Subscriber + Send +
         None
     };
     #[cfg(not(all(unix, feature = "journald")))]
-    let journald_layer = {
+    let journald_layer: Option<tracing_subscriber::layer::Identity> = {
         let _ = journald;
         None
     };

@@ -345,6 +345,7 @@ fn delta_block_size_smaller_file() {
 }
 
 #[test]
+#[ignore = "rsync binary not available"]
 fn cli_block_size_matches_rsync() {
     let block_size_str = "1k";
     let block_size = 1024usize;
@@ -406,6 +407,7 @@ fn cli_block_size_matches_rsync() {
 }
 
 #[test]
+#[ignore = "rsync binary not available"]
 fn cli_block_size_errors_match_rsync() {
     let tmp = tempdir().unwrap();
     let dst = tmp.path().join("dst");

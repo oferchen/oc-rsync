@@ -123,3 +123,16 @@ jobs:
       - name: Check option tables
         run: scripts/check-option-table.sh
 
+  windows:
+    needs: lint-test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          override: true
+      - uses: Swatinem/rust-cache@v2
+      - name: Run Windows smoke tests
+        run: cargo test --test windows
+

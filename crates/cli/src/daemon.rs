@@ -71,6 +71,8 @@ pub fn spawn_daemon_session(
     let start = Instant::now();
     let mut t =
         TcpTransport::connect(host, port, connect_timeout, family).map_err(EngineError::from)?;
+    t.set_blocking_io(opts.blocking_io)
+        .map_err(EngineError::from)?;
     let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(EngineError::Other)?;
     t.apply_sockopts(&parsed).map_err(EngineError::from)?;
     let handshake_timeout = connect_timeout
