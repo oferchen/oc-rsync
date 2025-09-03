@@ -914,7 +914,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 return Err(EngineError::Other(msg));
                             }
                             stats
-                        }
+                        };
+                        stats
                     }
                     (Some(sm), Some(dm)) => {
                         let mut dst_session = spawn_daemon_session(
@@ -952,7 +953,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                             pipe_sessions(&mut src_session, &mut dst_session)?
                         } else {
                             pipe_sessions(&mut src_session, &mut dst_session)?
-                        }
+                        };
+                        stats
                     }
                     (Some(sm), None) => {
                         let mut dst_session = SshStdioTransport::spawn_with_rsh(
@@ -1011,7 +1013,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 return Err(EngineError::Other(msg));
                             }
                             stats
-                        }
+                        };
+                        stats
                     }
                     (None, Some(dm)) => {
                         let mut dst_session = spawn_daemon_session(
@@ -1069,7 +1072,8 @@ fn run_client(mut opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
                                 return Err(EngineError::Other(msg));
                             }
                             stats
-                        }
+                        };
+                        stats
                     }
                 }
             }
