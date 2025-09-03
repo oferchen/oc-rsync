@@ -1,5 +1,6 @@
 // crates/protocol/src/demux.rs
 use indexmap::IndexMap;
+use std::collections::VecDeque;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
@@ -17,46 +18,61 @@ pub struct Demux {
     channels: IndexMap<u16, Channel>,
     pub strong_hash: StrongHash,
     pub compressor: Codec,
+    msg_capacity: usize,
     exit_code: Option<u8>,
     remote_error: Option<String>,
-    error_xfers: Vec<String>,
-    errors: Vec<String>,
-    error_sockets: Vec<String>,
-    error_utf8s: Vec<String>,
-    successes: Vec<u32>,
-    deletions: Vec<u32>,
-    nosends: Vec<u32>,
-    infos: Vec<String>,
-    warnings: Vec<String>,
-    logs: Vec<String>,
-    clients: Vec<String>,
-    progress: Vec<u64>,
-    stats: Vec<Vec<u8>>,
+    error_xfers: VecDeque<String>,
+    errors: VecDeque<String>,
+    error_sockets: VecDeque<String>,
+    error_utf8s: VecDeque<String>,
+    successes: VecDeque<u32>,
+    deletions: VecDeque<u32>,
+    nosends: VecDeque<u32>,
+    infos: VecDeque<String>,
+    warnings: VecDeque<String>,
+    logs: VecDeque<String>,
+    clients: VecDeque<String>,
+    progress: VecDeque<u64>,
+    stats: VecDeque<Vec<u8>>,
 }
+
+pub const RSYNC_MSG_LIMIT: usize = usize::MAX;
 
 impl Demux {
     pub fn new(timeout: Duration) -> Self {
+        Self::with_capacity(timeout, RSYNC_MSG_LIMIT)
+    }
+
+    pub fn with_capacity(timeout: Duration, msg_capacity: usize) -> Self {
         Demux {
             timeout,
             channels: IndexMap::new(),
             strong_hash: StrongHash::Md4,
             compressor: Codec::Zlib,
+            msg_capacity,
             exit_code: None,
             remote_error: None,
-            error_xfers: Vec::new(),
-            errors: Vec::new(),
-            error_sockets: Vec::new(),
-            error_utf8s: Vec::new(),
-            successes: Vec::new(),
-            deletions: Vec::new(),
-            nosends: Vec::new(),
-            infos: Vec::new(),
-            warnings: Vec::new(),
-            logs: Vec::new(),
-            clients: Vec::new(),
-            progress: Vec::new(),
-            stats: Vec::new(),
+            error_xfers: VecDeque::new(),
+            errors: VecDeque::new(),
+            error_sockets: VecDeque::new(),
+            error_utf8s: VecDeque::new(),
+            successes: VecDeque::new(),
+            deletions: VecDeque::new(),
+            nosends: VecDeque::new(),
+            infos: VecDeque::new(),
+            warnings: VecDeque::new(),
+            logs: VecDeque::new(),
+            clients: VecDeque::new(),
+            progress: VecDeque::new(),
+            stats: VecDeque::new(),
         }
+    }
+
+    fn push_limited<T>(buf: &mut VecDeque<T>, val: T, cap: usize) {
+        if buf.len() >= cap {
+            buf.pop_front();
+        }
+        buf.push_back(val);
     }
 
     pub fn register_channel(&mut self, id: u16) -> Receiver<Message> {
@@ -84,25 +100,25 @@ impl Demux {
     pub fn ingest_message(&mut self, id: u16, msg: Message) -> std::io::Result<()> {
         match &msg {
             Message::ErrorXfer(text) => {
-                self.error_xfers.push(text.clone());
+                Self::push_limited(&mut self.error_xfers, text.clone(), self.msg_capacity);
                 if self.remote_error.is_none() {
                     self.remote_error = Some(text.clone());
                 }
             }
             Message::Error(text) => {
-                self.errors.push(text.clone());
+                Self::push_limited(&mut self.errors, text.clone(), self.msg_capacity);
                 if self.remote_error.is_none() {
                     self.remote_error = Some(text.clone());
                 }
             }
             Message::ErrorSocket(text) => {
-                self.error_sockets.push(text.clone());
+                Self::push_limited(&mut self.error_sockets, text.clone(), self.msg_capacity);
                 if self.remote_error.is_none() {
                     self.remote_error = Some(text.clone());
                 }
             }
             Message::ErrorUtf8(text) => {
-                self.error_utf8s.push(text.clone());
+                Self::push_limited(&mut self.error_utf8s, text.clone(), self.msg_capacity);
                 if self.remote_error.is_none() {
                     self.remote_error = Some(text.clone());
                 }
@@ -121,31 +137,31 @@ impl Demux {
                     }
                 }
                 Message::Success(idx) => {
-                    self.successes.push(*idx);
+                    Self::push_limited(&mut self.successes, *idx, self.msg_capacity);
                 }
                 Message::Deleted(idx) => {
-                    self.deletions.push(*idx);
+                    Self::push_limited(&mut self.deletions, *idx, self.msg_capacity);
                 }
                 Message::NoSend(idx) => {
-                    self.nosends.push(*idx);
+                    Self::push_limited(&mut self.nosends, *idx, self.msg_capacity);
                 }
                 Message::Info(text) => {
-                    self.infos.push(text.clone());
+                    Self::push_limited(&mut self.infos, text.clone(), self.msg_capacity);
                 }
                 Message::Warning(text) => {
-                    self.warnings.push(text.clone());
+                    Self::push_limited(&mut self.warnings, text.clone(), self.msg_capacity);
                 }
                 Message::Log(text) => {
-                    self.logs.push(text.clone());
+                    Self::push_limited(&mut self.logs, text.clone(), self.msg_capacity);
                 }
                 Message::Client(text) => {
-                    self.clients.push(text.clone());
+                    Self::push_limited(&mut self.clients, text.clone(), self.msg_capacity);
                 }
                 Message::Progress(val) => {
-                    self.progress.push(*val);
+                    Self::push_limited(&mut self.progress, *val, self.msg_capacity);
                 }
                 Message::Stats(data) => {
-                    self.stats.push(data.clone());
+                    Self::push_limited(&mut self.stats, data.clone(), self.msg_capacity);
                 }
                 _ => {}
             }
@@ -176,55 +192,55 @@ impl Demux {
     }
 
     pub fn take_error_xfers(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.error_xfers)
+        self.error_xfers.drain(..).collect()
     }
 
     pub fn take_errors(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.errors)
+        self.errors.drain(..).collect()
     }
 
     pub fn take_error_sockets(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.error_sockets)
+        self.error_sockets.drain(..).collect()
     }
 
     pub fn take_error_utf8s(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.error_utf8s)
+        self.error_utf8s.drain(..).collect()
     }
 
     pub fn take_successes(&mut self) -> Vec<u32> {
-        std::mem::take(&mut self.successes)
+        self.successes.drain(..).collect()
     }
 
     pub fn take_deletions(&mut self) -> Vec<u32> {
-        std::mem::take(&mut self.deletions)
+        self.deletions.drain(..).collect()
     }
 
     pub fn take_nosends(&mut self) -> Vec<u32> {
-        std::mem::take(&mut self.nosends)
+        self.nosends.drain(..).collect()
     }
 
     pub fn take_infos(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.infos)
+        self.infos.drain(..).collect()
     }
 
     pub fn take_warnings(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.warnings)
+        self.warnings.drain(..).collect()
     }
 
     pub fn take_logs(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.logs)
+        self.logs.drain(..).collect()
     }
 
     pub fn take_clients(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.clients)
+        self.clients.drain(..).collect()
     }
 
     pub fn take_progress(&mut self) -> Vec<u64> {
-        std::mem::take(&mut self.progress)
+        self.progress.drain(..).collect()
     }
 
     pub fn take_stats(&mut self) -> Vec<Vec<u8>> {
-        std::mem::take(&mut self.stats)
+        self.stats.drain(..).collect()
     }
 
     pub fn poll(&mut self) -> std::io::Result<()> {
