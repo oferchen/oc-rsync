@@ -22,6 +22,7 @@ pub enum OutBuf {
 
 #[allow(non_snake_case)]
 #[derive(Parser, Debug, Clone)]
+#[command(trailing_var_arg = true)]
 pub(crate) struct ClientOpts {
     #[command(flatten)]
     pub daemon: DaemonOpts,
@@ -658,11 +659,9 @@ pub(crate) struct ClientOpts {
     #[arg(
         value_name = "SRC",
         required_unless_present_any = ["daemon", "server", "probe"],
-        num_args = 1..
+        num_args = 2..,
     )]
-    pub srcs: Vec<String>,
-    #[arg(value_name = "DST", required = true, last = true)]
-    pub dst: String,
+    pub paths: Vec<String>,
     #[arg(short = 'f', long, value_name = "RULE", help_heading = "Selection")]
     pub filter: Vec<String>,
     #[arg(long, value_name = "FILE", help_heading = "Selection")]
