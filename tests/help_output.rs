@@ -80,6 +80,7 @@ fn help_matches_upstream() {
 
     let mut ours = String::from_utf8(output.stdout).unwrap();
     ours = ours.replace("oc-rsync", "rsync");
-    let expected = fs::read_to_string("crates/cli/resources/rsync-help-80.txt").unwrap();
+    let mut expected = fs::read_to_string("crates/cli/resources/rsync-help-80.txt").unwrap();
+    expected = expected.replace("oc-rsync", "rsync");
     assert_eq!(ours, expected, "help output diverges from upstream");
 }

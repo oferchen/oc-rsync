@@ -1,4 +1,4 @@
-rsync  version 3.2.7  protocol version 31
+rsync  version 3.4.1  protocol version 32
 Copyright (C) 1996-2025 by Andrew Tridgell, Wayne Davison, and others.
 Web site: https://rsync.samba.org/
 Capabilities:
