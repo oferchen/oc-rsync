@@ -73,3 +73,42 @@ fn parity_with_rsync_sha1() {
     let ours = strong_digest(data, StrongHash::Sha1, seed);
     assert_eq!(rsync, hex::encode(ours));
 }
+
+#[test]
+fn parity_with_rsync_xxh64() {
+    if !rsync_supports_checksum_seed() {
+        eprintln!("skipping: rsync lacks --checksum-seed");
+        return;
+    }
+    let data = b"hello world";
+    let seed = 1;
+    let rsync = rsync_checksum("xxh64", seed, data);
+    let ours = strong_digest(data, StrongHash::Xxh64, seed);
+    assert_eq!(rsync, hex::encode(ours));
+}
+
+#[test]
+fn parity_with_rsync_xxh3() {
+    if !rsync_supports_checksum_seed() {
+        eprintln!("skipping: rsync lacks --checksum-seed");
+        return;
+    }
+    let data = b"hello world";
+    let seed = 1;
+    let rsync = rsync_checksum("xxh3", seed, data);
+    let ours = strong_digest(data, StrongHash::Xxh3, seed);
+    assert_eq!(rsync, hex::encode(ours));
+}
+
+#[test]
+fn parity_with_rsync_xxh128() {
+    if !rsync_supports_checksum_seed() {
+        eprintln!("skipping: rsync lacks --checksum-seed");
+        return;
+    }
+    let data = b"hello world";
+    let seed = 1;
+    let rsync = rsync_checksum("xxh128", seed, data);
+    let ours = strong_digest(data, StrongHash::Xxh128, seed);
+    assert_eq!(rsync, hex::encode(ours));
+}

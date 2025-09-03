@@ -6,7 +6,7 @@ use checksums::{strong_digest, StrongHash};
 
 use crate::{
     negotiate_caps, negotiate_version, Demux, ExitCode, Frame, Message, Mux, UnknownExit,
-    CAP_CODECS, CAP_ZSTD,
+    CAP_CODECS, CAP_ZSTD, V30,
 };
 use compress::{decode_codecs, encode_codecs, negotiate_codec, Codec};
 
@@ -208,6 +208,51 @@ impl<R: Read, W: Write> Server<R, W> {
         }
         self.mux.compressor = selected;
         self.demux.compressor = selected;
+
+        let strong =
+            if let Some((_, list)) = self.env.iter().find(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
+                let mut chosen = if self.version < V30 {
+                    StrongHash::Md4
+                } else {
+                    StrongHash::Md5
+                };
+                for name in list.split(',') {
+                    match name {
+                        "xxh128" => {
+                            chosen = StrongHash::Xxh128;
+                            break;
+                        }
+                        "xxh3" => {
+                            chosen = StrongHash::Xxh3;
+                            break;
+                        }
+                        "xxh64" | "xxhash" => {
+                            chosen = StrongHash::Xxh64;
+                            break;
+                        }
+                        "sha1" => {
+                            chosen = StrongHash::Sha1;
+                            break;
+                        }
+                        "md5" => {
+                            chosen = StrongHash::Md5;
+                            break;
+                        }
+                        "md4" => {
+                            chosen = StrongHash::Md4;
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+                chosen
+            } else if self.version < V30 {
+                StrongHash::Md4
+            } else {
+                StrongHash::Md5
+            };
+        self.mux.strong_hash = strong;
+        self.demux.strong_hash = strong;
 
         Ok((self.caps, peer_codecs))
     }

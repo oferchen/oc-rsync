@@ -16,7 +16,7 @@ when available. Do not exceed functionality of upstream at https://rsync.samba.o
 ## Checksums
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
-| Rolling and strong MD4/MD5/SHA-1 hashes | ✅ | [crates/checksums/tests/golden.rs](../crates/checksums/tests/golden.rs)<br>[crates/checksums/tests/rsync.rs](../crates/checksums/tests/rsync.rs) | [crates/checksums/src/lib.rs](../crates/checksums/src/lib.rs) |
+| Rolling and strong MD4/MD5/SHA-1/xxh64/xxh3/xxh128 hashes | ✅ | [crates/checksums/tests/golden.rs](../crates/checksums/tests/golden.rs)<br>[crates/checksums/tests/rsync.rs](../crates/checksums/tests/rsync.rs) | [crates/checksums/src/lib.rs](../crates/checksums/src/lib.rs) |
 
 ## Compression
 | Feature | Status | Tests | Source |
