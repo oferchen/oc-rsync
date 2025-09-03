@@ -1,5 +1,12 @@
 // crates/compress/src/lib.rs
-use std::io::{self, Read, Write};
+use std::io;
+
+#[cfg(any(feature = "zlib", feature = "zstd"))]
+use std::io::Read;
+
+#[cfg(feature = "zlib")]
+use std::io::Write;
+
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,7 +36,17 @@ impl Codec {
 }
 
 pub fn available_codecs() -> Vec<Codec> {
-    vec![Codec::Zstd, Codec::Zlib]
+    #[allow(unused_mut)]
+    let mut codecs = Vec::new();
+    #[cfg(feature = "zstd")]
+    {
+        codecs.push(Codec::Zstd);
+    }
+    #[cfg(feature = "zlib")]
+    {
+        codecs.push(Codec::Zlib);
+    }
+    codecs
 }
 
 pub trait Compressor {
@@ -62,22 +79,26 @@ pub fn should_compress(path: &Path, skip: &[String]) -> bool {
     }
 }
 
+#[cfg(feature = "zlib")]
 pub struct Zlib {
     level: i32,
 }
 
+#[cfg(feature = "zlib")]
 impl Zlib {
     pub fn new(level: i32) -> Self {
         Self { level }
     }
 }
 
+#[cfg(feature = "zlib")]
 impl Default for Zlib {
     fn default() -> Self {
         Self { level: 6 }
     }
 }
 
+#[cfg(feature = "zlib")]
 impl Compressor for Zlib {
     fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         let mut encoder = flate2::write::ZlibEncoder::new(
@@ -89,6 +110,7 @@ impl Compressor for Zlib {
     }
 }
 
+#[cfg(feature = "zlib")]
 impl Decompressor for Zlib {
     fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         let mut decoder = flate2::read::ZlibDecoder::new(data);
@@ -98,22 +120,26 @@ impl Decompressor for Zlib {
     }
 }
 
+#[cfg(feature = "zstd")]
 #[derive(Default)]
 pub struct Zstd {
     level: i32,
 }
 
+#[cfg(feature = "zstd")]
 impl Zstd {
     pub fn new(level: i32) -> Self {
         Self { level }
     }
 }
 
+#[cfg(feature = "zstd")]
 #[inline]
 fn zstd_compress_scalar(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     zstd::bulk::compress(data, level).map_err(io::Error::other)
 }
 
+#[cfg(feature = "zstd")]
 #[inline]
 fn zstd_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
     let mut decoder = zstd::stream::Decoder::new(data)?;
@@ -122,6 +148,7 @@ fn zstd_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "sse4.2")]
 unsafe fn zstd_compress_sse42(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
@@ -134,6 +161,7 @@ unsafe fn zstd_compress_sse42(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2")]
 unsafe fn zstd_compress_avx2(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
@@ -146,6 +174,7 @@ unsafe fn zstd_compress_avx2(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 #[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "avx512f")]
 unsafe fn zstd_compress_avx512(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
@@ -158,6 +187,7 @@ unsafe fn zstd_compress_avx512(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "sse4.2")]
 unsafe fn zstd_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
@@ -172,6 +202,7 @@ unsafe fn zstd_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2")]
 unsafe fn zstd_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
@@ -186,6 +217,7 @@ unsafe fn zstd_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 #[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "avx512f")]
 unsafe fn zstd_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
@@ -200,6 +232,7 @@ unsafe fn zstd_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+#[cfg(feature = "zstd")]
 impl Compressor for Zstd {
     fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -219,6 +252,7 @@ impl Compressor for Zstd {
     }
 }
 
+#[cfg(feature = "zstd")]
 impl Decompressor for Zstd {
     fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -241,6 +275,7 @@ impl Decompressor for Zstd {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "zstd")]
     #[test]
     fn zstd_simd_matches_scalar() {
         let data = b"hello world";
@@ -258,8 +293,28 @@ mod tests {
             assert_eq!(zstd_decompress_avx512(&scalar_c).unwrap(), scalar_d);
         }
     }
+
+    #[cfg(all(feature = "zlib", feature = "zstd"))]
     #[test]
     fn available_codecs_returns_all_codecs() {
         assert_eq!(available_codecs(), vec![Codec::Zstd, Codec::Zlib]);
+    }
+
+    #[cfg(all(not(feature = "zlib"), feature = "zstd"))]
+    #[test]
+    fn available_codecs_returns_only_zstd() {
+        assert_eq!(available_codecs(), vec![Codec::Zstd]);
+    }
+
+    #[cfg(all(feature = "zlib", not(feature = "zstd")))]
+    #[test]
+    fn available_codecs_returns_only_zlib() {
+        assert_eq!(available_codecs(), vec![Codec::Zlib]);
+    }
+
+    #[cfg(all(not(feature = "zlib"), not(feature = "zstd")))]
+    #[test]
+    fn available_codecs_returns_empty() {
+        assert!(available_codecs().is_empty());
     }
 }
