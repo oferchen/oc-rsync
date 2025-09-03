@@ -4,7 +4,7 @@ use protocol::SUPPORTED_PROTOCOLS;
 
 #[test]
 fn banner_is_static() {
-    let expected = vec![
+    let mut expected = vec![
         format!(
             "oc-rsync {} (protocol {})",
             env!("CARGO_PKG_VERSION"),
@@ -20,7 +20,23 @@ fn banner_is_static() {
             option_env!("OFFICIAL_BUILD").unwrap_or("unofficial"),
         ),
     ];
+    expected.extend(
+        include_str!("fixtures/rsync-version.txt")
+            .lines()
+            .skip(1)
+            .map(|l| l.to_string()),
+    );
     assert_eq!(version::render_version_lines(), expected);
+}
+
+#[test]
+fn banner_matches_rsync() {
+    let upstream: Vec<_> = include_str!("fixtures/rsync-version.txt")
+        .lines()
+        .skip(1)
+        .collect();
+    let ours = version::render_version_lines();
+    assert_eq!(&ours[3..], upstream);
 }
 
 #[test]
