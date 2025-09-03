@@ -1,3 +1,4 @@
+// tests/daemon_journald.rs
 #![cfg(unix)]
 
 use daemon::init_logging;
