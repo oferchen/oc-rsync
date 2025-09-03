@@ -5,6 +5,7 @@ overview of project goals and features is available in the
 [README](../README.md#in-scope-features), and a high-level summary of CLI goals
 lives in the [README's CLI section](../README.md#cli).
 For a complete list of flags and their implementation status, see the [feature matrix](feature_matrix.md), which is the authoritative reference for contributors.
+The full `--help` output is captured in [cli-help.txt](cli-help.txt) and checked in CI to match the binary.
 
 ## Usage
 

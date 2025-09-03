@@ -57,10 +57,10 @@ jobs:
         run: cargo llvm-cov --all-features --fail-under-lines 95 --fail-under-functions 95
       - name: Validate interop matrix docs
         run: scripts/check-run-matrix-docs.sh
-      - name: Check CLI help against docs
+      - name: Check CLI help against transcript
         run: |
           cargo run --quiet --bin oc-rsync -- --help > /tmp/oc-rsync-help.txt
-          diff -u docs/cli.md /tmp/oc-rsync-help.txt
+          diff -u docs/cli-help.txt /tmp/oc-rsync-help.txt
       - name: Check manpages against spec
         run: |
           diff -u man/oc-rsync.1 docs/spec/rsync.1
