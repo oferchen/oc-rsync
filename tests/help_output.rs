@@ -8,6 +8,8 @@ fn help_matches_rsync() {
     let output = Command::cargo_bin("oc-rsync")
         .unwrap()
         .env("COLUMNS", "80")
+        .env("LC_ALL", "C")
+        .env("LANG", "C")
         .arg("--help")
         .output()
         .unwrap();
