@@ -1,11 +1,10 @@
 // crates/logging/tests/journald.rs
 #![cfg(all(unix, feature = "journald"))]
 
-use logging::{subscriber, LogFormat, SubscriberConfig};
+use logging::{init, LogFormat, SubscriberConfig};
 use std::os::unix::net::UnixDatagram;
 use tempfile::tempdir;
 use tracing::info;
-use tracing::subscriber::with_default;
 
 #[test]
 fn journald_emits_message() {
@@ -25,10 +24,8 @@ fn journald_emits_message() {
         .colored(true)
         .timestamps(false)
         .build();
-    let sub = subscriber(cfg);
-    with_default(sub, || {
-        info!(target: "test", "hi");
-    });
+    init(cfg);
+    info!(target: "test", "hi");
     let mut buf = [0u8; 256];
     let (n, _) = server.recv_from(&mut buf).unwrap();
     let msg = std::str::from_utf8(&buf[..n]).unwrap();

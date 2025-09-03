@@ -158,6 +158,8 @@ pub(crate) fn init_logging(matches: &ArgMatches) {
     let quiet = matches.get_flag("quiet");
     let log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
     let log_file_fmt = matches.get_one::<String>("client-log-file-format").cloned();
+    let syslog = matches.get_flag("syslog");
+    let journald = matches.get_flag("journald");
     let (mut info, mut debug) = parse_logging_flags(matches);
     if quiet {
         info.clear();
@@ -173,6 +175,8 @@ pub(crate) fn init_logging(matches: &ArgMatches) {
         .quiet(quiet)
         .stderr(stderr_mode)
         .log_file(log_file.map(|p| (p, log_file_fmt)))
+        .syslog(syslog)
+        .journald(journald)
         .colored(true)
         .timestamps(false)
         .build();

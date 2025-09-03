@@ -95,6 +95,10 @@ pub(crate) struct ClientOpts {
         help_heading = "Output"
     )]
     pub debug: Vec<DebugFlag>,
+    #[arg(long, help_heading = "Output")]
+    pub syslog: bool,
+    #[arg(long, help_heading = "Output")]
+    pub journald: bool,
     #[arg(
         long = "stderr",
         value_name = "e|a|c",

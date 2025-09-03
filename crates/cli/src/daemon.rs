@@ -178,6 +178,8 @@ pub(crate) fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
     let log_format = matches
         .get_one::<String>("client-log-file-format")
         .map(|s| parse_escapes(s));
+    let syslog = matches.get_flag("syslog");
+    let journald = matches.get_flag("journald");
     let mut motd = opts.motd.clone();
     let mut pid_file = opts.pid_file.clone();
     let mut lock_file = opts.lock_file.clone();
@@ -340,6 +342,8 @@ pub(crate) fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
         hosts_deny,
         log_file,
         log_format,
+        syslog,
+        journald,
         motd,
         pid_file,
         lock_file,

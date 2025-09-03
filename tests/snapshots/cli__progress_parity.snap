@@ -1,5 +1,6 @@
 ---
 source: tests/cli.rs
+assertion_line: 804
 expression: normalized
 ---
-              5 100% XX.XXKB/s 00:00:00
+              5 100% XKB/s 00:00:00
