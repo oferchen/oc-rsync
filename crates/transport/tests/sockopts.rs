@@ -82,3 +82,18 @@ fn parse_ip_unknown() {
 fn parse_ip_missing_value() {
     assert!(parse_sockopts(&["ip:ttl".into()]).is_err());
 }
+
+#[test]
+fn parse_sndbuf_invalid() {
+    assert!(parse_sockopts(&["SO_SNDBUF=abc".into()]).is_err());
+}
+
+#[test]
+fn parse_rcvbuf_missing() {
+    assert!(parse_sockopts(&["SO_RCVBUF".into()]).is_err());
+}
+
+#[test]
+fn parse_tcp_nodelay_invalid() {
+    assert!(parse_sockopts(&["TCP_NODELAY=foo".into()]).is_err());
+}

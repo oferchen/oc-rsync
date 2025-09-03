@@ -32,6 +32,7 @@ fn journald_emits_message() {
     let mut buf = [0u8; 256];
     let (n, _) = server.recv_from(&mut buf).unwrap();
     let msg = std::str::from_utf8(&buf[..n]).unwrap();
-    assert!(msg.contains("MESSAGE=hi"));
+    let expected = "PRIORITY=6\nSYSLOG_IDENTIFIER=rsync\nMESSAGE=hi\n";
+    assert_eq!(msg, expected);
     std::env::remove_var("OC_RSYNC_JOURNALD_PATH");
 }
