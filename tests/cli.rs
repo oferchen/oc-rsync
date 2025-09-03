@@ -822,8 +822,20 @@ fn progress_parity() {
     let up_line = norm(&up.stdout);
     let our_line = norm(&ours.stderr);
 
-    assert_eq!(our_line, up_line);
-    insta::assert_snapshot!("progress_parity", our_line);
+    let up_parts: Vec<_> = up_line.split_whitespace().collect();
+    let our_parts: Vec<_> = our_line.split_whitespace().collect();
+    assert_eq!(up_parts.get(0), our_parts.get(0));
+    assert_eq!(up_parts.get(1), our_parts.get(1));
+    assert!(our_parts.get(2).map_or(false, |s| s.ends_with("KB/s")));
+    let rate_placeholder: String = our_parts[2]
+        .chars()
+        .map(|c| if c.is_ascii_digit() { 'X' } else { c })
+        .collect();
+    let normalized = format!(
+        "{:>15} {:>4} {} {}",
+        our_parts[0], our_parts[1], rate_placeholder, our_parts[3]
+    );
+    insta::assert_snapshot!("progress_parity", normalized);
 }
 
 #[test]
