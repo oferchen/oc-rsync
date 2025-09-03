@@ -35,10 +35,11 @@ PY
 
 ## `rsync-help-80.txt` and `rsync-help-120.txt`
 
-These files capture the full `oc-rsync --help` output at specific widths.  They
-are regenerated in the C locale with:
+These files capture the full `oc-rsync --help` output at specific widths.
+`rsync-help-80.txt` now lives under `crates/cli/resources/` for inclusion in the
+CLI crate. Regenerate them in the C locale with:
 
 ```sh
-LC_ALL=C LANG=C COLUMNS=80  cargo run --bin oc-rsync -- --help > tests/fixtures/rsync-help-80.txt
+LC_ALL=C LANG=C COLUMNS=80  cargo run --bin oc-rsync -- --help > crates/cli/resources/rsync-help-80.txt
 LC_ALL=C LANG=C COLUMNS=120 cargo run --bin oc-rsync -- --help > tests/fixtures/rsync-help-120.txt
 ```
