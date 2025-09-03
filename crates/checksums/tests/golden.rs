@@ -37,6 +37,15 @@ fn builder_strong_digests() {
     let cfg_sha1 = ChecksumConfigBuilder::new()
         .strong(StrongHash::Sha1)
         .build();
+    let cfg_xxh64 = ChecksumConfigBuilder::new()
+        .strong(StrongHash::Xxh64)
+        .build();
+    let cfg_xxh3 = ChecksumConfigBuilder::new()
+        .strong(StrongHash::Xxh3)
+        .build();
+    let cfg_xxh128 = ChecksumConfigBuilder::new()
+        .strong(StrongHash::Xxh128)
+        .build();
     let data = b"hello world";
 
     let cs_md4 = cfg_md4.checksum(data);
@@ -58,5 +67,20 @@ fn builder_strong_digests() {
     assert_eq!(
         hex::encode(cs_sha1.strong),
         "1fb6475c524899f98b088f7608bdab8f1591e078",
+    );
+
+    let cs_xxh64 = cfg_xxh64.checksum(data);
+    assert_eq!(cs_xxh64.weak, rolling_checksum(data));
+    assert_eq!(hex::encode(cs_xxh64.strong), "45ab6734b21e6968");
+
+    let cs_xxh3 = cfg_xxh3.checksum(data);
+    assert_eq!(cs_xxh3.weak, rolling_checksum(data));
+    assert_eq!(hex::encode(cs_xxh3.strong), "d447b1ea40e6988b");
+
+    let cs_xxh128 = cfg_xxh128.checksum(data);
+    assert_eq!(cs_xxh128.weak, rolling_checksum(data));
+    assert_eq!(
+        hex::encode(cs_xxh128.strong),
+        "df8d09e93f874900a99b8775cc15b6c7",
     );
 }
