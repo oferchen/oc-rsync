@@ -719,11 +719,20 @@ fn progress_flag_shows_output() {
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     let assert = cmd
-        .args(["--progress", &src_arg, dst_dir.to_str().unwrap()])
+        .args([
+            "--recursive",
+            "--progress",
+            &src_arg,
+            "--",
+            dst_dir.to_str().unwrap(),
+        ])
         .assert()
         .success();
-    let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
-    let mut lines = stderr.lines();
+    let out = assert.get_output();
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    let text = if !stdout.is_empty() { stdout } else { stderr };
+    let mut lines = text.lines();
     assert_eq!(lines.next().unwrap(), "sending incremental file list");
     assert_eq!(lines.next().unwrap(), "a.txt");
     let progress_line = lines.next().unwrap().trim_start_matches('\r').trim_end();
@@ -734,6 +743,12 @@ fn progress_flag_shows_output() {
 
 #[test]
 fn progress_parity() {
+    if let Some(norm) = progress_parity_impl(&["-r", "--progress"]) {
+        insta::assert_snapshot!("progress_parity", norm);
+    }
+}
+
+fn progress_parity_impl(flags: &[&str]) -> Option<String> {
     let rsync = StdCommand::new("rsync")
         .arg("--version")
         .stdout(std::process::Stdio::null())
@@ -742,7 +757,7 @@ fn progress_parity() {
         .ok();
     if rsync.is_none() {
         eprintln!("skipping test: rsync not installed");
-        return;
+        return None;
     }
 
     let dir = tempdir().unwrap();
@@ -752,49 +767,77 @@ fn progress_parity() {
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("a.txt"), b"hello").unwrap();
 
-    let up = StdCommand::new("rsync")
-        .env("LC_ALL", "C")
-        .env("COLUMNS", "80")
-        .args(["-r", "--progress"])
-        .arg(format!("{}/", src.display()))
-        .arg(&dst_up)
-        .output()
-        .unwrap();
-    let ours = Command::cargo_bin("oc-rsync")
-        .unwrap()
-        .env("LC_ALL", "C")
-        .env("COLUMNS", "80")
-        .args([
-            "--recursive",
-            "--progress",
-            format!("{}/", src.display()).as_str(),
-            dst_ours.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
+    let mut up_cmd = StdCommand::new("rsync");
+    up_cmd.env("LC_ALL", "C").env("COLUMNS", "80");
+    up_cmd.args(flags);
+    up_cmd.arg(format!("{}/", src.display()));
+    up_cmd.arg("--");
+    up_cmd.arg(&dst_up);
+    let up = up_cmd.output().unwrap();
 
-    let norm = |s: &[u8]| {
-        let txt = String::from_utf8_lossy(s).replace('\r', "\n");
-        txt.lines()
-            .rev()
-            .find(|l| l.contains('%'))
-            .and_then(|l| l.split(" (xfr").next())
-            .unwrap()
-            .to_string()
+    let mut our_cmd = Command::cargo_bin("oc-rsync").unwrap();
+    our_cmd.env("LC_ALL", "C").env("COLUMNS", "80");
+    our_cmd.args(flags);
+    our_cmd.arg(format!("{}/", src.display()));
+    our_cmd.arg("--");
+    our_cmd.arg(dst_ours.to_str().unwrap());
+    let ours = our_cmd.output().unwrap();
+
+    assert_eq!(up.status.code(), ours.status.code());
+
+    let extract = |stdout: &[u8], stderr: &[u8]| {
+        let stdout_txt = String::from_utf8_lossy(stdout).replace('\r', "\n");
+        let stderr_txt = String::from_utf8_lossy(stderr).replace('\r', "\n");
+        let find = |txt: &str| {
+            txt.lines()
+                .rev()
+                .find(|l| l.contains('%'))
+                .map(|l| l.to_string())
+        };
+        if let Some(line) = find(&stdout_txt) {
+            (line, stdout_txt, stderr_txt, "stdout")
+        } else if let Some(line) = find(&stderr_txt) {
+            (line, stdout_txt, stderr_txt, "stderr")
+        } else {
+            panic!("no progress line found");
+        }
     };
-    let up_line = norm(&up.stdout);
-    let our_line = norm(&ours.stderr);
 
-    let up_parts: Vec<_> = up_line.split_whitespace().collect();
-    let our_parts: Vec<_> = our_line.split_whitespace().collect();
-    assert_eq!(up_parts.first(), our_parts.first());
-    assert_eq!(up_parts.get(1), our_parts.get(1));
-    assert!(our_parts.get(2).is_some_and(|s| s.ends_with("KB/s")));
-    let normalized = format!(
-        "{:>15} {:>4} {} {}",
-        our_parts[0], our_parts[1], "XKB/s", our_parts[3]
-    );
-    insta::assert_snapshot!("progress_parity", normalized);
+    let (up_line, up_stdout, up_stderr, up_stream) = extract(&up.stdout, &up.stderr);
+    let (our_line, our_stdout, our_stderr, our_stream) = extract(&ours.stdout, &ours.stderr);
+
+    assert_eq!(up_stream, our_stream, "progress output stream mismatch");
+
+    fn strip_progress(s: &str) -> String {
+        s.lines()
+            .filter(|l| !l.contains('%'))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+    assert_eq!(strip_progress(&up_stdout), strip_progress(&our_stdout));
+    assert_eq!(strip_progress(&up_stderr), strip_progress(&our_stderr));
+
+    let normalize = |line: &str| {
+        let mut parts: Vec<_> = line.split_whitespace().collect();
+        if parts.len() > 2 {
+            parts[2] = "XKB/s";
+        }
+        if parts.len() > 3 {
+            parts[3] = "00:00:00";
+        }
+        format!("{:>15} {:>4} {} {}", parts[0], parts[1], parts[2], parts[3])
+    };
+
+    let normalized = normalize(&our_line);
+    assert_eq!(normalize(&up_line), normalized);
+    Some(normalized)
+}
+
+#[test]
+fn progress_parity_p() {
+    if let Some(norm) = progress_parity_impl(&["-r", "-P"]) {
+        insta::assert_snapshot!("progress_parity_p", norm);
+    }
 }
 
 #[test]
@@ -898,15 +941,20 @@ fn progress_flag_human_readable() {
     let src_arg = format!("{}/", src_dir.display());
     let assert = cmd
         .args([
+            "--recursive",
             "--progress",
             "--human-readable",
             &src_arg,
+            "--",
             dst_dir.to_str().unwrap(),
         ])
         .assert()
         .success();
-    let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
-    let mut lines = stderr.lines();
+    let out = assert.get_output();
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    let text = if !stdout.is_empty() { stdout } else { stderr };
+    let mut lines = text.lines();
     assert_eq!(lines.next().unwrap(), "sending incremental file list");
     assert_eq!(lines.next().unwrap(), "a.txt");
     let progress_line = lines.next().unwrap().trim_start_matches('\r').trim_end();

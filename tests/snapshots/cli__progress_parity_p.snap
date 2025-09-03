@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+assertion_line: 879
+expression: norm
+---
+              5 100% XKB/s 00:00:00
