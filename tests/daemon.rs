@@ -264,6 +264,9 @@ fn pipe_transport_opts(
 #[test]
 #[serial]
 fn module_authentication_and_hosts_enforced() {
+    use nix::unistd::{getegid, geteuid};
+    let uid = geteuid().as_raw();
+    let gid = getegid().as_raw();
     let dir = tempdir().unwrap();
     let auth = dir.path().join("auth");
     fs::write(&auth, "alice data\n").unwrap();
@@ -292,8 +295,8 @@ fn module_authentication_and_hosts_enforced() {
         true,
         &[],
         "127.0.0.1",
-        0,
-        0,
+        uid,
+        gid,
         &handler,
     )
     .unwrap();
@@ -310,8 +313,8 @@ fn module_authentication_and_hosts_enforced() {
         true,
         &[],
         "127.0.0.1",
-        0,
-        0,
+        uid,
+        gid,
         &handler,
     )
     .unwrap_err();
@@ -328,8 +331,8 @@ fn module_authentication_and_hosts_enforced() {
         true,
         &[],
         "10.0.0.1",
-        0,
-        0,
+        uid,
+        gid,
         &handler,
     )
     .unwrap_err();
