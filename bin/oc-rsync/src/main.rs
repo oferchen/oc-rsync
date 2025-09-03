@@ -12,21 +12,23 @@ extern "C" {
 fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     use clap::error::ErrorKind::*;
     match kind {
-        UnknownArgument
-        | InvalidSubcommand
-        | NoEquals
-        | ValueValidation
-        | TooManyValues
-        | TooFewValues
-        | WrongNumberOfValues
-        | ArgumentConflict
-        | MissingRequiredArgument
-        | MissingSubcommand
-        | InvalidUtf8
-        | DisplayHelpOnMissingArgumentOrSubcommand => ExitCode::SyntaxOrUsage,
+        UnknownArgument => ExitCode::SyntaxOrUsage,
+        InvalidSubcommand => ExitCode::SyntaxOrUsage,
+        NoEquals => ExitCode::SyntaxOrUsage,
+        ValueValidation => ExitCode::SyntaxOrUsage,
+        TooManyValues => ExitCode::SyntaxOrUsage,
+        TooFewValues => ExitCode::SyntaxOrUsage,
+        WrongNumberOfValues => ExitCode::SyntaxOrUsage,
+        ArgumentConflict => ExitCode::SyntaxOrUsage,
+        MissingRequiredArgument => ExitCode::SyntaxOrUsage,
+        MissingSubcommand => ExitCode::SyntaxOrUsage,
+        InvalidUtf8 => ExitCode::SyntaxOrUsage,
+        DisplayHelpOnMissingArgumentOrSubcommand => ExitCode::SyntaxOrUsage,
         InvalidValue => ExitCode::Unsupported,
-        DisplayHelp | DisplayVersion => ExitCode::Ok,
-        Io | Format => ExitCode::FileIo,
+        DisplayHelp => ExitCode::Ok,
+        DisplayVersion => ExitCode::Ok,
+        Io => ExitCode::FileIo,
+        Format => ExitCode::FileIo,
         _ => ExitCode::SyntaxOrUsage,
     }
 }
@@ -104,30 +106,58 @@ mod tests {
 
     #[test]
     fn maps_error_kinds_to_exit_codes() {
-        let cases = [
-            (UnknownArgument, ExitCode::SyntaxOrUsage),
-            (InvalidSubcommand, ExitCode::SyntaxOrUsage),
-            (NoEquals, ExitCode::SyntaxOrUsage),
-            (ValueValidation, ExitCode::SyntaxOrUsage),
-            (TooManyValues, ExitCode::SyntaxOrUsage),
-            (TooFewValues, ExitCode::SyntaxOrUsage),
-            (WrongNumberOfValues, ExitCode::SyntaxOrUsage),
-            (ArgumentConflict, ExitCode::SyntaxOrUsage),
-            (MissingRequiredArgument, ExitCode::SyntaxOrUsage),
-            (MissingSubcommand, ExitCode::SyntaxOrUsage),
-            (InvalidUtf8, ExitCode::SyntaxOrUsage),
-            (
-                DisplayHelpOnMissingArgumentOrSubcommand,
-                ExitCode::SyntaxOrUsage,
-            ),
-            (InvalidValue, ExitCode::Unsupported),
-            (DisplayHelp, ExitCode::Ok),
-            (DisplayVersion, ExitCode::Ok),
-            (Io, ExitCode::FileIo),
-            (Format, ExitCode::FileIo),
-        ];
-        for (kind, code) in cases {
-            assert_eq!(exit_code_from_error_kind(kind), code);
-        }
+        assert_eq!(
+            exit_code_from_error_kind(UnknownArgument),
+            ExitCode::SyntaxOrUsage
+        );
+        assert_eq!(
+            exit_code_from_error_kind(InvalidSubcommand),
+            ExitCode::SyntaxOrUsage
+        );
+        assert_eq!(exit_code_from_error_kind(NoEquals), ExitCode::SyntaxOrUsage);
+        assert_eq!(
+            exit_code_from_error_kind(ValueValidation),
+            ExitCode::SyntaxOrUsage
+        );
+        assert_eq!(
+            exit_code_from_error_kind(TooManyValues),
+            ExitCode::SyntaxOrUsage
+        );
+        assert_eq!(
+            exit_code_from_error_kind(TooFewValues),
+            ExitCode::SyntaxOrUsage
+        );
+        assert_eq!(
+            exit_code_from_error_kind(WrongNumberOfValues),
+            ExitCode::SyntaxOrUsage
+        );
+        assert_eq!(
+            exit_code_from_error_kind(ArgumentConflict),
+            ExitCode::SyntaxOrUsage
+        );
+        assert_eq!(
+            exit_code_from_error_kind(MissingRequiredArgument),
+            ExitCode::SyntaxOrUsage
+        );
+        assert_eq!(
+            exit_code_from_error_kind(MissingSubcommand),
+            ExitCode::SyntaxOrUsage
+        );
+        assert_eq!(
+            exit_code_from_error_kind(InvalidUtf8),
+            ExitCode::SyntaxOrUsage
+        );
+        assert_eq!(
+            exit_code_from_error_kind(DisplayHelpOnMissingArgumentOrSubcommand),
+            ExitCode::SyntaxOrUsage,
+        );
+        assert_eq!(
+            exit_code_from_error_kind(InvalidValue),
+            ExitCode::Unsupported
+        );
+        assert_eq!(exit_code_from_error_kind(DisplayHelp), ExitCode::Ok);
+        assert_eq!(exit_code_from_error_kind(DisplayVersion), ExitCode::Ok);
+        assert_eq!(exit_code_from_error_kind(Io), ExitCode::FileIo);
+        assert_eq!(exit_code_from_error_kind(Format), ExitCode::FileIo);
     }
 }
