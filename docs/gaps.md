@@ -3,7 +3,7 @@
 This document summarizes parity status across major domains of `oc-rsync`.  Each
 table lists notable features that are either implemented, only partially
 completed, or still missing.  Entries link to the source and corresponding tests
-when available. Do not exceed functionality of upstream at https://rsync.samba.org at this stage, prune unused features and/or unreachable code.
+when available. Do not exceed functionality of upstream at <https://rsync.samba.org> at this stage, prune unused features and/or unreachable code.
 
 ## Parser Parity
 | Feature | Status | Tests | Source |
