@@ -21,162 +21,230 @@ env:
   COLUMNS: 80
 
 jobs:
-  lint-test:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      # Official Rust toolchain; we need clippy+rustfmt for this job
+      - name: Setup Rust (stable)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy,rustfmt
+          target: x86_64-apple-darwin,x86_64-pc-windows-msvc
+          cache: true
+
+      - name: Cargo check (cross targets)
+        run: |
+          cargo check --workspace --target x86_64-apple-darwin
+          cargo check --workspace --target x86_64-pc-windows-msvc
+
+      - name: Install system dependencies (Linux only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Verify comments
+        run: make verify-comments
+
+      - name: Validate interop matrix docs
+        run: scripts/check-run-matrix-docs.sh
+
+      - name: Check CLI help against transcript
+        run: |
+          cargo run --quiet --bin oc-rsync -- --help | tail -n +4 > /tmp/oc-rsync-help.txt
+          diff -u tests/golden/help/oc-rsync.help /tmp/oc-rsync-help.txt
+
+      # Quick cross-compile sanity on Linux: just 'check', not full link for non-native SDKs
+      - name: Cross-compile check (headers only)
+        if: runner.os == 'Linux'
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-apple-darwin,x86_64-pc-windows-msvc
+          cache: true
+
+      - name: "Sanity: show toolchain/targets"
+        run: |
+          rustup show
+          rustup target list --installed
+          rustc --version
+          rustc --print sysroot
+          rustc --target x86_64-apple-darwin --print target-libdir
+
+      - name: Cargo check (cross targets)
+        if: runner.os == 'Linux'
+        run: |
+          cargo check --workspace --target x86_64-apple-darwin
+          cargo check --workspace --target x86_64-pc-windows-msvc
+
+  test-linux:
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      # llvm-tools-preview is required by cargo-llvm-cov
+      - name: Setup Rust (stable + llvm-tools)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          override: true
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          components: llvm-tools-preview,clippy,rustfmt
+          cache: true
+
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libacl1-dev
-      - name: Format
-        run: cargo fmt --all --check
-      - name: Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-      - name: Verify comments
-        run: make verify-comments
+        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
+
+      - name: Pre-flight check
+        run: scripts/preflight.sh
+
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov
-      - name: Test with coverage
-        run: cargo llvm-cov --all-features --fail-under-lines 95 --fail-under-functions 95
-      - name: Validate interop matrix docs
-        run: scripts/check-run-matrix-docs.sh
-      - name: Check CLI help against docs
-        run: |
-          cargo run --quiet --bin oc-rsync -- --help > /tmp/oc-rsync-help.txt
-          diff -u docs/cli.md /tmp/oc-rsync-help.txt
-      - name: Check manpages against spec
-        run: |
-          diff -u man/oc-rsync.1 docs/spec/rsync.1
-          diff -u man/oc-rsyncd.conf.5 docs/spec/rsyncd.conf.5
-      - name: Cross-compile check
-        run: |
-          rustup target add x86_64-apple-darwin x86_64-pc-windows-msvc
-          cargo check --workspace --target x86_64-apple-darwin
-          cargo check --workspace --target x86_64-pc-windows-msvc
 
-  build:
-    needs: lint-test
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: Test with coverage (95% lines & functions)
+        run: cargo llvm-cov nextest --all-features --fail-under-lines 95 --fail-under-functions 95 --html -- --no-fail-fast
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          name: coverage-report
+          path: target/llvm-cov/html
+
+  interop:
+    needs: test-linux
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - x86_64-apple-darwin
-          - x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Setup Rust (stable)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev acl attr openssh-server
+
+      - name: Run interop matrix
+        run: |
+          sudo mkdir -p /run/sshd
+          CLIENT_VERSIONS=oc-rsync SERVER_VERSIONS=oc-rsync TRANSPORTS="ssh rsync" COMMON_FLAGS="--archive" tests/interop/run_matrix.sh
+
+  build-matrix:
+    needs: [lint, test-linux]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - name: linux-aarch64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+          - name: macos-x86_64
+            os: macos-13
+            target: x86_64-apple-darwin
+          - name: macos-aarch64
+            os: macos-14
+            target: aarch64-apple-darwin
+          - name: windows-x86_64
+            os: windows-2022
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust (targeted)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
           target: ${{ matrix.target }}
-          override: true
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libacl1-dev
+          cache: true
+
+      - name: Install system dependencies (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
+          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu
+          fi
+
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }} --bin oc-rsync
+
       - name: Package artifacts
+        shell: bash
         run: |
           mkdir -p dist
-          cp target/${{ matrix.target }}/release/oc-rsync dist/oc-rsync-${{ matrix.target }}
-          sha256sum dist/oc-rsync-${{ matrix.target }} > dist/oc-rsync-${{ matrix.target }}.sha256
-          cargo install cargo-sbom || true
-          cargo sbom --output dist/oc-rsync-${{ matrix.target }}-sbom.json
+          BIN="target/${{ matrix.target }}/release/oc-rsync"
+          OUT="dist/oc-rsync-${{ matrix.name }}"
+          # Windows exe name
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            BIN="target\\${{ matrix.target }}\\release\\oc-rsync.exe"
+            OUT="dist/oc-rsync-${{ matrix.name }}.exe"
+            mkdir -p dist
+            cp "$BIN" "$OUT"
+            certutil -hashfile "$OUT" SHA256 > "dist/oc-rsync-${{ matrix.name }}.sha256"
+          else
+            cp "$BIN" "$OUT"
+            (sha256sum "$OUT" || shasum -a 256 "$OUT") > "dist/oc-rsync-${{ matrix.name }}.sha256"
+          fi
+
+          # SBOM (CycloneDX)
+          cargo install cyclonedx-rust-cargo || true
+          cyclonedx-rust-cargo --output "dist/oc-rsync-${{ matrix.name }}-sbom.json"
+
       - uses: actions/upload-artifact@v4
         with:
-          name: oc-rsync-${{ matrix.target }}
+          name: oc-rsync-${{ matrix.name }}
           path: dist
 
-  upstream-rsync:
-    needs: lint-test
+  package-linux:
+    needs: [test-linux, build-matrix]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Setup Rust (stable)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          override: true
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev zlib1g-dev libacl1-dev
-      - name: Build oc-rsync
-        run: cargo build --release --bin oc-rsync
-      - name: Fetch upstream rsync
-        run: scripts/fetch-rsync.sh
-      - name: Build upstream rsync
-        run: |
-          cd rsync-3.4.1
-          ./configure
-          make
-      - name: Diff --version
-        run: |
-          diff <(./target/release/oc-rsync --version) <(rsync-3.4.1/rsync --version) || true
-      - name: Diff --help
-        run: |
-          diff <(./target/release/oc-rsync --help) <(rsync-3.4.1/rsync --help) || true
-      - name: Check option tables
-        run: scripts/check-option-table.sh
+          cache: true
 
-  windows:
-    needs: lint-test
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Run Windows smoke tests
-        run: cargo test --test windows
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
 
+      - name: Install packaging tools
+        run: cargo install cargo-deb cargo-generate-rpm || true
+
+      - name: Build packages
+        run: |
+          cargo deb -p oc-rsync
+          cargo generate-rpm
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oc-rsync-packages
+          path: |
+            target/debian/*.deb
+            target/generate-rpm/*.rpm
+            

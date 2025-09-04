@@ -1,0 +1,2 @@
+rsync: --bogus: unknown option
+rsync error: syntax or usage error (code 1)

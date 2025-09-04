@@ -686,26 +686,46 @@ pub fn parse_escapes(input: &str) -> String {
                 Some('v') => out.push('\x0b'),
                 Some('x') => {
                     let mut val = 0u32;
+                    let mut digits = 0;
                     for _ in 0..2 {
                         if let Some(peek) = chars.peek().copied() {
-                            if peek.is_ascii_hexdigit() {
-                                val = (val << 4) + chars.next().unwrap().to_digit(16).unwrap();
+                            if let Some(digit) = peek.to_digit(16) {
+                                val = (val << 4) + digit;
+                                chars.next();
+                                digits += 1;
                             } else {
                                 break;
                             }
                         }
                     }
-                    if let Some(ch) = char::from_u32(val) {
+                    if digits == 0 {
+                        tracing::warn!("invalid hex escape sequence");
+                        out.push('x');
+                    } else if let Some(ch) = char::from_u32(val) {
                         out.push(ch);
+                    } else {
+                        tracing::warn!("invalid hex escape value: {val}");
                     }
                 }
                 Some('\\') => out.push('\\'),
                 Some(c @ '0'..='7') => {
-                    let mut val = c.to_digit(8).unwrap();
+                    let mut val = match c.to_digit(8) {
+                        Some(d) => d,
+                        None => {
+                            tracing::warn!("invalid octal escape sequence");
+                            out.push(c);
+                            continue;
+                        }
+                    };
                     for _ in 0..2 {
                         if let Some(peek) = chars.peek().copied() {
                             if ('0'..='7').contains(&peek) {
-                                val = (val << 3) + chars.next().unwrap().to_digit(8).unwrap();
+                                if let Some(digit) = peek.to_digit(8) {
+                                    val = (val << 3) + digit;
+                                    chars.next();
+                                } else {
+                                    break;
+                                }
                             } else {
                                 break;
                             }
@@ -713,6 +733,8 @@ pub fn parse_escapes(input: &str) -> String {
                     }
                     if let Some(ch) = char::from_u32(val) {
                         out.push(ch);
+                    } else {
+                        tracing::warn!("invalid octal escape value: {val}");
                     }
                 }
                 Some(other) => out.push(other),

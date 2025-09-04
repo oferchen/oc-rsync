@@ -3,9 +3,10 @@ use oc_rsync_cli::options::OutBuf;
 use oc_rsync_cli::{branding, cli_command, EngineError};
 use protocol::ExitCode;
 use std::io::ErrorKind;
-use std::ptr;
+use std::ptr::{self, NonNull};
 
 extern "C" {
+    #[cfg_attr(target_os = "macos", link_name = "__stdoutp")]
     static mut stdout: *mut libc::FILE;
 }
 
@@ -33,8 +34,30 @@ fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     }
 }
 
-unsafe fn set_stream_buffer(stream: *mut libc::FILE, mode: libc::c_int) -> std::io::Result<()> {
-    let ret = libc::setvbuf(stream, ptr::null_mut(), mode, 0);
+#[doc = r"Returns a handle to the C `stdout` stream.
+
+# Safety
+
+Accessing `stdout` from libc requires `unsafe` because it is a mutable static. The pointer is checked for
+null to avoid undefined behavior, and callers must ensure no other code closes or invalidates the stream
+while it is in use."]
+fn stdout_stream() -> std::io::Result<NonNull<libc::FILE>> {
+    unsafe {
+        NonNull::new(stdout)
+            .ok_or_else(|| std::io::Error::new(ErrorKind::BrokenPipe, "stdout is null"))
+    }
+}
+
+#[doc = r"Sets the buffering mode for a C `FILE` stream.
+
+# Safety
+
+The caller must ensure that `stream` is a valid and open `FILE` pointer."]
+fn set_stream_buffer(stream: *mut libc::FILE, mode: libc::c_int) -> std::io::Result<()> {
+    if stream.is_null() {
+        return Err(std::io::Error::new(ErrorKind::BrokenPipe, "stream is null"));
+    }
+    let ret = unsafe { libc::setvbuf(stream, ptr::null_mut(), mode, 0) };
     if ret == 0 {
         Ok(())
     } else {
@@ -76,16 +99,21 @@ fn main() {
         std::process::exit(u8::from(code) as i32);
     });
     if let Some(mode) = matches.get_one::<OutBuf>("outbuf") {
-        unsafe {
-            let m = match mode {
-                OutBuf::N => libc::_IONBF,
-                OutBuf::L => libc::_IOLBF,
-                OutBuf::B => libc::_IOFBF,
-            };
-            if let Err(err) = set_stream_buffer(stdout, m) {
-                eprintln!("failed to set stdout buffer: {err}");
+        let m = match mode {
+            OutBuf::N => libc::_IONBF,
+            OutBuf::L => libc::_IOLBF,
+            OutBuf::B => libc::_IOFBF,
+        };
+        let stream = match stdout_stream() {
+            Ok(s) => s,
+            Err(err) => {
+                eprintln!("failed to access stdout: {err}");
                 std::process::exit(u8::from(ExitCode::FileIo) as i32);
             }
+        };
+        if let Err(err) = set_stream_buffer(stream.as_ptr(), m) {
+            eprintln!("failed to set stdout buffer: {err}");
+            std::process::exit(u8::from(ExitCode::FileIo) as i32);
         }
     }
     if let Err(e) = oc_rsync_cli::run(&matches) {
@@ -117,6 +145,7 @@ mod tests {
     use super::set_stream_buffer;
     use clap::error::ErrorKind::*;
     use protocol::ExitCode;
+    use std::ptr;
 
     #[test]
     fn maps_error_kinds_to_exit_codes() {
@@ -183,5 +212,10 @@ mod tests {
             assert!(set_stream_buffer(file, -1).is_err());
             libc::fclose(file);
         }
+    }
+
+    #[test]
+    fn null_stream_returns_error() {
+        assert!(set_stream_buffer(ptr::null_mut(), libc::_IONBF).is_err());
     }
 }

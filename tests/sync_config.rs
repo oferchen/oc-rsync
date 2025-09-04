@@ -68,21 +68,29 @@ fn defaults_do_not_preserve_permissions_or_ownership() {
 #[cfg(unix)]
 #[test]
 fn defaults_skip_devices_and_specials() {
-    use nix::sys::stat::{makedev, mknod, Mode, SFlag};
-    use nix::unistd::mkfifo;
+    use nix::unistd::{mkfifo, Uid};
+    use oc_rsync::meta::{makedev, mknod, Mode, SFlag};
 
     let (_dir, src_dir, dst_dir) = setup_dirs();
+
+    if !Uid::effective().is_root() {
+        println!("skipping: requires root privileges");
+        return;
+    }
 
     let fifo = src_dir.join("fifo");
     mkfifo(&fifo, Mode::from_bits_truncate(0o600)).unwrap();
     let dev = src_dir.join("null");
-    mknod(
-        &dev,
-        SFlag::S_IFCHR,
-        Mode::from_bits_truncate(0o600),
-        makedev(1, 3),
-    )
-    .unwrap();
+    #[allow(clippy::useless_conversion)]
+    {
+        mknod(
+            &dev,
+            SFlag::S_IFCHR,
+            Mode::from_bits_truncate(0o600),
+            u64::from(makedev(1, 3)),
+        )
+        .unwrap();
+    }
 
     synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
 

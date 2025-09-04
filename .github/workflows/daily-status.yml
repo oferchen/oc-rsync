@@ -19,7 +19,8 @@ jobs:
           toolchain: stable
           override: true
       - run: cargo install cargo-llvm-cov
-      - run: mkdir -p reports && cargo llvm-cov --workspace --json --summary-only --output-path reports/coverage.json
+      - run: cargo install cargo-nextest
+      - run: mkdir -p reports && cargo llvm-cov nextest --workspace --json --summary-only --output-path reports/coverage.json -- --no-fail-fast
       - run: cargo run --package xtask --bin status
 
       - name: Generate status report

@@ -373,7 +373,8 @@ pub(crate) struct ClientOpts {
     #[arg(
         long,
         help_heading = "Attributes",
-        overrides_with_all = ["no_specials", "no_D"]
+        overrides_with_all = ["no_specials", "no_D"],
+        help = "preserve special files"
     )]
     pub specials: bool,
     #[arg(
@@ -382,7 +383,12 @@ pub(crate) struct ClientOpts {
         overrides_with = "specials"
     )]
     pub no_specials: bool,
-    #[arg(short = 'D', help_heading = "Attributes", overrides_with = "no_D")]
+    #[arg(
+        short = 'D',
+        help_heading = "Attributes",
+        overrides_with = "no_D",
+        help = "same as --devices --specials"
+    )]
     pub devices_specials: bool,
     #[allow(non_snake_case)]
     #[arg(
@@ -391,10 +397,8 @@ pub(crate) struct ClientOpts {
         overrides_with_all = ["devices", "specials", "devices_specials"]
     )]
     pub no_D: bool,
-    #[cfg(feature = "xattr")]
     #[arg(long, help_heading = "Attributes")]
     pub xattrs: bool,
-    #[cfg(feature = "acl")]
     #[arg(
         short = 'A',
         long,
@@ -402,7 +406,6 @@ pub(crate) struct ClientOpts {
         overrides_with = "no_acls"
     )]
     pub acls: bool,
-    #[cfg(feature = "acl")]
     #[arg(long = "no-acls", help_heading = "Attributes", overrides_with = "acls")]
     pub no_acls: bool,
     #[arg(long = "fake-super", help_heading = "Attributes")]
@@ -658,11 +661,9 @@ pub(crate) struct ClientOpts {
     #[arg(
         value_name = "SRC",
         required_unless_present_any = ["daemon", "server", "probe"],
-        num_args = 1..
+        num_args = 2..,
     )]
-    pub srcs: Vec<String>,
-    #[arg(value_name = "DST", required = true, last = true)]
-    pub dst: String,
+    pub paths: Vec<String>,
     #[arg(short = 'f', long, value_name = "RULE", help_heading = "Selection")]
     pub filter: Vec<String>,
     #[arg(long, value_name = "FILE", help_heading = "Selection")]
@@ -693,10 +694,8 @@ pub(crate) struct ClientOpts {
 #[doc(hidden)]
 #[derive(Parser, Debug)]
 pub(crate) struct ProbeOpts {
-    #[arg(long)]
-    pub probe: bool,
-    #[arg(long, value_name = "ADDR", requires = "probe")]
-    pub addr: Option<String>,
+    #[arg(long, value_name = "ADDR", num_args = 0..=1)]
+    pub probe: Option<String>,
     #[arg(long, default_value_t = SUPPORTED_PROTOCOLS[0], value_name = "VER")]
     pub peer_version: u32,
 }

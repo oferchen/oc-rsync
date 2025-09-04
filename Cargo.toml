@@ -20,6 +20,8 @@ resolver = "2"
 [package]
 name = "oc-rsync"
 version = "0.1.0"
+description = "Pure-Rust reimplementation of rsync (protocol v32)"
+license = "Apache-2.0 OR MIT"
 edition = "2021"
 
 [dependencies]
@@ -38,6 +40,7 @@ filetime = "0.2"
 clap = { version = "4" }
 oc-rsync-cli = { path = "crates/cli" }
 libc = "0.2"
+meta = { path = "crates/meta" }
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.27", features = ["user", "fs"] }
@@ -50,11 +53,11 @@ serial_test = "2"
 transport = { path = "crates/transport" }
 shell-words = "1.1"
 wait-timeout = "0.2"
-meta = { path = "crates/meta" }
 daemon = { path = "crates/daemon" }
 sha2 = "0.10"
 encoding_rs = "0.8"
 insta = { version = "1", features = ["json"] }
+hex = "0.4"
 
 [target.'cfg(unix)'.dev-dependencies]
 nix = { version = "0.27", features = ["user", "fs", "process"] }
@@ -83,11 +86,45 @@ required-features = ["cli"]
 name = "strip-rs-comments"
 path = "tools/strip_rs_comments.rs"
 
+# Enable extended attribute and ACL support by default so tests can run
+# without requiring feature flags. Individual crates handle runtime
+# detection of platform support.
 [features]
-default = []
-xattr = ["engine/xattr", "oc-rsync-cli/xattr", "meta/xattr"]
-acl = ["engine/acl", "oc-rsync-cli/acl", "meta/acl"]
+default = ["xattr", "acl"]
+xattr = ["engine/xattr"]
+acl = ["engine/acl"]
 # Enables CLI-only tools
 cli = []
 # Enables AVX-512 implementations requiring a nightly toolchain
 nightly = ["checksums/nightly", "compress/nightly"]
+
+[package.metadata.deb]
+maintainer = "oc-rsync maintainers <maintainers@rsync.rs>"
+depends = "$auto, systemd"
+assets = [
+    ["packaging/systemd/oc-rsyncd.service", "/lib/systemd/system/oc-rsyncd.service", "644"],
+    ["packaging/examples/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf", "644"],
+    ["packaging/systemd/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf", "644"],
+]
+
+[package.metadata.rpm]
+maintainer = "oc-rsync maintainers <maintainers@rsync.rs>"
+requires = ["systemd"]
+
+[package.metadata.rpm.targets.oc-rsync]
+path = "/usr/bin/oc-rsync"
+
+[package.metadata.rpm.targets.oc-rsyncd]
+path = "/usr/bin/oc-rsyncd"
+
+[package.metadata.rpm.files."oc-rsyncd.conf"]
+path = "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf"
+mode = "644"
+
+[package.metadata.rpm.files."oc-rsyncd.systemd.conf"]
+path = "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf"
+mode = "644"
+
+[package.metadata.rpm.files."oc-rsyncd.service"]
+path = "/usr/lib/systemd/system/oc-rsyncd.service"
+mode = "644"

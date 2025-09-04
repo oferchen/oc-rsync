@@ -41,8 +41,7 @@ kept up to date from their results.
 
 * SSH and daemon transports are functional but still early implementations and
   may diverge from classic `rsync` behavior.
-* Filters, sparse files, and compression work across transports. Hard links are
-  not yet supported.
+* Filters, sparse files, compression, and hard links work across transports.
 * Extended attributes and ACLs are available only when built with the `xattr`
   and `acl` feature gates and are exercised by round-trip tests.
 * Filesystem differences (case sensitivity, permissions) across platforms may

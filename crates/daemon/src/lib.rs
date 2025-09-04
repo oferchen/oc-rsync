@@ -195,18 +195,23 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
     }
 
     let mut iter = rest.split(',');
-    let path_str = iter.next().unwrap().trim();
+    let path_str = iter
+        .next()
+        .ok_or_else(|| "module path missing or malformed".to_string())?
+        .trim();
+    if path_str.is_empty() {
+        return Err("module path missing or malformed".to_string());
+    }
     let raw = PathBuf::from(path_str);
     let abs = if raw.is_absolute() {
         raw
     } else {
         env::current_dir().map_err(|e| e.to_string())?.join(raw)
     };
-    let canonical = fs::canonicalize(abs).map_err(|e| e.to_string())?;
 
     let mut module = Module {
         name: name.to_string(),
-        path: canonical,
+        path: abs,
         ..Module::default()
     };
 

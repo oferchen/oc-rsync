@@ -12,6 +12,10 @@ oc-rsync --daemon [OPTIONS]
 
 The daemon can be started either directly via `oc-rsync --daemon` or by a service manager. Daemon behaviour and module definitions are controlled by the configuration file `oc-rsyncd.conf(5)`. Clients connect using `oc-rsync(1)` and specify a module name in the `rsync://` URL.
 
+Windows hosts are supported with the same path and metadata semantics as
+Unix systems, including normalization of extended `\\?\` paths and
+propagation of ACLs and timestamps.
+
 ## Options
 
 These flags influence the daemon when run from the command line:

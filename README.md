@@ -1,189 +1,103 @@
-# oc-rsync
+# oc-rsync — Pure-Rust rsync replica (compatible with rsync 3.4.1 / protocol 32)
 
-oc-rsync is a modular reimplementation of the classic `rsync` utility in Rust. It targets protocol compatibility with rsync 3.4.1 (protocol version 32) and prioritizes absolute compatibility with existing deployments before any enhancements are considered. Differences from upstream are limited to internal, compatibility-neutral optimizations while leveraging Rust's safety and concurrency strengths.
+[![CI](https://github.com/oferchen/oc-rsync/actions/workflows/ci.yml/badge.svg)](https://github.com/oferchen/oc-rsync/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/oferchen/oc-rsync/graph/badge.svg?token=8TUVGHK9VE)](https://codecov.io/gh/oferchen/oc-rsync)
+[![Release](https://img.shields.io/github/v/release/oferchen/oc-rsync)](https://github.com/oferchen/oc-rsync/releases)
 
-## Summary
+## Code Coverage
+[![Sunburst](https://codecov.io/gh/oferchen/oc-rsync/graphs/sunburst.svg?token=8TUVGHK9VE)](https://codecov.io/gh/oferchen/oc-rsync)
+[![Grid](https://codecov.io/gh/oferchen/oc-rsync/graphs/tree.svg?token=8TUVGHK9VE)](https://codecov.io/gh/oferchen/oc-rsync)
+[![Icicle](https://codecov.io/gh/oferchen/oc-rsync/graphs/icicle.svg?token=8TUVGHK9VE)](https://codecov.io/gh/oferchen/oc-rsync)
 
-**Mission**: Implement a pure-Rust rsync replacement compatible with stock rsync 3.4.1 (protocol 32) over SSH and `rsync://`. Absolute parity with upstream rsync is the priority; any differences are confined to internal, compatibility-neutral optimizations.
+## Project statement
 
-**Non‑negotiable constraints**: correctness with full metadata fidelity, security, robust I/O with resumable transfers, cross‑platform support, and open‑source dual licensing.
-
-## Mission
-- Implement a pure-Rust rsync replacement compatible with stock rsync 3.4.1 (protocol 32) over SSH and `rsync://`.
-- Achieve absolute parity with upstream rsync before introducing any enhancements.
-- Limit differences from upstream to internal, compatibility-neutral optimizations.
-- Deliver fast, reliable file synchronization.
-- Provide a welcoming platform for contributors building the next generation of sync tooling.
-
-## Non-negotiable Constraints
-- **Correctness**: Transfers must faithfully mirror source files and metadata, preserving permissions, timestamps, ownership, symlinks, hard links, sparse files, and xattrs/ACLs.
-- **Security**: Safe defaults and careful parsing to prevent memory and protocol vulnerabilities.
-- **Cross-platform**: Aim to support Linux, macOS, and Windows.
-- **Robust I/O**: Resume partial transfers and recover cleanly from interruptions.
-- **Open source**: Dual-licensed under MIT and Apache-2.0.
+oc-rsync is an automatic re‑implementation of rsync’s behavior in Rust, created by Ofer Chen (2025). This project is unaffiliated with the Rsync Samba team.
 
 ## Compatibility
-Platform support status is tracked in the [compatibility matrix](docs/compat_matrix.md).
-An overview of tested operating systems and interoperability notes lives in
-[docs/compatibility.md](docs/compatibility.md). Known gaps are documented in
-[docs/gaps.md](docs/gaps.md), and a detailed feature breakdown is available in
-[docs/feature_matrix.md](docs/feature_matrix.md).
 
-## Specifications
-The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.1 are bundled in [docs/spec](docs/spec) and serve as the project's authoritative specification. See [docs/spec/rsync.1](docs/spec/rsync.1) and [docs/spec/rsyncd.conf.5](docs/spec/rsyncd.conf.5).
+- Targets upstream rsync 3.4.1 (protocol 32). See [docs/UPSTREAM.md](docs/UPSTREAM.md) for negotiated versions.
+- Feature parity is tracked in the [feature matrix](docs/feature_matrix.md).
+- Platform status and interoperability notes live in [docs/compat_matrix.md](docs/compat_matrix.md) and [docs/compatibility.md](docs/compatibility.md).
+- Known gaps are cataloged in [docs/gaps.md](docs/gaps.md).
 
-## In-Scope Features
-- Local and remote file synchronization over SSH and `rsync://`.
-- Delta-transfer algorithm with rolling checksum.
-- Preservation of permissions, symlinks, hard links, sparse files, extended attributes, and ACLs.
-- Flexible include/exclude filtering.
-- Compression negotiation between peers.
-- Resume of interrupted transfers and handling of partial files.
-- Robust I/O and durable writes.
-- Progress reporting and dry-run mode.
-- Modular crate design covering protocol, checksums, filters, file walking, compression, transport, and CLI components.
+## Install
 
-## Out-of-Scope Features
-- Graphical user interfaces.
-- Cloud-specific integration or storage backends.
-- Scheduling/daemonization; external tools should orchestrate recurring jobs.
+Prebuilt binaries and packages are published on [GitHub Releases](https://github.com/oferchen/oc-rsync/releases).
 
-## CLI
-Documentation for invoking the command line interface, available flags, and
-configuration precedence lives in [docs/cli.md](docs/cli.md). Behavioral differences from
-classic `rsync` are tracked in [docs/differences.md](docs/differences.md).
-
-Quick links:
-
-- [Usage](docs/cli.md#usage)
-- [Flags](docs/cli.md#flags)
-- [Configuration precedence](docs/cli.md#configuration-precedence)
-
-### Logging
-
-Library callers can build a [`SyncConfig`] with `SyncConfig::builder()` to
-configure logging and metadata preservation flags before passing it to
-[`synchronize`]. For example, disabling permission preservation:
-
-```rust
-let cfg = SyncConfig::builder()
-    .log_format(LogFormat::Json)
-    .perms(false)
-    .build();
-```
-
-## Architecture
-See [docs/architecture.md](docs/architecture.md) for a deeper overview of crate
-boundaries, data flow, and key algorithms.
-
-Quick links:
-
-- [Crate boundaries](docs/architecture.md#crate-boundaries)
-- [Data flow](docs/architecture.md#data-flow)
-- [Key algorithms](docs/architecture.md#key-algorithms)
-
-The project is organized as a set of focused crates:
-
-- `protocol` – defines frame formats, negotiates versions, and encodes/decodes messages on the wire.
-- `checksums` – implements rolling and strong checksum algorithms for block matching.
-- `filters` – parses include/exclude rules that control which files participate in a transfer.
-- `walk` – traverses directories and produces the file list handed to the engine.
-- `meta` – models file metadata (permissions, timestamps, ownership) and provides helper utilities.
-- `compress` – offers traits and implementations for optional compression of file data during transfer.
-- `engine` – orchestrates scanning, delta calculation, and application of differences between sender and receiver.
-- `oc-rsync` – convenience wrapper around the engine that copies any files the
-  engine skips during synchronization.
-- `transport` – abstracts local and remote I/O, multiplexing channels over SSH, TCP, or other transports.
-- `oc-rsync-cli` – exposes a user-facing command line built on top of the engine and transport layers.
-- `fuzz` – houses fuzz targets that stress protocol and parser logic for robustness.
-
-## Building
-
-The CLI entry point resides in the `bin/oc-rsync` crate. Build or run it with Cargo:
-
-```
-cargo build -p oc-rsync-bin --bin oc-rsync
-# or
-cargo run -p oc-rsync-bin -- "<SRC>" "<DEST>"
-```
-
-Support for preserving extended attributes and POSIX ACLs is gated behind
-optional Cargo features. Enable them at build time:
-
-```
-cargo build -p oc-rsync-bin --bin oc-rsync --features "xattr acl"
-```
-
-## Packaging
-
-Release tarballs include sample files under `packaging/` to help run the
-daemon:
-
-- `packaging/oc-rsyncd.conf` – example configuration file
-- `packaging/systemd/oc-rsyncd.service` – systemd service unit
-
-## oc-rsyncd
-
-The `oc-rsyncd` binary is a thin wrapper around `oc-rsync --daemon` that
-forwards all arguments.  Its `--help` and `--version` output therefore match the
-daemon mode of `oc-rsync` byte-for-byte.
+### Packages
 
 ```bash
-oc-rsyncd --module 'data=/srv/export'
-oc-rsyncd --config /etc/oc-rsyncd.conf
+# Debian/Ubuntu
+sudo dpkg -i oc-rsync_<version>_amd64.deb
+
+# Fedora/RHEL
+sudo rpm -i oc-rsync-<version>.x86_64.rpm
 ```
 
-See [docs/daemon.md](docs/daemon.md) for more examples, the
-[`oc-rsyncd.conf(5)`](man/oc-rsyncd.conf.5) reference, and the hardened systemd
-unit at
-[`packaging/systemd/oc-rsyncd.service`](packaging/systemd/oc-rsyncd.service).
+### From source
 
-The regular `oc-rsync` binary can also launch the daemon by supplying the
-`--daemon` flag.
+#### Prerequisites
 
-## Milestone Roadmap
-1. **M1—Bootstrap** – repository builds; `walk` and `checksums` crates generate file signatures.
-2. **M2—Delta Engine** – `engine` drives local delta transfers with metadata preservation.
-3. **M3—Remote Protocol** – rsync protocol v32 over SSH and `rsync://` implemented.
-4. **M4—Metadata Fidelity** – permissions, symlinks, hard links, sparse files, and xattrs/ACLs handled.
-5. **M5—Filters & Compression** – include/exclude rules and compression negotiation wired through engine and CLI.
-6. **M6—Robust Transfers** – resume partials, verify checksums, and harden I/O against interruptions.
-7. **M7—Stabilization** – cross-platform builds, performance tuning, documentation, and compatibility matrix complete.
+The source build requires a C toolchain and compression libraries:
 
-## Testing
-Run the full test suite with:
+- `build-essential` (provides `gcc`/`ld`)
+- `libzstd-dev`
+- `zlib1g-dev`
 
-```
-make test
+On Debian/Ubuntu systems:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential libzstd-dev zlib1g-dev
 ```
 
-## Development
+Run `scripts/preflight.sh` to verify these dependencies before building.
 
-The Makefile offers shortcuts for common tasks. Repository guidelines require verifying file header comments:
-
-```
-make fmt    # Format the code
-make clippy # Run Clippy lints
-make doc    # Build documentation
-make test   # Run the test suite
-make verify-comments  # Validate file header comments
-make build UPSTREAM=<ver> OFFICIAL=<0|1> # Build oc-rsync with metadata
-make version  # Print oc-rsync --version output
+```bash
+cargo install oc-rsync
+# or build from source
+cargo build -p oc-rsync-bin --bin oc-rsync
 ```
 
-The `build` target forwards `UPSTREAM` and `OFFICIAL` to `cargo build` as
-`RSYNC_UPSTREAM_VER` and `OFFICIAL_BUILD`. After building, `make version`
-runs the compiled binary and displays its `--version` text.
+See [packaging/](packaging) for daemon configs and systemd units.
 
-## Fuzzing
-The project includes fuzz targets under `fuzz`.
-See [docs/fuzzing.md](docs/fuzzing.md) for instructions on installing the
-tooling and running the fuzzers.
+## Usage
 
-## Performance
-Performance benchmarks and CPU feature detection details are documented in
-[docs/perf.md](docs/perf.md).
+```bash
+$ oc-rsync --help
+oc-rsync 0.1.0 — Pure-Rust rsync replica (compatible with rsync 3.4.1 / protocol 32)
+...
+```
 
+The CLI aims for byte-for-byte parity with upstream `rsync`. Additional examples and flag descriptions are in [docs/cli.md](docs/cli.md) and upstream differences in [docs/differences.md](docs/differences.md).
+
+## Design/Architecture
+
+An overview of crate boundaries, data flow, and algorithms is in [docs/architecture.md](docs/architecture.md). Agent responsibilities and protocol constants are detailed in [docs/UPSTREAM.md](docs/UPSTREAM.md), [docs/transport.md](docs/transport.md), and [docs/filters.md](docs/filters.md).
+
+## Testing & CI
+
+`make test` runs the full test suite. CI workflows live under [.github/workflows](.github/workflows). Fuzzing and interoperability grids are described in [docs/fuzzing.md](docs/fuzzing.md) and [docs/interop-grid.md](docs/interop-grid.md).
+
+## Security
+
+Report vulnerabilities via [SECURITY.md](SECURITY.md). The daemon aims to match upstream hardening and privilege‑drop semantics.
+
+## Roadmap
+
+- M1—Bootstrap: repository builds; walk and checksum crates generate file signatures.
+- M2—Delta Engine: local delta transfers with metadata preservation.
+- M3—Remote Protocol: rsync protocol v32 over SSH and `rsync://`.
+- M4—Metadata Fidelity: permissions, symlinks, hard links, sparse files, xattrs/ACLs.
+- M5—Filters & Compression: include/exclude rules and compression negotiation.
+- M6—Robust Transfers: resume partials, verify checksums, hardened I/O.
+- M7—Stabilization: cross‑platform builds, performance tuning, and compatibility matrix completion.
 
 ## License
-This project is dual-licensed under the terms of the [MIT](LICENSE-MIT) and [Apache-2.0](LICENSE-APACHE) licenses.
+
+Dual-licensed under [MIT](LICENSE-MIT) and [Apache-2.0](LICENSE-APACHE).
+
+## Acknowledgements
+
+Inspired by the original [rsync](https://rsync.samba.org/) by Andrew Tridgell and the Samba team. Thanks to the Rust community and upstream projects that made this re‑implementation possible.
+

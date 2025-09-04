@@ -9,9 +9,9 @@ set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
 GOLDEN="$ROOT/tests/interop/golden"
-CLIENT_VERSIONS=("3.1.3" "3.2.7" "3.3.0" "3.4.1" "oc-rsync")
-SERVER_VERSIONS=("3.1.3" "3.2.7" "3.3.0" "3.4.1" "oc-rsync")
-TRANSPORTS=("ssh" "rsync")
+CLIENT_VERSIONS=(${CLIENT_VERSIONS:-"3.1.3 3.2.7 3.3.0 3.4.1 oc-rsync"})
+SERVER_VERSIONS=(${SERVER_VERSIONS:-"3.1.3 3.2.7 3.3.0 3.4.1 oc-rsync"})
+TRANSPORTS=(${TRANSPORTS:-"ssh rsync"})
 
 # Additional scenarios to exercise. Each entry is "name extra_flags" where
 # extra_flags are optional.
@@ -55,7 +55,7 @@ fi
 
 # Options used for all transfers. -a implies -rtgoD, we add -A and -X for ACLs
 # and xattrs.
-COMMON_FLAGS=(--archive --acls --xattrs)
+COMMON_FLAGS=(${COMMON_FLAGS:-"--archive --acls --xattrs"})
 
 mkdir -p "$GOLDEN"
 
@@ -201,8 +201,10 @@ for v in "${CLIENT_VERSIONS[@]}" "${SERVER_VERSIONS[@]}"; do
   if [[ "$v" == "oc-rsync" ]]; then
     if [[ ! -x "$ROOT/target/debug/oc-rsync" ]]; then
       echo "Building oc-rsync" >&2
-      cargo build --quiet -p oc-rsync-bin --bin oc-rsync
+      cargo build --quiet --bin oc-rsync --features="acl xattr"
     fi
+  elif [[ "$v" == "system" ]]; then
+    command -v rsync >/dev/null || { echo "system rsync not found" >&2; exit 1; }
   else
     fetch_rsync "$v" >/dev/null
   fi
@@ -211,12 +213,16 @@ done
 for c in "${CLIENT_VERSIONS[@]}"; do
   if [[ "$c" == "oc-rsync" ]]; then
     client_bin="$ROOT/target/debug/oc-rsync"
+  elif [[ "$c" == "system" ]]; then
+    client_bin="$(command -v rsync)"
   else
     client_bin="$ROOT/rsync-$c/rsync"
   fi
   for s in "${SERVER_VERSIONS[@]}"; do
     if [[ "$s" == "oc-rsync" ]]; then
       server_bin="$ROOT/target/debug/oc-rsync"
+    elif [[ "$s" == "system" ]]; then
+      server_bin="$(command -v rsync)"
     else
       server_bin="$ROOT/rsync-$s/rsync"
     fi
@@ -244,23 +250,23 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             result="$tmpdir"
             if [[ "$name" == drop_connection ]]; then
               dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
-              timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
+              timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsync-path "$server_bin" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
             elif [[ "$name" == resume* ]]; then
               dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
-              timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
-              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
+              timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsync-path "$server_bin" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsync-path "$server_bin" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
             elif [[ "$name" == vanished ]]; then
               (sleep 0.1 && rm -f "$src/file.txt") &
-              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsync-path "$server_bin" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null || true
             elif [[ "$name" == rsh ]]; then
-              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsh "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsync-path "$server_bin" --rsh "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
             elif [[ "$name" == remote_remote ]]; then
               mkdir -p "$tmpdir/src" "$tmpdir/dst"
               cp -a "$src/." "$tmpdir/src"
-              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsh "$ssh" "root@localhost:$tmpdir/src/" "root@localhost:$tmpdir/dst" >/dev/null
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsync-path "$server_bin" --rsh "$ssh" "root@localhost:$tmpdir/src/" "root@localhost:$tmpdir/dst" >/dev/null
               result="$tmpdir/dst"
             else
-              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsync-path "$server_bin" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
             fi
             base="${c}_${s}_ssh"
             gold="$GOLDEN/$base"

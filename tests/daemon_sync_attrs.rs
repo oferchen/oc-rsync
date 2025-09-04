@@ -18,7 +18,7 @@ use std::time::Duration;
 #[cfg(unix)]
 use tempfile::tempdir;
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 use posix_acl::{PosixACL, Qualifier, ACL_READ, ACL_WRITE};
 
 #[cfg(unix)]
@@ -42,7 +42,7 @@ fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
     (child, port)
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 fn spawn_rsync_daemon_acl(root: &std::path::Path) -> (Child, u16) {
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
@@ -80,7 +80,7 @@ fn wait_for_daemon(port: u16) {
     panic!("daemon did not start");
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 fn try_set_xattr(path: &std::path::Path, name: &str, value: &[u8]) -> bool {
     match xattr::set(path, name, value) {
         Ok(()) => true,
@@ -89,7 +89,7 @@ fn try_set_xattr(path: &std::path::Path, name: &str, value: &[u8]) -> bool {
     }
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 fn spawn_rsync_daemon_xattr(root: &std::path::Path) -> (Child, u16) {
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
@@ -121,7 +121,7 @@ fn spawn_rsync_daemon_xattr(root: &std::path::Path) -> (Child, u16) {
     (child, port)
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 #[test]
 #[ignore]
 #[serial]
@@ -171,7 +171,7 @@ fn daemon_preserves_xattrs() {
     let _ = child.wait();
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 #[test]
 #[serial]
 fn daemon_preserves_symlink_xattrs_rr_client() {
@@ -206,7 +206,7 @@ fn daemon_preserves_symlink_xattrs_rr_client() {
     let _ = child.wait();
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 #[test]
 #[serial]
 fn daemon_preserves_xattrs_rr_client() {
@@ -260,7 +260,7 @@ fn daemon_preserves_xattrs_rr_client() {
     let _ = child.wait();
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 #[test]
 #[ignore]
 #[serial]
@@ -315,7 +315,7 @@ fn daemon_preserves_xattrs_rr_daemon() {
     let _ = child.wait();
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 #[test]
 #[ignore]
 #[serial]
@@ -361,7 +361,7 @@ fn daemon_excludes_filtered_xattrs() {
     let _ = child.wait();
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 #[test]
 #[ignore]
 #[serial]
@@ -408,7 +408,7 @@ fn daemon_excludes_filtered_xattrs_rr_client() {
     let _ = child.wait();
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 #[test]
 #[serial]
 fn daemon_xattrs_match_rsync_server() {
@@ -451,7 +451,7 @@ fn daemon_xattrs_match_rsync_server() {
     assert_eq!(val_oc, val_rs);
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 #[serial]
 fn daemon_preserves_acls() {
@@ -493,7 +493,7 @@ fn daemon_preserves_acls() {
     let _ = child.wait();
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 #[serial]
 fn daemon_preserves_acls_rr_client() {
@@ -536,7 +536,7 @@ fn daemon_preserves_acls_rr_client() {
     let _ = child.wait();
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 #[serial]
 fn daemon_removes_acls() {
@@ -577,7 +577,7 @@ fn daemon_removes_acls() {
     let _ = child.wait();
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 #[serial]
 fn daemon_ignores_acls_without_flag() {
@@ -610,7 +610,7 @@ fn daemon_ignores_acls_without_flag() {
     let _ = child.wait();
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 #[serial]
 fn daemon_inherits_default_acls() {
@@ -654,7 +654,7 @@ fn daemon_inherits_default_acls() {
     let _ = child.wait();
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 #[serial]
 fn daemon_inherits_default_acls_rr_client() {
@@ -699,7 +699,7 @@ fn daemon_inherits_default_acls_rr_client() {
     let _ = child.wait();
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 #[serial]
 fn daemon_acls_match_rsync_server() {
@@ -751,7 +751,7 @@ fn daemon_acls_match_rsync_server() {
     assert_eq!(dacl_oc.entries(), dacl_rs.entries());
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 #[serial]
 fn daemon_acls_match_rsync_client() {

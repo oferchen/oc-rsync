@@ -41,8 +41,12 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
       - name: Test with coverage
-        run: cargo llvm-cov --all-features --fail-under-lines 95
+        run: cargo llvm-cov nextest --all-features --fail-under-lines 95 -- --no-fail-fast
       - name: Validate interop matrix docs
         run: scripts/check-run-matrix-docs.sh
       - name: Cross-compile check
@@ -77,7 +81,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libacl1-dev
+          sudo apt-get install -y libacl1-dev dpkg-dev rpm
       - name: Install aarch64 toolchain
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: sudo apt-get install -y gcc-aarch64-linux-gnu
@@ -91,6 +95,19 @@ jobs:
           sha256sum dist/oc-rsync-${{ matrix.target }} > dist/oc-rsync-${{ matrix.target }}.sha256
           cargo install cargo-sbom || true
           cargo sbom --output dist/oc-rsync-${{ matrix.target }}-sbom.json
+      - name: Build packages
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          cargo install cargo-deb cargo-generate-rpm || true
+          cargo deb --no-build --target ${{ matrix.target }}
+          cargo generate-rpm --target ${{ matrix.target }}
+          deb=$(find target/debian -name '*.deb' -print -quit)
+          rpm=$(find target/generate-rpm -name '*.rpm' -print -quit)
+          cp "$deb" dist/
+          cp "$rpm" dist/
+          sha256sum "dist/$(basename "$deb")" > "dist/$(basename "$deb").sha256"
+          sha256sum "dist/$(basename "$rpm")" > "dist/$(basename "$rpm").sha256"
       - uses: actions/upload-artifact@v4
         with:
           name: oc-rsync-${{ matrix.target }}
@@ -109,7 +126,7 @@ jobs:
         run: |
           mkdir -p dist/docs
           cp man/oc-rsync.1 man/oc-rsyncd.8 man/oc-rsyncd.conf.5 dist/docs/
-          cp packaging/oc-rsyncd.conf dist/docs/
+          cp packaging/examples/oc-rsyncd.conf dist/docs/
           tar -czf dist/oc-rsync-docs.tar.gz -C dist/docs .
           sha256sum dist/oc-rsync-docs.tar.gz > dist/oc-rsync-docs.tar.gz.sha256
       - name: Upload release assets

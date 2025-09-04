@@ -24,6 +24,10 @@ The \f[V]oc-rsync\f[R] binary aims to mirror the familiar
 An overview of project goals and features is available in the README,
 and a high-level summary of CLI goals lives in the README\[cq]s CLI
 section.
+For a complete list of flags and their implementation status, see the
+feature matrix, which is the authoritative reference for contributors.
+The full \f[V]--help\f[R] output is captured in cli-help.txt and checked
+in CI to match the binary.
 .SS Usage
 .IP
 .nf
@@ -91,36 +95,6 @@ Incremental backup using hard links:
 oc-rsync -a --link-dest=\[dq]../prev\[dq] --compare-dest=\[dq]../base\[dq] \[dq]./src/\[dq] \[dq]./snapshot/\[dq]
 \f[R]
 .fi
-.IP \[bu] 2
-Tune delta block size:
-.RS 2
-.IP
-.nf
-\f[C]
-oc-rsync -B 65536 ./src remote:/dst
-\f[R]
-.fi
-.RE
-.IP \[bu] 2
-Emit JSON-formatted logs:
-.RS 2
-.IP
-.nf
-\f[C]
-oc-rsync -v ./src ./dst
-\f[R]
-.fi
-.RE
-.IP \[bu] 2
-Change ownership during transfer (requires root):
-.RS 2
-.IP
-.nf
-\f[C]
-sudo oc-rsync --chown=0:0 ./src/ remote:/dst/
-\f[R]
-.fi
-.RE
 .RE
 .IP \[bu] 2
 Tune delta block size:
@@ -138,7 +112,7 @@ Change ownership during transfer (requires root):
 .IP
 .nf
 \f[C]
-sudo oc-rsync --chown=0:0 \[dq]./src/\[dq] \[dq]remote:/dst/\[dq]
+sudo oc-rsync --chown=0:0 ./src/ remote:/dst/
 \f[R]
 .fi
 .RE
@@ -149,6 +123,26 @@ Show version:
 .nf
 \f[C]
 oc-rsync --version
+\f[R]
+.fi
+.PP
+which prints three lines:
+.IP
+.nf
+\f[C]
+oc-rsync <pkg-version> (protocol <protocol>)
+rsync <upstream-version>
+<build-revision> <official|unofficial>
+\f[R]
+.fi
+.RE
+.IP \[bu] 2
+Probe a daemon\[cq]s protocol support:
+.RS 2
+.IP
+.nf
+\f[C]
+oc-rsync --probe 127.0.0.1:873
 \f[R]
 .fi
 .RE
@@ -379,7 +373,7 @@ T}@T{
 T}@T{
 off
 T}@T{
-negotiates zstd, lz4, zlibx, or zlib
+negotiates zstd or zlib
 T}@T{
 matrix
 T}
@@ -389,7 +383,7 @@ T}@T{
 T}@T{
 auto
 T}@T{
-supports zstd, lz4, zlibx, and zlib
+supports zstd and zlib
 T}@T{
 matrix
 T}
@@ -803,6 +797,7 @@ T}@T{
 T}@T{
 off
 T}@T{
+request charset conversion of filenames
 T}@T{
 matrix
 T}
@@ -1035,7 +1030,7 @@ T}@T{
 T}@T{
 off
 T}@T{
-alias for \f[V]--no-devices --no-specials\f[R]
+alias for \f[V]--no-devices\f[R] and \f[V]--no-specials\f[R]
 T}@T{
 matrix
 T}
@@ -1054,6 +1049,7 @@ T}@T{
 T}@T{
 off
 T}@T{
+skip creating implicit ancestor directories
 T}@T{
 matrix
 T}
@@ -1148,6 +1144,7 @@ T}@T{
 T}@T{
 off
 T}@T{
+avoid changing atime on supported platforms
 T}@T{
 matrix
 T}
@@ -1603,8 +1600,103 @@ matrix
 T}
 .TE
 .PP
-Implementation details for each flag live in the feature matrix and the
-CLI flag reference.
+Implementation details for each flag live in the feature matrix, the
+authoritative reference for flag coverage.
+.SS Format escapes
+.PP
+\f[V]oc-rsync\f[R] understands a small set of escapes in
+\f[V]--out-format\f[R] and \f[V]--log-file-format\f[R] strings:
+.PP
+.TS
+tab(@);
+l l.
+T{
+Escape
+T}@T{
+Meaning
+T}
+_
+T{
+\f[V]%n\f[R]
+T}@T{
+file name
+T}
+T{
+\f[V]%L\f[R]
+T}@T{
+symlink target (prefixed by \f[V]->\f[R])
+T}
+T{
+\f[V]%i\f[R]
+T}@T{
+itemized change string
+T}
+T{
+\f[V]%o\f[R]
+T}@T{
+operation (\f[V]send\f[R], \f[V]recv\f[R], \f[V]del.\f[R])
+T}
+T{
+\f[V]%%\f[R]
+T}@T{
+literal percent sign
+T}
+T{
+\f[V]\[rs]\[rs]a\f[R]
+T}@T{
+bell
+T}
+T{
+\f[V]\[rs]\[rs]b\f[R]
+T}@T{
+backspace
+T}
+T{
+\f[V]\[rs]\[rs]e\f[R]
+T}@T{
+escape
+T}
+T{
+\f[V]\[rs]\[rs]f\f[R]
+T}@T{
+form feed
+T}
+T{
+\f[V]\[rs]\[rs]n\f[R]
+T}@T{
+newline
+T}
+T{
+\f[V]\[rs]\[rs]r\f[R]
+T}@T{
+carriage return
+T}
+T{
+\f[V]\[rs]\[rs]t\f[R]
+T}@T{
+tab
+T}
+T{
+\f[V]\[rs]\[rs]v\f[R]
+T}@T{
+vertical tab
+T}
+T{
+\f[V]\[rs]\[rs]\f[R]
+T}@T{
+backslash
+T}
+T{
+\f[V]\[rs]\[rs]0NNN\f[R]
+T}@T{
+octal byte value
+T}
+T{
+\f[V]\[rs]\[rs]xHH\f[R]
+T}@T{
+hex byte value
+T}
+.TE
 .SS Permission tweaks with \f[V]--chmod\f[R]
 .PP
 The \f[V]--chmod=CHMOD\f[R] option adjusts permission bits on

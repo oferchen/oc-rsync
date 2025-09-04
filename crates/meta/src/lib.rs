@@ -4,15 +4,23 @@ mod unix;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub use unix::*;
 
+#[cfg(target_os = "windows")]
+mod windows;
+#[cfg(target_os = "windows")]
+pub use windows::*;
+
 #[cfg(target_os = "linux")]
 pub use nix::sys::stat::{major, makedev, minor};
 
 #[cfg(target_os = "macos")]
 pub use libc::{major, makedev, minor};
 
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub use nix::sys::stat::{Mode, SFlag};
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
 mod stub;
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
 pub use stub::*;
 
 mod parse;
@@ -30,7 +38,15 @@ pub fn mode_from_metadata(meta: &std::fs::Metadata) -> u32 {
         use std::os::unix::fs::PermissionsExt;
         normalize_mode(meta.permissions().mode())
     }
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    {
+        let mut mode = 0o666;
+        if meta.permissions().readonly() {
+            mode &= !0o222;
+        }
+        mode
+    }
+    #[cfg(not(any(unix, windows)))]
     {
         0
     }
@@ -58,9 +74,9 @@ impl Options {
 use filetime::set_symlink_file_times;
 use filetime::{set_file_times, FileTime};
 use std::collections::HashMap;
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 use std::collections::HashSet;
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
@@ -192,7 +208,7 @@ impl HardLinks {
     }
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 pub(crate) fn should_ignore_xattr_error(err: &io::Error) -> bool {
     matches!(
         err.raw_os_error(),
@@ -205,7 +221,7 @@ pub(crate) fn should_ignore_xattr_error(err: &io::Error) -> bool {
     )
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 pub fn apply_xattrs(
     path: &Path,
     xattrs: &[(OsString, Vec<u8>)],
@@ -284,5 +300,5 @@ impl UidTable {
     }
 }
 
-#[cfg(feature = "acl")]
+#[cfg(unix)]
 pub use posix_acl::{ACLEntry, PosixACL, Qualifier, ACL_EXECUTE, ACL_READ, ACL_RWX, ACL_WRITE};

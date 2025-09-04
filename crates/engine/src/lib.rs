@@ -17,7 +17,7 @@ use transport::{pipe, Transport};
 
 pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
-use compress::{should_compress, Codec, Compressor, Decompressor, Zlib, Zstd};
+use compress::{should_compress, Codec, Compressor, Decompressor, Lz4, Zlib, ZlibX, Zstd};
 use filters::Matcher;
 use logging::{escape_path, progress_formatter, rate_formatter, InfoFlag};
 use protocol::ExitCode;
@@ -65,6 +65,35 @@ fn is_device(file_type: &std::fs::FileType) -> bool {
     {
         false
     }
+}
+
+fn is_remote_spec(path: &Path) -> bool {
+    if let Some(s) = path.to_str() {
+        if s.starts_with("rsync://") {
+            return true;
+        }
+        if s.starts_with('[') && s.contains("]:") {
+            return true;
+        }
+        if s.contains("::") {
+            return true;
+        }
+        if let Some(idx) = s.find(':') {
+            if idx == 1 {
+                let bytes = s.as_bytes();
+                if bytes[0].is_ascii_alphabetic()
+                    && bytes
+                        .get(2)
+                        .map(|c| *c == b'/' || *c == b'\\')
+                        .unwrap_or(false)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+    false
 }
 
 #[derive(Debug, Error)]
@@ -385,11 +414,11 @@ pub fn fuzzy_match(dest: &Path) -> Option<PathBuf> {
     best.map(|(_, p)| p)
 }
 
-fn open_for_read(path: &Path, opts: &SyncOptions) -> std::io::Result<File> {
+fn open_for_read(path: &Path, _opts: &SyncOptions) -> std::io::Result<File> {
     #[cfg(target_os = "linux")]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        if opts.open_noatime {
+        if _opts.open_noatime {
             let mut o = OpenOptions::new();
             o.read(true).custom_flags(libc::O_NOATIME);
             if let Ok(f) = o.open(path) {
@@ -1196,10 +1225,11 @@ impl Sender {
             if let Some(codec) = file_codec {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
-                        Codec::Zlib => {
+                        Codec::Zlib | Codec::Zlibx => {
                             let lvl = self.opts.compress_level.unwrap_or(6);
                             Zlib::new(lvl).compress(d).map_err(EngineError::from)?
                         }
+                        Codec::Lz4 => Lz4::new().compress(d).map_err(EngineError::from)?,
                         Codec::Zstd => {
                             let lvl = self.opts.compress_level.unwrap_or(0);
                             Zstd::new(lvl).compress(d).map_err(EngineError::from)?
@@ -1250,6 +1280,11 @@ impl Receiver {
             #[cfg(unix)]
             link_map: meta::HardLinks::default(),
         }
+    }
+
+    #[cfg(unix)]
+    pub fn register_hard_link(&mut self, id: u64, path: &Path) -> bool {
+        self.link_map.register(id, path)
     }
 
     pub fn apply<I>(&mut self, src: &Path, dest: &Path, _rel: &Path, delta: I) -> Result<PathBuf>
@@ -1453,7 +1488,10 @@ impl Receiver {
             if let Some(codec) = file_codec {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
-                        Codec::Zlib => Zlib::default().decompress(d).map_err(EngineError::from)?,
+                        Codec::Zlib | Codec::Zlibx => {
+                            ZlibX::default().decompress(d).map_err(EngineError::from)?
+                        }
+                        Codec::Lz4 => Lz4::new().decompress(d).map_err(EngineError::from)?,
                         Codec::Zstd => Zstd::default().decompress(d).map_err(EngineError::from)?,
                     };
                 }
@@ -1975,7 +2013,7 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     let choices: Vec<Codec> = opts
         .compress_choice
         .clone()
-        .unwrap_or_else(|| vec![Codec::Zstd, Codec::Zlib]);
+        .unwrap_or_else(|| vec![Codec::Zstd, Codec::Lz4, Codec::Zlibx, Codec::Zlib]);
     choices.into_iter().find(|c| remote.contains(c))
 }
 
@@ -2200,10 +2238,15 @@ pub fn sync(
         .write_batch
         .as_ref()
         .and_then(|p| OpenOptions::new().create(true).append(true).open(p).ok());
-    let src_root = fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf());
+    let src_is_remote = is_remote_spec(src);
+    let src_root = if src_is_remote {
+        src.to_path_buf()
+    } else {
+        fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf())
+    };
     let mut stats = Stats::default();
     let start = Instant::now();
-    if !src_root.exists() {
+    if !src_is_remote && !src_root.exists() {
         if opts.delete_missing_args {
             if dst.exists() {
                 if let Some(max) = opts.max_delete {
@@ -2466,7 +2509,7 @@ pub fn sync(
                         let dev = walker.devs()[entry.dev];
                         let ino = walker.inodes()[entry.inode];
                         let group = meta::hard_link_id(dev, ino);
-                        if !receiver.link_map.register(group, &dest_path) {
+                        if !receiver.register_hard_link(group, &dest_path) {
                             if let Some(parent) = dest_path.parent() {
                                 fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
                             }
@@ -2604,6 +2647,13 @@ pub fn sync(
                     }
                     dir_meta.push((path.clone(), dest_path.clone()));
                 } else if file_type.is_symlink() {
+                    if !(opts.links
+                        || opts.copy_links
+                        || opts.copy_dirlinks
+                        || opts.copy_unsafe_links)
+                    {
+                        continue;
+                    }
                     let mut target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
                     if opts.munge_links {
                         if let Ok(stripped) = target.strip_prefix(MUNGE_PREFIX) {

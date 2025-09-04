@@ -24,15 +24,15 @@ doc:
 	cargo doc --no-deps --all-features
 
 test:
-	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo test
-	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo test --all-features
+	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo nextest run --workspace --no-fail-fast
+	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo nextest run --workspace --no-fail-fast --all-features
 
 coverage:
-	cargo llvm-cov --workspace --doctests \
-		--fail-under-lines 95 --fail-under-functions 95
+	cargo llvm-cov nextest --workspace --doctests \
+		--fail-under-lines 95 --fail-under-functions 95 -- --no-fail-fast
 
 interop:
-	bash tests/interop/run_matrix.sh
+	@bash tests/interop/run_matrix.sh
 
 test-golden:
 	env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" cargo build --quiet -p oc-rsync-bin --bin oc-rsync
@@ -46,7 +46,10 @@ test-golden:
 	echo "Running tests/partial_transfer_resume.sh"; \
 	bash tests/partial_transfer_resume.sh; \
 	echo "Running tests/partial_dir_transfer_resume.sh"; \
-	bash tests/partial_dir_transfer_resume.sh
+        bash tests/partial_dir_transfer_resume.sh
+
+refresh-upstream-goldens:
+	@bash scripts/refresh_upstream_goldens.sh
 
 # Standard release build; honors env vars if provided:
 #   make build RSYNC_UPSTREAM_VER=3.4.1 OFFICIAL_BUILD=1

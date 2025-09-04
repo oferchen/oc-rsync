@@ -5,6 +5,7 @@ overview of project goals and features is available in the
 [README](../README.md#in-scope-features), and a high-level summary of CLI goals
 lives in the [README's CLI section](../README.md#cli).
 For a complete list of flags and their implementation status, see the [feature matrix](feature_matrix.md), which is the authoritative reference for contributors.
+The full `--help` output is captured in [cli-help.txt](cli-help.txt) and checked in CI to match the binary.
 
 ## Usage
 
@@ -73,6 +74,12 @@ oc-rsync [OPTIONS] "<SRC>" "<DEST>"
   oc-rsync <pkg-version> (protocol <protocol>)
   rsync <upstream-version>
   <build-revision> <official|unofficial>
+  ```
+
+- Probe a daemon's protocol support:
+
+  ```sh
+  oc-rsync --probe 127.0.0.1:873
   ```
 
 ### Trailing slash semantics
@@ -310,6 +317,20 @@ variables from its own process whose names begin with `RSYNC_`, mirroring
 
 No configuration file is loaded unless `--config` is supplied. Settings
 specified earlier in the list override later sources.
+
+### Branding environment variables
+
+The CLI's branding can be customized at runtime via the following environment
+variables:
+
+- `OC_RSYNC_BRAND_NAME` – override the displayed program name.
+- `OC_RSYNC_BRAND_TAGLINE` – one-line tagline shown in `--help` output.
+- `OC_RSYNC_BRAND_URL` – project URL printed in `--help` and `--version`.
+- `OC_RSYNC_BRAND_COPYRIGHT` – copyright line used in `--version` output.
+- `OC_RSYNC_HIDE_CREDITS` – if set to a non-zero value, hides the tagline and URL.
+- `OC_RSYNC_VERSION_PREFIX` – prefix prepended to the package version.
+- `OC_RSYNC_HELP_HEADER` – replaces the default help header text.
+- `OC_RSYNC_VERSION_HEADER` – replaces the default version header text.
 
 ## Filters
 

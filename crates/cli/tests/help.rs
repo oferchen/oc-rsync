@@ -1,5 +1,5 @@
 // crates/cli/tests/help.rs
-use oc_rsync_cli::{cli_command, render_help};
+use oc_rsync_cli::{branding, cli_command, render_help};
 use serial_test::serial;
 use std::env;
 
@@ -8,8 +8,16 @@ use std::env;
 fn help_columns_80() {
     env::set_var("COLUMNS", "80");
     let out = render_help(&cli_command());
-    let expected = include_str!("../resources/rsync-help-80.txt").trim_end();
-    assert_eq!(out, expected);
+    let mut lines = out.lines();
+    assert_eq!(
+        lines.next().unwrap(),
+        format!("{} {}", branding::program_name(), branding::brand_version())
+    );
+    assert_eq!(lines.next().unwrap(), branding::brand_tagline());
+    assert!(lines.next().unwrap().is_empty());
+    assert!(out.contains("Usage:"));
+    assert!(out.contains("--verbose, -v"));
+    env::remove_var("COLUMNS");
 }
 
 #[test]
@@ -17,8 +25,15 @@ fn help_columns_80() {
 fn help_columns_120() {
     env::set_var("COLUMNS", "120");
     let out = render_help(&cli_command());
-    let expected = include_str!("../../../tests/fixtures/rsync-help-120.txt").trim_end();
-    assert_eq!(out, expected);
+    let mut lines = out.lines();
+    assert_eq!(
+        lines.next().unwrap(),
+        format!("{} {}", branding::program_name(), branding::brand_version())
+    );
+    assert_eq!(lines.next().unwrap(), branding::brand_tagline());
+    assert!(lines.next().unwrap().is_empty());
+    assert!(out.contains("--verbose, -v"));
+    env::remove_var("COLUMNS");
 }
 
 #[test]

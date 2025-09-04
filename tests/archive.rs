@@ -4,9 +4,9 @@ use assert_cmd::Command;
 #[cfg(unix)]
 use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
-use nix::sys::stat::{mknod, Mode, SFlag};
+use nix::unistd::{chown, Gid, Uid};
 #[cfg(unix)]
-use nix::unistd::{chown, mkfifo, Gid, Uid};
+use oc_rsync::meta::{makedev, Mode, SFlag};
 #[cfg(unix)]
 use sha2::{Digest, Sha256};
 #[cfg(unix)]
@@ -35,10 +35,9 @@ fn hash_dir(dir: &Path) -> Vec<u8> {
 
 #[cfg(unix)]
 #[test]
-#[ignore = "--no-links not yet supported"]
 fn archive_matches_combination_and_rsync() {
     if !Uid::effective().is_root() {
-        eprintln!("skipping: requires root privileges");
+        println!("skipping: requires root privileges");
         return;
     }
 
@@ -56,14 +55,17 @@ fn archive_matches_combination_and_rsync() {
     )
     .unwrap();
     symlink("dir/file", src.join("link")).unwrap();
-    mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
-    mknod(
-        &src.join("dev"),
-        SFlag::S_IFCHR,
-        Mode::from_bits_truncate(0o644),
-        meta::makedev(1, 7),
-    )
-    .unwrap();
+    meta::mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
+    #[allow(clippy::useless_conversion)]
+    {
+        meta::mknod(
+            &src.join("dev"),
+            SFlag::S_IFCHR,
+            Mode::from_bits_truncate(0o644),
+            u64::from(makedev(1, 7)),
+        )
+        .unwrap();
+    }
 
     let dst_archive = tmp.path().join("dst_archive");
     let dst_combo = tmp.path().join("dst_combo");
@@ -132,7 +134,6 @@ fn archive_matches_combination_and_rsync() {
 
 #[cfg(unix)]
 #[test]
-#[ignore = "--no-links not yet supported"]
 fn archive_respects_no_options() {
     if !Uid::effective().is_root() {
         eprintln!("skipping: requires root privileges");
@@ -153,12 +154,12 @@ fn archive_respects_no_options() {
     )
     .unwrap();
     symlink("dir/file", src.join("link")).unwrap();
-    mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
-    mknod(
+    meta::mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
+    meta::mknod(
         &src.join("dev"),
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o644),
-        meta::makedev(1, 7),
+        makedev(1, 7),
     )
     .unwrap();
 

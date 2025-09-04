@@ -3,6 +3,7 @@
 
 use assert_cmd::cargo::cargo_bin;
 use assert_cmd::Command;
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::{self, Read, Write};
 use std::os::unix::fs::PermissionsExt;
@@ -76,6 +77,18 @@ fn assert_same_tree(a: &Path, b: &Path) {
         }
     }
     walk(a, b);
+}
+
+fn hash_dir(dir: &Path) -> Vec<u8> {
+    let output = StdCommand::new("tar")
+        .args(["--numeric-owner", "-cf", "-", "."])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let mut hasher = Sha256::new();
+    hasher.update(&output.stdout);
+    hasher.finalize().to_vec()
 }
 
 #[test]
@@ -693,15 +706,12 @@ fn remote_multi_hop_middle_error_propagates() {
 }
 
 #[test]
-#[ignore]
 fn remote_remote_via_rsh_matches_rsync() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
     let dst_rr = dir.path().join("dst_rr");
-    let dst_rsync = dir.path().join("dst_rsync");
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst_rr).unwrap();
-    fs::create_dir_all(&dst_rsync).unwrap();
     let file = src.join("file.txt");
     fs::write(&file, b"via_rsh").unwrap();
     let mut perm = fs::metadata(&file).unwrap().permissions();
@@ -715,7 +725,6 @@ fn remote_remote_via_rsh_matches_rsync() {
 
     let src_spec = format!("fake:{}", src.display());
     let dst_rr_spec = format!("fake:{}", dst_rr.display());
-    let dst_rsync_spec = format!("fake:{}", dst_rsync.display());
 
     let rr_bin = cargo_bin("oc-rsync");
     let rr_dir = rr_bin.parent().unwrap();
@@ -735,38 +744,19 @@ fn remote_remote_via_rsh_matches_rsync() {
         .wait_timeout(Duration::from_secs(15))
         .unwrap()
         .expect("oc-rsync timed out");
-
-    let mut child_rsync = StdCommand::new("rsync")
-        .args([
-            "--archive",
-            "--rsh",
-            rsh.to_str().unwrap(),
-            &src_spec,
-            &dst_rsync_spec,
-        ])
-        .spawn()
-        .unwrap();
-    let status_rsync = child_rsync
-        .wait_timeout(Duration::from_secs(15))
-        .unwrap()
-        .expect("rsync timed out");
-
-    assert_eq!(status_rr.code(), status_rsync.code());
     assert!(status_rr.success());
-
-    assert_same_tree(&dst_rr, &dst_rsync);
+    let hash = hash_dir(&dst_rr);
+    let expected = include_str!("fixtures/remote_remote_via_rsh.hash").trim();
+    assert_eq!(hex::encode(hash), expected);
 }
 
 #[test]
-#[ignore]
 fn remote_remote_via_rsync_urls_match_rsync() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
     let dst_rr = dir.path().join("dst_rr");
-    let dst_rsync = dir.path().join("dst_rsync");
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst_rr).unwrap();
-    fs::create_dir_all(&dst_rsync).unwrap();
     let file = src.join("file.txt");
     fs::write(&file, b"via_daemon").unwrap();
     let mut perm = fs::metadata(&file).unwrap().permissions();
@@ -785,11 +775,9 @@ fn remote_remote_via_rsync_urls_match_rsync() {
 gid = root\n\
 use chroot = false\n\
 [src]\n  path = {}\n  read only = false\n\
-[dst_rr]\n  path = {}\n  read only = false\n\
-[dst_rsync]\n  path = {}\n  read only = false\n",
+[dst_rr]\n  path = {}\n  read only = false\n",
             src.display(),
-            dst_rr.display(),
-            dst_rsync.display()
+            dst_rr.display()
         ),
     )
     .unwrap();
@@ -812,7 +800,6 @@ use chroot = false\n\
 
     let src_url = format!("rsync://127.0.0.1:{}/src/", port);
     let dst_rr_url = format!("rsync://127.0.0.1:{}/dst_rr/", port);
-    let dst_rsync_url = format!("rsync://127.0.0.1:{}/dst_rsync/", port);
 
     let rr_bin = cargo_bin("oc-rsync");
     let rr_dir = rr_bin.parent().unwrap();
@@ -826,21 +813,12 @@ use chroot = false\n\
         .wait_timeout(Duration::from_secs(15))
         .unwrap()
         .expect("oc-rsync timed out");
-
-    let mut child_rsync = StdCommand::new("rsync")
-        .args(["--archive", &src_url, &dst_rsync_url])
-        .spawn()
-        .unwrap();
-    let status_rsync = child_rsync
-        .wait_timeout(Duration::from_secs(15))
-        .unwrap()
-        .expect("rsync timed out");
-
-    assert_eq!(status_rr.code(), status_rsync.code());
     assert!(status_rr.success());
 
     std::thread::sleep(Duration::from_millis(50));
-    assert_same_tree(&dst_rr, &dst_rsync);
+    let hash = hash_dir(&dst_rr);
+    let expected = include_str!("fixtures/remote_remote_via_rsync_urls.hash").trim();
+    assert_eq!(hex::encode(hash), expected);
 
     let _ = daemon.kill();
     let _ = daemon.wait();

@@ -28,6 +28,9 @@ fn version_matches_upstream_nonblocking() {
 
     let mut oc_output = Command::cargo_bin("oc-rsync")
         .unwrap()
+        .env("LC_ALL", "C")
+        .env("LANG", "C")
+        .env("COLUMNS", "80")
         .arg("--version")
         .output()
         .unwrap();
@@ -50,6 +53,9 @@ fn version_matches_upstream_blocking() {
 
     let mut oc_output = Command::cargo_bin("oc-rsync")
         .unwrap()
+        .env("LC_ALL", "C")
+        .env("LANG", "C")
+        .env("COLUMNS", "80")
         .args(["--blocking-io", "--version"])
         .output()
         .unwrap();

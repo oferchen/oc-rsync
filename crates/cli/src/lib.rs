@@ -36,12 +36,9 @@ use filters::{default_cvs_rules, Matcher, Rule};
 pub use formatter::{render_help, ARG_ORDER};
 use logging::{human_bytes, parse_escapes, InfoFlag};
 use meta::{parse_chmod, parse_chown, IdKind};
-#[cfg(feature = "acl")]
-use protocol::CAP_ACLS;
-#[cfg(feature = "xattr")]
-use protocol::CAP_XATTRS;
 use protocol::{
-    negotiate_version, CharsetConv, ExitCode, CAP_CODECS, LATEST_VERSION, SUPPORTED_PROTOCOLS, V30,
+    negotiate_version, CharsetConv, ExitCode, CAP_ACLS, CAP_CODECS, CAP_XATTRS, LATEST_VERSION,
+    SUPPORTED_PROTOCOLS, V30,
 };
 use transport::{parse_sockopts, AddressFamily, RateLimitedTransport, SshStdioTransport};
 #[cfg(unix)]
@@ -63,7 +60,7 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     init_logging(matches, log_file_fmt);
     let probe_opts =
         ProbeOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
-    if probe_opts.probe {
+    if matches.contains_id("probe") {
         return run_probe(probe_opts, matches.get_flag("quiet"));
     }
     if !opts.old_args && matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
@@ -77,12 +74,11 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
 }
 
 fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
-    let srcs = if opts.srcs.is_empty() {
-        return Err(EngineError::Other("missing SRC".into()));
-    } else {
-        opts.srcs.clone()
-    };
-    let dst_arg = opts.dst.clone();
+    if opts.paths.len() < 2 {
+        return Err(EngineError::Other("missing SRC or DST".into()));
+    }
+    let dst_arg = opts.paths.last().unwrap().clone();
+    let srcs = opts.paths[..opts.paths.len() - 1].to_vec();
     if srcs.len() > 1 {
         if let RemoteSpec::Local(ps) = parse_remote_spec(&dst_arg)? {
             if !ps.path.is_dir() {
@@ -132,13 +128,16 @@ fn run_single(
 ) -> Result<Stats> {
     if opts.archive {
         opts.recursive = true;
-        opts.links = !opts.no_links;
+        opts.links = true;
         opts.perms = !opts.no_perms;
         opts.times = !opts.no_times;
         opts.group = !opts.no_group;
         opts.owner = !opts.no_owner;
         opts.devices = !opts.no_devices;
         opts.specials = !opts.no_specials;
+    }
+    if opts.no_links {
+        opts.links = false;
     }
     if opts.old_dirs {
         opts.dirs = true;
@@ -154,7 +153,6 @@ fn run_single(
 
     parse_sockopts(&opts.sockopts).map_err(EngineError::Other)?;
 
-    #[cfg(feature = "acl")]
     let acls = opts.acls && !opts.no_acls;
 
     #[cfg(unix)]
@@ -169,11 +167,9 @@ fn run_single(
         } else {
             opts.group || opts.archive
         };
-        let needs_privs = need_owner
-            || need_group
-            || opts.chown.is_some()
-            || !opts.usermap.is_empty()
-            || !opts.groupmap.is_empty();
+        let maps_requested =
+            opts.chown.is_some() || !opts.usermap.is_empty() || !opts.groupmap.is_empty();
+        let needs_privs = need_owner || need_group || maps_requested;
         let numeric_fallback = opts.numeric_ids
             && opts.chown.is_none()
             && opts.usermap.is_empty()
@@ -182,23 +178,43 @@ fn run_single(
             use nix::unistd::Uid;
             if !Uid::effective().is_root() {
                 #[cfg(target_os = "linux")]
-                {
+                let has_privs = {
                     use caps::{CapSet, Capability};
-                    if !caps::has_cap(None, CapSet::Effective, Capability::CAP_CHOWN)
-                        .unwrap_or(false)
-                    {
-                        return Err(EngineError::Exit(
-                            ExitCode::StartClient,
-                            "changing ownership requires root or CAP_CHOWN".into(),
-                        ));
-                    }
-                }
+                    caps::has_cap(None, CapSet::Effective, Capability::CAP_CHOWN).unwrap_or(false)
+                };
                 #[cfg(not(target_os = "linux"))]
-                {
-                    return Err(EngineError::Exit(
-                        ExitCode::StartClient,
-                        "changing ownership requires root".into(),
-                    ));
+                let has_privs = false;
+
+                let priv_msg = if cfg!(target_os = "linux") {
+                    "changing ownership requires root or CAP_CHOWN"
+                } else {
+                    "changing ownership requires root"
+                };
+
+                if !has_privs {
+                    if maps_requested {
+                        return Err(EngineError::Exit(ExitCode::StartClient, priv_msg.into()));
+                    }
+                    let owner_explicit =
+                        matches.value_source("owner") == Some(ValueSource::CommandLine);
+                    let group_explicit =
+                        matches.value_source("group") == Some(ValueSource::CommandLine);
+                    let mut downgraded = false;
+                    if need_owner && !owner_explicit {
+                        opts.owner = false;
+                        opts.no_owner = true;
+                        downgraded = true;
+                    }
+                    if need_group && !group_explicit {
+                        opts.group = false;
+                        opts.no_group = true;
+                        downgraded = true;
+                    }
+                    if downgraded {
+                        tracing::warn!("{priv_msg}: disabling owner/group");
+                    } else {
+                        return Err(EngineError::Exit(ExitCode::StartClient, priv_msg.into()));
+                    }
                 }
             }
         }
@@ -233,11 +249,9 @@ fn run_single(
     if let Some(spec) = &opts.iconv {
         remote_opts.push(format!("--iconv={spec}"));
     }
-    #[cfg(feature = "xattr")]
     if opts.xattrs {
         remote_opts.push("--xattrs".into());
     }
-    #[cfg(feature = "acl")]
     if acls {
         remote_opts.push("--acls".into());
     }
@@ -415,6 +429,8 @@ fn run_single(
             for name in s.split(',') {
                 let codec = match name {
                     "zlib" => Codec::Zlib,
+                    "zlibx" => Codec::Zlibx,
+                    "lz4" => Codec::Lz4,
                     "zstd" => Codec::Zstd,
                     other => {
                         return Err(EngineError::Other(format!("unknown codec {other}")));
@@ -518,16 +534,7 @@ fn run_single(
         perms: if opts.no_perms {
             false
         } else {
-            opts.perms || opts.archive || {
-                #[cfg(feature = "acl")]
-                {
-                    acls
-                }
-                #[cfg(not(feature = "acl"))]
-                {
-                    false
-                }
-            }
+            opts.perms || opts.archive || acls
         },
         executability: opts.executability,
         times: if opts.no_times {
@@ -555,11 +562,7 @@ fn run_single(
                 || chown_ids.is_some_and(|(_, g)| g.is_some())
                 || gid_map.is_some()
         },
-        links: if opts.no_links {
-            false
-        } else {
-            opts.links || opts.archive
-        },
+        links: opts.links,
         copy_links: opts.copy_links,
         copy_dirlinks: opts.copy_dirlinks,
         keep_dirlinks: opts.keep_dirlinks,
@@ -577,9 +580,7 @@ fn run_single(
         } else {
             opts.specials || opts.archive || opts.devices_specials
         },
-        #[cfg(feature = "xattr")]
         xattrs: opts.xattrs || (opts.fake_super && !opts.super_user),
-        #[cfg(feature = "acl")]
         acls,
         sparse: opts.sparse,
         strong,
@@ -705,34 +706,8 @@ fn run_single(
             ) => {
                 let connect_timeout = opts.connect_timeout;
                 let caps_send = CAP_CODECS
-                    | {
-                        #[cfg(feature = "acl")]
-                        {
-                            if sync_opts.acls {
-                                CAP_ACLS
-                            } else {
-                                0
-                            }
-                        }
-                        #[cfg(not(feature = "acl"))]
-                        {
-                            0
-                        }
-                    }
-                    | {
-                        #[cfg(feature = "xattr")]
-                        {
-                            if sync_opts.xattrs {
-                                CAP_XATTRS
-                            } else {
-                                0
-                            }
-                        }
-                        #[cfg(not(feature = "xattr"))]
-                        {
-                            0
-                        }
-                    };
+                    | if sync_opts.acls { CAP_ACLS } else { 0 }
+                    | if sync_opts.xattrs { CAP_XATTRS } else { 0 };
                 let (session, codecs, caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &src.path,
@@ -753,13 +728,9 @@ fn run_single(
                     None,
                 )
                 .map_err(EngineError::from)?;
-                #[cfg(not(any(feature = "xattr", feature = "acl")))]
-                let _ = caps;
-                #[cfg(feature = "xattr")]
                 if sync_opts.xattrs && caps & CAP_XATTRS == 0 {
                     sync_opts.xattrs = false;
                 }
-                #[cfg(feature = "acl")]
                 if sync_opts.acls && caps & CAP_ACLS == 0 {
                     sync_opts.acls = false;
                 }
@@ -815,34 +786,8 @@ fn run_single(
             ) => {
                 let connect_timeout = opts.connect_timeout;
                 let caps_send = CAP_CODECS
-                    | {
-                        #[cfg(feature = "acl")]
-                        {
-                            if sync_opts.acls {
-                                CAP_ACLS
-                            } else {
-                                0
-                            }
-                        }
-                        #[cfg(not(feature = "acl"))]
-                        {
-                            0
-                        }
-                    }
-                    | {
-                        #[cfg(feature = "xattr")]
-                        {
-                            if sync_opts.xattrs {
-                                CAP_XATTRS
-                            } else {
-                                0
-                            }
-                        }
-                        #[cfg(not(feature = "xattr"))]
-                        {
-                            0
-                        }
-                    };
+                    | if sync_opts.acls { CAP_ACLS } else { 0 }
+                    | if sync_opts.xattrs { CAP_XATTRS } else { 0 };
                 let (session, codecs, caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &dst.path,
@@ -863,13 +808,9 @@ fn run_single(
                     None,
                 )
                 .map_err(EngineError::from)?;
-                #[cfg(not(any(feature = "xattr", feature = "acl")))]
-                let _ = caps;
-                #[cfg(feature = "xattr")]
                 if sync_opts.xattrs && caps & CAP_XATTRS == 0 {
                     sync_opts.xattrs = false;
                 }
-                #[cfg(feature = "acl")]
                 if sync_opts.acls && caps & CAP_ACLS == 0 {
                     sync_opts.acls = false;
                 }
@@ -1264,7 +1205,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
 }
 
 fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
-    if let Some(addr) = opts.addr {
+    if let Some(addr) = opts.probe {
         let mut stream = TcpStream::connect(&addr)?;
         stream.write_all(&SUPPORTED_PROTOCOLS[0].to_be_bytes())?;
         let mut buf = [0u8; 4];

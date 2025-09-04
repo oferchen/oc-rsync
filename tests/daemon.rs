@@ -93,6 +93,12 @@ fn parse_module_parses_options() {
     assert!(module.write_only);
 }
 
+#[test]
+fn parse_module_rejects_missing_path() {
+    assert!(parse_module("data=").is_err());
+    assert!(parse_module("data=,comment=hi").is_err());
+}
+
 #[cfg(unix)]
 #[test]
 fn parse_module_resolves_named_uid_gid() {
@@ -610,13 +616,14 @@ fn read_port(child: &mut Child) -> io::Result<u16> {
 
 fn spawn_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
+    let module_path = fs::canonicalize(dir.path()).unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
             "--no-detach",
             "--module",
-            &format!("data={}", dir.path().display()),
+            &format!("data={}", module_path.display()),
             "--port",
             "0",
         ])
@@ -641,13 +648,14 @@ fn spawn_temp_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
 
 fn spawn_daemon_with_timeout(timeout: u64) -> io::Result<(Child, u16, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
+    let module_path = fs::canonicalize(dir.path()).unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
             "--no-detach",
             "--module",
-            &format!("data={}", dir.path().display()),
+            &format!("data={}", module_path.display()),
             "--port",
             "0",
             "--timeout",
@@ -2167,19 +2175,23 @@ fn daemon_preserves_hard_links_remote_source() {
     fs::write(&f1, b"hi").unwrap();
     let f2 = src.join("b");
     fs::hard_link(&f1, &f2).unwrap();
-    let dst = tempfile::tempdir().unwrap();
-    Command::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            "-aH",
-            &format!("rsync://127.0.0.1:{port}/data/"),
-            dst.path().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-    let ino1 = fs::metadata(dst.path().join("a")).unwrap().ino();
-    let ino2 = fs::metadata(dst.path().join("b")).unwrap().ino();
-    assert_eq!(ino1, ino2);
+    for spec in [
+        format!("rsync://127.0.0.1:{port}/data/"),
+        "127.0.0.1::data/".to_string(),
+    ] {
+        let dst = tempdir().unwrap();
+        let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+        cmd.arg("-aH");
+        if spec.starts_with("127.0.0.1::") {
+            cmd.args(["--port", &port.to_string()]);
+        }
+        cmd.args([&spec, dst.path().to_str().unwrap()])
+            .assert()
+            .success();
+        let ino1 = fs::metadata(dst.path().join("a")).unwrap().ino();
+        let ino2 = fs::metadata(dst.path().join("b")).unwrap().ino();
+        assert_eq!(ino1, ino2);
+    }
     let _ = child.kill();
     let _ = child.wait();
 }

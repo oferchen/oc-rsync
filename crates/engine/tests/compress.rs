@@ -28,6 +28,27 @@ fn zlib_roundtrip() {
 }
 
 #[test]
+fn zlibx_roundtrip() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("file.txt"), b"hello world").unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &[Codec::Zlibx],
+        &SyncOptions {
+            compress: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
+}
+
+#[test]
 fn zstd_roundtrip() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -49,25 +70,49 @@ fn zstd_roundtrip() {
 }
 
 #[test]
+fn lz4_roundtrip() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("file.txt"), b"hello world").unwrap();
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &[Codec::Lz4],
+        &SyncOptions {
+            compress: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
+}
+
+#[test]
 fn codec_selection_respects_options() {
     let opts = SyncOptions {
         compress: true,
         ..Default::default()
     };
     assert_eq!(
-        select_codec(&[Codec::Zlib, Codec::Zstd], &opts),
+        select_codec(&[Codec::Zlib, Codec::Zlibx, Codec::Lz4, Codec::Zstd], &opts,),
         Some(Codec::Zstd)
     );
-    assert_eq!(select_codec(&[Codec::Zlib], &opts), Some(Codec::Zlib));
+    assert_eq!(
+        select_codec(&[Codec::Zlibx, Codec::Lz4], &opts),
+        Some(Codec::Lz4)
+    );
 
     let opts = SyncOptions {
         compress: true,
-        compress_choice: Some(vec![Codec::Zlib]),
+        compress_choice: Some(vec![Codec::Zlibx, Codec::Zlib]),
         ..Default::default()
     };
     assert_eq!(
-        select_codec(&[Codec::Zlib, Codec::Zstd], &opts),
-        Some(Codec::Zlib)
+        select_codec(&[Codec::Zlibx, Codec::Lz4, Codec::Zstd], &opts),
+        Some(Codec::Zlibx)
     );
 
     let opts = SyncOptions {

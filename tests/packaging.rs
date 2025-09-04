@@ -19,7 +19,7 @@ fn packaging_includes_service_unit() {
     assert!(
         listing
             .lines()
-            .any(|l| l.trim() == "packaging/oc-rsyncd.conf"),
+            .any(|l| l.trim() == "packaging/examples/oc-rsyncd.conf"),
         "example config missing from package list:\n{}",
         listing
     );
@@ -47,7 +47,6 @@ fn service_unit_matches_spec() {
         "ProtectHome=true",
         "Restart=on-failure",
         "RestartSec=2s",
-        "ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf",
         "CapabilityBoundingSet=CAP_NET_BIND_SERVICE CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE",
         "AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE",
         "RestrictNamespaces=yes",
@@ -56,6 +55,10 @@ fn service_unit_matches_spec() {
         "StateDirectory=oc-rsyncd",
         "ConfigurationDirectory=oc-rsyncd",
         "ExecStart=/usr/local/bin/oc-rsyncd --no-detach --config=/etc/oc-rsyncd.conf",
+        "# To run the daemon via the main oc-rsync CLI instead of the dedicated oc-rsyncd",
+        "# binary, create a drop-in with the following lines:",
+        "# ExecStart=",
+        "# ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf",
         "Documentation=man:oc-rsyncd(8) man:oc-rsyncd.conf(5) man:oc-rsync(1)",
     ] {
         assert!(

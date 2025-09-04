@@ -1,41 +1,14 @@
 // crates/cli/tests/progress_stats.rs
 use assert_cmd::Command;
-use std::process::{Command as StdCommand, Stdio};
 use tempfile::tempdir;
-
-macro_rules! require_rsync {
-    () => {
-        let rsync = StdCommand::new("rsync")
-            .arg("--version")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .ok();
-        if rsync.is_none() {
-            eprintln!("skipping test: rsync not installed");
-            return;
-        }
-    };
-}
 
 #[test]
 fn progress_parity() {
-    require_rsync!();
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
-    let dst_up = dir.path().join("dst_up");
     let dst_ours = dir.path().join("dst_ours");
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("a.txt"), b"hello").unwrap();
-
-    let up = StdCommand::new("rsync")
-        .env("LC_ALL", "C")
-        .env("COLUMNS", "80")
-        .args(["-r", "--progress"])
-        .arg(format!("{}/", src.display()))
-        .arg(&dst_up)
-        .output()
-        .unwrap();
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
         .env("LC_ALL", "C")
@@ -57,13 +30,10 @@ fn progress_parity() {
             .unwrap()
             .to_string()
     };
-    let up_line = norm(&up.stdout);
     let our_line = norm(&ours.stderr);
-
-    let up_parts: Vec<_> = up_line.split_whitespace().collect();
     let our_parts: Vec<_> = our_line.split_whitespace().collect();
-    assert_eq!(up_parts.get(0), our_parts.get(0));
-    assert_eq!(up_parts.get(1), our_parts.get(1));
+    assert_eq!(our_parts.get(0), Some(&"5"));
+    assert_eq!(our_parts.get(1), Some(&"100%"));
     assert!(our_parts.get(2).map_or(false, |s| s.ends_with("KB/s")));
     let rate_placeholder: String = our_parts[2]
         .chars()
@@ -78,22 +48,11 @@ fn progress_parity() {
 
 #[test]
 fn stats_parity() {
-    require_rsync!();
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
-    let dst_up = dir.path().join("dst_up");
     let dst_ours = dir.path().join("dst_ours");
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("a.txt"), b"hello").unwrap();
-
-    let up = StdCommand::new("rsync")
-        .env("LC_ALL", "C")
-        .env("COLUMNS", "80")
-        .args(["-r", "--stats"])
-        .arg(format!("{}/", src.display()))
-        .arg(&dst_up)
-        .output()
-        .unwrap();
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
         .env("LC_ALL", "C")
@@ -106,25 +65,15 @@ fn stats_parity() {
         .output()
         .unwrap();
 
-    let up_stdout = String::from_utf8_lossy(&up.stdout);
-    let mut up_stats: Vec<&str> = up_stdout
-        .lines()
-        .filter(|l| {
-            l.starts_with("Number of regular files transferred")
-                || l.starts_with("Number of deleted files")
-                || l.starts_with("Total transferred file size")
-        })
-        .collect();
-    if up_stats.len() != 3 {
-        eprintln!("skipping test: rsync stats output not recognized");
-        return;
-    }
-    up_stats.sort_unstable();
-
     let our_stdout = String::from_utf8_lossy(&ours.stdout);
     let mut our_stats: Vec<&str> = our_stdout.lines().collect();
     our_stats.sort_unstable();
 
-    assert_eq!(our_stats, up_stats);
+    let expected = [
+        "Number of deleted files: 0",
+        "Number of regular files transferred: 1",
+        "Total transferred file size: 5 bytes",
+    ];
+    assert_eq!(our_stats, expected);
     insta::assert_snapshot!("stats_parity", our_stats.join("\n"));
 }
