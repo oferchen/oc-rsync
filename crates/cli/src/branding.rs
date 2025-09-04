@@ -1,6 +1,7 @@
 // crates/cli/src/branding.rs
 use std::env;
 
+pub const DEFAULT_UPSTREAM_NAME: &str = "rsync";
 pub const DEFAULT_BRAND_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DEFAULT_BRAND_CREDITS: &str =
     "Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Samba.";
