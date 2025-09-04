@@ -646,7 +646,7 @@ pub fn load_config(path: Option<&Path>) -> io::Result<DaemonConfig> {
 
 pub fn parse_auth_token(token: &str, contents: &str) -> Option<Vec<String>> {
     for raw in contents.lines() {
-        let line = raw.split(['#', ';']).next().unwrap().trim();
+        let line = raw.split(['#', ';']).next().unwrap_or("").trim();
         if line.is_empty() {
             continue;
         }
