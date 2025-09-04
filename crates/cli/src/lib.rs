@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use clap::parser::ValueSource;
-use clap::{Arg, ArgAction, ArgMatches, FromArgMatches};
+use clap::{ArgMatches, FromArgMatches};
 
 pub mod branding;
 pub mod daemon;
@@ -45,14 +45,7 @@ use users::get_user_by_uid;
 
 pub mod version;
 
-pub fn cli_command() -> clap::Command {
-    options::cli_command().arg(
-        Arg::new("dump-help-body")
-            .long("dump-help-body")
-            .action(ArgAction::SetTrue)
-            .hide(true),
-    )
-}
+pub use options::cli_command;
 
 pub fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     use clap::error::ErrorKind::*;
