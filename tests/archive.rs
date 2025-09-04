@@ -4,9 +4,9 @@ use assert_cmd::Command;
 #[cfg(unix)]
 use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
-use nix::unistd::{chown, mkfifo, Gid, Uid};
+use nix::unistd::{chown, Gid, Uid};
 #[cfg(unix)]
-use oc_rsync::meta::{makedev, mknod, Mode, SFlag};
+use oc_rsync::meta::{makedev, Mode, SFlag};
 #[cfg(unix)]
 use sha2::{Digest, Sha256};
 #[cfg(unix)]
@@ -158,7 +158,7 @@ fn archive_respects_no_options() {
         &src.join("dev"),
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o644),
-        meta::makedev(1, 7),
+        makedev(1, 7),
     )
     .unwrap();
 
