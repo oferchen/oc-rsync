@@ -208,11 +208,10 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
     } else {
         env::current_dir().map_err(|e| e.to_string())?.join(raw)
     };
-    let canonical = fs::canonicalize(abs).map_err(|e| e.to_string())?;
 
     let mut module = Module {
         name: name.to_string(),
-        path: canonical,
+        path: abs,
         ..Module::default()
     };
 
