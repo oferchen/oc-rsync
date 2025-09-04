@@ -17,7 +17,7 @@ use transport::{pipe, Transport};
 
 pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
-use compress::{should_compress, Codec, Compressor, Decompressor, Zlib, Zstd};
+use compress::{should_compress, Codec, Compressor, Decompressor, Lz4, Zlib, ZlibX, Zstd};
 use filters::Matcher;
 use logging::{escape_path, progress_formatter, rate_formatter, InfoFlag};
 use protocol::ExitCode;
@@ -1196,10 +1196,11 @@ impl Sender {
             if let Some(codec) = file_codec {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
-                        Codec::Zlib => {
+                        Codec::Zlib | Codec::Zlibx => {
                             let lvl = self.opts.compress_level.unwrap_or(6);
                             Zlib::new(lvl).compress(d).map_err(EngineError::from)?
                         }
+                        Codec::Lz4 => Lz4::new().compress(d).map_err(EngineError::from)?,
                         Codec::Zstd => {
                             let lvl = self.opts.compress_level.unwrap_or(0);
                             Zstd::new(lvl).compress(d).map_err(EngineError::from)?
@@ -1458,7 +1459,10 @@ impl Receiver {
             if let Some(codec) = file_codec {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
-                        Codec::Zlib => Zlib::default().decompress(d).map_err(EngineError::from)?,
+                        Codec::Zlib | Codec::Zlibx => {
+                            ZlibX::default().decompress(d).map_err(EngineError::from)?
+                        }
+                        Codec::Lz4 => Lz4::new().decompress(d).map_err(EngineError::from)?,
                         Codec::Zstd => Zstd::default().decompress(d).map_err(EngineError::from)?,
                     };
                 }
@@ -1980,7 +1984,7 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     let choices: Vec<Codec> = opts
         .compress_choice
         .clone()
-        .unwrap_or_else(|| vec![Codec::Zstd, Codec::Zlib]);
+        .unwrap_or_else(|| vec![Codec::Zstd, Codec::Lz4, Codec::Zlibx, Codec::Zlib]);
     choices.into_iter().find(|c| remote.contains(c))
 }
 

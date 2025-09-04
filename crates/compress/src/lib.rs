@@ -12,6 +12,8 @@ use std::path::Path;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Codec {
     Zlib,
+    Zlibx,
+    Lz4,
     Zstd,
 }
 
@@ -19,6 +21,8 @@ impl Codec {
     pub fn to_byte(self) -> u8 {
         match self {
             Codec::Zlib => 1,
+            Codec::Zlibx => 2,
+            Codec::Lz4 => 3,
             Codec::Zstd => 4,
         }
     }
@@ -26,6 +30,8 @@ impl Codec {
     pub fn from_byte(b: u8) -> io::Result<Self> {
         match b {
             1 => Ok(Codec::Zlib),
+            2 => Ok(Codec::Zlibx),
+            3 => Ok(Codec::Lz4),
             4 => Ok(Codec::Zstd),
             other => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -42,8 +48,13 @@ pub fn available_codecs() -> Vec<Codec> {
     {
         codecs.push(Codec::Zstd);
     }
+    #[cfg(feature = "lz4")]
+    {
+        codecs.push(Codec::Lz4);
+    }
     #[cfg(feature = "zlib")]
     {
+        codecs.push(Codec::Zlibx);
         codecs.push(Codec::Zlib);
     }
     codecs
@@ -134,6 +145,65 @@ impl Decompressor for Zlib {
         let mut out = Vec::new();
         decoder.read_to_end(&mut out)?;
         Ok(out)
+    }
+}
+
+#[cfg(feature = "zlib")]
+pub struct ZlibX {
+    level: i32,
+}
+
+#[cfg(feature = "zlib")]
+impl ZlibX {
+    pub fn new(level: i32) -> Self {
+        Self { level }
+    }
+}
+
+#[cfg(feature = "zlib")]
+impl Default for ZlibX {
+    fn default() -> Self {
+        Self { level: 6 }
+    }
+}
+
+#[cfg(feature = "zlib")]
+impl Compressor for ZlibX {
+    fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
+        Zlib::new(self.level).compress(data)
+    }
+}
+
+#[cfg(feature = "zlib")]
+impl Decompressor for ZlibX {
+    fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
+        Zlib::default().decompress(data)
+    }
+}
+
+#[cfg(feature = "lz4")]
+#[derive(Default)]
+pub struct Lz4;
+
+#[cfg(feature = "lz4")]
+impl Lz4 {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+#[cfg(feature = "lz4")]
+impl Compressor for Lz4 {
+    fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
+        Ok(lz4_flex::block::compress_prepend_size(data))
+    }
+}
+
+#[cfg(feature = "lz4")]
+impl Decompressor for Lz4 {
+    fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
+        lz4_flex::block::decompress_size_prepended(data)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
     }
 }
 
