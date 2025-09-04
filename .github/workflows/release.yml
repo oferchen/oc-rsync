@@ -122,7 +122,7 @@ jobs:
         run: |
           mkdir -p dist/docs
           cp man/oc-rsync.1 man/oc-rsyncd.8 man/oc-rsyncd.conf.5 dist/docs/
-          cp packaging/oc-rsyncd.conf dist/docs/
+          cp packaging/examples/oc-rsyncd.conf dist/docs/
           tar -czf dist/oc-rsync-docs.tar.gz -C dist/docs .
           sha256sum dist/oc-rsync-docs.tar.gz > dist/oc-rsync-docs.tar.gz.sha256
       - name: Upload release assets

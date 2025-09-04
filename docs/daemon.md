@@ -73,7 +73,7 @@ from `rsyncd.conf(5)` ensures forward compatibility.
 Sample files for running the daemon are provided under `packaging/` and are
 included in release artifacts:
 
-- `packaging/oc-rsyncd.conf` – example configuration file
+- `packaging/examples/oc-rsyncd.conf` – example configuration file
 - `packaging/systemd/oc-rsyncd.service` – systemd service unit
 
 ### systemd hardening
