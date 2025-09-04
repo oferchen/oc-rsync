@@ -917,9 +917,7 @@ fn metadata_matches_source() {
     assert_eq!(mt_src, mt_dst);
     let cr_src = meta_src.created().ok();
     let cr_dst = meta_dst.created().ok();
-    if cr_src.is_some() && cr_dst.is_some() {
-         Creation times may vary slightly across filesystems; ensure both exist.
-    }
+    if cr_src.is_some() && cr_dst.is_some() {}
 }
 
 #[cfg(all(feature = "xattr"))]
