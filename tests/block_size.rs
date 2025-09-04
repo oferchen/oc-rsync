@@ -387,6 +387,6 @@ fn cli_block_size_errors_match_rsync() {
     let ours_second_lhs = ours_lines[1]
         .split_once(" at ")
         .map(|(lhs, _)| lhs)
-        .unwrap_or(&ours_lines[1]);
+        .unwrap_or(ours_lines[1]);
     assert_eq!(rsync_second_prefix, sanitize(ours_second_lhs));
 }
