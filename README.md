@@ -5,9 +5,9 @@
 [![Release](https://img.shields.io/github/v/release/oferchen/oc-rsync)](https://github.com/oferchen/oc-rsync/releases)
 
 ## Code Coverage
-[![Sunburst](https://codecov.io/gh/oferchen/oc-rsync/graphs/sunburst.svg?token=8TUVGHK9VE)
-[![Grid](https://codecov.io/gh/oferchen/oc-rsync/graphs/tree.svg?token=8TUVGHK9VE)
-[![Icicle](https://codecov.io/gh/oferchen/oc-rsync/graphs/icicle.svg?token=8TUVGHK9VE)
+[![Sunburst](https://codecov.io/gh/oferchen/oc-rsync/graphs/sunburst.svg?token=8TUVGHK9VE)](https://codecov.io/gh/oferchen/oc-rsync)
+[![Grid](https://codecov.io/gh/oferchen/oc-rsync/graphs/tree.svg?token=8TUVGHK9VE)](https://codecov.io/gh/oferchen/oc-rsync)
+[![Icicle](https://codecov.io/gh/oferchen/oc-rsync/graphs/icicle.svg?token=8TUVGHK9VE)](https://codecov.io/gh/oferchen/oc-rsync)
 
 ## Project statement
 
