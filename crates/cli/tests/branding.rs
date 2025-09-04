@@ -1,7 +1,9 @@
 // crates/cli/tests/branding.rs
 use oc_rsync_cli::{branding, cli_command, render_help};
+use serial_test::serial;
 
 #[test]
+#[serial]
 fn help_uses_program_name() {
     std::env::set_var("OC_RSYNC_BRAND_NAME", "myrsync");
     std::env::set_var("COLUMNS", "80");
@@ -14,7 +16,13 @@ fn help_uses_program_name() {
 }
 
 #[test]
-fn upstream_name_defaults_to_rsync() {
+#[serial]
+fn upstream_name_does_not_replace_rsyncd_conf() {
+    std::env::set_var("OC_RSYNC_UPSTREAM_NAME", "ursync");
+    std::env::set_var("COLUMNS", "80");
+    let help = render_help(&cli_command());
+    assert!(help.contains("rsyncd.conf"));
+    assert!(!help.contains("ursyncd.conf"));
     std::env::remove_var("OC_RSYNC_UPSTREAM_NAME");
-    assert_eq!(branding::upstream_name(), "rsync");
+    std::env::remove_var("COLUMNS");
 }
