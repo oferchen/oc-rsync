@@ -1,4 +1,4 @@
-// bin/oc-rsync/src/stdio.rs
+// src/bin/oc-rsync/stdio.rs
 use oc_rsync_cli::options::OutBuf;
 use std::io::{self, ErrorKind};
 use std::ptr::{self, NonNull};

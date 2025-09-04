@@ -129,7 +129,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--only-write-batch` | ✅ | Y | Y | Y | [tests/write_batch.rs](../tests/write_batch.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | like --write-batch but w/o updating dest |
 | `--open-noatime` | ✅ | Y | Y | Y | [crates/engine/tests/open_noatime.rs](../crates/engine/tests/open_noatime.rs)<br>[tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs) | requires a platform supporting `O_NOATIME` |
 | `--out-format` | ✅ | Y | Y | Y | [tests/out_format.rs](../tests/out_format.rs)<br>[tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/logging/src/lib.rs](../crates/logging/src/lib.rs) | custom output format |
-| `--outbuf` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [bin/oc-rsync/src/main.rs](../bin/oc-rsync/src/main.rs) | set stdout buffering |
+| `--outbuf` | ✅ | N | N | N | [tests/cli_flags.rs](../tests/cli_flags.rs) | [src/bin/oc-rsync/main.rs](../src/bin/oc-rsync/main.rs) | set stdout buffering |
 | `--owner` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires root or CAP_CHOWN |
 | `--partial` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/resume.rs](../crates/engine/tests/resume.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--partial-dir` | ✅ | Y | Y | Y | [tests/resume.rs](../tests/resume.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |

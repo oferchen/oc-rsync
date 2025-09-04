@@ -1,4 +1,4 @@
-// bin/oc-rsync/tests/non_utf8_args.rs
+// tests/bin_non_utf8_args.rs
 #![cfg(unix)]
 use assert_cmd::Command;
 use std::ffi::OsString;

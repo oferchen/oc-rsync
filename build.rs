@@ -1,4 +1,4 @@
-// bin/oc-rsync/build.rs
+// build.rs
 use std::{env, fs, path::Path};
 
 const UPSTREAM_VERSION: &str = "3.4.1";

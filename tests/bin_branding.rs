@@ -1,4 +1,4 @@
-// bin/oc-rsync/tests/branding.rs
+// tests/bin_branding.rs
 use assert_cmd::Command;
 use predicates::str::contains;
 
