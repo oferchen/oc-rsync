@@ -8,7 +8,6 @@ pub const DEFAULT_BRAND_URL: &str = "https://github.com/oferchen/oc-rsync";
 
 pub const DEFAULT_TAGLINE: &str = "Pure-Rust reimplementation of rsync (protocol v32).";
 pub const DEFAULT_URL: &str = DEFAULT_BRAND_URL;
-pub const DEFAULT_COPYRIGHT: &str = "Copyright (C) 2024-2025 oc-rsync contributors.";
 pub const DEFAULT_UPSTREAM_NAME: &str = "rsync";
 
 pub const DEFAULT_HELP_PREFIX: &str = r#"{prog} {version}
@@ -101,6 +100,11 @@ pub fn brand_credits() -> String {
         .unwrap_or_else(|_| DEFAULT_BRAND_CREDITS.to_string())
 }
 
+fn default_copyright() -> String {
+    let year = option_env!("CURRENT_YEAR").unwrap_or("2025");
+    format!("Copyright (C) 2024-{year} oc-rsync contributors.")
+}
+
 pub fn brand_copyright() -> String {
     env::var("OC_RSYNC_BRAND_COPYRIGHT")
         .or_else(|_| {
@@ -108,7 +112,7 @@ pub fn brand_copyright() -> String {
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
-        .unwrap_or_else(|_| DEFAULT_COPYRIGHT.to_string())
+        .unwrap_or_else(|_| default_copyright())
 }
 
 pub fn hide_credits() -> bool {

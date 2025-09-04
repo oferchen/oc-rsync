@@ -1,5 +1,6 @@
 // build.rs
 
+use chrono::Datelike;
 use std::{env, fs, path::Path};
 
 const UPSTREAM_VERSION: &str = "3.4.1";
@@ -34,6 +35,10 @@ fn main() {
         }
         println!("cargo:rerun-if-env-changed={key}");
     }
+
+    let year = env::var("CURRENT_YEAR").unwrap_or_else(|_| chrono::Utc::now().year().to_string());
+    println!("cargo:rustc-env=CURRENT_YEAR={year}");
+    println!("cargo:rerun-if-env-changed=CURRENT_YEAR");
 
     let out_dir = env::var("OUT_DIR").expect("missing OUT_DIR");
     let info_path = Path::new(&out_dir).join("build_info.md");
