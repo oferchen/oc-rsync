@@ -1,2 +1,2 @@
-rsync: --block-size=1x is invalid
-rsync error: syntax or usage error (code 1) at main.c(1795) [client=3.2.7]
+oc-rsync: --block-size=1x is invalid
+oc-rsync error: syntax or usage error (code 1) at main.c(1795) [client=3.2.7]

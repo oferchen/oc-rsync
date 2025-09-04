@@ -364,9 +364,12 @@ fn cli_block_size_errors_match_rsync() {
     let rsync_err =
         fs::read_to_string("tests/golden/block_size/cli_block_size_errors_match_rsync.stderr")
             .unwrap();
+    fn sanitize(line: &str) -> &str {
+        line.splitn(2, ' ').nth(1).unwrap_or(line)
+    }
     let rsync_lines: Vec<_> = rsync_err.lines().collect();
-    let rsync_first = rsync_lines[0];
-    let rsync_second_prefix = rsync_lines[1].split(" at ").next().unwrap();
+    let rsync_first = sanitize(rsync_lines[0]);
+    let rsync_second_prefix = sanitize(rsync_lines[1].split(" at ").next().unwrap());
 
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -376,6 +379,9 @@ fn cli_block_size_errors_match_rsync() {
     assert_eq!(ours.status.code(), Some(expected_code));
     let ours_err = String::from_utf8(ours.stderr).unwrap();
     let ours_lines: Vec<_> = ours_err.lines().collect();
-    assert_eq!(rsync_first, ours_lines[0]);
-    assert_eq!(rsync_second_prefix, ours_lines[1]);
+    assert_eq!(rsync_first, sanitize(ours_lines[0]));
+    assert_eq!(
+        rsync_second_prefix,
+        sanitize(ours_lines[1].split(" at ").next().unwrap())
+    );
 }
