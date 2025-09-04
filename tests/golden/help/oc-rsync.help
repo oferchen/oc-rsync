@@ -1,3 +1,6 @@
+oc-rsync 0.1.0
+Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Samba.
+
 oc-rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
 are welcome to redistribute it under certain conditions.  See the GNU
 General Public Licence for details.
