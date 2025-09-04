@@ -5,8 +5,6 @@ pub const DEFAULT_BRAND_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DEFAULT_BRAND_CREDITS: &str =
     "Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Samba.";
 pub const DEFAULT_BRAND_URL: &str = "https://github.com/oc-rsync/oc-rsync";
-pub const DEFAULT_TAGLINE: &str = "Experimental pure-Rust rsync reimplementation.";
-pub const DEFAULT_COPYRIGHT: &str = "Copyright (C) 2025 oc-rsync authors";
 
 pub const DEFAULT_TAGLINE: &str = "Pure-Rust reimplementation of rsync (protocol v32).";
 pub const DEFAULT_URL: &str = DEFAULT_BRAND_URL;
@@ -136,8 +134,9 @@ pub fn help_prefix() -> String {
         .unwrap_or_else(|_| DEFAULT_HELP_PREFIX.to_string())
 }
 
+#[allow(clippy::let_and_return)]
 pub fn help_suffix() -> String {
-    env::var("OC_RSYNC_HELP_FOOTER")
+    let suffix = env::var("OC_RSYNC_HELP_FOOTER")
         .or_else(|_| env::var("OC_RSYNC_BRAND_FOOTER"))
         .or_else(|_| {
             option_env!("OC_RSYNC_HELP_FOOTER")
@@ -149,7 +148,8 @@ pub fn help_suffix() -> String {
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
-        .unwrap_or_else(|_| DEFAULT_HELP_SUFFIX.to_string())
+        .unwrap_or_else(|_| DEFAULT_HELP_SUFFIX.to_string());
+    suffix
 }
 
 pub fn version_header() -> Option<String> {
