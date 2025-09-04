@@ -131,7 +131,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     if opts.paths.len() < 2 {
         return Err(EngineError::Other("missing SRC or DST".into()));
     }
-    let dst_arg = opts.paths.last().unwrap().clone();
+    let dst_arg = opts
+        .paths
+        .last()
+        .cloned()
+        .ok_or_else(|| EngineError::Other("missing SRC or DST".into()))?;
     let srcs = opts.paths[..opts.paths.len() - 1].to_vec();
     if srcs.len() > 1 {
         if let RemoteSpec::Local(ps) = parse_remote_spec(&dst_arg)? {
@@ -1364,6 +1368,19 @@ mod tests {
         }
         assert!(opts.no_devices);
         assert!(opts.no_specials);
+    }
+
+    #[test]
+    fn run_client_errors_when_no_paths_provided() {
+        use crate::options::ClientOpts;
+        let mut opts = ClientOpts::try_parse_from(["prog", "--server"]).unwrap();
+        opts.server = false;
+        opts.paths.clear();
+        let matches = cli_command()
+            .try_get_matches_from(["prog", "--server"])
+            .unwrap();
+        let err = run_client(opts, &matches).unwrap_err();
+        assert!(matches!(err, EngineError::Other(msg) if msg == "missing SRC or DST"));
     }
 
     #[test]
