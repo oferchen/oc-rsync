@@ -16,7 +16,7 @@ fn main() {
         parts.next();
         parts.next();
         if let Some(body) = parts.next() {
-            print!("{body}");
+            println!("{body}");
         }
         return;
     }
