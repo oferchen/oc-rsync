@@ -4,15 +4,20 @@ mod unix;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub use unix::*;
 
+#[cfg(target_os = "windows")]
+mod windows;
+#[cfg(target_os = "windows")]
+pub use windows::*;
+
 #[cfg(target_os = "linux")]
 pub use nix::sys::stat::{major, makedev, minor};
 
 #[cfg(target_os = "macos")]
 pub use libc::{major, makedev, minor};
 
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
 mod stub;
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
 pub use stub::*;
 
 mod parse;
@@ -30,7 +35,15 @@ pub fn mode_from_metadata(meta: &std::fs::Metadata) -> u32 {
         use std::os::unix::fs::PermissionsExt;
         normalize_mode(meta.permissions().mode())
     }
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    {
+        let mut mode = 0o666;
+        if meta.permissions().readonly() {
+            mode &= !0o222;
+        }
+        mode
+    }
+    #[cfg(not(any(unix, windows)))]
     {
         0
     }
