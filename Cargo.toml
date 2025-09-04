@@ -20,6 +20,8 @@ resolver = "2"
 [package]
 name = "oc-rsync"
 version = "0.1.0"
+description = "Pure-Rust reimplementation of rsync (protocol v32)"
+license = "Apache-2.0 OR MIT"
 edition = "2021"
 
 [dependencies]
@@ -94,15 +96,32 @@ cli = []
 nightly = ["checksums/nightly", "compress/nightly"]
 
 [package.metadata.deb]
-systemd-units = ["packaging/systemd/oc-rsyncd.service"]
+maintainer = "oc-rsync maintainers <maintainers@rsync.rs>"
+depends = "$auto, systemd"
 assets = [
+    ["packaging/systemd/oc-rsyncd.service", "/lib/systemd/system/oc-rsyncd.service", "644"],
     ["packaging/examples/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf", "644"],
     ["packaging/systemd/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf", "644"],
 ]
 
 [package.metadata.rpm]
-systemd-units = ["packaging/systemd/oc-rsyncd.service"]
-assets = [
-    ["packaging/examples/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf", "644"],
-    ["packaging/systemd/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf", "644"],
-]
+maintainer = "oc-rsync maintainers <maintainers@rsync.rs>"
+requires = ["systemd"]
+
+[package.metadata.rpm.targets.oc-rsync]
+path = "/usr/bin/oc-rsync"
+
+[package.metadata.rpm.targets.oc-rsyncd]
+path = "/usr/bin/oc-rsyncd"
+
+[package.metadata.rpm.files."oc-rsyncd.conf"]
+path = "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf"
+mode = "644"
+
+[package.metadata.rpm.files."oc-rsyncd.systemd.conf"]
+path = "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf"
+mode = "644"
+
+[package.metadata.rpm.files."oc-rsyncd.service"]
+path = "/usr/lib/systemd/system/oc-rsyncd.service"
+mode = "644"
