@@ -7,13 +7,13 @@ Thank you for your interest in contributing to oc_rsync!
 - Lint with `cargo clippy --all-targets --all-features -- -D warnings` before committing.
 - Keep contributions focused and document any new functionality.
 - Use the workspace `Cargo.lock` at the repository root; do not commit lockfiles in individual crates.
-- For wrapper Rust source files outside of `crates/` and `tests/`, begin the file with a comment containing its relative path, e.g. `// src/lib.rs`, and avoid any other comments. Run `scripts/check-comments.sh` to ensure compliance.
+- All `*.rs` files must begin with a single comment containing their relative path (e.g. `// src/lib.rs`) and contain no other comments, as enforced in `AGENTS.md`. Validate with `scripts/check-comments.sh` or the canonical `make verify-comments` check.
 
 ## Makefile targets
 
 The Makefile offers shortcuts for common CI checks:
 
-- `make verify-comments` – run `scripts/check-comments.sh` to enforce comment headers.
+- `make verify-comments` – canonical check that runs `scripts/check-comments.sh` to enforce comment headers.
 - `make lint` – run `cargo fmt --all --check` for formatting.
 - `make coverage` – execute `cargo llvm-cov --workspace --doctests \
   --fail-under-lines 95 --fail-under-functions 95` to gather test coverage.
