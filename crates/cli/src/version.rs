@@ -23,7 +23,7 @@ const CAPABILITIES: &[&str] = &[
 ];
 const OPTIMIZATIONS: &[&str] = &["    SIMD-roll, no asm-roll, openssl-crypto, no asm-MD5"];
 const CHECKSUMS: &[&str] = &["    xxh128 xxh3 xxh64 (xxhash) md5 md4 sha1 none"];
-const COMPRESS: &[&str] = &["    zstd zlib none"];
+const COMPRESS: &[&str] = &["    zstd lz4 zlibx zlib none"];
 const DAEMON_AUTH: &[&str] = &["    sha512 sha256 sha1 md5 md4"];
 
 pub fn render_version_lines() -> Vec<String> {
