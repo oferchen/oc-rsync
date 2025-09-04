@@ -27,3 +27,17 @@ fn invalid_setvbuf_returns_error() {
 fn null_stream_returns_error() {
     assert!(set_stream_buffer(ptr::null_mut(), libc::_IONBF).is_err());
 }
+
+#[cfg(windows)]
+#[test]
+fn cli_outbuf_changes_buffering() {
+    use assert_cmd::Command;
+
+    for mode in ["N", "L", "B"] {
+        Command::cargo_bin("oc-rsync")
+            .unwrap()
+            .args([&format!("--outbuf={mode}"), "--version"])
+            .assert()
+            .success();
+    }
+}
