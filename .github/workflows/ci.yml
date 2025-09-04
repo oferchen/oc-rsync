@@ -32,7 +32,7 @@ jobs:
         with:
           toolchain: stable
           components: clippy,rustfmt
-          targets: x86_64-apple-darwin,x86_64-pc-windows-msvc
+          target: x86_64-apple-darwin,x86_64-pc-windows-msvc
           cache: true
 
       - name: Cargo check (cross targets)
@@ -170,7 +170,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          targets: ${{ matrix.target }}
+          target: ${{ matrix.target }}
           cache: true
 
       - name: Install system dependencies (Linux only)
