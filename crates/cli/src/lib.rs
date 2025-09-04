@@ -128,13 +128,16 @@ fn run_single(
 ) -> Result<Stats> {
     if opts.archive {
         opts.recursive = true;
-        opts.links = !opts.no_links;
+        opts.links = true;
         opts.perms = !opts.no_perms;
         opts.times = !opts.no_times;
         opts.group = !opts.no_group;
         opts.owner = !opts.no_owner;
         opts.devices = !opts.no_devices;
         opts.specials = !opts.no_specials;
+    }
+    if opts.no_links {
+        opts.links = false;
     }
     if opts.old_dirs {
         opts.dirs = true;
@@ -557,11 +560,7 @@ fn run_single(
                 || chown_ids.is_some_and(|(_, g)| g.is_some())
                 || gid_map.is_some()
         },
-        links: if opts.no_links {
-            false
-        } else {
-            opts.links || opts.archive
-        },
+        links: opts.links,
         copy_links: opts.copy_links,
         copy_dirlinks: opts.copy_dirlinks,
         keep_dirlinks: opts.keep_dirlinks,
