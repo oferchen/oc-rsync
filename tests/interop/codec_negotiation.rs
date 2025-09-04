@@ -16,6 +16,7 @@ fn negotiate_zstd_only() {
     assert_eq!(negotiate_codec(&local, &remote), Some(Codec::Zstd));
 }
 
+#[cfg(feature = "lz4")]
 #[test]
 fn negotiate_lz4_priority() {
     let local = [Codec::Zstd, Codec::Lz4, Codec::Zlib];

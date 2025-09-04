@@ -1,4 +1,4 @@
-// bin/oc-rsync/tests/daemon.rs
+// tests/bin_daemon.rs
 use assert_cmd::cargo::{cargo_bin, CommandCargoExt};
 use std::fs;
 use std::io::{BufRead, BufReader};

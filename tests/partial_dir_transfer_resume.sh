@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 OC_RSYNC="$ROOT/target/debug/oc-rsync"
 
 # Ensure binary is built
-cargo build --quiet -p oc-rsync-bin --bin oc-rsync
+cargo build --quiet -p oc-rsync --bin oc-rsync
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT

@@ -19,7 +19,7 @@ The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.x are included
 - **fuzz**: fuzz targets validating protocol and filter robustness.
 
 ## Binaries
-- **oc-rsync** (`bin/oc-rsync` crate): main CLI entry point.
+- **oc-rsync** (binary target): main CLI entry point.
 - **protocol_frame_decode_fuzz**: fuzz target exercising protocol frame decoding.
 - **filters_parse_fuzz**: fuzz target exercising filter rule parsing.
 

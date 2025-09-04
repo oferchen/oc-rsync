@@ -24,6 +24,23 @@ fn collect(dir: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
     map
 }
 
+fn load_golden(name: &str) -> BTreeMap<PathBuf, Vec<u8>> {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/golden/link_copy_compare_dest")
+        .join(format!("{name}.txt"));
+    let mut map = BTreeMap::new();
+    for line in fs::read_to_string(path).unwrap().lines() {
+        if line.trim().is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let mut parts = line.splitn(2, ':');
+        let rel = PathBuf::from(parts.next().unwrap());
+        let data = parts.next().unwrap().as_bytes().to_vec();
+        map.insert(rel, data);
+    }
+    map
+}
+
 #[cfg(unix)]
 #[test]
 fn link_dest_matches_rsync() {
@@ -31,22 +48,10 @@ fn link_dest_matches_rsync() {
     let src = tmp.path().join("src");
     let link = tmp.path().join("link");
     let dst_rr = tmp.path().join("dst_rr");
-    let dst_rsync = tmp.path().join("dst_rsync");
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&link).unwrap();
     fs::write(src.join("file"), b"hi").unwrap();
     fs::write(link.join("file"), b"hi").unwrap();
-
-    Command::new("rsync")
-        .args([
-            "-a",
-            "--link-dest",
-            link.to_str().unwrap(),
-            &format!("{}/", src.display()),
-            dst_rsync.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -61,12 +66,10 @@ fn link_dest_matches_rsync() {
         .stdout("")
         .stderr("");
 
-    assert_eq!(collect(&dst_rsync), collect(&dst_rr));
+    assert_eq!(load_golden("link_dest"), collect(&dst_rr));
     use std::os::unix::fs::MetadataExt;
     let base = fs::metadata(link.join("file")).unwrap().ino();
-    let rsync_meta = fs::metadata(dst_rsync.join("file")).unwrap().ino();
     let rr_meta = fs::metadata(dst_rr.join("file")).unwrap().ino();
-    assert_eq!(base, rsync_meta);
     assert_eq!(base, rr_meta);
 }
 
@@ -77,22 +80,10 @@ fn copy_dest_matches_rsync() {
     let src = tmp.path().join("src");
     let copy = tmp.path().join("copy");
     let dst_rr = tmp.path().join("dst_rr");
-    let dst_rsync = tmp.path().join("dst_rsync");
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&copy).unwrap();
     fs::write(src.join("file"), b"hi").unwrap();
     fs::write(copy.join("file"), b"hi").unwrap();
-
-    Command::new("rsync")
-        .args([
-            "-a",
-            "--copy-dest",
-            copy.to_str().unwrap(),
-            &format!("{}/", src.display()),
-            dst_rsync.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -107,12 +98,10 @@ fn copy_dest_matches_rsync() {
         .stdout("")
         .stderr("");
 
-    assert_eq!(collect(&dst_rsync), collect(&dst_rr));
+    assert_eq!(load_golden("copy_dest"), collect(&dst_rr));
     use std::os::unix::fs::MetadataExt;
     let base = fs::metadata(copy.join("file")).unwrap().ino();
-    let rsync_meta = fs::metadata(dst_rsync.join("file")).unwrap().ino();
     let rr_meta = fs::metadata(dst_rr.join("file")).unwrap().ino();
-    assert_ne!(base, rsync_meta);
     assert_ne!(base, rr_meta);
 }
 
@@ -122,22 +111,10 @@ fn compare_dest_matches_rsync() {
     let src = tmp.path().join("src");
     let cmp = tmp.path().join("cmp");
     let dst_rr = tmp.path().join("dst_rr");
-    let dst_rsync = tmp.path().join("dst_rsync");
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&cmp).unwrap();
     fs::write(src.join("file"), b"hi").unwrap();
     fs::write(cmp.join("file"), b"hi").unwrap();
-
-    Command::new("rsync")
-        .args([
-            "-a",
-            "--compare-dest",
-            cmp.to_str().unwrap(),
-            &format!("{}/", src.display()),
-            dst_rsync.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -152,7 +129,6 @@ fn compare_dest_matches_rsync() {
         .stdout("")
         .stderr("");
 
-    assert_eq!(collect(&dst_rsync), collect(&dst_rr));
-    assert!(!dst_rsync.join("file").exists());
+    assert_eq!(load_golden("compare_dest"), collect(&dst_rr));
     assert!(!dst_rr.join("file").exists());
 }

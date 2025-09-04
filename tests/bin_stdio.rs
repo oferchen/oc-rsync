@@ -1,5 +1,5 @@
-// bin/oc-rsync/tests/stdio.rs
-#[path = "../src/stdio.rs"]
+// tests/bin_stdio.rs
+#[path = "../src/bin/oc-rsync/stdio.rs"]
 mod stdio;
 
 use oc_rsync_cli::options::OutBuf;

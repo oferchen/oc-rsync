@@ -15,8 +15,9 @@ use std::io::{self, Read, Write};
 use std::net::{IpAddr, TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-#[allow(unused_imports)]
-use std::path::{Path, PathBuf};
+#[cfg(unix)]
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::{Child, Command as StdCommand, Stdio};
 use std::sync::{mpsc, Arc};
 use std::thread::sleep;
