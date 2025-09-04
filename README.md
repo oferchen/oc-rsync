@@ -48,12 +48,17 @@ sudo apt-get install -y build-essential libzstd-dev zlib1g-dev
 Run `scripts/preflight.sh` to verify these dependencies before building.
 
 ```bash
-cargo install oc-rsync
+cargo install --path bin/oc-rsync
+# or download a prebuilt binary from GitHub Releases
 # or build from source
 cargo build -p oc-rsync-bin --bin oc-rsync
 ```
 
 See [packaging/](packaging) for daemon configs and systemd units.
+
+> **Note:** `cargo install oc-rsync` from crates.io will be available once the
+> crate is published. Update these examples before each release to reflect the
+> current publish state.
 
 ## Usage
 
