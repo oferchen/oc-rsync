@@ -69,6 +69,15 @@ jobs:
           toolchain: stable
           targets: x86_64-apple-darwin,x86_64-pc-windows-msvc
           cache: true
+
+      - name: Sanity: show toolchain/targets
+        run: |
+          rustup show
+          rustup target list --installed
+          rustc --version
+          rustc --print sysroot
+          rustc --target x86_64-apple-darwin --print target-libdir
+
       - name: Cargo check (cross targets)
         if: runner.os == 'Linux'
         run: |
