@@ -2,7 +2,6 @@
 
 use assert_cmd::Command;
 use std::fs;
-use std::process::Command as StdCommand;
 use tempfile::tempdir;
 
 #[test]
@@ -33,22 +32,8 @@ fn dry_run_deletions_match_rsync() {
         .filter(|l| l.starts_with("deleting "))
         .collect();
 
-    let rsync = StdCommand::new("rsync")
-        .args([
-            "--recursive",
-            "--delete",
-            "--dry-run",
-            "--verbose",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
-        .output()
-        .expect("rsync not installed");
-    let rsync_out = String::from_utf8(rsync.stdout).unwrap();
-    let rsync_lines: Vec<_> = rsync_out
-        .lines()
-        .filter(|l| l.starts_with("deleting "))
-        .collect();
+    let rsync_out = fs::read_to_string("tests/golden/dry_run/deletions.txt").unwrap();
+    let rsync_lines: Vec<_> = rsync_out.lines().collect();
 
     assert_eq!(rsync_lines, our_lines);
 }
@@ -68,20 +53,18 @@ fn dry_run_errors_match_rsync() {
     assert_eq!(ours.status.code(), Some(23));
     let ours_err = String::from_utf8(ours.stderr).unwrap();
 
-    let rsync = StdCommand::new("rsync")
-        .current_dir(tmp.path())
-        .args(["--dry-run", "missing.txt", dst.to_str().unwrap()])
-        .output()
-        .expect("rsync not installed");
-    assert_eq!(rsync.status.code(), Some(23));
-    let rsync_err = String::from_utf8(rsync.stderr).unwrap();
-
-    let mut expected_lines = rsync_err.lines();
+    let expected = fs::read_to_string("tests/golden/dry_run/error.txt").unwrap();
+    let mut expected_lines = expected.lines();
     let mut our_lines = ours_err.lines();
-    assert_eq!(expected_lines.next(), our_lines.next());
-    let exp_second = expected_lines.next().unwrap();
+
+    let first = expected_lines.next().unwrap().replace(
+        "{PATH}",
+        &tmp.path().join("missing.txt").display().to_string(),
+    );
+    assert_eq!(Some(first.as_str()), our_lines.next());
+
+    let exp_prefix = expected_lines.next().unwrap();
     let our_second = our_lines.next().unwrap();
-    let exp_prefix = exp_second.split(" at ").next().unwrap();
     let our_prefix = our_second.split(" at ").next().unwrap();
     assert_eq!(exp_prefix, our_prefix);
 }
