@@ -221,7 +221,10 @@ impl SshStdioTransport {
             while read < challenge.len() {
                 let n = transport.receive(&mut challenge[read..])?;
                 if n == 0 {
-                    return Err(io::Error::other("failed to read challenge"));
+                    return Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "connection unexpectedly closed",
+                    ));
                 }
                 read += n;
             }
@@ -238,8 +241,8 @@ impl SshStdioTransport {
             let n = transport.receive(&mut ver_buf[read..])?;
             if n == 0 {
                 return Err(io::Error::new(
-                    io::ErrorKind::TimedOut,
-                    "failed to read version",
+                    io::ErrorKind::UnexpectedEof,
+                    "connection unexpectedly closed",
                 ));
             }
             read += n;
@@ -258,7 +261,10 @@ impl SshStdioTransport {
                 if read == 0 {
                     break;
                 } else {
-                    return Err(io::Error::other("failed to read capabilities"));
+                    return Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "connection unexpectedly closed",
+                    ));
                 }
             }
             read += n;
@@ -285,7 +291,10 @@ impl SshStdioTransport {
             while read < hdr.len() {
                 let n = transport.receive(&mut hdr[read..])?;
                 if n == 0 {
-                    return Err(io::Error::other("failed to read frame header"));
+                    return Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "connection unexpectedly closed",
+                    ));
                 }
                 read += n;
             }
@@ -301,7 +310,10 @@ impl SshStdioTransport {
             while off < len {
                 let n = transport.receive(&mut payload[off..])?;
                 if n == 0 {
-                    return Err(io::Error::other("failed to read frame payload"));
+                    return Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "connection unexpectedly closed",
+                    ));
                 }
                 off += n;
             }
@@ -457,7 +469,22 @@ impl SshStdioTransport {
             t.set_read_timeout(Some(remaining))?;
             t.set_write_timeout(Some(remaining))?;
         }
-        let (codecs, caps) = Self::handshake(&mut t, rsync_env, remote_opts, token, version, caps)?;
+        let (codecs, caps) =
+            match Self::handshake(&mut t, rsync_env, remote_opts, token, version, caps) {
+                Ok(v) => v,
+                Err(mut e) => {
+                    let (stderr, _) = t.stderr();
+                    if !stderr.is_empty() {
+                        let mut msg = String::from_utf8_lossy(&stderr).into_owned();
+                        if !msg.ends_with('\n') {
+                            msg.push('\n');
+                        }
+                        msg.push_str("connection unexpectedly closed");
+                        e = io::Error::new(io::ErrorKind::UnexpectedEof, msg);
+                    }
+                    return Err(e);
+                }
+            };
         if connect_timeout.is_some() {
             t.set_read_timeout(None)?;
             t.set_write_timeout(None)?;
