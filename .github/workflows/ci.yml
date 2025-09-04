@@ -21,8 +21,9 @@ env:
   COLUMNS: 80
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
+  lint:  
+    runs-on: self-hosted
+    #runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
