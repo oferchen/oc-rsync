@@ -4,9 +4,9 @@ use assert_cmd::Command;
 #[cfg(unix)]
 use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
-use nix::unistd::{chown, mkfifo, Gid, Uid};
+use nix::unistd::{chown, Gid, Uid};
 #[cfg(unix)]
-use oc_rsync::meta::{makedev, mknod, Mode, SFlag};
+use oc_rsync::meta::{makedev, Mode, SFlag};
 #[cfg(unix)]
 use sha2::{Digest, Sha256};
 #[cfg(unix)]
