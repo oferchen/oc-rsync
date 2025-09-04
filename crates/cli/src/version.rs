@@ -15,7 +15,6 @@ const UPSTREAM_PROTOCOLS: &str = match option_env!("UPSTREAM_PROTOCOLS") {
 };
 
 const COPYRIGHT: &str = "Copyright (C) 2024-2025 oc-rsync contributors.";
-const WEBSITE: &str = "Web site: https://github.com/oc-rsync/oc-rsync";
 const CAPABILITIES: &[&str] = &[
     "    64-bit files, 64-bit inums, 64-bit timestamps, 64-bit long ints,",
     "    socketpairs, symlinks, symtimes, hardlinks, hardlink-specials,",
@@ -50,7 +49,7 @@ pub fn render_version_lines() -> Vec<String> {
         option_env!("OFFICIAL_BUILD").unwrap_or("unofficial")
     ));
     lines.push(COPYRIGHT.to_string());
-    lines.push(WEBSITE.to_string());
+    lines.push(format!("Web site: {}", branding::brand_url()));
     lines.push("Capabilities:".to_string());
     lines.extend(CAPABILITIES.iter().map(|s| (*s).to_string()));
     lines.push("Optimizations:".to_string());

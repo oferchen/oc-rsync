@@ -1,5 +1,6 @@
 // tests/help_output.rs
 use assert_cmd::Command;
+use oc_rsync_cli::branding;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -27,6 +28,7 @@ fn help_contains_expected_flags() {
 
     let mut actual: HashMap<String, String> = HashMap::new();
     let mut in_options = false;
+    let stop_marker = format!("Use \"{} --daemon --help\"", branding::program_name());
     for line in String::from_utf8_lossy(&output.stdout).lines() {
         if line.trim() == "Options" {
             in_options = true;
@@ -35,7 +37,7 @@ fn help_contains_expected_flags() {
         if !in_options {
             continue;
         }
-        if line.starts_with("Use \"rsync --daemon --help\"") {
+        if line.starts_with(&stop_marker) {
             break;
         }
         if line.trim().is_empty() {
