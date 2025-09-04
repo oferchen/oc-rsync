@@ -10,11 +10,10 @@ fn duplicate_channel_id_errors() {
     let tx1 = mux
         .register_channel(1)
         .expect("first registration succeeds");
-    assert_eq!(
+    assert!(matches!(
         mux.register_channel(1),
-        Err(ChannelError::DuplicateId(1)),
-        "second registration should fail",
-    );
+        Err(ChannelError::DuplicateId(1))
+    ));
 
     tx1.send(Message::Data(b"hi".to_vec())).unwrap();
 

@@ -9,7 +9,7 @@ zstd = { version = "0.13", optional = true }
 lz4_flex = { version = "0.11", optional = true }
 
 [features]
-default = ["zlib", "zstd", "lz4"]
+default = ["zlib", "zstd"]
 zlib = ["dep:flate2"]
 zstd = ["dep:zstd"]
 lz4 = ["dep:lz4_flex"]

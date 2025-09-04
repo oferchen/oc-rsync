@@ -35,7 +35,7 @@ fn respects_columns_env_var() {
         .with_target(false)
         .with_level(false)
         .without_time()
-        .event_format(RsyncFormatter)
+        .event_format(RsyncFormatter::new(None))
         .with_ansi(false)
         .with_writer(writer.clone());
     let subscriber = registry().with(layer);

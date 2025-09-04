@@ -28,14 +28,16 @@ fn banner_is_static() {
             option_env!("OFFICIAL_BUILD").unwrap_or("unofficial"),
         ),
     ];
-    expected.extend(
+    let tail = if cfg!(feature = "lz4") {
+        include_str!("fixtures/oc-rsync-version-tail-lz4.txt")
+    } else {
         include_str!("fixtures/oc-rsync-version-tail.txt")
-            .lines()
-            .map(|l| l.to_string()),
-    );
+    };
+    expected.extend(tail.lines().map(|l| l.to_string()));
     assert_eq!(version::render_version_lines(), expected);
 }
 
+#[cfg(feature = "lz4")]
 #[test]
 fn banner_matches_rsync() {
     let upstream: Vec<_> = include_str!("fixtures/rsync-version.txt")
