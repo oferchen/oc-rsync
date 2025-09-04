@@ -50,6 +50,8 @@ pub fn program_name() -> String {
         .unwrap_or_else(|_| "oc-rsync".to_string())
 }
 
+pub const DEFAULT_UPSTREAM_NAME: &str = "rsync";
+
 pub fn upstream_name() -> String {
     env::var("OC_RSYNC_UPSTREAM_NAME")
         .or_else(|_| {
