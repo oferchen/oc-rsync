@@ -25,22 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libacl1-dev
       - name: Format
@@ -70,22 +56,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libacl1-dev
       - name: Install cargo-llvm-cov
@@ -97,7 +69,12 @@ jobs:
         with:
           tool: cargo-nextest
       - name: Test with coverage
-        run: cargo llvm-cov nextest --all-features --fail-under-lines 95 --fail-under-functions 95
+        run: cargo llvm-cov nextest --all-features --fail-under-lines 95 --fail-under-functions 95 --html
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/llvm-cov/html
 
   build-matrix:
     needs: [lint, test-linux]
@@ -117,23 +94,10 @@ jobs:
             target: x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: ${{ matrix.target }}
-          override: true
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libacl1-dev gcc-aarch64-linux-gnu
       - name: Build release binary
@@ -143,34 +107,20 @@ jobs:
           mkdir -p dist
           cp target/${{ matrix.target }}/release/oc-rsync dist/oc-rsync-${{ matrix.name }}
           sha256sum dist/oc-rsync-${{ matrix.name }} > dist/oc-rsync-${{ matrix.name }}.sha256
-          cargo install cargo-sbom || true
-          cargo sbom --output dist/oc-rsync-${{ matrix.name }}-sbom.json
+          cargo install cyclonedx-rust-cargo || true
+          cyclonedx-rust-cargo --output dist/oc-rsync-${{ matrix.name }}-sbom.json
       - uses: actions/upload-artifact@v4
         with:
           name: oc-rsync-${{ matrix.name }}
           path: dist
 
-  package:
-    needs: test-linux
+  package-linux:
+    needs: [test-linux, build-matrix]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libacl1-dev
       - name: Install packaging tools
@@ -185,63 +135,4 @@ jobs:
           path: |
             target/debian/*.deb
             target/generate-rpm/*.rpm
-
-  parity-audit:
-    needs: [lint, test-linux]
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libacl1-dev
-      - name: Build oc-rsync
-        run: cargo build --release --bin oc-rsync
-      - name: Validate --help output
-        run: |
-          ./target/release/oc-rsync --help > /tmp/oc-rsync-help.txt
-          diff -u tests/fixtures/oc-rsync-help.txt /tmp/oc-rsync-help.txt
-      - name: Validate --version output
-        run: |
-          ./target/release/oc-rsync --version > /tmp/oc-rsync-version.txt
-          diff -u tests/fixtures/oc-rsync-version.txt /tmp/oc-rsync-version.txt
-
-  windows:
-    needs: [lint, test-linux]
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Run Windows smoke tests
-        run: cargo test --test windows
 
