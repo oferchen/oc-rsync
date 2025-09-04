@@ -4,9 +4,9 @@ use assert_cmd::Command;
 #[cfg(unix)]
 use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
-use nix::sys::stat::{mknod, Mode, SFlag};
+use nix::sys::stat::{Mode, SFlag};
 #[cfg(unix)]
-use nix::unistd::{chown, mkfifo, Gid, Uid};
+use nix::unistd::{chown, Gid, Uid};
 #[cfg(unix)]
 use sha2::{Digest, Sha256};
 #[cfg(unix)]
@@ -56,8 +56,8 @@ fn archive_matches_combination_and_rsync() {
     )
     .unwrap();
     symlink("dir/file", src.join("link")).unwrap();
-    mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
-    mknod(
+    meta::mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
+    meta::mknod(
         &src.join("dev"),
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o644),
@@ -153,8 +153,8 @@ fn archive_respects_no_options() {
     )
     .unwrap();
     symlink("dir/file", src.join("link")).unwrap();
-    mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
-    mknod(
+    meta::mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
+    meta::mknod(
         &src.join("dev"),
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o644),
