@@ -1,6 +1,8 @@
 // crates/engine/benches/preallocate.rs
+use compress::available_codecs;
 use criterion::{criterion_group, criterion_main, Criterion};
 use engine::{sync, SyncOptions};
+use filters::Matcher;
 use std::fs;
 use tempfile::tempdir;
 
@@ -17,7 +19,7 @@ fn bench_preallocate(c: &mut Criterion) {
                 preallocate: true,
                 ..SyncOptions::default()
             };
-            sync(&src, &dst, &opts).unwrap();
+            sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts).unwrap();
         });
     });
 }
