@@ -167,7 +167,8 @@ impl Visit for MsgVisitor {
 fn format_time() -> String {
     let now = OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
     let fmt = format_description!("[year]/[month]/[day] [hour]:[minute]:[second]");
-    now.format(&fmt).unwrap()
+    now.format(&fmt)
+        .unwrap_or_else(|_| String::from("0000/00/00 00:00:00"))
 }
 
 impl<S, N> FormatEvent<S, N> for RsyncFormatter
