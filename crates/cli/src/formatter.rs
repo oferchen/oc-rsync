@@ -357,3 +357,44 @@ pub fn render_help(cmd: &Command) -> String {
     }
     out
 }
+
+pub fn dump_help_body(cmd: &Command) -> String {
+    let prev = std::env::var("COLUMNS").ok();
+    std::env::set_var("COLUMNS", "80");
+    let help = render_help(cmd);
+    if let Some(v) = prev {
+        std::env::set_var("COLUMNS", v);
+    } else {
+        std::env::remove_var("COLUMNS");
+    }
+    let mut out = String::new();
+    let mut in_options = false;
+    let stop_marker = "Use \"rsync --daemon --help\""; // branding replaced in render_help
+    for line in help.lines() {
+        if line.trim() == "Options" {
+            in_options = true;
+            continue;
+        }
+        if !in_options {
+            continue;
+        }
+        if line.starts_with(stop_marker) {
+            break;
+        }
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Some(idx) = line.find("  ") {
+            let (spec, desc) = line.split_at(idx);
+            if let Some(flag) = spec.split(',').find(|s| s.trim_start().starts_with("--")) {
+                let flag = flag.trim();
+                let desc = desc.split_whitespace().collect::<String>();
+                out.push_str(flag);
+                out.push('\t');
+                out.push_str(&desc);
+                out.push('\n');
+            }
+        }
+    }
+    out
+}

@@ -8,7 +8,7 @@ use crate::formatter;
 use crate::utils::{
     parse_duration, parse_minutes, parse_nonzero_duration, parse_size, parse_stop_at,
 };
-use clap::{ArgAction, Args, CommandFactory, Parser, ValueEnum};
+use clap::{Arg, ArgAction, Args, CommandFactory, Parser, ValueEnum};
 use logging::{DebugFlag, InfoFlag, StderrMode};
 use protocol::SUPPORTED_PROTOCOLS;
 
@@ -696,5 +696,12 @@ pub(crate) struct ProbeOpts {
 pub fn cli_command() -> clap::Command {
     let cmd = ProbeOpts::command();
     let cmd = ClientOpts::augment_args(cmd);
+    let cmd = cmd.arg(
+        Arg::new("dump-help-body")
+            .long("dump-help-body")
+            .action(ArgAction::SetTrue)
+            .hide(true)
+            .exclusive(true),
+    );
     formatter::apply(cmd)
 }

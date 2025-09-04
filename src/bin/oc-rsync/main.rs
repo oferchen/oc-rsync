@@ -15,6 +15,10 @@ fn main() {
     let matches = cmd
         .try_get_matches_from_mut(&args)
         .unwrap_or_else(|e| oc_rsync_cli::handle_clap_error(&cmd, e));
+    if matches.get_flag("dump-help-body") {
+        print!("{}", oc_rsync_cli::dump_help_body(&cmd));
+        return;
+    }
     if let Some(mode) = matches.get_one::<OutBuf>("outbuf") {
         if let Err(err) = stdio::set_stdout_buffering(*mode) {
             eprintln!("failed to set stdout buffer: {err}");
