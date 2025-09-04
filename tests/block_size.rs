@@ -390,4 +390,3 @@ fn cli_block_size_errors_match_rsync() {
         .unwrap_or(&ours_lines[1]);
     assert_eq!(rsync_second_prefix, sanitize(ours_second_lhs));
 }
-
