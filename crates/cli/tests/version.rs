@@ -28,6 +28,8 @@ fn banner_is_static() {
             option_env!("OFFICIAL_BUILD").unwrap_or("unofficial"),
         ),
     ];
+    let year = option_env!("CURRENT_YEAR").unwrap_or("2025");
+    expected.push(format!("Copyright (C) 2024-{year} oc-rsync contributors."));
     let tail = if cfg!(feature = "lz4") {
         include_str!("fixtures/oc-rsync-version-tail-lz4.txt")
     } else {
