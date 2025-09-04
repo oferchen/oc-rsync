@@ -5,6 +5,29 @@ table lists notable features that are either implemented, only partially
 completed, or still missing.  Entries link to the source and corresponding tests
 when available. Do not exceed functionality of upstream at <https://rsync.samba.org> at this stage, prune unused features and/or unreachable code.
 
+## Interop matrix scenarios
+
+  - `base`
+  - `delete`
+  - `delete_before`
+  - `delete_during`
+  - `delete_after`
+  - `compress`
+  - `hard_links`
+  - `rsh`
+  - `drop_connection`
+  - `vanished`
+  - `remote_remote`
+  - `append`
+  - `append_verify`
+  - `partial`
+  - `inplace`
+  - `resume`
+  - `progress`
+  - `resume_progress`
+  - `progress2`
+  - `resume_progress2`
+
 ## Parser Parity
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
