@@ -70,7 +70,7 @@ jobs:
           targets: x86_64-apple-darwin,x86_64-pc-windows-msvc
           cache: true
 
-      - name: Sanity: show toolchain/targets
+      - name: "Sanity: show toolchain/targets"
         run: |
           rustup show
           rustup target list --installed
