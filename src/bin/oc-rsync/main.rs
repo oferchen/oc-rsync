@@ -10,14 +10,7 @@ fn main() {
     let args: Vec<_> = std::env::args_os().collect();
     if args.iter().any(|a| a == "--dump-help-body") {
         let cmd = cli_command();
-        let help = oc_rsync_cli::render_help(&cmd);
-        let mut parts = help.splitn(4, '\n');
-        parts.next();
-        parts.next();
-        parts.next();
-        if let Some(body) = parts.next() {
-            println!("{body}");
-        }
+        print!("{}", oc_rsync_cli::dump_help_body(&cmd));
         return;
     }
     if oc_rsync_cli::print_version_if_requested(args.iter().cloned()) {
