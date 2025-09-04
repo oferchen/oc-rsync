@@ -9,7 +9,7 @@ use tracing::subscriber::with_default;
 
 pub use meta;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SyncConfig {
     pub log_format: LogFormat,
     pub verbose: u8,
@@ -72,7 +72,7 @@ impl SyncConfig {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 #[must_use]
 pub struct SyncConfigBuilder {
     cfg: SyncConfig,
