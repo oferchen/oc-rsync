@@ -1,7 +1,7 @@
 # Differences
 
-- **Transport edge cases**: SSH and daemon transports continue to mature and match classic `rsync` in common scenarios, though rare deviations may still surface.
-  _Planned resolution_: expand interoperability tests to catch and fix remaining edge cases.
+- **Transport edge cases**: SSH and daemon transports are early implementations and may diverge from classic `rsync` behavior.
+  _Planned resolution_: expand interoperability tests and align protocol handling with upstream.
 
-- **Windows support**: Windows builds are available, but path and permission handling still trail Unix platforms.
+- **Windows support**: path and permission handling on Windows is incomplete.
   _Planned resolution_: continue cross-platform development until parity is reached.
