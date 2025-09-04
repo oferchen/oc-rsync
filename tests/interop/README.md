@@ -3,14 +3,16 @@ filesystem trees for interoperability tests.
 
 - `wire/` contains captured protocol transcripts.
 - `filelists/` stores `rsync --list-only` outputs.
-- `golden/` holds destination trees for interoperability tests. Trees are organized
-  by `<client>_<server>_<transport>` where `client` and `server` may be `oc-rsync`
-  or `upstream`.
+- `golden/` holds destination tree tarballs for interoperability tests. Each
+  tarball is stored at
+  `golden/<client>_<server>_<transport>/tree.tar` where `client` and `server`
+  may be `oc-rsync` or `upstream`.
 - `run_matrix.sh` runs a matrix of rsync client/server combinations over both SSH
-  and rsync:// transports. Set `UPDATE=1` to regenerate goldens.
+  and rsync:// transports. Set `UPDATE=1` to regenerate tarball goldens.
 
-To record goldens against an upstream build, point `UPSTREAM_RSYNC` at a built
-rsync binary and limit the scenarios to `base`:
+The committed goldens were recorded using `run_matrix.sh` against upstream
+`rsync` and the local `oc-rsync` build. To record fresh goldens, point
+`UPSTREAM_RSYNC` at a built `rsync` binary and limit the scenarios to `base`:
 
 ```
 SCENARIOS=base UPDATE=1 \
