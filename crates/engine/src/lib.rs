@@ -1119,7 +1119,8 @@ impl Sender {
             if self.opts.append_verify {
                 last_good_block(&self.cfg, path, dest, block_size, &self.opts)?
             } else {
-                fs::metadata(dest).map(|m| m.len()).unwrap_or(0)
+                let dest_meta = fs::metadata(dest).map_err(|e| io_context(dest, e))?;
+                dest_meta.len()
             }
         } else {
             0
