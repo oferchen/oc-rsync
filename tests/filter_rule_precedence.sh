@@ -9,7 +9,7 @@ cargo build --quiet --bin oc-rsync
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-mkdir -p "$TMP/src/keep/sub" "$TMP/src/keep/tmp" "$TMP/src/skip" "$TMP/rsync_dst" "$TMP/oc_rsync_dst"
+mkdir -p "$TMP/src/keep/sub" "$TMP/src/keep/tmp" "$TMP/src/skip" "$TMP/oc_rsync_dst"
 
 # Populate source tree
 
@@ -31,22 +31,6 @@ cat > "$TMP/src/.gitignore" <<'EOF'
 EOF
 echo info > "$TMP/src/keep/info.log"
 
-# Run reference rsync
-rsync_output=$(rsync --quiet --recursive \
-  --filter=': /.rsync-filter' \
-  --filter=': /.gitignore' \
-  --filter='- .rsync-filter' \
-  --filter='- .gitignore' \
-  --filter='+ core' \
-  --filter='-C' \
-  --filter='S debug.log' \
-  --filter='- skip/' \
-  --filter='+ keep/***' \
-  --filter='+ *.md' \
-  --filter='- *' \
-  "$TMP/src/" "$TMP/rsync_dst" 2>&1)
-rsync_status=$?
-
 # Run oc-rsync
 oc_rsync_raw=$("$OC_RSYNC" --recursive \
   --filter=': /.rsync-filter' \
@@ -64,22 +48,22 @@ oc_rsync_raw=$("$OC_RSYNC" --recursive \
 oc_rsync_status=$?
 oc_rsync_output=$(echo "$oc_rsync_raw" | grep -v -e 'recursive mode enabled' || true)
 
-# Compare exit codes
-if [ "$rsync_status" -ne "$oc_rsync_status" ]; then
-  echo "Exit codes differ: rsync=$rsync_status oc-rsync=$oc_rsync_status" >&2
+expected_output=$(cat "$ROOT/tests/golden/filter_rule_precedence/output.txt")
+expected_status=$(cat "$ROOT/tests/golden/filter_rule_precedence/exit_code")
+
+if [ "$expected_status" -ne "$oc_rsync_status" ]; then
+  echo "Exit codes differ: expected=$expected_status oc-rsync=$oc_rsync_status" >&2
   exit 1
 fi
 
-# Compare outputs
-if [ "$rsync_output" != "$oc_rsync_output" ]; then
+if [ "$expected_output" != "$oc_rsync_output" ]; then
   echo "Outputs differ" >&2
-  diff -u <(printf "%s" "$rsync_output") <(printf "%s" "$oc_rsync_output") >&2 || true
+  diff -u <(printf "%s" "$expected_output") <(printf "%s" "$oc_rsync_output") >&2 || true
   exit 1
 fi
 
-# Compare directory trees
-if ! diff -r "$TMP/rsync_dst" "$TMP/oc_rsync_dst" >/dev/null; then
+if ! diff -r "$ROOT/tests/golden/filter_rule_precedence/dst" "$TMP/oc_rsync_dst" >/dev/null; then
   echo "Directory trees differ" >&2
-  diff -r "$TMP/rsync_dst" "$TMP/oc_rsync_dst" >&2 || true
+  diff -r "$ROOT/tests/golden/filter_rule_precedence/dst" "$TMP/oc_rsync_dst" >&2 || true
   exit 1
 fi

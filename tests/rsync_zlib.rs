@@ -2,11 +2,36 @@
 
 use compress::Codec;
 use protocol::{negotiate_version, CAP_CODECS, LATEST_VERSION};
-use transport::{ssh::SshStdioTransport, Transport};
+use std::io;
+use transport::Transport;
+
+struct MockTransport {
+    reads: Vec<Vec<u8>>,
+    idx: usize,
+}
+
+impl Transport for MockTransport {
+    fn send(&mut self, _: &[u8]) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let data = &self.reads[self.idx];
+        self.idx += 1;
+        buf[..data.len()].copy_from_slice(data);
+        Ok(data.len())
+    }
+}
 
 #[test]
 fn rsync_client_falls_back_to_zlib() {
-    let mut t = SshStdioTransport::spawn("rsync", ["--server", "."]).unwrap();
+    let mut t = MockTransport {
+        reads: vec![
+            LATEST_VERSION.to_be_bytes().to_vec(),
+            0u32.to_be_bytes().to_vec(),
+        ],
+        idx: 0,
+    };
 
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
