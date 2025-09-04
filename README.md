@@ -4,6 +4,11 @@
 [![Coverage](https://codecov.io/gh/oferchen/oc-rsync/graph/badge.svg?token=8TUVGHK9VE)](https://codecov.io/gh/oferchen/oc-rsync)
 [![Release](https://img.shields.io/github/v/release/oferchen/oc-rsync)](https://github.com/oferchen/oc-rsync/releases)
 
+## Code Coverage
+[![Sunburst](https://codecov.io/gh/oferchen/oc-rsync/graphs/sunburst.svg?token=8TUVGHK9VE)
+[![Grid](https://codecov.io/gh/oferchen/oc-rsync/graphs/tree.svg?token=8TUVGHK9VE)
+[![Icicle](https://codecov.io/gh/oferchen/oc-rsync/graphs/icicle.svg?token=8TUVGHK9VE)
+
 ## Project statement
 
 oc-rsync is an automatic re‑implementation of rsync’s behavior in Rust, created by Ofer Chen (2025). This project is unaffiliated with the Samba team.
