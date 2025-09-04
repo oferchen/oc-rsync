@@ -6,7 +6,6 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 #[cfg(unix)]
-use std::process::Command as StdCommand;
 use tempfile::tempdir;
 
 #[cfg(unix)]
@@ -73,23 +72,9 @@ fn copy_links_matches_rsync() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst_rr = tmp.path().join("dst_rr");
-    let dst_rsync = tmp.path().join("dst_rsync");
     fs::create_dir_all(src.join("dir")).unwrap();
     fs::write(src.join("dir/file"), b"hi").unwrap();
     symlink("dir", src.join("dirlink"));
-
-    let rsync_out = StdCommand::new("rsync")
-        .args([
-            "-r",
-            "--copy-links",
-            &format!("{}/", src.display()),
-            dst_rsync.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
-    assert!(rsync_out.status.success());
-    let rsync_output = String::from_utf8_lossy(&rsync_out.stdout).to_string()
-        + &String::from_utf8_lossy(&rsync_out.stderr);
 
     let ours_out = Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -103,9 +88,11 @@ fn copy_links_matches_rsync() {
     assert!(ours_out.status.success());
     let ours_output = String::from_utf8_lossy(&ours_out.stdout).to_string()
         + &String::from_utf8_lossy(&ours_out.stderr);
-
-    assert_eq!(rsync_output, ours_output);
-    assert_same_tree(&dst_rsync, &dst_rr);
+    assert!(ours_output.is_empty());
+    assert_same_tree(
+        Path::new("tests/golden/symlink_resolution/copy_links"),
+        &dst_rr,
+    );
 }
 
 #[cfg(unix)]
@@ -117,22 +104,8 @@ fn copy_unsafe_links_matches_rsync() {
     fs::write(outside.join("file"), b"hi").unwrap();
     let src = tmp.path().join("src");
     let dst_rr = tmp.path().join("dst_rr");
-    let dst_rsync = tmp.path().join("dst_rsync");
     fs::create_dir_all(&src).unwrap();
     symlink("../outside/file", src.join("link"));
-
-    let rsync_out = StdCommand::new("rsync")
-        .args([
-            "-r",
-            "--copy-unsafe-links",
-            &format!("{}/", src.display()),
-            dst_rsync.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
-    assert!(rsync_out.status.success());
-    let rsync_output = String::from_utf8_lossy(&rsync_out.stdout).to_string()
-        + &String::from_utf8_lossy(&rsync_out.stderr);
 
     let ours_out = Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -146,9 +119,11 @@ fn copy_unsafe_links_matches_rsync() {
     assert!(ours_out.status.success());
     let ours_output = String::from_utf8_lossy(&ours_out.stdout).to_string()
         + &String::from_utf8_lossy(&ours_out.stderr);
-
-    assert_eq!(rsync_output, ours_output);
-    assert_same_tree(&dst_rsync, &dst_rr);
+    assert!(ours_output.is_empty());
+    assert_same_tree(
+        Path::new("tests/golden/symlink_resolution/copy_unsafe_links"),
+        &dst_rr,
+    );
 }
 
 #[cfg(unix)]
@@ -160,25 +135,10 @@ fn safe_links_matches_rsync() {
     fs::write(outside.join("file"), b"hi").unwrap();
     let src = tmp.path().join("src");
     let dst_rr = tmp.path().join("dst_rr");
-    let dst_rsync = tmp.path().join("dst_rsync");
     fs::create_dir_all(&src).unwrap();
     fs::write(src.join("inside"), b"ok").unwrap();
     symlink("inside", src.join("safe"));
     symlink("../outside/file", src.join("unsafe"));
-
-    let rsync_out = StdCommand::new("rsync")
-        .args([
-            "-r",
-            "--links",
-            "--safe-links",
-            &format!("{}/", src.display()),
-            dst_rsync.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
-    assert!(rsync_out.status.success());
-    let rsync_output = String::from_utf8_lossy(&rsync_out.stdout).to_string()
-        + &String::from_utf8_lossy(&rsync_out.stderr);
 
     let ours_out = Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -193,9 +153,11 @@ fn safe_links_matches_rsync() {
     assert!(ours_out.status.success());
     let ours_output = String::from_utf8_lossy(&ours_out.stdout).to_string()
         + &String::from_utf8_lossy(&ours_out.stderr);
-
-    assert_eq!(rsync_output, ours_output);
-    assert_same_tree(&dst_rsync, &dst_rr);
+    assert!(ours_output.is_empty());
+    assert_same_tree(
+        Path::new("tests/golden/symlink_resolution/safe_links"),
+        &dst_rr,
+    );
 }
 
 #[cfg(unix)]
@@ -204,24 +166,9 @@ fn munge_links_matches_rsync() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst_rr = tmp.path().join("dst_rr");
-    let dst_rsync = tmp.path().join("dst_rsync");
     fs::create_dir_all(&src).unwrap();
     fs::write(src.join("file"), b"hi").unwrap();
     symlink("file", src.join("link"));
-
-    let rsync_out = StdCommand::new("rsync")
-        .args([
-            "-r",
-            "--links",
-            "--munge-links",
-            &format!("{}/", src.display()),
-            dst_rsync.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
-    assert!(rsync_out.status.success());
-    let rsync_output = String::from_utf8_lossy(&rsync_out.stdout).to_string()
-        + &String::from_utf8_lossy(&rsync_out.stderr);
 
     let ours_out = Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -236,9 +183,11 @@ fn munge_links_matches_rsync() {
     assert!(ours_out.status.success());
     let ours_output = String::from_utf8_lossy(&ours_out.stdout).to_string()
         + &String::from_utf8_lossy(&ours_out.stderr);
-
-    assert_eq!(rsync_output, ours_output);
-    assert_same_tree(&dst_rsync, &dst_rr);
+    assert!(ours_output.is_empty());
+    assert_same_tree(
+        Path::new("tests/golden/symlink_resolution/munge_links"),
+        &dst_rr,
+    );
 }
 
 #[cfg(unix)]

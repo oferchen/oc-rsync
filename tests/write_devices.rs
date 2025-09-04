@@ -4,7 +4,6 @@
 use assert_cmd::Command;
 use std::fs;
 use std::os::unix::fs::FileTypeExt;
-use std::process::Command as StdCommand;
 use tempfile::tempdir;
 
 #[test]
@@ -37,20 +36,7 @@ fn write_devices_parity() {
     let tmp = tempdir().unwrap();
     let file = tmp.path().join("file");
     fs::write(&file, b"hi").unwrap();
-
-    let rsync_out = StdCommand::new("rsync")
-        .args([
-            "--quiet",
-            "--write-devices",
-            file.to_str().unwrap(),
-            "/dev/null",
-        ])
-        .output()
-        .unwrap();
-    assert!(rsync_out.status.success());
-    let rsync_output = String::from_utf8_lossy(&rsync_out.stdout).to_string()
-        + &String::from_utf8_lossy(&rsync_out.stderr);
-
+    let expected = include_str!("golden/write_devices/output.txt");
     let ours_out = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--write-devices", file.to_str().unwrap(), "/dev/null"])
@@ -59,8 +45,7 @@ fn write_devices_parity() {
     assert!(ours_out.status.success());
     let ours_output = String::from_utf8_lossy(&ours_out.stdout).to_string()
         + &String::from_utf8_lossy(&ours_out.stderr);
-
-    assert_eq!(rsync_output, ours_output);
+    assert_eq!(expected, ours_output);
 
     let meta = fs::metadata("/dev/null").unwrap();
     assert!(meta.file_type().is_char_device());

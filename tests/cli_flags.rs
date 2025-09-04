@@ -6,7 +6,6 @@ use oc_rsync_cli::cli_command;
 use std::net::TcpListener;
 #[cfg(unix)]
 use std::os::fd::AsRawFd;
-use std::process::Command as StdCommand;
 use std::thread;
 use tempfile::NamedTempFile;
 use transport::tcp::TcpTransport;
@@ -161,13 +160,12 @@ fn mkpath_flag_is_accepted() {
 
 #[test]
 fn mkpath_missing_args_matches_rsync() {
-    let rsync = StdCommand::new("rsync").arg("--mkpath").output().unwrap();
     let oc = Command::cargo_bin("oc-rsync")
         .unwrap()
         .arg("--mkpath")
         .output()
         .unwrap();
-    assert_eq!(rsync.status.success(), oc.status.success());
+    assert!(!oc.status.success());
 }
 
 #[test]

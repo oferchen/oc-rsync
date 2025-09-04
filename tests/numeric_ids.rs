@@ -2,7 +2,6 @@
 
 use assert_cmd::Command;
 use std::fs;
-use std::process::Command as StdCommand;
 use tempfile::tempdir;
 
 #[cfg(unix)]
@@ -20,10 +19,8 @@ fn numeric_ids_matches_rsync() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let ours = tmp.path().join("ours");
-    let rsync_dst = tmp.path().join("rsync");
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&ours).unwrap();
-    fs::create_dir_all(&rsync_dst).unwrap();
     let file = src.join("id.txt");
     fs::write(&file, b"ids").unwrap();
 
@@ -44,20 +41,7 @@ fn numeric_ids_matches_rsync() {
         .assert()
         .success();
 
-    StdCommand::new("rsync")
-        .args([
-            "-r",
-            "--numeric-ids",
-            "--owner",
-            "--group",
-            &src_arg,
-            rsync_dst.to_str().unwrap(),
-        ])
-        .status()
-        .expect("rsync not installed");
-
     let our_meta = fs::metadata(ours.join("id.txt")).unwrap();
-    let rsync_meta = fs::metadata(rsync_dst.join("id.txt")).unwrap();
-    assert_eq!(our_meta.uid(), rsync_meta.uid());
-    assert_eq!(our_meta.gid(), rsync_meta.gid());
+    assert_eq!(our_meta.uid(), 1);
+    assert_eq!(our_meta.gid(), 1);
 }

@@ -69,7 +69,6 @@ fn archive_matches_combination_and_rsync() {
 
     let dst_archive = tmp.path().join("dst_archive");
     let dst_combo = tmp.path().join("dst_combo");
-    let dst_rsync = tmp.path().join("dst_rsync");
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -115,21 +114,12 @@ fn archive_matches_combination_and_rsync() {
         .assert()
         .success();
 
-    assert!(StdCommand::new("rsync")
-        .args([
-            "-a",
-            &format!("{}/", src.display()),
-            dst_rsync.to_str().unwrap(),
-        ])
-        .status()
-        .unwrap()
-        .success());
-
     let h_archive = hash_dir(&dst_archive);
     let h_combo = hash_dir(&dst_combo);
-    let h_rsync = hash_dir(&dst_rsync);
+    let expected = include_str!("golden/archive/hash.txt");
+    let expected = hex::decode(expected.trim()).unwrap();
     assert_eq!(h_archive, h_combo);
-    assert_eq!(h_archive, h_rsync);
+    assert_eq!(h_archive, expected);
 }
 
 #[cfg(unix)]
