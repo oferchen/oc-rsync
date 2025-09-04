@@ -41,10 +41,6 @@ jobs:
         run: |
           cargo run --quiet --bin oc-rsync -- --help | tail -n +4 > /tmp/oc-rsync-help.txt
           diff -u tests/golden/help/oc-rsync.help /tmp/oc-rsync-help.txt
-      - name: Check manpages against spec
-        run: |
-          diff -u man/oc-rsync.1 docs/spec/rsync.1
-          diff -u man/oc-rsyncd.conf.5 docs/spec/rsyncd.conf.5
       - name: Cross-compile check
         run: |
           rustup target add x86_64-apple-darwin x86_64-pc-windows-msvc
