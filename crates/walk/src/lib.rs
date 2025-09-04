@@ -1,10 +1,23 @@
 // crates/walk/src/lib.rs
+
 use std::collections::HashMap;
 use std::fs::FileType;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+
+#[cfg(windows)]
+const VERBATIM_PREFIX: &str = r"\\?\\";
+#[cfg(windows)]
+pub fn normalize_path(path: impl AsRef<Path>) -> PathBuf {
+    let s = path.as_ref().as_os_str().to_string_lossy();
+    if s.starts_with(VERBATIM_PREFIX) {
+        PathBuf::from(s.into_owned())
+    } else {
+        PathBuf::from(format!("{}{}", VERBATIM_PREFIX, s))
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Entry {
@@ -51,6 +64,15 @@ impl Walk {
         links: bool,
         one_file_system: bool,
     ) -> Self {
+        #[cfg(windows)]
+        let walk_root = normalize_path(&root);
+        #[cfg(windows)]
+        let iter = WalkDir::new(walk_root)
+            .sort_by(|a, b| a.file_name().cmp(b.file_name()))
+            .into_iter();
+        #[cfg(windows)]
+        let root_dev = 0;
+
         #[cfg(unix)]
         let root_dev = if one_file_system {
             std::fs::symlink_metadata(&root)
@@ -59,13 +81,20 @@ impl Walk {
         } else {
             0
         };
-        #[cfg(not(unix))]
+        #[cfg(unix)]
+        let iter = WalkDir::new(root)
+            .sort_by(|a, b| a.file_name().cmp(b.file_name()))
+            .into_iter();
+
+        #[cfg(not(any(unix, windows)))]
         let root_dev = 0;
+        #[cfg(not(any(unix, windows)))]
+        let iter = WalkDir::new(root)
+            .sort_by(|a, b| a.file_name().cmp(b.file_name()))
+            .into_iter();
 
         Walk {
-            iter: WalkDir::new(root)
-                .sort_by(|a, b| a.file_name().cmp(b.file_name()))
-                .into_iter(),
+            iter,
             prev_path: String::new(),
             batch_size,
             max_file_size,
@@ -142,7 +171,19 @@ impl Iterator for Walk {
                     if file_type.is_symlink() && !self.links {
                         continue;
                     }
-                    let path = entry.path().to_string_lossy().into_owned();
+                    let path = {
+                        #[cfg(windows)]
+                        let mut p = entry.path().to_string_lossy().into_owned();
+                        #[cfg(not(windows))]
+                        let p = entry.path().to_string_lossy().into_owned();
+                        #[cfg(windows)]
+                        {
+                            if let Some(stripped) = p.strip_prefix(VERBATIM_PREFIX) {
+                                p = stripped.to_string();
+                            }
+                        }
+                        p
+                    };
                     let prefix = common_prefix_len(&self.prev_path, &path);
                     let suffix = path[prefix..].to_string();
 
