@@ -22,7 +22,6 @@ pub enum OutBuf {
 
 #[allow(non_snake_case)]
 #[derive(Parser, Debug, Clone)]
-#[command(trailing_var_arg = true)]
 pub(crate) struct ClientOpts {
     #[command(flatten)]
     pub daemon: DaemonOpts,
