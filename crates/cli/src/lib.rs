@@ -155,57 +155,61 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         total.bytes_received += stats.bytes_received;
     }
     if opts.stats && !opts.quiet {
-        let num_files = total.files_total + total.dirs_total;
-        println!(
-            "Number of files: {} (reg: {}, dir: {})",
-            num_files, total.files_total, total.dirs_total
-        );
-        println!("Number of created files: 0");
-        println!("Number of deleted files: {}", total.files_deleted);
-        println!(
-            "Number of regular files transferred: {}",
-            total.files_transferred
-        );
-        let total_size = if opts.human_readable {
-            human_bytes(total.total_file_size)
-        } else {
-            format!("{} bytes", total.total_file_size)
-        };
-        println!("Total file size: {total_size}");
-        let transferred = if opts.human_readable {
-            human_bytes(total.bytes_transferred)
-        } else {
-            format!("{} bytes", total.bytes_transferred)
-        };
-        println!("Total transferred file size: {transferred}");
-        println!("Literal data: {} bytes", total.literal_data);
-        println!("Matched data: {} bytes", total.matched_data);
-        println!("File list size: 0");
-        println!("File list generation time: 0.000 seconds");
-        println!("File list transfer time: 0.000 seconds");
-        println!("Total bytes sent: {}", total.bytes_sent);
-        println!("Total bytes received: {}", total.bytes_received);
-        println!(
-            "\nsent {} bytes  received {} bytes  0.00 bytes/sec",
-            total.bytes_sent, total.bytes_received
-        );
-        if total.bytes_transferred > 0 {
-            let speedup = total.total_file_size as f64 / total.bytes_transferred as f64;
-            println!(
-                "total size is {}  speedup is {:.2}",
-                total.total_file_size, speedup
-            );
-        } else {
-            println!("total size is {}  speedup is 0.00", total.total_file_size);
-        }
-        tracing::info!(
-            target: InfoFlag::Stats.target(),
-            files_transferred = total.files_transferred,
-            files_deleted = total.files_deleted,
-            bytes = total.bytes_transferred
-        );
+        print_stats(&total, &opts);
     }
     Ok(())
+}
+
+fn print_stats(stats: &Stats, opts: &ClientOpts) {
+    let num_files = stats.files_total + stats.dirs_total;
+    println!(
+        "Number of files: {} (reg: {}, dir: {})",
+        num_files, stats.files_total, stats.dirs_total
+    );
+    println!("Number of created files: 0");
+    println!("Number of deleted files: {}", stats.files_deleted);
+    println!(
+        "Number of regular files transferred: {}",
+        stats.files_transferred
+    );
+    let total_size = if opts.human_readable {
+        human_bytes(stats.total_file_size)
+    } else {
+        format!("{} bytes", stats.total_file_size)
+    };
+    println!("Total file size: {total_size}");
+    let transferred = if opts.human_readable {
+        human_bytes(stats.bytes_transferred)
+    } else {
+        format!("{} bytes", stats.bytes_transferred)
+    };
+    println!("Total transferred file size: {transferred}");
+    println!("Literal data: {} bytes", stats.literal_data);
+    println!("Matched data: {} bytes", stats.matched_data);
+    println!("File list size: 0");
+    println!("File list generation time: 0.000 seconds");
+    println!("File list transfer time: 0.000 seconds");
+    println!("Total bytes sent: {}", stats.bytes_sent);
+    println!("Total bytes received: {}", stats.bytes_received);
+    println!(
+        "\nsent {} bytes  received {} bytes  0.00 bytes/sec",
+        stats.bytes_sent, stats.bytes_received
+    );
+    if stats.bytes_transferred > 0 {
+        let speedup = stats.total_file_size as f64 / stats.bytes_transferred as f64;
+        println!(
+            "total size is {}  speedup is {:.2}",
+            stats.total_file_size, speedup
+        );
+    } else {
+        println!("total size is {}  speedup is 0.00", stats.total_file_size);
+    }
+    tracing::info!(
+        target: InfoFlag::Stats.target(),
+        files_transferred = stats.files_transferred,
+        files_deleted = stats.files_deleted,
+        bytes = stats.bytes_transferred
+    );
 }
 
 fn run_single(
