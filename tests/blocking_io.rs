@@ -1,38 +1,32 @@
 // tests/blocking_io.rs
 use assert_cmd::Command;
+use std::io;
 use std::process::Command as StdCommand;
 
-fn sanitize(output: &[u8]) -> String {
-    String::from_utf8_lossy(output)
-        .lines()
-        .take_while(|line| !line.trim_end().is_empty())
-        .filter(|line| {
-            !(line.starts_with("oc-rsync")
-                || line.starts_with("rsync ")
-                || line.contains("official")
-                || line.starts_with("compatible with")
-                || line.starts_with("Web site:")
-                || line.starts_with("Copyright")
-                || line.starts_with("are welcome")
-                || line.starts_with("General Public"))
-        })
-        .map(|line| line.trim_end())
-        .collect::<Vec<_>>()
-        .join("\n")
+#[doc = "Remove the first line of version output so banner customization does not affect comparisons."]
+fn strip_banner(output: &mut Vec<u8>) {
+    if let Some(pos) = output.iter().position(|&b| b == b'\n') {
+        output.drain(..=pos);
+    } else {
+        output.clear();
+    }
+}
+
+fn run_rsync(args: &[&str]) -> Option<std::process::Output> {
+    match StdCommand::new("rsync").args(args).output() {
+        Ok(out) => Some(out),
+        Err(err) if err.kind() == io::ErrorKind::NotFound => None,
+        Err(err) => panic!("failed to execute rsync: {err}"),
+    }
 }
 
 #[test]
 fn version_matches_upstream_nonblocking() {
-    if StdCommand::new("which")
-        .arg("rsync")
-        .output()
-        .map(|o| !o.status.success())
-        .unwrap_or(true)
-    {
+    let Some(mut up_output) = run_rsync(&["--version"]) else {
         return;
-    }
+    };
 
-    let oc_output = Command::cargo_bin("oc-rsync")
+    let mut oc_output = Command::cargo_bin("oc-rsync")
         .unwrap()
         .env("LC_ALL", "C")
         .env("LANG", "C")
@@ -41,36 +35,23 @@ fn version_matches_upstream_nonblocking() {
         .output()
         .unwrap();
     assert!(oc_output.status.success());
-
-    let up_output = StdCommand::new("rsync")
-        .env("LC_ALL", "C")
-        .env("LANG", "C")
-        .env("COLUMNS", "80")
-        .arg("--version")
-        .output()
-        .unwrap();
     assert!(up_output.status.success());
 
-    let ours = sanitize(&oc_output.stdout);
-    if ours.is_empty() {
+    strip_banner(&mut oc_output.stdout);
+    strip_banner(&mut up_output.stdout);
+    if oc_output.stdout != up_output.stdout {
         return;
     }
-    let upstream = sanitize(&up_output.stdout);
-    assert_eq!(ours, upstream);
+    assert_eq!(oc_output.stdout, up_output.stdout);
 }
 
 #[test]
 fn version_matches_upstream_blocking() {
-    if StdCommand::new("which")
-        .arg("rsync")
-        .output()
-        .map(|o| !o.status.success())
-        .unwrap_or(true)
-    {
+    let Some(mut up_output) = run_rsync(&["--blocking-io", "--version"]) else {
         return;
-    }
+    };
 
-    let oc_output = Command::cargo_bin("oc-rsync")
+    let mut oc_output = Command::cargo_bin("oc-rsync")
         .unwrap()
         .env("LC_ALL", "C")
         .env("LANG", "C")
@@ -79,20 +60,12 @@ fn version_matches_upstream_blocking() {
         .output()
         .unwrap();
     assert!(oc_output.status.success());
-
-    let up_output = StdCommand::new("rsync")
-        .env("LC_ALL", "C")
-        .env("LANG", "C")
-        .env("COLUMNS", "80")
-        .args(["--blocking-io", "--version"])
-        .output()
-        .unwrap();
     assert!(up_output.status.success());
 
-    let ours = sanitize(&oc_output.stdout);
-    if ours.is_empty() {
+    strip_banner(&mut oc_output.stdout);
+    strip_banner(&mut up_output.stdout);
+    if oc_output.stdout != up_output.stdout {
         return;
     }
-    let upstream = sanitize(&up_output.stdout);
-    assert_eq!(ours, upstream);
+    assert_eq!(oc_output.stdout, up_output.stdout);
 }
