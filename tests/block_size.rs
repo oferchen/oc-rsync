@@ -22,6 +22,10 @@ fn parse_literal(stats: &str) -> usize {
     panic!("no literal data in stats: {stats}");
 }
 
+fn rsync_available() -> bool {
+    StdCommand::new("rsync").arg("--version").output().is_ok()
+}
+
 #[test]
 fn cdc_block_size_heuristics() {
     let cases = [
@@ -345,8 +349,11 @@ fn delta_block_size_smaller_file() {
 }
 
 #[test]
-#[ignore = "rsync binary not available"]
 fn cli_block_size_matches_rsync() {
+    if !rsync_available() {
+        eprintln!("skipping cli_block_size_matches_rsync: rsync binary not available");
+        return;
+    }
     let block_size_str = "1k";
     let block_size = 1024usize;
     let size = 1 << 20;
@@ -407,8 +414,11 @@ fn cli_block_size_matches_rsync() {
 }
 
 #[test]
-#[ignore = "rsync binary not available"]
 fn cli_block_size_errors_match_rsync() {
+    if !rsync_available() {
+        eprintln!("skipping cli_block_size_errors_match_rsync: rsync binary not available");
+        return;
+    }
     let tmp = tempdir().unwrap();
     let dst = tmp.path().join("dst");
     fs::create_dir_all(&dst).unwrap();
