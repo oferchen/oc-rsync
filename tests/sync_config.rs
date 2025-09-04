@@ -14,6 +14,16 @@ fn setup_dirs() -> (TempDir, std::path::PathBuf, std::path::PathBuf) {
 }
 
 #[test]
+fn debug_output_available() {
+    let cfg = SyncConfig::builder().quiet(true).build();
+    let cfg_dbg = format!("{cfg:?}");
+    assert!(cfg_dbg.contains("quiet: true"));
+
+    let builder_dbg = format!("{:?}", SyncConfig::builder());
+    assert!(builder_dbg.contains("SyncConfigBuilder"));
+}
+
+#[test]
 fn sync_local() {
     let (_dir, src_dir, dst_dir) = setup_dirs();
     fs::write(src_dir.join("file.txt"), b"hello world").unwrap();
