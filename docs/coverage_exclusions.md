@@ -1,8 +1,8 @@
 # Coverage Exclusions
 
 This document lists code that is intentionally excluded from the project's
-coverage requirements. The coverage workflow enforces a 95% threshold for both
-line and function coverage.
+coverage requirements. Coverage gates enforce a 95% threshold for both project
+and patch metrics, as well as line and function coverage.
 
 The following areas are excluded when interpreting coverage reports:
 
