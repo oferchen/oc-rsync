@@ -10,6 +10,8 @@ use oc_rsync::meta::{makedev, Mode, SFlag};
 #[cfg(unix)]
 use sha2::{Digest, Sha256};
 #[cfg(unix)]
+use std::convert::TryInto;
+#[cfg(unix)]
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::{symlink, FileTypeExt, MetadataExt, PermissionsExt};
@@ -57,15 +59,13 @@ fn archive_matches_combination_and_rsync() {
     symlink("dir/file", src.join("link")).unwrap();
     meta::mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
     #[allow(clippy::useless_conversion)]
-    {
-        meta::mknod(
-            &src.join("dev"),
-            SFlag::S_IFCHR,
-            Mode::from_bits_truncate(0o644),
-            u64::from(makedev(1, 7)),
-        )
-        .unwrap();
-    }
+    meta::mknod(
+        &src.join("dev"),
+        SFlag::S_IFCHR,
+        Mode::from_bits_truncate(0o644),
+        makedev(1, 7).try_into().unwrap(),
+    )
+    .unwrap();
 
     let dst_archive = tmp.path().join("dst_archive");
     let dst_combo = tmp.path().join("dst_combo");
