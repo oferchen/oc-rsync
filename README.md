@@ -11,7 +11,7 @@
 
 ## Project statement
 
-oc-rsync is an automatic re‑implementation of rsync’s behavior in Rust, created by Ofer Chen (2025). This project is unaffiliated with the Samba team.
+oc-rsync is an automatic re‑implementation of rsync’s behavior in Rust, created by Ofer Chen (2025). This project is unaffiliated with the Rsync Samba team.
 
 ## Compatibility
 

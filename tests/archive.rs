@@ -56,8 +56,8 @@ fn archive_matches_combination_and_rsync() {
     )
     .unwrap();
     symlink("dir/file", src.join("link")).unwrap();
-    mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
-    mknod(
+    meta::mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
+    meta::mknod(
         &src.join("dev"),
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o644),
@@ -153,8 +153,8 @@ fn archive_respects_no_options() {
     )
     .unwrap();
     symlink("dir/file", src.join("link")).unwrap();
-    mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
-    mknod(
+    meta::mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
+    meta::mknod(
         &src.join("dev"),
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o644),
