@@ -94,6 +94,7 @@ pub fn handle_clap_error(cmd: &clap::Command, e: clap::Error) -> ! {
         };
         let code_num = u8::from(code);
         let prog = branding::upstream_name();
+
         eprintln!("{prog}: {msg}");
         eprintln!("{prog} error: {desc} (code {code_num})");
     }

@@ -165,35 +165,22 @@ make_source() {
   fi
 }
 
-snapshot_tree() {
-  local dir="$1" out="$2" tmp
-  tmp="$(mktemp)"
-  (
-    cd "$dir"
-    find . -print0 | sort -z | while IFS= read -r -d '' f; do
-      if [[ -f "$f" ]]; then
-        sha1sum "$f" || true
-      fi
-      if [[ -L "$f" ]]; then
-        printf 'link %s -> %s\n' "$f" "$(readlink "$f")" || true
-      fi
-      stat --printf 'meta %n %f %u %g %a %s %b %i %t:%T\n' "$f" || true
-      getfacl -h -p "$f" 2>/dev/null || true
-      getfattr -h -d -m- "$f" 2>/dev/null || true
-      echo
-    done
-  ) > "$out"
-  rm -f "$tmp"
+snapshot_tar() {
+  local dir="$1" out="$2"
+  tar --sort=name --mtime=@0 --numeric-owner --owner=0 --group=0 \
+    --xattrs --acls -cf "$out" -C "$dir" .
 }
 
-compare_trees() {
-  local a="$1" b="$2" tmp_a tmp_b
-  tmp_a="$(mktemp)"
-  tmp_b="$(mktemp)"
-  snapshot_tree "$a" "$tmp_a"
-  snapshot_tree "$b" "$tmp_b"
-  diff -u "$tmp_a" "$tmp_b"
-  rm -f "$tmp_a" "$tmp_b"
+compare_tree() {
+  local gold_tar="$1" dir="$2" tmp
+  tmp="$(mktemp)"
+  snapshot_tar "$dir" "$tmp"
+  if ! cmp -s "$gold_tar" "$tmp"; then
+    diff -u <(tar -tvf "$gold_tar") <(tar -tvf "$tmp")
+    rm -f "$tmp"
+    return 1
+  fi
+  rm -f "$tmp"
 }
 
 # Ensure rsync versions are available
@@ -245,7 +232,6 @@ for c in "${CLIENT_VERSIONS[@]}"; do
         echo "Testing client $c server $s via $t scenario $name" >&2
         tmp="$(mktemp -d)"
         src="$tmp/src"
-        dst="$tmp/dst"
         make_source "$src"
         case "$t" in
           ssh)
@@ -279,13 +265,12 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             if [[ "$name" != "base" ]]; then
               gold+="_${name}"
             fi
+            gold_tar="$gold/tree.tar"
             if [[ "${UPDATE:-0}" == "1" ]]; then
-              rm -rf "$gold"
-              mv "$result" "$gold"
+              mkdir -p "$gold"
+              snapshot_tar "$result" "$gold_tar"
             else
-              mkdir -p "$dst"
-              mv "$result" "$dst"
-              compare_trees "$gold" "$dst"
+              compare_tree "$gold_tar" "$result"
             fi
             ;;
           rsync)
@@ -320,13 +305,12 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             if [[ "$name" != "base" ]]; then
               gold+="_${name}"
             fi
+            gold_tar="$gold/tree.tar"
             if [[ "${UPDATE:-0}" == "1" ]]; then
-              rm -rf "$gold"
-              mv "$result" "$gold"
+              mkdir -p "$gold"
+              snapshot_tar "$result" "$gold_tar"
             else
-              mkdir -p "$dst"
-              mv "$result" "$dst"
-              compare_trees "$gold" "$dst"
+              compare_tree "$gold_tar" "$result"
             fi
             ;;
         esac
