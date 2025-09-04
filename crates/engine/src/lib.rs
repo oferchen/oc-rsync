@@ -385,11 +385,11 @@ pub fn fuzzy_match(dest: &Path) -> Option<PathBuf> {
     best.map(|(_, p)| p)
 }
 
-fn open_for_read(path: &Path, opts: &SyncOptions) -> std::io::Result<File> {
+fn open_for_read(path: &Path, _opts: &SyncOptions) -> std::io::Result<File> {
     #[cfg(target_os = "linux")]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        if opts.open_noatime {
+        if _opts.open_noatime {
             let mut o = OpenOptions::new();
             o.read(true).custom_flags(libc::O_NOATIME);
             if let Ok(f) = o.open(path) {
