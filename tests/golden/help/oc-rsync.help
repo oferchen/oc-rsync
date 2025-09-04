@@ -1,4 +1,7 @@
-rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
+oc-rsync 0.1.0
+Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Samba.
+
+oc-rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
 are welcome to redistribute it under certain conditions.  See the GNU
 General Public Licence for details.
 
@@ -163,8 +166,6 @@ Options
 --help, -h (*)           show this help (* -h is help only on its own)
 
 
-
 Use "rsync --daemon --help" to see the daemon-mode command-line options.
 Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
 For project updates and documentation, visit https://github.com/oc-rsync/oc-rsync.
-
