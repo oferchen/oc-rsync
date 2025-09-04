@@ -14,7 +14,6 @@ RuntimeDirectory=oc-rsyncd
 LogsDirectory=oc-rsyncd
 StateDirectory=oc-rsyncd
 ConfigurationDirectory=oc-rsyncd
-ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf
 ExecStart=/usr/local/bin/oc-rsyncd --no-detach --config=/etc/oc-rsyncd.conf
 Restart=on-failure
 RestartSec=2s
