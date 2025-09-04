@@ -55,6 +55,10 @@ fn service_unit_matches_spec() {
         "StateDirectory=oc-rsyncd",
         "ConfigurationDirectory=oc-rsyncd",
         "ExecStart=/usr/local/bin/oc-rsyncd --no-detach --config=/etc/oc-rsyncd.conf",
+        "# To run the daemon via the main oc-rsync CLI instead of the dedicated oc-rsyncd",
+        "# binary, create a drop-in with the following lines:",
+        "# ExecStart=",
+        "# ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf",
         "Documentation=man:oc-rsyncd(8) man:oc-rsyncd.conf(5) man:oc-rsync(1)",
     ] {
         assert!(
