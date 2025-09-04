@@ -186,7 +186,7 @@ pub fn render_help(cmd: &Command) -> String {
     let credits = if branding::hide_credits() {
         String::new()
     } else {
-        branding::brand_tagline()
+        branding::brand_credits()
     };
     let url = if branding::hide_credits() {
         String::new()
