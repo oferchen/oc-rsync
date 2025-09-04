@@ -11,7 +11,7 @@ fn strip_banner(output: &mut Vec<u8>) {
 
 #[test]
 fn version_matches_upstream_nonblocking() {
-    let mut up_output = include_bytes!("golden/blocking_io/rsync_version.txt").to_vec();
+    let up_output = include_bytes!("golden/blocking_io/rsync_version.txt").to_vec();
 
     let mut oc_output = Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -31,7 +31,7 @@ fn version_matches_upstream_nonblocking() {
 
 #[test]
 fn version_matches_upstream_blocking() {
-    let mut up_output = include_bytes!("golden/blocking_io/rsync_version.txt").to_vec();
+    let up_output = include_bytes!("golden/blocking_io/rsync_version.txt").to_vec();
 
     let mut oc_output = Command::cargo_bin("oc-rsync")
         .unwrap()
