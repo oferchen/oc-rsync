@@ -5,12 +5,11 @@ pub const DEFAULT_UPSTREAM_NAME: &str = "rsync";
 pub const DEFAULT_BRAND_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DEFAULT_BRAND_CREDITS: &str =
     "Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Samba.";
-pub const DEFAULT_BRAND_URL: &str = "https://github.com/oc-rsync/oc-rsync";
+pub const DEFAULT_BRAND_URL: &str = "https://github.com/oferchen/oc-rsync";
 
 pub const DEFAULT_TAGLINE: &str = "Pure-Rust reimplementation of rsync (protocol v32).";
 pub const DEFAULT_URL: &str = DEFAULT_BRAND_URL;
 pub const DEFAULT_COPYRIGHT: &str = "Copyright (C) 2024-2025 oc-rsync contributors.";
-pub const DEFAULT_UPSTREAM_NAME: &str = "rsync";
 
 pub const DEFAULT_HELP_PREFIX: &str = r#"{prog} {version}
 {credits}

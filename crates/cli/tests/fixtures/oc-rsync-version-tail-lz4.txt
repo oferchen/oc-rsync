@@ -1,5 +1,5 @@
 Copyright (C) 2024-2025 oc-rsync contributors.
-Web site: https://github.com/oc-rsync/oc-rsync
+Web site: https://github.com/oferchen/oc-rsync
 Capabilities:
     64-bit files, 64-bit inums, 64-bit timestamps, 64-bit long ints,
     socketpairs, symlinks, symtimes, hardlinks, hardlink-specials,
