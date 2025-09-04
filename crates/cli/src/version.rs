@@ -71,7 +71,6 @@ pub fn render_version_lines() -> Vec<String> {
     lines
 }
 
-#[allow(dead_code)]
 pub fn version_banner() -> String {
     format!("{}\n", render_version_lines().join("\n"))
 }
