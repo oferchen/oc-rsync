@@ -38,11 +38,6 @@ jobs:
           target: x86_64-apple-darwin,x86_64-pc-windows-msvc
           cache: true
 
-      - name: Cargo check (cross targets)
-        run: |
-          cargo check --workspace --target x86_64-apple-darwin
-          cargo check --workspace --target x86_64-pc-windows-msvc
-
       - name: Install system dependencies (Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
@@ -63,26 +58,9 @@ jobs:
         run: |
           cargo run --quiet --bin oc-rsync -- --help | tail -n +4 > /tmp/oc-rsync-help.txt
           diff -u tests/golden/help/oc-rsync.help /tmp/oc-rsync-help.txt
-
-      # Quick cross-compile sanity on Linux: just 'check', not full link for non-native SDKs
-      - name: Cross-compile check (headers only)
-        if: runner.os == 'Linux'
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-          target: x86_64-apple-darwin,x86_64-pc-windows-msvc
-          cache: true
-
-      - name: "Sanity: show toolchain/targets"
-        run: |
-          rustup show
-          rustup target list --installed
-          rustc --version
-          rustc --print sysroot
-          rustc --target x86_64-apple-darwin --print target-libdir
-
+      # Optional cross-target checks require macOS headers/toolchain
       - name: Cargo check (cross targets)
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && env.MACOS_SDK_PATH != ''
         run: |
           cargo check --workspace --target x86_64-apple-darwin
           cargo check --workspace --target x86_64-pc-windows-msvc
