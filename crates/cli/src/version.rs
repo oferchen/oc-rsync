@@ -14,6 +14,7 @@ const UPSTREAM_PROTOCOLS: &str = match option_env!("UPSTREAM_PROTOCOLS") {
     None => "32,31,30,29",
 };
 
+const COPYRIGHT: &str = "Copyright (C) 2024-2025 oc-rsync contributors.";
 const CAPABILITIES: &[&str] = &[
     "    64-bit files, 64-bit inums, 64-bit timestamps, 64-bit long ints,",
     "    socketpairs, symlinks, symtimes, hardlinks, hardlink-specials,",
@@ -26,36 +27,29 @@ const COMPRESS: &[&str] = &["    zstd zlib none"];
 const DAEMON_AUTH: &[&str] = &["    sha512 sha256 sha1 md5 md4"];
 
 pub fn render_version_lines() -> Vec<String> {
-    let mut lines: Vec<String> = if let Some(header) = branding::version_header() {
-        header.lines().map(|l| l.to_string()).collect()
-    } else {
-        let mut v = Vec::new();
-        v.push(format!(
-            "{} {} (protocol {})",
-            branding::program_name(),
-            branding::brand_version(),
-            RSYNC_PROTOCOL
-        ));
-        let proto = UPSTREAM_PROTOCOLS
-            .split(',')
-            .next()
-            .and_then(|s| s.parse::<u32>().ok())
-            .unwrap_or(RSYNC_PROTOCOL);
-        v.push(format!(
-            "compatible with rsync {} (protocol {proto})",
-            UPSTREAM_VERSION
-        ));
-        v.push(format!(
-            "{} {}",
-            option_env!("BUILD_REVISION").unwrap_or("unknown"),
-            option_env!("OFFICIAL_BUILD").unwrap_or("unofficial")
-        ));
-        v
-    };
-    if !branding::hide_credits() {
-        lines.push(branding::brand_copyright());
-        lines.push(format!("Web site: {}", branding::brand_url()));
-    }
+    let mut lines = Vec::new();
+    lines.push(format!(
+        "{} {} (protocol {})",
+        branding::program_name(),
+        env!("CARGO_PKG_VERSION"),
+        RSYNC_PROTOCOL
+    ));
+    let proto = UPSTREAM_PROTOCOLS
+        .split(',')
+        .next()
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(RSYNC_PROTOCOL);
+    lines.push(format!(
+        "compatible with rsync {} (protocol {proto})",
+        UPSTREAM_VERSION
+    ));
+    lines.push(format!(
+        "{} {}",
+        option_env!("BUILD_REVISION").unwrap_or("unknown"),
+        option_env!("OFFICIAL_BUILD").unwrap_or("unofficial")
+    ));
+    lines.push(COPYRIGHT.to_string());
+    lines.push(format!("Web site: {}", branding::brand_url()));
     lines.push("Capabilities:".to_string());
     lines.extend(CAPABILITIES.iter().map(|s| (*s).to_string()));
     lines.push("Optimizations:".to_string());

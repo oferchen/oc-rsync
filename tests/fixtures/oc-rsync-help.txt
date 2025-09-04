@@ -1,5 +1,5 @@
 oc-rsync 0.1.0
-Automatic Rust re-implementation of rsync semantics by Ofer Chen (2025). Not affiliated with Samba.
+Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Samba.
 
 rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
 are welcome to redistribute it under certain conditions.  See the GNU
@@ -166,7 +166,6 @@ Options
 --help, -h (*)           show this help (* -h is help only on its own)
 
 
-Use "rsync --daemon --help" to see the daemon-mode command-line options.
-Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
-See https://rsync.samba.org/ for updates, bug reports, and answers
-
+Use "oc-rsync --daemon --help" to see the daemon-mode command-line options.
+Please see the oc-rsync(1) and oc-rsyncd.conf(5) manpages for full documentation.
+For project updates and documentation, visit https://github.com/oc-rsync/oc-rsync.

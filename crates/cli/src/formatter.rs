@@ -202,8 +202,8 @@ pub fn render_help(cmd: &Command) -> String {
         *s = s
             .replace("{prog}", &program)
             .replace("{version}", &version)
-            .replace("{tagline}", &tagline)
-            .replace("{url_line}", &url_line);
+            .replace("{credits}", &credits)
+            .replace("{url}", &url);
     }
     if width == 80 {
         let prefix_end = match RSYNC_HELP.find(UPSTREAM_HELP_PREFIX) {
