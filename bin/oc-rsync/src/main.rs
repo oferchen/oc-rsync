@@ -6,12 +6,7 @@ use std::io::ErrorKind;
 use std::ptr::{self, NonNull};
 
 extern "C" {
-    #[doc = r"Raw handle to the C `stdout` stream.
-
-# Safety
-
-This symbol originates from the C runtime and is a mutable static. Access must ensure the pointer remains
-valid and is not used concurrently in an unsafe manner."]
+    #[cfg_attr(target_os = "macos", link_name = "__stdoutp")]
     static mut stdout: *mut libc::FILE;
 }
 
