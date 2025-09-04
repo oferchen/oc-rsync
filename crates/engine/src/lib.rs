@@ -1055,6 +1055,7 @@ impl Sender {
         dest: &Path,
         rel: &Path,
         recv: &mut Receiver,
+        stats: &mut Stats,
     ) -> Result<bool> {
         if self.opts.checksum {
             if let Ok(dst_sum) = self.strong_file_checksum(dest) {
@@ -1187,6 +1188,8 @@ impl Sender {
             atomic_rename(dest, &backup_path)?;
         }
         let mut skip = resume as u64;
+        let mut literal = 0u64;
+        let mut matched = 0u64;
         let adjusted = delta.filter_map(move |op_res| match op_res {
             Ok(op) => {
                 if skip == 0 {
@@ -1220,6 +1223,14 @@ impl Sender {
             }
             Err(e) => Some(Err(e)),
         });
+        let adjusted = adjusted.inspect(|op_res| {
+            if let Ok(op) = op_res {
+                match op {
+                    Op::Data(d) => literal += d.len() as u64,
+                    Op::Copy { len, .. } => matched += *len as u64,
+                }
+            }
+        });
         let ops = adjusted.map(|op_res| {
             let mut op = op_res?;
             if let Some(codec) = file_codec {
@@ -1241,6 +1252,8 @@ impl Sender {
         });
         if !self.opts.only_write_batch {
             recv.apply(path, dest, rel, ops)?;
+            stats.literal_data += literal;
+            stats.matched_data += matched;
             drop(atime_guard);
             recv.copy_metadata(path, dest)?;
         } else {
@@ -1248,6 +1261,8 @@ impl Sender {
             for op in ops {
                 let _ = op;
             }
+            stats.literal_data += literal;
+            stats.matched_data += matched;
         }
         Ok(true)
     }
@@ -1979,12 +1994,19 @@ impl SyncOptions {
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Stats {
+    pub files_total: usize,
+    pub dirs_total: usize,
     pub files_transferred: usize,
     pub files_deleted: usize,
+    pub total_file_size: u64,
     pub bytes_transferred: u64,
+    pub literal_data: u64,
+    pub matched_data: u64,
+    pub bytes_sent: u64,
+    pub bytes_received: u64,
 }
 
-fn count_files(src_root: &Path, matcher: &Matcher, opts: &SyncOptions) -> usize {
+fn count_entries(src_root: &Path, matcher: &Matcher, opts: &SyncOptions) -> (usize, usize, u64) {
     let walker = walk(
         src_root,
         1024,
@@ -1992,18 +2014,27 @@ fn count_files(src_root: &Path, matcher: &Matcher, opts: &SyncOptions) -> usize 
         opts.one_file_system,
     );
     let mut state = String::new();
-    let mut total = 0usize;
+    let mut files = 0usize;
+    let mut dirs = 0usize;
+    let mut size = 0u64;
     for batch in walker.flatten() {
         for entry in batch {
             let path = entry.apply(&mut state);
             if let Ok(rel) = path.strip_prefix(src_root) {
-                if matcher.is_included(rel).unwrap_or(true) && entry.file_type.is_file() {
-                    total += 1;
+                if matcher.is_included(rel).unwrap_or(true) {
+                    if entry.file_type.is_file() {
+                        files += 1;
+                        if let Ok(meta) = fs::metadata(&path) {
+                            size += meta.len();
+                        }
+                    } else if entry.file_type.is_dir() {
+                        dirs += 1;
+                    }
                 }
             }
         }
     }
-    total
+    (files, dirs, size)
 }
 
 pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
@@ -2370,11 +2401,14 @@ pub fn sync(
 
     let codec = select_codec(remote, opts);
     let matcher = matcher.clone().with_root(src_root.clone());
+    let (file_cnt, dir_cnt, total_size) = count_entries(&src_root, &matcher, opts);
+    stats.files_total = file_cnt;
+    stats.dirs_total = dir_cnt;
+    stats.total_file_size = total_size;
     if opts.progress {
         FILE_COUNTER.store(0, Ordering::SeqCst);
         PROGRESS_HEADER.store(false, Ordering::SeqCst);
-        let total = count_files(&src_root, &matcher, opts);
-        TOTAL_FILES.store(total, Ordering::SeqCst);
+        TOTAL_FILES.store(file_cnt, Ordering::SeqCst);
     }
     if opts.dry_run {
         if opts.delete.is_some() {
@@ -2413,7 +2447,7 @@ pub fn sync(
                 continue;
             }
             let dest_path = dst.join(&rel);
-            if sender.process_file(&path, &dest_path, &rel, &mut receiver)? {
+            if sender.process_file(&path, &dest_path, &rel, &mut receiver, &mut stats)? {
                 stats.files_transferred += 1;
                 stats.bytes_transferred +=
                     fs::metadata(&path).map_err(|e| io_context(&path, e))?.len();
@@ -2559,7 +2593,7 @@ pub fn sync(
                             }
                         }
                     }
-                    if sender.process_file(&path, &dest_path, rel, &mut receiver)? {
+                    if sender.process_file(&path, &dest_path, rel, &mut receiver, &mut stats)? {
                         stats.files_transferred += 1;
                         stats.bytes_transferred +=
                             fs::metadata(&path).map_err(|e| io_context(&path, e))?.len();
@@ -2686,15 +2720,23 @@ pub fn sync(
                                         .map_err(|e| io_context(parent, e))?;
                                 }
                                 let sub = sync(&target_path, &dest_path, &matcher, remote, opts)?;
+                                stats.files_total += sub.files_total;
+                                stats.dirs_total += sub.dirs_total;
                                 stats.files_transferred += sub.files_transferred;
                                 stats.files_deleted += sub.files_deleted;
+                                stats.total_file_size += sub.total_file_size;
                                 stats.bytes_transferred += sub.bytes_transferred;
+                                stats.literal_data += sub.literal_data;
+                                stats.matched_data += sub.matched_data;
+                                stats.bytes_sent += sub.bytes_sent;
+                                stats.bytes_received += sub.bytes_received;
                             } else if meta.is_file()
                                 && sender.process_file(
                                     &target_path,
                                     &dest_path,
                                     rel,
                                     &mut receiver,
+                                    &mut stats,
                                 )?
                             {
                                 stats.files_transferred += 1;
@@ -3049,12 +3091,13 @@ mod tests {
             SyncOptions::default(),
         );
         let mut receiver = Receiver::new(Some(Codec::Zlib), SyncOptions::default());
+        let mut stats = Stats::default();
         sender.start();
         for path in [src.join("inside.txt"), outside.clone()] {
             if let Some(rel) = path.strip_prefix(&src).ok() {
                 let dest_path = dst.join(rel);
                 sender
-                    .process_file(&path, &dest_path, rel, &mut receiver)
+                    .process_file(&path, &dest_path, rel, &mut receiver, &mut stats)
                     .unwrap();
             }
         }
