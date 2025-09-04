@@ -36,6 +36,23 @@ sudo rpm -i oc-rsync-<version>.x86_64.rpm
 
 ### From source
 
+#### Prerequisites
+
+The source build requires a C toolchain and compression libraries:
+
+- `build-essential` (provides `gcc`/`ld`)
+- `libzstd-dev`
+- `zlib1g-dev`
+
+On Debian/Ubuntu systems:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential libzstd-dev zlib1g-dev
+```
+
+Run `scripts/preflight.sh` to verify these dependencies before building.
+
 ```bash
 cargo install oc-rsync
 # or build from source

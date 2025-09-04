@@ -54,7 +54,7 @@ jobs:
 
       - name: Install system dependencies (Linux only)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libacl1-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
 
       - name: Format
         run: cargo fmt --all --check
@@ -111,7 +111,10 @@ jobs:
           cache: true
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libacl1-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
+
+      - name: Pre-flight check
+        run: scripts/preflight.sh
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@v2
@@ -146,7 +149,7 @@ jobs:
           cache: true
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libacl1-dev acl attr openssh-server rsync
+        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev acl attr openssh-server rsync
 
       - name: Run interop matrix
         run: |
@@ -189,7 +192,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libacl1-dev
+          sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
           if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
             sudo apt-get install -y gcc-aarch64-linux-gnu
           fi
@@ -237,7 +240,7 @@ jobs:
           cache: true
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libacl1-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
 
       - name: Install packaging tools
         run: cargo install cargo-deb cargo-generate-rpm || true
