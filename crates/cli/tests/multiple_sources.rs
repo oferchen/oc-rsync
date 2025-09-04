@@ -1,4 +1,5 @@
 // crates/cli/tests/multiple_sources.rs
+use assert_cmd::prelude::*;
 use assert_cmd::Command;
 use std::collections::BTreeMap;
 use std::fs;
@@ -61,8 +62,8 @@ fn multiple_source_parity() {
             &format!("{}/", src2.display()),
         ])
         .arg(&dst_up)
-        .status()
-        .unwrap();
+        .assert()
+        .success();
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -72,8 +73,8 @@ fn multiple_source_parity() {
             &format!("{}/", src2.display()),
             dst_ours.to_str().unwrap(),
         ])
-        .status()
-        .unwrap();
+        .assert()
+        .success();
 
     let up = collect(&dst_up);
     let ours = collect(&dst_ours);

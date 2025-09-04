@@ -41,8 +41,12 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
       - name: Test with coverage
-        run: cargo llvm-cov --all-features --fail-under-lines 95
+        run: cargo llvm-cov nextest --all-features --fail-under-lines 95 -- --no-fail-fast
       - name: Validate interop matrix docs
         run: scripts/check-run-matrix-docs.sh
       - name: Cross-compile check

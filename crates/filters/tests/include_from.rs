@@ -7,7 +7,7 @@ use std::collections::HashSet;
 fn include_from_null_separated() {
     let data = b"foo\0bar\0";
     let mut v = HashSet::new();
-    let rules = parse_rule_list_from_bytes(data, true, '+', &mut v, 0).unwrap();
+    let rules = parse_rule_list_from_bytes(data, true, '+', &mut v, 0, None).unwrap();
     let matcher = Matcher::new(rules);
     assert!(matcher.is_included("foo").unwrap());
     assert!(matcher.is_included("bar").unwrap());
@@ -18,7 +18,7 @@ fn include_from_null_separated() {
 fn exclude_from_null_separated() {
     let data = b"foo\0bar\0";
     let mut v = HashSet::new();
-    let rules = parse_rule_list_from_bytes(data, true, '-', &mut v, 0).unwrap();
+    let rules = parse_rule_list_from_bytes(data, true, '-', &mut v, 0, None).unwrap();
     let matcher = Matcher::new(rules);
     assert!(!matcher.is_included("foo").unwrap());
     assert!(!matcher.is_included("bar").unwrap());
@@ -37,10 +37,10 @@ proptest! {
             bytes.push(0);
         }
         let mut v0 = HashSet::new();
-        let rules0 = parse_rule_list_from_bytes(&bytes, true, '+', &mut v0, 0).unwrap();
+        let rules0 = parse_rule_list_from_bytes(&bytes, true, '+', &mut v0, 0, None).unwrap();
         let mut v1 = HashSet::new();
         let joined = entries.iter().map(|s| s.as_str()).collect::<Vec<_>>().join("\n");
-        let rules1 = parse_rule_list_from_bytes(joined.as_bytes(), false, '+', &mut v1, 0).unwrap();
+        let rules1 = parse_rule_list_from_bytes(joined.as_bytes(), false, '+', &mut v1, 0, None).unwrap();
         let m0 = Matcher::new(rules0);
         let m1 = Matcher::new(rules1);
         for e in entries {
