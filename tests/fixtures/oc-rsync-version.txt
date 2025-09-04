@@ -1,5 +1,5 @@
 oc-rsync 0.1.0 (protocol 32)
-compatible with rsync unknown (protocol 32)
+compatible with rsync 3.4.1 (protocol 32)
 unknown unofficial
 Copyright (C) 2024-2025 oc-rsync contributors.
 Web site: https://github.com/oc-rsync/oc-rsync
