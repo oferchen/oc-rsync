@@ -1,6 +1,4 @@
 // crates/transport/src/ssh.rs
-#![cfg(unix)]
-#![allow(clippy::duplicated_attributes)]
 
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use nix::poll::{poll, PollFd, PollFlags, PollTimeout};
