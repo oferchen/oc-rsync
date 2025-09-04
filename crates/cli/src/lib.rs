@@ -168,11 +168,9 @@ fn run_single(
         } else {
             opts.group || opts.archive
         };
-        let needs_privs = need_owner
-            || need_group
-            || opts.chown.is_some()
-            || !opts.usermap.is_empty()
-            || !opts.groupmap.is_empty();
+        let maps_requested =
+            opts.chown.is_some() || !opts.usermap.is_empty() || !opts.groupmap.is_empty();
+        let needs_privs = need_owner || need_group || maps_requested;
         let numeric_fallback = opts.numeric_ids
             && opts.chown.is_none()
             && opts.usermap.is_empty()
@@ -181,23 +179,43 @@ fn run_single(
             use nix::unistd::Uid;
             if !Uid::effective().is_root() {
                 #[cfg(target_os = "linux")]
-                {
+                let has_privs = {
                     use caps::{CapSet, Capability};
-                    if !caps::has_cap(None, CapSet::Effective, Capability::CAP_CHOWN)
-                        .unwrap_or(false)
-                    {
-                        return Err(EngineError::Exit(
-                            ExitCode::StartClient,
-                            "changing ownership requires root or CAP_CHOWN".into(),
-                        ));
-                    }
-                }
+                    caps::has_cap(None, CapSet::Effective, Capability::CAP_CHOWN).unwrap_or(false)
+                };
                 #[cfg(not(target_os = "linux"))]
-                {
-                    return Err(EngineError::Exit(
-                        ExitCode::StartClient,
-                        "changing ownership requires root".into(),
-                    ));
+                let has_privs = false;
+
+                let priv_msg = if cfg!(target_os = "linux") {
+                    "changing ownership requires root or CAP_CHOWN"
+                } else {
+                    "changing ownership requires root"
+                };
+
+                if !has_privs {
+                    if maps_requested {
+                        return Err(EngineError::Exit(ExitCode::StartClient, priv_msg.into()));
+                    }
+                    let owner_explicit =
+                        matches.value_source("owner") == Some(ValueSource::CommandLine);
+                    let group_explicit =
+                        matches.value_source("group") == Some(ValueSource::CommandLine);
+                    let mut downgraded = false;
+                    if need_owner && !owner_explicit {
+                        opts.owner = false;
+                        opts.no_owner = true;
+                        downgraded = true;
+                    }
+                    if need_group && !group_explicit {
+                        opts.group = false;
+                        opts.no_group = true;
+                        downgraded = true;
+                    }
+                    if downgraded {
+                        tracing::warn!("{priv_msg}: disabling owner/group");
+                    } else {
+                        return Err(EngineError::Exit(ExitCode::StartClient, priv_msg.into()));
+                    }
                 }
             }
         }
