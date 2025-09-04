@@ -183,14 +183,27 @@ pub fn render_help(cmd: &Command) -> String {
     let width = columns();
     let program = branding::program_name();
     let version = branding::brand_version();
-    let credits = branding::brand_credits();
+    let tagline = if branding::hide_credits() {
+        String::new()
+    } else {
+        format!("\n{}", branding::brand_tagline())
+    };
+    let url_line = if branding::hide_credits() {
+        String::new()
+    } else {
+        format!(
+            "\nSee {} for updates, bug reports, and answers",
+            branding::brand_url()
+        )
+    };
     let mut help_prefix = branding::help_prefix();
     let mut help_suffix = branding::help_suffix();
     for s in [&mut help_prefix, &mut help_suffix] {
         *s = s
             .replace("{prog}", &program)
             .replace("{version}", &version)
-            .replace("{credits}", &credits);
+            .replace("{tagline}", &tagline)
+            .replace("{url_line}", &url_line);
     }
     if width == 80 {
         let prefix_end = match RSYNC_HELP.find(UPSTREAM_HELP_PREFIX) {
