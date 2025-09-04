@@ -46,22 +46,17 @@ impl Codec {
 }
 
 pub fn available_codecs() -> Vec<Codec> {
-    #[allow(unused_mut)]
-    let mut codecs = Vec::new();
-    #[cfg(feature = "zstd")]
-    {
-        codecs.push(Codec::Zstd);
-    }
-    #[cfg(feature = "lz4")]
-    {
-        codecs.push(Codec::Lz4);
-    }
-    #[cfg(feature = "zlib")]
-    {
-        codecs.push(Codec::Zlibx);
-        codecs.push(Codec::Zlib);
-    }
-    codecs
+    let codecs = [
+        #[cfg(feature = "zstd")]
+        Codec::Zstd,
+        #[cfg(feature = "lz4")]
+        Codec::Lz4,
+        #[cfg(feature = "zlib")]
+        Codec::Zlibx,
+        #[cfg(feature = "zlib")]
+        Codec::Zlib,
+    ];
+    codecs.into_iter().collect()
 }
 
 pub trait Compressor {
