@@ -81,13 +81,16 @@ fn defaults_skip_devices_and_specials() {
     let fifo = src_dir.join("fifo");
     mkfifo(&fifo, Mode::from_bits_truncate(0o600)).unwrap();
     let dev = src_dir.join("null");
-    mknod(
-        &dev,
-        SFlag::S_IFCHR,
-        Mode::from_bits_truncate(0o600),
-        makedev(1, 3),
-    )
-    .unwrap();
+    #[allow(clippy::useless_conversion)]
+    {
+        mknod(
+            &dev,
+            SFlag::S_IFCHR,
+            Mode::from_bits_truncate(0o600),
+            u64::from(makedev(1, 3)),
+        )
+        .unwrap();
+    }
 
     synchronize(src_dir.clone(), dst_dir.clone()).unwrap();
 
