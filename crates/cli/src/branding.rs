@@ -30,13 +30,6 @@ Usage: {prog} [OPTION]... SRC [SRC]... DEST
 The ':' usages connect via remote shell, while '::' & '{prog}://' usages connect
 to an {prog} daemon, and require SRC or DEST to start with a module name.
 
-Usage: {prog} [OPTION]... SRC [SRC]... DEST
-  or   {prog} [OPTION]... SRC [SRC]... [USER@]HOST:DEST
-  or   {prog} [OPTION]... SRC [SRC]... [USER@]HOST::DEST
-  or   {prog} [OPTION]... SRC [SRC]... {prog}://[USER@]HOST[:PORT]/DEST
-  or   {prog} [OPTION]... [USER@]HOST:SRC [DEST]
-  or   {prog} [OPTION]... [USER@]HOST::SRC [DEST]
-  or   {prog} [OPTION]... {prog}://[USER@]HOST[:PORT]/SRC [DEST]
 Options
 "#;
 
