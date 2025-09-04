@@ -25,3 +25,4 @@ predicates = "3"
 default = ["xattr", "acl"]
 xattr = ["engine/xattr"]
 acl = ["engine/acl"]
+lz4 = ["engine/lz4", "oc-rsync-cli/lz4"]

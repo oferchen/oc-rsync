@@ -69,6 +69,7 @@ fn zstd_roundtrip() {
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"hello world");
 }
 
+#[cfg(feature = "lz4")]
 #[test]
 fn lz4_roundtrip() {
     let tmp = tempdir().unwrap();
@@ -100,18 +101,27 @@ fn codec_selection_respects_options() {
         select_codec(&[Codec::Zlib, Codec::Zlibx, Codec::Lz4, Codec::Zstd], &opts,),
         Some(Codec::Zstd)
     );
+    #[cfg(feature = "lz4")]
     assert_eq!(
         select_codec(&[Codec::Zlibx, Codec::Lz4], &opts),
         Some(Codec::Lz4)
     );
+    #[cfg(not(feature = "lz4"))]
+    assert_eq!(select_codec(&[Codec::Zlibx], &opts), Some(Codec::Zlibx));
 
     let opts = SyncOptions {
         compress: true,
         compress_choice: Some(vec![Codec::Zlibx, Codec::Zlib]),
         ..Default::default()
     };
+    #[cfg(feature = "lz4")]
     assert_eq!(
         select_codec(&[Codec::Zlibx, Codec::Lz4, Codec::Zstd], &opts),
+        Some(Codec::Zlibx)
+    );
+    #[cfg(not(feature = "lz4"))]
+    assert_eq!(
+        select_codec(&[Codec::Zlibx, Codec::Zstd], &opts),
         Some(Codec::Zlibx)
     );
 

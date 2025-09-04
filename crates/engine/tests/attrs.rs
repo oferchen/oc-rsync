@@ -954,7 +954,7 @@ fn super_overrides_fake_super() {
 
 #[cfg(all(feature = "xattr"))]
 #[test]
-fn xattrs_roundtrip() {
+fn xattrs_roundtrip_fake_super() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -980,7 +980,7 @@ fn xattrs_roundtrip() {
 
 #[cfg(all(feature = "acl"))]
 #[test]
-fn acls_roundtrip() {
+fn acls_roundtrip_default_acl() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");

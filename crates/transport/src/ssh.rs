@@ -626,6 +626,7 @@ mod tests {
             handle: None,
             read_timeout: None,
             write_timeout: None,
+            blocking_io: false,
         }
     }
 

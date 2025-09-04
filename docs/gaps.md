@@ -63,7 +63,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | --- | --- | --- | --- |
 | zstd and zlib codecs | Implemented | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/lib.rs](../crates/compress/src/lib.rs) |
 | `--skip-compress` suffix handling | Implemented | [tests/skip_compress.rs](../tests/skip_compress.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| Additional codecs (e.g. lz4) | Missing | — | — |
+| Additional codecs (e.g. lz4) | Planned post-parity ([#873](https://github.com/oferchen/oc-rsync/pull/873)) | — | — |
 
 ## Filters
 | Feature | Status | Tests | Source |
