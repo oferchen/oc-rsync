@@ -197,8 +197,20 @@ pub fn render_help(cmd: &Command) -> String {
     let mut help_prefix = branding::help_prefix();
     let mut help_suffix = branding::help_suffix();
     for s in [&mut help_prefix, &mut help_suffix] {
-        *s = s.replace("rsync", &upstream);
-        *s = s
+        let mut replaced = String::with_capacity(s.len());
+        let mut rest: &str = s;
+        while let Some(idx) = rest.find("rsync") {
+            replaced.push_str(&rest[..idx]);
+            let tail = &rest[idx + 5..];
+            if tail.starts_with("://") || tail.starts_with('d') {
+                replaced.push_str("rsync");
+            } else {
+                replaced.push_str(&upstream);
+            }
+            rest = tail;
+        }
+        replaced.push_str(rest);
+        *s = replaced
             .replace("{prog}", &program)
             .replace("{version}", &version)
             .replace("{credits}", &credits)
