@@ -86,10 +86,13 @@ required-features = ["cli"]
 name = "strip-rs-comments"
 path = "tools/strip_rs_comments.rs"
 
+# Enable extended attribute and ACL support by default so tests can run
+# without requiring feature flags. Individual crates handle runtime
+# detection of platform support.
 [features]
-default = []
-xattr = ["engine/xattr", "oc-rsync-cli/xattr", "meta/xattr"]
-acl = ["engine/acl", "oc-rsync-cli/acl", "meta/acl"]
+default = ["xattr", "acl"]
+xattr = ["engine/xattr"]
+acl = ["engine/acl"]
 # Enables CLI-only tools
 cli = []
 # Enables AVX-512 implementations requiring a nightly toolchain

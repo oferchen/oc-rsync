@@ -398,10 +398,8 @@ pub(crate) struct ClientOpts {
         overrides_with_all = ["devices", "specials", "devices_specials"]
     )]
     pub no_D: bool,
-    #[cfg(feature = "xattr")]
     #[arg(long, help_heading = "Attributes")]
     pub xattrs: bool,
-    #[cfg(feature = "acl")]
     #[arg(
         short = 'A',
         long,
@@ -409,7 +407,6 @@ pub(crate) struct ClientOpts {
         overrides_with = "no_acls"
     )]
     pub acls: bool,
-    #[cfg(feature = "acl")]
     #[arg(long = "no-acls", help_heading = "Attributes", overrides_with = "acls")]
     pub no_acls: bool,
     #[arg(long = "fake-super", help_heading = "Attributes")]

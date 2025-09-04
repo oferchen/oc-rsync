@@ -11,7 +11,6 @@ use nix::errno::Errno;
 use nix::sys::stat::{self, FchmodatFlags, Mode, SFlag};
 use nix::unistd::{self, FchownatFlags, Gid, Uid};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
-#[cfg(feature = "xattr")]
 use std::rc::Rc;
 use std::sync::Arc;
 use users::{get_group_by_gid, get_group_by_name, get_user_by_name, get_user_by_uid};
@@ -19,13 +18,10 @@ use users::{get_group_by_gid, get_group_by_name, get_user_by_name, get_user_by_u
 #[cfg(target_os = "macos")]
 use std::os::unix::ffi::OsStrExt;
 
-#[cfg(feature = "xattr")]
 use std::ffi::{OsStr, OsString};
-
-#[cfg(feature = "xattr")]
 type XattrFilter = Rc<dyn Fn(&OsStr) -> bool>;
 
-#[cfg(all(test, feature = "xattr"))]
+#[cfg(test)]
 mod xattr {
     pub use real_xattr::{get, get_deref, remove, remove_deref, set};
     use std::ffi::OsString;
@@ -91,9 +87,7 @@ pub struct Options {
     pub omit_link_times: bool,
     pub uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
     pub gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
-    #[cfg(feature = "xattr")]
     pub xattr_filter: Option<XattrFilter>,
-    #[cfg(feature = "xattr")]
     pub xattr_filter_delete: Option<XattrFilter>,
 }
 
@@ -117,26 +111,8 @@ impl std::fmt::Debug for Options {
             .field("omit_link_times", &self.omit_link_times)
             .field("uid_map", &self.uid_map.is_some())
             .field("gid_map", &self.gid_map.is_some())
-            .field("xattr_filter", &{
-                #[cfg(feature = "xattr")]
-                {
-                    self.xattr_filter.is_some()
-                }
-                #[cfg(not(feature = "xattr"))]
-                {
-                    false
-                }
-            })
-            .field("xattr_filter_delete", &{
-                #[cfg(feature = "xattr")]
-                {
-                    self.xattr_filter_delete.is_some()
-                }
-                #[cfg(not(feature = "xattr"))]
-                {
-                    false
-                }
-            })
+            .field("xattr_filter", &self.xattr_filter.is_some())
+            .field("xattr_filter_delete", &self.xattr_filter_delete.is_some())
             .finish()
     }
 }
@@ -149,11 +125,8 @@ pub struct Metadata {
     pub mtime: FileTime,
     pub atime: Option<FileTime>,
     pub crtime: Option<FileTime>,
-    #[cfg(feature = "xattr")]
     pub xattrs: Vec<(OsString, Vec<u8>)>,
-    #[cfg(feature = "acl")]
     pub acl: Vec<posix_acl::ACLEntry>,
-    #[cfg(feature = "acl")]
     pub default_acl: Vec<posix_acl::ACLEntry>,
 }
 
@@ -177,7 +150,6 @@ impl Metadata {
             None
         };
 
-        #[cfg(feature = "xattr")]
         let (uid, gid, mode) = if opts.fake_super {
             let mut uid = uid;
             let mut gid = gid;
@@ -208,7 +180,6 @@ impl Metadata {
             (uid, gid, mode)
         };
 
-        #[cfg(feature = "xattr")]
         let xattrs = if opts.xattrs || opts.fake_super {
             let mut attrs = Vec::new();
             match xattr::list(path) {
@@ -252,10 +223,8 @@ impl Metadata {
             Vec::new()
         };
 
-        #[cfg(feature = "acl")]
         let is_dir = meta.file_type().is_dir();
 
-        #[cfg(feature = "acl")]
         let (acl, default_acl) = if opts.acl {
             read_acl_inner(path, is_dir, opts.fake_super, mode)?
         } else {
@@ -269,11 +238,8 @@ impl Metadata {
             mtime,
             atime,
             crtime,
-            #[cfg(feature = "xattr")]
             xattrs,
-            #[cfg(feature = "acl")]
             acl,
-            #[cfg(feature = "acl")]
             default_acl,
         })
     }
@@ -492,7 +458,6 @@ impl Metadata {
             }
         }
 
-        #[cfg(feature = "xattr")]
         if opts.xattrs || opts.fake_super {
             crate::apply_xattrs(
                 path,
@@ -502,7 +467,6 @@ impl Metadata {
             )?;
         }
 
-        #[cfg(feature = "acl")]
         if opts.acl {
             {
                 let cur_mode = normalize_mode(fs::symlink_metadata(path)?.permissions().mode());
@@ -541,7 +505,6 @@ impl Metadata {
                 }
             }
 
-            #[cfg(all(feature = "xattr", feature = "acl"))]
             if opts.fake_super && !opts.super_user {
                 store_fake_super_acl(
                     path,
@@ -555,14 +518,12 @@ impl Metadata {
     }
 }
 
-#[cfg(feature = "xattr")]
 pub fn store_fake_super(path: &Path, uid: u32, gid: u32, mode: u32) {
     let _ = xattr::set(path, "user.rsync.uid", uid.to_string().as_bytes());
     let _ = xattr::set(path, "user.rsync.gid", gid.to_string().as_bytes());
     let _ = xattr::set(path, "user.rsync.mode", mode.to_string().as_bytes());
 }
 
-#[cfg(feature = "xattr")]
 pub fn copy_xattrs(
     src: &Path,
     dest: &Path,
@@ -623,7 +584,6 @@ fn nix_to_io(err: nix::errno::Errno) -> io::Error {
     io::Error::from_raw_os_error(err as i32)
 }
 
-#[cfg(feature = "acl")]
 fn acl_to_io(err: posix_acl::ACLError) -> io::Error {
     if let Some(e) = err.as_io_error() {
         if let Some(code) = e.raw_os_error() {
@@ -636,7 +596,6 @@ fn acl_to_io(err: posix_acl::ACLError) -> io::Error {
     }
 }
 
-#[cfg(feature = "acl")]
 fn should_ignore_acl_errno(code: i32) -> bool {
     matches!(
         code,
@@ -666,14 +625,12 @@ fn should_ignore_acl_errno(code: i32) -> bool {
         }
 }
 
-#[cfg(feature = "acl")]
 fn should_ignore_acl_error(err: &posix_acl::ACLError) -> bool {
     err.as_io_error()
         .and_then(|e| e.raw_os_error())
         .is_some_and(should_ignore_acl_errno)
 }
 
-#[cfg(feature = "acl")]
 fn remove_default_acl(path: &Path) -> io::Result<()> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
@@ -695,19 +652,16 @@ fn remove_default_acl(path: &Path) -> io::Result<()> {
     }
 }
 
-#[cfg(feature = "acl")]
 fn is_trivial_acl(entries: &[posix_acl::ACLEntry], mode: u32) -> bool {
     posix_acl::PosixACL::new(mode).entries() == entries
 }
 
-#[cfg(feature = "acl")]
 fn read_acl_inner(
     path: &Path,
     is_dir: bool,
     fake_super: bool,
     mode: u32,
 ) -> io::Result<(Vec<posix_acl::ACLEntry>, Vec<posix_acl::ACLEntry>)> {
-    #[cfg(all(feature = "xattr", feature = "acl"))]
     if fake_super {
         let acl = match xattr::get(path, "user.rsync.acl") {
             Ok(Some(val)) => decode_acl(&val),
@@ -770,7 +724,6 @@ fn read_acl_inner(
     Ok((acl, default_acl))
 }
 
-#[cfg(feature = "acl")]
 pub fn read_acl(
     path: &Path,
     fake_super: bool,
@@ -781,7 +734,6 @@ pub fn read_acl(
     read_acl_inner(path, is_dir, fake_super, mode)
 }
 
-#[cfg(feature = "acl")]
 pub fn write_acl(
     path: &Path,
     acl: &[posix_acl::ACLEntry],
@@ -830,7 +782,6 @@ pub fn write_acl(
         }
     }
 
-    #[cfg(all(feature = "xattr", feature = "acl"))]
     if fake_super && !super_user {
         store_fake_super_acl(path, acl, if is_dir { default_acl } else { &[] });
     }
@@ -838,7 +789,6 @@ pub fn write_acl(
     Ok(())
 }
 
-#[cfg(feature = "acl")]
 pub fn encode_acl(entries: &[posix_acl::ACLEntry]) -> Vec<u8> {
     use posix_acl::Qualifier;
     let mut out = Vec::with_capacity(entries.len() * 9);
@@ -859,7 +809,6 @@ pub fn encode_acl(entries: &[posix_acl::ACLEntry]) -> Vec<u8> {
     out
 }
 
-#[cfg(feature = "acl")]
 pub fn decode_acl(data: &[u8]) -> Vec<posix_acl::ACLEntry> {
     use posix_acl::Qualifier;
     let mut entries = Vec::new();
@@ -885,7 +834,6 @@ pub fn decode_acl(data: &[u8]) -> Vec<posix_acl::ACLEntry> {
     entries
 }
 
-#[cfg(all(feature = "xattr", feature = "acl"))]
 fn store_fake_super_acl(
     path: &Path,
     acl: &[posix_acl::ACLEntry],
@@ -1031,7 +979,7 @@ pub fn gid_to_name(gid: u32) -> Option<String> {
     get_group_by_gid(gid).map(|g| g.name().to_string_lossy().into_owned())
 }
 
-#[cfg(all(test, feature = "xattr"))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;

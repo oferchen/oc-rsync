@@ -71,9 +71,9 @@ impl Options {
 use filetime::set_symlink_file_times;
 use filetime::{set_file_times, FileTime};
 use std::collections::HashMap;
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 use std::collections::HashSet;
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
@@ -205,7 +205,7 @@ impl HardLinks {
     }
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 pub(crate) fn should_ignore_xattr_error(err: &io::Error) -> bool {
     matches!(
         err.raw_os_error(),
@@ -218,7 +218,7 @@ pub(crate) fn should_ignore_xattr_error(err: &io::Error) -> bool {
     )
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 pub fn apply_xattrs(
     path: &Path,
     xattrs: &[(OsString, Vec<u8>)],
@@ -297,5 +297,5 @@ impl UidTable {
     }
 }
 
-#[cfg(feature = "acl")]
+#[cfg(unix)]
 pub use posix_acl::{ACLEntry, PosixACL, Qualifier, ACL_EXECUTE, ACL_READ, ACL_RWX, ACL_WRITE};

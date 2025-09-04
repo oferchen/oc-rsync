@@ -12,7 +12,7 @@ compress = { path = "../compress" }
 filelist = { path = "../filelist" }
 protocol = { path = "../protocol" }
 nix = { version = "0.27", features = ["user", "fs"] }
-meta = { path = "../meta", default-features = false }
+meta = { path = "../meta" }
 logging = { path = "../logging" }
 libc = "0.2"
 memmap2 = "0.9"
@@ -45,7 +45,7 @@ name = "preallocate"
 harness = false
 
 [features]
-default = ["zstd"]
+default = ["zstd", "xattr", "acl"]
 zstd = []
-xattr = ["meta/xattr"]
-acl = ["meta/acl"]
+xattr = []
+acl = []

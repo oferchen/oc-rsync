@@ -109,7 +109,7 @@ fn sync_keep_dirlinks_preserves_symlinked_dir() {
     assert!(dst.join("sub/file").exists());
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 #[test]
 fn sync_preserves_xattrs() {
     let tmp = tempdir().unwrap();
@@ -134,7 +134,7 @@ fn sync_preserves_xattrs() {
     assert_eq!(&val[..], b"val");
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 #[test]
 fn sync_preserves_symlink_xattrs() {
     let tmp = tempdir().unwrap();
@@ -159,7 +159,7 @@ fn sync_preserves_symlink_xattrs() {
     assert_eq!(&val[..], b"val");
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 fn sync_preserves_acls() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};
@@ -198,7 +198,7 @@ fn sync_preserves_acls() {
     assert_eq!(dacl_src.entries(), dacl_dst.entries());
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 #[test]
 fn sync_xattrs_match_rsync() {
     let tmp = tempdir().unwrap();
@@ -233,7 +233,7 @@ fn sync_xattrs_match_rsync() {
     assert_eq!(val_oc, val_rs);
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 fn sync_acls_match_rsync() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};
@@ -276,7 +276,7 @@ fn sync_acls_match_rsync() {
     assert_eq!(dacl_oc.entries(), dacl_rs.entries());
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 fn sync_removes_acls() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};
@@ -312,7 +312,7 @@ fn sync_removes_acls() {
     assert!(dacl_dst.entries().is_empty());
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 fn sync_removes_acls_match_rsync() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};
@@ -361,7 +361,7 @@ fn sync_removes_acls_match_rsync() {
     assert_eq!(dacl_oc.entries(), dacl_rs.entries());
 }
 
-#[cfg(all(unix, feature = "acl"))]
+#[cfg(unix)]
 #[test]
 fn sync_ignores_acls_without_flag() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};
@@ -1034,7 +1034,7 @@ fn sync_follows_symlinks() {
     assert_eq!(fs::read(dst.join("link")).unwrap(), b"hi");
 }
 
-#[cfg(all(unix, feature = "xattr"))]
+#[cfg(unix)]
 #[test]
 fn sync_copy_links_preserves_xattrs() {
     let tmp = tempdir().unwrap();
