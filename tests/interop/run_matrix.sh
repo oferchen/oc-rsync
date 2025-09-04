@@ -190,10 +190,11 @@ for v in "${CLIENT_VERSIONS[@]}" "${SERVER_VERSIONS[@]}"; do
       echo "Building oc-rsync" >&2
       cargo build --quiet --bin oc-rsync --features="acl xattr"
     fi
-  elif [[ "$v" == "system" ]]; then
-    command -v rsync >/dev/null || { echo "system rsync not found" >&2; exit 1; }
   elif [[ "$v" == "upstream" ]]; then
     [[ -n "${UPSTREAM_RSYNC:-}" && -x "$UPSTREAM_RSYNC" ]] || { echo "UPSTREAM_RSYNC not set or executable" >&2; exit 1; }
+  elif [[ "$v" == "system" ]]; then
+    echo "system rsync is not supported; specify a version or set UPSTREAM_RSYNC" >&2
+    exit 1
   else
     fetch_rsync "$v" >/dev/null
   fi
@@ -204,8 +205,6 @@ for c in "${CLIENT_VERSIONS[@]}"; do
     client_bin="$ROOT/target/debug/oc-rsync"
   elif [[ "$c" == "upstream" ]]; then
     client_bin="$UPSTREAM_RSYNC"
-  elif [[ "$c" == "system" ]]; then
-    client_bin="$(command -v rsync)"
   else
     client_bin="$ROOT/rsync-$c/rsync"
   fi
@@ -214,8 +213,6 @@ for c in "${CLIENT_VERSIONS[@]}"; do
       server_bin="$ROOT/target/debug/oc-rsync"
     elif [[ "$s" == "upstream" ]]; then
       server_bin="$UPSTREAM_RSYNC"
-    elif [[ "$s" == "system" ]]; then
-      server_bin="$(command -v rsync)"
     else
       server_bin="$ROOT/rsync-$s/rsync"
     fi
