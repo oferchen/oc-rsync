@@ -157,7 +157,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--skip-compress` | ✅ | Y | Y | Y | [tests/skip_compress.rs](../tests/skip_compress.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | comma-separated list of file suffixes to avoid compressing |
 | `--sockopts` | ✅ | N | N | N | [tests/sockopts.rs](../tests/sockopts.rs)<br>[crates/transport/tests/sockopts.rs](../crates/transport/tests/sockopts.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | supports `SO_KEEPALIVE`, `SO_SNDBUF`, `SO_RCVBUF`, `TCP_NODELAY`, `SO_REUSEADDR`, `SO_BINDTODEVICE`, and `ip:ttl`/`ip:tos`/`ip:hoplimit` |
 | `--sparse` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | creates holes for long zero runs |
-| `--specials` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
+| `--specials` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs)<br>[tests/specials_parity.rs](../tests/specials_parity.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--stats` | ✅ | N | N | N | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--stderr` | ✅ | Y | Y | Y | [crates/cli/tests/stderr.rs](../crates/cli/tests/stderr.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/logging/src/lib.rs](../crates/logging/src/lib.rs) | control stderr output mode |
 | `--stop-after` | ✅ | N | N | N | [tests/timeout.rs](../tests/timeout.rs) | [crates/cli/src/options.rs](../crates/cli/src/options.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |  |

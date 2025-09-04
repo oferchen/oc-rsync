@@ -374,7 +374,8 @@ pub(crate) struct ClientOpts {
     #[arg(
         long,
         help_heading = "Attributes",
-        overrides_with_all = ["no_specials", "no_D"]
+        overrides_with_all = ["no_specials", "no_D"],
+        help = "preserve special files"
     )]
     pub specials: bool,
     #[arg(
@@ -383,7 +384,12 @@ pub(crate) struct ClientOpts {
         overrides_with = "specials"
     )]
     pub no_specials: bool,
-    #[arg(short = 'D', help_heading = "Attributes", overrides_with = "no_D")]
+    #[arg(
+        short = 'D',
+        help_heading = "Attributes",
+        overrides_with = "no_D",
+        help = "same as --devices --specials"
+    )]
     pub devices_specials: bool,
     #[allow(non_snake_case)]
     #[arg(
