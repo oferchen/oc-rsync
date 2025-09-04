@@ -21,6 +21,6 @@ tempfile = "3"
 predicates = "3"
 
 [features]
-default = []
-xattr = ["engine/xattr", "oc-rsync-cli/xattr"]
-acl = ["engine/acl", "oc-rsync-cli/acl"]
+default = ["xattr", "acl"]
+xattr = ["engine/xattr"]
+acl = ["engine/acl"]

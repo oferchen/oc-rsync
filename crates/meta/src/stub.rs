@@ -5,17 +5,13 @@ include!("unix.rs");
 #[cfg(not(unix))]
 mod non_unix {
     use filetime::FileTime;
-    #[cfg(feature = "acl")]
-    use posix_acl::ACLEntry;
-    #[cfg(feature = "xattr")]
     use std::ffi::{OsStr, OsString};
-    #[cfg(feature = "xattr")]
-    type XattrFilter = Rc<dyn Fn(&OsStr) -> bool>;
     use std::io;
     use std::path::Path;
-    #[cfg(feature = "xattr")]
     use std::rc::Rc;
     use std::sync::Arc;
+
+    pub type XattrFilter = Rc<dyn Fn(&OsStr) -> bool>;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum ChmodTarget {
@@ -59,9 +55,7 @@ mod non_unix {
         pub omit_link_times: bool,
         pub uid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
         pub gid_map: Option<Arc<dyn Fn(u32) -> u32 + Send + Sync>>,
-        #[cfg(feature = "xattr")]
         pub xattr_filter: Option<XattrFilter>,
-        #[cfg(feature = "xattr")]
         pub xattr_filter_delete: Option<XattrFilter>,
     }
 
@@ -85,26 +79,8 @@ mod non_unix {
                 .field("omit_link_times", &self.omit_link_times)
                 .field("uid_map", &self.uid_map.is_some())
                 .field("gid_map", &self.gid_map.is_some())
-                .field("xattr_filter", &{
-                    #[cfg(feature = "xattr")]
-                    {
-                        self.xattr_filter.is_some()
-                    }
-                    #[cfg(not(feature = "xattr"))]
-                    {
-                        false
-                    }
-                })
-                .field("xattr_filter_delete", &{
-                    #[cfg(feature = "xattr")]
-                    {
-                        self.xattr_filter_delete.is_some()
-                    }
-                    #[cfg(not(feature = "xattr"))]
-                    {
-                        false
-                    }
-                })
+                .field("xattr_filter", &self.xattr_filter.is_some())
+                .field("xattr_filter_delete", &self.xattr_filter_delete.is_some())
                 .finish()
         }
     }
@@ -117,12 +93,9 @@ mod non_unix {
         pub mtime: FileTime,
         pub atime: Option<FileTime>,
         pub crtime: Option<FileTime>,
-        #[cfg(feature = "xattr")]
         pub xattrs: Vec<(OsString, Vec<u8>)>,
-        #[cfg(feature = "acl")]
-        pub acl: Vec<ACLEntry>,
-        #[cfg(feature = "acl")]
-        pub default_acl: Vec<ACLEntry>,
+        pub acl: Vec<()>,
+        pub default_acl: Vec<()>,
     }
 
     impl Metadata {
@@ -134,11 +107,8 @@ mod non_unix {
                 mtime: FileTime::from_unix_time(0, 0),
                 atime: None,
                 crtime: None,
-                #[cfg(feature = "xattr")]
                 xattrs: Vec::new(),
-                #[cfg(feature = "acl")]
                 acl: Vec::new(),
-                #[cfg(feature = "acl")]
                 default_acl: Vec::new(),
             })
         }
@@ -165,25 +135,22 @@ mod non_unix {
         0
     }
 
-    #[cfg(feature = "acl")]
-    pub fn read_acl(_path: &Path, _fake_super: bool) -> io::Result<(Vec<ACLEntry>, Vec<ACLEntry>)> {
+    pub fn read_acl(_path: &Path, _fake_super: bool) -> io::Result<(Vec<()>, Vec<()>)> {
         Ok((Vec::new(), Vec::new()))
     }
 
-    #[cfg(feature = "acl")]
     pub fn write_acl(
         _path: &Path,
-        _acl: &[ACLEntry],
-        _default_acl: &[ACLEntry],
+        _acl: &[()],
+        _default_acl: &[()],
         _fake_super: bool,
         _super_user: bool,
     ) -> io::Result<()> {
         Ok(())
     }
-}
 
-#[cfg(feature = "xattr")]
-pub fn store_fake_super(_path: &Path, _uid: u32, _gid: u32, _mode: u32) {}
+    pub fn store_fake_super(_path: &Path, _uid: u32, _gid: u32, _mode: u32) {}
+}
 
 #[cfg(not(unix))]
 pub use non_unix::*;

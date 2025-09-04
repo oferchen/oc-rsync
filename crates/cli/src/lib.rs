@@ -36,12 +36,9 @@ use filters::{default_cvs_rules, Matcher, Rule};
 pub use formatter::{render_help, ARG_ORDER};
 use logging::{human_bytes, parse_escapes, InfoFlag};
 use meta::{parse_chmod, parse_chown, IdKind};
-#[cfg(feature = "acl")]
-use protocol::CAP_ACLS;
-#[cfg(feature = "xattr")]
-use protocol::CAP_XATTRS;
 use protocol::{
-    negotiate_version, CharsetConv, ExitCode, CAP_CODECS, LATEST_VERSION, SUPPORTED_PROTOCOLS, V30,
+    negotiate_version, CharsetConv, ExitCode, CAP_ACLS, CAP_CODECS, CAP_XATTRS, LATEST_VERSION,
+    SUPPORTED_PROTOCOLS, V30,
 };
 use transport::{parse_sockopts, AddressFamily, RateLimitedTransport, SshStdioTransport};
 #[cfg(unix)]
@@ -153,7 +150,6 @@ fn run_single(
 
     parse_sockopts(&opts.sockopts).map_err(EngineError::Other)?;
 
-    #[cfg(feature = "acl")]
     let acls = opts.acls && !opts.no_acls;
 
     #[cfg(unix)]
@@ -250,11 +246,9 @@ fn run_single(
     if let Some(spec) = &opts.iconv {
         remote_opts.push(format!("--iconv={spec}"));
     }
-    #[cfg(feature = "xattr")]
     if opts.xattrs {
         remote_opts.push("--xattrs".into());
     }
-    #[cfg(feature = "acl")]
     if acls {
         remote_opts.push("--acls".into());
     }
@@ -535,16 +529,7 @@ fn run_single(
         perms: if opts.no_perms {
             false
         } else {
-            opts.perms || opts.archive || {
-                #[cfg(feature = "acl")]
-                {
-                    acls
-                }
-                #[cfg(not(feature = "acl"))]
-                {
-                    false
-                }
-            }
+            opts.perms || opts.archive || acls
         },
         executability: opts.executability,
         times: if opts.no_times {
@@ -594,9 +579,7 @@ fn run_single(
         } else {
             opts.specials || opts.archive || opts.devices_specials
         },
-        #[cfg(feature = "xattr")]
         xattrs: opts.xattrs || (opts.fake_super && !opts.super_user),
-        #[cfg(feature = "acl")]
         acls,
         sparse: opts.sparse,
         strong,
@@ -722,34 +705,8 @@ fn run_single(
             ) => {
                 let connect_timeout = opts.connect_timeout;
                 let caps_send = CAP_CODECS
-                    | {
-                        #[cfg(feature = "acl")]
-                        {
-                            if sync_opts.acls {
-                                CAP_ACLS
-                            } else {
-                                0
-                            }
-                        }
-                        #[cfg(not(feature = "acl"))]
-                        {
-                            0
-                        }
-                    }
-                    | {
-                        #[cfg(feature = "xattr")]
-                        {
-                            if sync_opts.xattrs {
-                                CAP_XATTRS
-                            } else {
-                                0
-                            }
-                        }
-                        #[cfg(not(feature = "xattr"))]
-                        {
-                            0
-                        }
-                    };
+                    | if sync_opts.acls { CAP_ACLS } else { 0 }
+                    | if sync_opts.xattrs { CAP_XATTRS } else { 0 };
                 let (session, codecs, caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &src.path,
@@ -770,13 +727,9 @@ fn run_single(
                     None,
                 )
                 .map_err(EngineError::from)?;
-                #[cfg(not(any(feature = "xattr", feature = "acl")))]
-                let _ = caps;
-                #[cfg(feature = "xattr")]
                 if sync_opts.xattrs && caps & CAP_XATTRS == 0 {
                     sync_opts.xattrs = false;
                 }
-                #[cfg(feature = "acl")]
                 if sync_opts.acls && caps & CAP_ACLS == 0 {
                     sync_opts.acls = false;
                 }
@@ -832,34 +785,8 @@ fn run_single(
             ) => {
                 let connect_timeout = opts.connect_timeout;
                 let caps_send = CAP_CODECS
-                    | {
-                        #[cfg(feature = "acl")]
-                        {
-                            if sync_opts.acls {
-                                CAP_ACLS
-                            } else {
-                                0
-                            }
-                        }
-                        #[cfg(not(feature = "acl"))]
-                        {
-                            0
-                        }
-                    }
-                    | {
-                        #[cfg(feature = "xattr")]
-                        {
-                            if sync_opts.xattrs {
-                                CAP_XATTRS
-                            } else {
-                                0
-                            }
-                        }
-                        #[cfg(not(feature = "xattr"))]
-                        {
-                            0
-                        }
-                    };
+                    | if sync_opts.acls { CAP_ACLS } else { 0 }
+                    | if sync_opts.xattrs { CAP_XATTRS } else { 0 };
                 let (session, codecs, caps) = SshStdioTransport::connect_with_rsh(
                     &host,
                     &dst.path,
@@ -880,13 +807,9 @@ fn run_single(
                     None,
                 )
                 .map_err(EngineError::from)?;
-                #[cfg(not(any(feature = "xattr", feature = "acl")))]
-                let _ = caps;
-                #[cfg(feature = "xattr")]
                 if sync_opts.xattrs && caps & CAP_XATTRS == 0 {
                     sync_opts.xattrs = false;
                 }
-                #[cfg(feature = "acl")]
                 if sync_opts.acls && caps & CAP_ACLS == 0 {
                     sync_opts.acls = false;
                 }
