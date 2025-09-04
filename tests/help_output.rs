@@ -22,7 +22,7 @@ fn help_contains_expected_flags() {
         .env("COLUMNS", "80")
         .env("LC_ALL", "C")
         .env("LANG", "C")
-        .arg("--help")
+        .arg("--dump-help-body")
         .output()
         .unwrap();
 
@@ -76,15 +76,11 @@ fn help_matches_snapshot() {
         .env("COLUMNS", "80")
         .env("LC_ALL", "C")
         .env("LANG", "C")
-        .arg("--help")
+        .arg("--dump-help-body")
         .output()
         .unwrap();
 
-    let mut parts = output.stdout.splitn(4, |b| *b == b'\n');
-    parts.next();
-    parts.next();
-    parts.next();
-    let actual = parts.next().unwrap_or_default();
+    let actual = output.stdout;
     let expected = fs::read("tests/golden/help/oc-rsync.help").unwrap();
     assert_eq!(actual, expected, "help output does not match snapshot");
 }
