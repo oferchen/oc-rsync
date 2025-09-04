@@ -149,5 +149,5 @@ complete -c oc-rsync -s F
 complete -c oc-rsync -s C -l cvs-exclude -d 'auto-ignore files in the same way CVS does'
 complete -c oc-rsync -l from0
 complete -c oc-rsync -l daemon
-complete -c oc-rsync -l probe
+complete -c oc-rsync -l probe -r
 complete -c oc-rsync -s h -l help -d 'Print help'

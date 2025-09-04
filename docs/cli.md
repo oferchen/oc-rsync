@@ -76,6 +76,12 @@ oc-rsync [OPTIONS] "<SRC>" "<DEST>"
   <build-revision> <official|unofficial>
   ```
 
+- Probe a daemon's protocol support:
+
+  ```sh
+  oc-rsync --probe 127.0.0.1:873
+  ```
+
 ### Trailing slash semantics
 
 Just like `rsync`, adding a trailing slash to the source path changes what is

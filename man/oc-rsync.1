@@ -152,6 +152,16 @@ oc-rsync --version
 \f[R]
 .fi
 .RE
+.IP \[bu] 2
+Probe a daemon's protocol support:
+.RS 2
+.IP
+.nf
+\f[C]
+oc-rsync --probe 127.0.0.1:873
+\f[R]
+.fi
+.RE
 .SS Trailing slash semantics
 .PP
 Just like \f[V]rsync\f[R], adding a trailing slash to the source path
