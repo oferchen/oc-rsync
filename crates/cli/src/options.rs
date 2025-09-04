@@ -531,14 +531,8 @@ pub(crate) struct ClientOpts {
         short = 'B',
         long = "block-size",
         value_name = "SIZE",
-        help_heading = "Misc"
-    )]
-    #[arg(
-        short = 'B',
-        long = "block-size",
-        value_name = "SIZE",
         help_heading = "Misc",
-        value_parser = parse_size::<usize>
+        value_parser = parse_size::<usize>,
     )]
     pub block_size: Option<usize>,
     #[arg(
