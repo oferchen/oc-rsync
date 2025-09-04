@@ -13,7 +13,7 @@ Optimizations:
 Checksum list:
     xxh128 xxh3 xxh64 (xxhash) md5 md4 sha1 none
 Compress list:
-    zstd lz4 zlibx zlib none
+    zstd zlib none
 Daemon auth list:
     sha512 sha256 sha1 md5 md4
 

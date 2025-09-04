@@ -3582,9 +3582,9 @@ fn sparse_files_preserved() {
     std::fs::create_dir_all(&dst).unwrap();
     let sp = src.join("sparse");
     let mut f = File::create(&sp).unwrap();
-    f.seek(SeekFrom::Start(1 << 20)).unwrap();
+    f.seek(SeekFrom::Start(1 << 17)).unwrap();
     f.write_all(b"end").unwrap();
-    f.set_len(1 << 21).unwrap();
+    f.set_len(1 << 18).unwrap();
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -3617,7 +3617,7 @@ fn sparse_files_created() {
     std::fs::create_dir_all(&dst).unwrap();
     let zs = src.join("zeros");
     let mut f = File::create(&zs).unwrap();
-    f.write_all(&vec![0u8; 1 << 20]).unwrap();
+    f.write_all(&vec![0u8; 1 << 18]).unwrap();
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")

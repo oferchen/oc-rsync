@@ -616,13 +616,14 @@ fn read_port(child: &mut Child) -> io::Result<u16> {
 
 fn spawn_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
+    let module_path = fs::canonicalize(dir.path()).unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
             "--no-detach",
             "--module",
-            &format!("data={}", dir.path().display()),
+            &format!("data={}", module_path.display()),
             "--port",
             "0",
         ])
@@ -647,13 +648,14 @@ fn spawn_temp_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
 
 fn spawn_daemon_with_timeout(timeout: u64) -> io::Result<(Child, u16, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
+    let module_path = fs::canonicalize(dir.path()).unwrap();
     let mut child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
             "--no-detach",
             "--module",
-            &format!("data={}", dir.path().display()),
+            &format!("data={}", module_path.display()),
             "--port",
             "0",
             "--timeout",
