@@ -1,4 +1,5 @@
 // crates/cli/tests/version.rs
+use assert_cmd::Command;
 use oc_rsync_cli::version;
 use protocol::SUPPORTED_PROTOCOLS;
 
@@ -50,4 +51,15 @@ fn banner_matches_rsync() {
 fn banner_renders_correctly() {
     let expected = format!("{}\n", version::render_version_lines().join("\n"));
     assert_eq!(version::version_banner(), expected);
+}
+
+#[test]
+fn cli_version_uses_banner() {
+    let expected = version::version_banner();
+    let output = Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .arg("--version")
+        .output()
+        .unwrap();
+    assert_eq!(String::from_utf8(output.stdout).unwrap(), expected);
 }
