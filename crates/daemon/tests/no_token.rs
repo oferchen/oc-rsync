@@ -8,7 +8,6 @@ use transport::LocalPipeTransport;
 
 #[test]
 fn handle_connection_missing_token() {
-    // Prepare input: protocol version followed by empty token newline
     let mut input = Vec::new();
     input.extend_from_slice(&SUPPORTED_PROTOCOLS[0].to_be_bytes());
     input.extend_from_slice(b"\n");

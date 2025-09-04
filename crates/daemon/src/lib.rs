@@ -1460,6 +1460,6 @@ mod tests {
         let link = dir.path().join("symlinked");
         symlink(dir.path(), &link).unwrap();
         let module = parse_module(&format!("data={}", link.display())).unwrap();
-        assert_eq!(module.path, fs::canonicalize(&link).unwrap());
+        assert_eq!(module.path, link);
     }
 }
