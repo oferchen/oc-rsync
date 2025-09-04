@@ -63,7 +63,7 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     init_logging(matches, log_file_fmt);
     let probe_opts =
         ProbeOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
-    if probe_opts.probe {
+    if matches.contains_id("probe") {
         return run_probe(probe_opts, matches.get_flag("quiet"));
     }
     if !opts.old_args && matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
@@ -1263,7 +1263,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
 }
 
 fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
-    if let Some(addr) = opts.addr {
+    if let Some(addr) = opts.probe {
         let mut stream = TcpStream::connect(&addr)?;
         stream.write_all(&SUPPORTED_PROTOCOLS[0].to_be_bytes())?;
         let mut buf = [0u8; 4];

@@ -692,10 +692,8 @@ pub(crate) struct ClientOpts {
 #[doc(hidden)]
 #[derive(Parser, Debug)]
 pub(crate) struct ProbeOpts {
-    #[arg(long)]
-    pub probe: bool,
-    #[arg(long, value_name = "ADDR", requires = "probe")]
-    pub addr: Option<String>,
+    #[arg(long, value_name = "ADDR", num_args = 0..=1)]
+    pub probe: Option<String>,
     #[arg(long, default_value_t = SUPPORTED_PROTOCOLS[0], value_name = "VER")]
     pub peer_version: u32,
 }

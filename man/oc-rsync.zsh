@@ -189,12 +189,11 @@ _oc-rsync() {
 '--cvs-exclude[auto-ignore files in the same way CVS does]' \
 '--from0[]' \
 '--daemon[]' \
-'--probe[]' \
+'--probe[]::ADDR:' \
 '-h[Print help]' \
 '--help[Print help]' \
 '::src:_default' \
 '::dst:_default' \
-'::addr:_default' \
 && ret=0
 }
 
