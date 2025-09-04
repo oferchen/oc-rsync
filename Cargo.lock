@@ -1008,6 +1008,7 @@ dependencies = [
  "assert_cmd",
  "clap",
  "engine",
+ "libc",
  "logging",
  "oc-rsync-cli",
  "predicates",

@@ -18,6 +18,13 @@ fn matches_rendered_version() {
 }
 
 #[test]
+fn matches_fixture() {
+    let out = version_output();
+    let expected = include_str!("fixtures/version.txt");
+    assert_eq!(out, expected);
+}
+
+#[test]
 fn output_is_immutable() {
     let first = version_output();
     let second = version_output();
