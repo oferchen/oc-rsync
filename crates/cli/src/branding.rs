@@ -3,12 +3,11 @@ use std::env;
 
 pub const DEFAULT_BRAND_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DEFAULT_BRAND_CREDITS: &str =
-    "Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Samba.";
+    "Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Rsync team at Samba.";
 pub const DEFAULT_BRAND_URL: &str = "https://github.com/oferchen/oc-rsync";
 
 pub const DEFAULT_TAGLINE: &str = "Pure-Rust reimplementation of rsync (protocol v32).";
 pub const DEFAULT_URL: &str = DEFAULT_BRAND_URL;
-pub const DEFAULT_COPYRIGHT: &str = "Copyright (C) 2024-2025 oc-rsync contributors.";
 pub const DEFAULT_UPSTREAM_NAME: &str = "rsync";
 
 pub const DEFAULT_HELP_PREFIX: &str = r#"{prog} {version}
@@ -40,65 +39,60 @@ Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
 For project updates and documentation, visit {url}.
 "#;
 
+fn option_env_lookup(key: &str) -> Option<&'static str> {
+    match key {
+        "OC_RSYNC_BRAND_NAME" => option_env!("OC_RSYNC_BRAND_NAME"),
+        "OC_RSYNC_UPSTREAM_NAME" => option_env!("OC_RSYNC_UPSTREAM_NAME"),
+        "OC_RSYNC_VERSION_PREFIX" => option_env!("OC_RSYNC_VERSION_PREFIX"),
+        "OC_RSYNC_BRAND_TAGLINE" => option_env!("OC_RSYNC_BRAND_TAGLINE"),
+        "OC_RSYNC_BRAND_URL" => option_env!("OC_RSYNC_BRAND_URL"),
+        "OC_RSYNC_BRAND_CREDITS" => option_env!("OC_RSYNC_BRAND_CREDITS"),
+        "OC_RSYNC_BRAND_COPYRIGHT" => option_env!("OC_RSYNC_BRAND_COPYRIGHT"),
+        "OC_RSYNC_HIDE_CREDITS" => option_env!("OC_RSYNC_HIDE_CREDITS"),
+        "OC_RSYNC_HELP_HEADER" => option_env!("OC_RSYNC_HELP_HEADER"),
+        "OC_RSYNC_BRAND_HEADER" => option_env!("OC_RSYNC_BRAND_HEADER"),
+        "OC_RSYNC_HELP_FOOTER" => option_env!("OC_RSYNC_HELP_FOOTER"),
+        "OC_RSYNC_BRAND_FOOTER" => option_env!("OC_RSYNC_BRAND_FOOTER"),
+        "OC_RSYNC_VERSION_HEADER" => option_env!("OC_RSYNC_VERSION_HEADER"),
+        "BUILD_REVISION" => option_env!("BUILD_REVISION"),
+        _ => None,
+    }
+}
+
+fn env_or_option(key: &str) -> Option<String> {
+    env::var(key)
+        .ok()
+        .or_else(|| option_env_lookup(key).map(str::to_string))
+}
+
 pub fn program_name() -> String {
-    env::var("OC_RSYNC_BRAND_NAME")
-        .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_NAME")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .unwrap_or_else(|_| "oc-rsync".to_string())
+    env_or_option("OC_RSYNC_BRAND_NAME").unwrap_or_else(|| "oc-rsync".to_string())
 }
 
 pub fn upstream_name() -> String {
-    env::var("OC_RSYNC_UPSTREAM_NAME")
-        .or_else(|_| {
-            option_env!("OC_RSYNC_UPSTREAM_NAME")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .unwrap_or_else(|_| DEFAULT_UPSTREAM_NAME.to_string())
+    env_or_option("OC_RSYNC_UPSTREAM_NAME").unwrap_or_else(|| DEFAULT_UPSTREAM_NAME.to_string())
 }
 
 pub fn brand_version() -> String {
-    let prefix = env::var("OC_RSYNC_VERSION_PREFIX")
-        .or_else(|_| {
-            option_env!("OC_RSYNC_VERSION_PREFIX")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .unwrap_or_default();
+    let prefix = env_or_option("OC_RSYNC_VERSION_PREFIX").unwrap_or_default();
     format!("{}{}", prefix, DEFAULT_BRAND_VERSION)
 }
 
 pub fn brand_tagline() -> String {
-    env::var("OC_RSYNC_BRAND_TAGLINE")
-        .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_TAGLINE")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .unwrap_or_else(|_| DEFAULT_TAGLINE.to_string())
+    env_or_option("OC_RSYNC_BRAND_TAGLINE").unwrap_or_else(|| DEFAULT_TAGLINE.to_string())
 }
 
 pub fn brand_url() -> String {
-    env::var("OC_RSYNC_BRAND_URL")
-        .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_URL")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .unwrap_or_else(|_| DEFAULT_URL.to_string())
+    env_or_option("OC_RSYNC_BRAND_URL").unwrap_or_else(|| DEFAULT_URL.to_string())
 }
 
 pub fn brand_credits() -> String {
-    env::var("OC_RSYNC_BRAND_CREDITS")
-        .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_CREDITS")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .unwrap_or_else(|_| DEFAULT_BRAND_CREDITS.to_string())
+    env_or_option("OC_RSYNC_BRAND_CREDITS").unwrap_or_else(|| DEFAULT_BRAND_CREDITS.to_string())
+}
+
+fn default_copyright() -> String {
+    let year = option_env!("CURRENT_YEAR").unwrap_or("2025");
+    format!("Copyright (C) 2024-{year} oc-rsync contributors.")
 }
 
 pub fn brand_copyright() -> String {
@@ -108,56 +102,57 @@ pub fn brand_copyright() -> String {
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
-        .unwrap_or_else(|_| DEFAULT_COPYRIGHT.to_string())
+        .unwrap_or_else(|_| default_copyright())
 }
 
 pub fn hide_credits() -> bool {
-    env::var("OC_RSYNC_HIDE_CREDITS")
-        .or_else(|_| {
-            option_env!("OC_RSYNC_HIDE_CREDITS")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
+    env_or_option("OC_RSYNC_HIDE_CREDITS")
         .map(|v| v != "0")
         .unwrap_or(false)
 }
 
 pub fn help_prefix() -> String {
-    env::var("OC_RSYNC_HELP_HEADER")
-        .or_else(|_| env::var("OC_RSYNC_BRAND_HEADER"))
-        .or_else(|_| {
-            option_env!("OC_RSYNC_HELP_HEADER")
-                .or(option_env!("OC_RSYNC_BRAND_HEADER"))
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .unwrap_or_else(|_| DEFAULT_HELP_PREFIX.to_string())
+    env_or_option("OC_RSYNC_HELP_HEADER")
+        .or_else(|| env_or_option("OC_RSYNC_BRAND_HEADER"))
+        .unwrap_or_else(|| DEFAULT_HELP_PREFIX.to_string())
 }
 
 #[allow(clippy::let_and_return)]
 pub fn help_suffix() -> String {
-    let suffix = env::var("OC_RSYNC_HELP_FOOTER")
-        .or_else(|_| env::var("OC_RSYNC_BRAND_FOOTER"))
-        .or_else(|_| {
-            option_env!("OC_RSYNC_HELP_FOOTER")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_FOOTER")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .unwrap_or_else(|_| DEFAULT_HELP_SUFFIX.to_string());
+    let suffix = env_or_option("OC_RSYNC_HELP_FOOTER")
+        .or_else(|| env_or_option("OC_RSYNC_BRAND_FOOTER"))
+        .unwrap_or_else(|| DEFAULT_HELP_SUFFIX.to_string());
     suffix
 }
 
 pub fn version_header() -> Option<String> {
-    env::var("OC_RSYNC_VERSION_HEADER")
-        .or_else(|_| {
-            option_env!("OC_RSYNC_VERSION_HEADER")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .ok()
+    env_or_option("OC_RSYNC_VERSION_HEADER")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+
+    #[test]
+    #[serial]
+    fn env_or_option_respects_precedence() {
+        std::env::remove_var("BUILD_REVISION");
+        assert_eq!(env_or_option("BUILD_REVISION"), Some("unknown".to_string()));
+
+        std::env::set_var("BUILD_REVISION", "runtime");
+        assert_eq!(env_or_option("BUILD_REVISION"), Some("runtime".to_string()));
+        std::env::remove_var("BUILD_REVISION");
+
+        assert_eq!(env_or_option("NON_EXISTENT_KEY"), None);
+    }
+
+    #[test]
+    #[serial]
+    fn program_name_defaults_when_unset() {
+        std::env::remove_var("OC_RSYNC_BRAND_NAME");
+        if option_env!("OC_RSYNC_BRAND_NAME").is_none() {
+            assert_eq!(program_name(), "oc-rsync");
+        }
+    }
 }

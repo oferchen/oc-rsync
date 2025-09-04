@@ -3,11 +3,13 @@ use assert_cmd::Command;
 #[cfg(unix)]
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use oc_rsync_cli::cli_command;
+use std::fs;
 use std::net::TcpListener;
 #[cfg(unix)]
 use std::os::fd::AsRawFd;
+use std::process::Command as StdCommand;
 use std::thread;
-use tempfile::NamedTempFile;
+use tempfile::{tempdir, NamedTempFile};
 use transport::tcp::TcpTransport;
 
 #[test]
@@ -229,4 +231,63 @@ fn old_d_alias_is_accepted() {
         .args(["--old-d", "--version"])
         .assert()
         .success();
+}
+
+#[test]
+fn old_dirs_flag_matches_rsync() {
+    legacy_old_dirs_matches("--old-dirs");
+}
+
+#[test]
+fn old_d_alias_matches_rsync() {
+    legacy_old_dirs_matches("--old-d");
+}
+
+fn legacy_old_dirs_matches(flag: &str) {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    fs::create_dir_all(src.join("sub")).unwrap();
+    fs::write(src.join("sub/file.txt"), b"data").unwrap();
+
+    let rsync_dst = tmp.path().join("rsync");
+    fs::create_dir_all(&rsync_dst).unwrap();
+    let oc_dst = tmp.path().join("oc");
+    fs::create_dir_all(&oc_dst).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    let rsync_dest = format!("{}/", rsync_dst.display());
+    let oc_dest = format!("{}/", oc_dst.display());
+
+    assert!(StdCommand::new("rsync")
+        .arg(flag)
+        .arg(&src_arg)
+        .arg(&rsync_dest)
+        .status()
+        .unwrap()
+        .success());
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .arg(flag)
+        .arg(&src_arg)
+        .arg(&oc_dest)
+        .assert()
+        .success();
+
+    assert!(rsync_dst.join("sub").exists());
+    assert!(oc_dst.join("sub").exists());
+    assert!(!rsync_dst.join("sub/file.txt").exists());
+    assert!(!oc_dst.join("sub/file.txt").exists());
+
+    let diff = StdCommand::new("diff")
+        .arg("-r")
+        .arg(&rsync_dst)
+        .arg(&oc_dst)
+        .output()
+        .unwrap();
+    assert!(
+        diff.status.success(),
+        "directory trees differ: {}",
+        String::from_utf8_lossy(&diff.stderr)
+    );
 }

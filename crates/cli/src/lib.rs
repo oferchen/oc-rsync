@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use clap::parser::ValueSource;
-use clap::{ArgMatches, FromArgMatches};
+use clap::{Arg, ArgAction, ArgMatches, FromArgMatches};
 
 pub mod branding;
 pub mod daemon;
@@ -21,7 +21,6 @@ mod utils;
 
 use crate::daemon::run_daemon;
 pub use daemon::spawn_daemon_session;
-pub use options::cli_command;
 use options::{ClientOpts, ProbeOpts};
 use utils::{
     init_logging, parse_filters, parse_name_map, parse_remote_spec, parse_remote_specs,
@@ -46,25 +45,37 @@ use users::get_user_by_uid;
 
 pub mod version;
 
+pub fn cli_command() -> clap::Command {
+    options::cli_command().arg(
+        Arg::new("dump-help-body")
+            .long("dump-help-body")
+            .action(ArgAction::SetTrue)
+            .hide(true),
+    )
+}
+
 pub fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     use clap::error::ErrorKind::*;
     match kind {
-        UnknownArgument
-        | InvalidSubcommand
-        | NoEquals
-        | ValueValidation
-        | TooManyValues
-        | TooFewValues
-        | WrongNumberOfValues
-        | ArgumentConflict
-        | MissingRequiredArgument
-        | MissingSubcommand
-        | InvalidUtf8
-        | DisplayHelpOnMissingArgumentOrSubcommand => ExitCode::SyntaxOrUsage,
         InvalidValue => ExitCode::Unsupported,
-        DisplayHelp | DisplayVersion => ExitCode::Ok,
-        Io | Format => ExitCode::FileIo,
-        _ => ExitCode::SyntaxOrUsage,
+        UnknownArgument => ExitCode::SyntaxOrUsage,
+        InvalidSubcommand => ExitCode::SyntaxOrUsage,
+        NoEquals => ExitCode::SyntaxOrUsage,
+        ValueValidation => ExitCode::SyntaxOrUsage,
+        TooManyValues => ExitCode::SyntaxOrUsage,
+        TooFewValues => ExitCode::SyntaxOrUsage,
+        WrongNumberOfValues => ExitCode::SyntaxOrUsage,
+        ArgumentConflict => ExitCode::SyntaxOrUsage,
+        MissingRequiredArgument => ExitCode::SyntaxOrUsage,
+        MissingSubcommand => ExitCode::SyntaxOrUsage,
+        InvalidUtf8 => ExitCode::SyntaxOrUsage,
+        DisplayHelp => ExitCode::Ok,
+        DisplayHelpOnMissingArgumentOrSubcommand => ExitCode::SyntaxOrUsage,
+        DisplayVersion => ExitCode::Ok,
+        Io => ExitCode::FileIo,
+        Format => ExitCode::FileIo,
+        #[allow(unreachable_patterns)]
+        _ => unreachable!("unhandled clap::ErrorKind variant"),
     }
 }
 
@@ -104,6 +115,9 @@ pub fn handle_clap_error(cmd: &clap::Command, e: clap::Error) -> ! {
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     let mut opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
+    if matches.contains_id("old-d") {
+        opts.old_dirs = true;
+    }
     if opts.no_D {
         opts.no_devices = true;
         opts.no_specials = true;

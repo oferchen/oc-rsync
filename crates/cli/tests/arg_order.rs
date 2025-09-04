@@ -26,6 +26,9 @@ const SKIP_ARGS: &[&str] = &[
     "probe",
     "secrets_file",
     "state_dir",
+    "syslog",
+    "journald",
+    "no_acls",
     "super_user",
 ];
 
