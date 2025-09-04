@@ -19,7 +19,7 @@ fn packaging_includes_service_unit() {
     assert!(
         listing
             .lines()
-            .any(|l| l.trim() == "packaging/oc-rsyncd.conf"),
+            .any(|l| l.trim() == "packaging/examples/oc-rsyncd.conf"),
         "example config missing from package list:\n{}",
         listing
     );

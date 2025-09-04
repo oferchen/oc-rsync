@@ -1,8 +1,6 @@
 # packaging/systemd/oc-rsyncd.service
 [Unit]
 Description=oc-rsync daemon
-# oc-rsyncd is a thin wrapper around `oc-rsync --daemon`.
-# This service calls `oc-rsync --daemon` directly.
 Documentation=man:oc-rsyncd(8) man:oc-rsyncd.conf(5) man:oc-rsync(1)
 Wants=network-online.target
 After=network-online.target
@@ -12,7 +10,12 @@ Type=notify
 NotifyAccess=main
 User=ocrsync
 Group=ocrsync
+RuntimeDirectory=oc-rsyncd
+LogsDirectory=oc-rsyncd
+StateDirectory=oc-rsyncd
+ConfigurationDirectory=oc-rsyncd
 ExecStart=/usr/local/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf
+ExecStart=/usr/local/bin/oc-rsyncd --no-detach --config=/etc/oc-rsyncd.conf
 Restart=on-failure
 RestartSec=2s
 NoNewPrivileges=yes

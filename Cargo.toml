@@ -92,3 +92,17 @@ acl = ["engine/acl", "oc-rsync-cli/acl", "meta/acl"]
 cli = []
 # Enables AVX-512 implementations requiring a nightly toolchain
 nightly = ["checksums/nightly", "compress/nightly"]
+
+[package.metadata.deb]
+systemd-units = ["packaging/systemd/oc-rsyncd.service"]
+assets = [
+    ["packaging/examples/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf", "644"],
+    ["packaging/systemd/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf", "644"],
+]
+
+[package.metadata.rpm]
+systemd-units = ["packaging/systemd/oc-rsyncd.service"]
+assets = [
+    ["packaging/examples/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf", "644"],
+    ["packaging/systemd/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf", "644"],
+]
