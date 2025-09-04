@@ -193,10 +193,41 @@ pub fn render_help(cmd: &Command) -> String {
             .replace("{credits}", &credits);
     }
     if width == 80 {
-        let body_start =
-            RSYNC_HELP.find(UPSTREAM_HELP_PREFIX).unwrap() + UPSTREAM_HELP_PREFIX.len();
-        let body_end = RSYNC_HELP.rfind(UPSTREAM_HELP_SUFFIX).unwrap();
-        let body = &RSYNC_HELP[body_start..body_end];
+        let prefix_end = match RSYNC_HELP.find(UPSTREAM_HELP_PREFIX) {
+            Some(idx) => idx + UPSTREAM_HELP_PREFIX.len(),
+            None => {
+                let mut out = String::new();
+                out.push_str(&help_prefix);
+                out.push_str(
+                    "Failed to locate upstream help prefix; displaying unmodified help text.\n\n",
+                );
+                out.push_str(RSYNC_HELP);
+                out.push_str(&help_suffix);
+                return out;
+            }
+        };
+        let suffix_start = match RSYNC_HELP.rfind(UPSTREAM_HELP_SUFFIX) {
+            Some(idx) => idx,
+            None => {
+                let mut out = String::new();
+                out.push_str(&help_prefix);
+                out.push_str(
+                    "Failed to locate upstream help suffix; displaying unmodified help text.\n\n",
+                );
+                out.push_str(RSYNC_HELP);
+                out.push_str(&help_suffix);
+                return out;
+            }
+        };
+        if prefix_end >= suffix_start {
+            let mut out = String::new();
+            out.push_str(&help_prefix);
+            out.push_str("Upstream help markers are invalid; displaying unmodified help text.\n\n");
+            out.push_str(RSYNC_HELP);
+            out.push_str(&help_suffix);
+            return out;
+        }
+        let body = &RSYNC_HELP[prefix_end..suffix_start];
         let mut out = String::new();
         out.push_str(&help_prefix);
         out.push_str(body);
