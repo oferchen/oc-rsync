@@ -2609,6 +2609,13 @@ pub fn sync(
                     }
                     dir_meta.push((path.clone(), dest_path.clone()));
                 } else if file_type.is_symlink() {
+                    if !(opts.links
+                        || opts.copy_links
+                        || opts.copy_dirlinks
+                        || opts.copy_unsafe_links)
+                    {
+                        continue;
+                    }
                     let mut target = fs::read_link(&path).map_err(|e| io_context(&path, e))?;
                     if opts.munge_links {
                         if let Ok(stripped) = target.strip_prefix(MUNGE_PREFIX) {

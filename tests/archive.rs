@@ -35,7 +35,6 @@ fn hash_dir(dir: &Path) -> Vec<u8> {
 
 #[cfg(unix)]
 #[test]
-#[ignore = "--no-links not yet supported"]
 fn archive_matches_combination_and_rsync() {
     if !Uid::effective().is_root() {
         println!("skipping: requires root privileges");
@@ -135,7 +134,6 @@ fn archive_matches_combination_and_rsync() {
 
 #[cfg(unix)]
 #[test]
-#[ignore = "--no-links not yet supported"]
 fn archive_respects_no_options() {
     if !Uid::effective().is_root() {
         eprintln!("skipping: requires root privileges");
