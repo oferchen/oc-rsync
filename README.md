@@ -1,7 +1,7 @@
 # oc-rsync — Pure-Rust rsync replica (compatible with rsync 3.4.1 / protocol 32)
 
 [![CI](https://github.com/oferchen/oc-rsync/actions/workflows/ci.yml/badge.svg)](https://github.com/oferchen/oc-rsync/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/oferchen/oc-rsync/branch/main/graph/badge.svg)](https://codecov.io/gh/oferchen/oc-rsync)
+[![Coverage](https://codecov.io/gh/oferchen/oc-rsync/graph/badge.svg?token=8TUVGHK9VE)](https://codecov.io/gh/oferchen/oc-rsync)
 [![Release](https://img.shields.io/github/v/release/oferchen/oc-rsync)](https://github.com/oferchen/oc-rsync/releases)
 
 ## Project statement
