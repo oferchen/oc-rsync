@@ -3,12 +3,11 @@ use std::env;
 
 pub const DEFAULT_BRAND_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DEFAULT_BRAND_CREDITS: &str =
-    "Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Samba.";
+    "Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Rsync team at Samba.";
 pub const DEFAULT_BRAND_URL: &str = "https://github.com/oferchen/oc-rsync";
 
 pub const DEFAULT_TAGLINE: &str = "Pure-Rust reimplementation of rsync (protocol v32).";
 pub const DEFAULT_URL: &str = DEFAULT_BRAND_URL;
-pub const DEFAULT_COPYRIGHT: &str = "Copyright (C) 2024-2025 oc-rsync contributors.";
 pub const DEFAULT_UPSTREAM_NAME: &str = "rsync";
 
 pub const DEFAULT_HELP_PREFIX: &str = r#"{prog} {version}
@@ -91,8 +90,19 @@ pub fn brand_credits() -> String {
     env_or_option("OC_RSYNC_BRAND_CREDITS").unwrap_or_else(|| DEFAULT_BRAND_CREDITS.to_string())
 }
 
+fn default_copyright() -> String {
+    let year = option_env!("CURRENT_YEAR").unwrap_or("2025");
+    format!("Copyright (C) 2024-{year} oc-rsync contributors.")
+}
+
 pub fn brand_copyright() -> String {
-    env_or_option("OC_RSYNC_BRAND_COPYRIGHT").unwrap_or_else(|| DEFAULT_COPYRIGHT.to_string())
+    env::var("OC_RSYNC_BRAND_COPYRIGHT")
+        .or_else(|_| {
+            option_env!("OC_RSYNC_BRAND_COPYRIGHT")
+                .map(str::to_string)
+                .ok_or(env::VarError::NotPresent)
+        })
+        .unwrap_or_else(|_| default_copyright())
 }
 
 pub fn hide_credits() -> bool {
