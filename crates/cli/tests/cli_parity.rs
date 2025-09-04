@@ -1,41 +1,15 @@
 // crates/cli/tests/cli_parity.rs
+use assert_cmd::Command;
 use oc_rsync_cli::{cli_command, render_help};
 use std::path::Path;
-use std::process::{Command, Stdio};
 use tempfile::tempdir;
-
-macro_rules! require_rsync {
-    () => {
-        let rsync = Command::new("rsync")
-            .arg("--version")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .ok();
-        if rsync.is_none() {
-            eprintln!("skipping test: rsync not installed");
-            return;
-        }
-        assert!(rsync.is_some());
-    };
-}
 
 #[test]
 fn archive_flag_matches_upstream() {
-    require_rsync!();
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
     let src_path = src.path();
     let dst_path = dst.path();
-
-    let status = Command::new("rsync")
-        .args(["-a", "-n"])
-        .arg(src_path)
-        .arg(dst_path)
-        .status()
-        .unwrap();
-    assert!(status.success());
-
     let matches = cli_command()
         .try_get_matches_from([
             "oc-rsync",
@@ -46,14 +20,6 @@ fn archive_flag_matches_upstream() {
         ])
         .unwrap();
     assert!(matches.get_flag("archive"));
-
-    let status = Command::new("rsync")
-        .args(["--archive", "-n"])
-        .arg(src_path)
-        .arg(dst_path)
-        .status()
-        .unwrap();
-    assert!(status.success());
 
     let matches = cli_command()
         .try_get_matches_from([
@@ -69,20 +35,10 @@ fn archive_flag_matches_upstream() {
 
 #[test]
 fn combined_flags_match_upstream() {
-    require_rsync!();
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
     let src_path = src.path();
     let dst_path = dst.path();
-
-    let status = Command::new("rsync")
-        .args(["-avz", "-n"])
-        .arg(src_path)
-        .arg(dst_path)
-        .status()
-        .unwrap();
-    assert!(status.success());
-
     let matches = cli_command()
         .try_get_matches_from([
             "oc-rsync",
@@ -95,14 +51,6 @@ fn combined_flags_match_upstream() {
     assert!(matches.get_flag("archive"));
     assert!(matches.get_flag("compress"));
     assert_eq!(matches.get_count("verbose"), 1);
-
-    let status = Command::new("rsync")
-        .args(["-a", "-v", "-z", "-n"])
-        .arg(src_path)
-        .arg(dst_path)
-        .status()
-        .unwrap();
-    assert!(status.success());
 
     let matches = cli_command()
         .try_get_matches_from([
@@ -122,20 +70,10 @@ fn combined_flags_match_upstream() {
 
 #[test]
 fn partial_progress_alias_matches_upstream() {
-    require_rsync!();
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
     let src_path = src.path();
     let dst_path = dst.path();
-
-    let status = Command::new("rsync")
-        .args(["-P", "-n"])
-        .arg(src_path)
-        .arg(dst_path)
-        .status()
-        .unwrap();
-    assert!(status.success());
-
     let matches = cli_command()
         .try_get_matches_from([
             "oc-rsync",
@@ -146,14 +84,6 @@ fn partial_progress_alias_matches_upstream() {
         ])
         .unwrap();
     assert!(matches.get_flag("partial_progress"));
-
-    let status = Command::new("rsync")
-        .args(["--partial", "--progress", "-n"])
-        .arg(src_path)
-        .arg(dst_path)
-        .status()
-        .unwrap();
-    assert!(status.success());
 
     let matches = cli_command()
         .try_get_matches_from([
@@ -187,20 +117,10 @@ fn dparam_flag_matches_upstream() {
 
 #[test]
 fn no_option_alias_matches_upstream() {
-    require_rsync!();
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
     let src_path = src.path();
     let dst_path = dst.path();
-
-    let status = Command::new("rsync")
-        .args(["-a", "--no-perms", "-n"])
-        .arg(src_path)
-        .arg(dst_path)
-        .status()
-        .unwrap();
-    assert!(status.success());
-
     let matches = cli_command()
         .try_get_matches_from([
             "oc-rsync",
@@ -237,21 +157,18 @@ fn help_usage_matches_upstream() {
 
 #[test]
 fn misuse_matches_upstream() {
-    require_rsync!();
-    let upstream = std::process::Command::new("rsync")
-        .arg("--bogus")
-        .output()
-        .unwrap();
-    let ours = assert_cmd::Command::cargo_bin("oc-rsync")
+    let golden = include_str!("../../../tests/golden/cli_parity/misuse.stderr");
+    let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
         .arg("--bogus")
         .output()
         .unwrap();
-    assert_eq!(upstream.status.code(), ours.status.code());
-    let upstream_stderr = String::from_utf8_lossy(&upstream.stderr).to_string();
     let ours_stderr = String::from_utf8_lossy(&ours.stderr).to_string();
-    let up_lines: Vec<_> = upstream_stderr.lines().collect();
+    let golden_lines: Vec<_> = golden.lines().collect();
     let our_lines: Vec<_> = ours_stderr.lines().collect();
-    assert_eq!(our_lines[0], up_lines[0]);
-    assert!(our_lines[1].starts_with("rsync error: syntax or usage error (code 1)"));
+    assert_eq!(ours.status.code(), Some(1));
+    assert_eq!(our_lines.get(0), golden_lines.get(0));
+    assert!(our_lines
+        .get(1)
+        .map_or(false, |l| l.starts_with(golden_lines[1])));
 }
