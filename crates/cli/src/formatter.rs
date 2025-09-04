@@ -1,5 +1,6 @@
 // crates/cli/src/formatter.rs
 use clap::Command;
+use regex::Regex;
 use std::env;
 use textwrap::{wrap, Options as WrapOptions};
 
@@ -196,21 +197,23 @@ pub fn render_help(cmd: &Command) -> String {
     let upstream = branding::upstream_name();
     let mut help_prefix = branding::help_prefix();
     let mut help_suffix = branding::help_suffix();
+    let rsync_re = Regex::new(r"\brsync\b").unwrap();
     for s in [&mut help_prefix, &mut help_suffix] {
-        let mut replaced = String::with_capacity(s.len());
-        let mut rest: &str = s;
-        while let Some(idx) = rest.find("rsync") {
-            replaced.push_str(&rest[..idx]);
-            let tail = &rest[idx + 5..];
-            if tail.starts_with("://") || tail.starts_with('d') {
-                replaced.push_str("rsync");
-            } else {
-                replaced.push_str(&upstream);
-            }
-            rest = tail;
-        }
-        replaced.push_str(rest);
-        *s = replaced
+        let haystack = s.clone();
+        *s = rsync_re
+            .replace_all(&haystack, |caps: &regex::Captures| {
+                let m = caps.get(0).unwrap();
+                let start = m.start();
+                let end = m.end();
+                let prev_char = haystack[..start].chars().last();
+                let tail = &haystack[end..];
+                if tail.starts_with("://") || tail.starts_with('/') || prev_char == Some('/') {
+                    "rsync".to_string()
+                } else {
+                    upstream.clone()
+                }
+            })
+            .to_string()
             .replace("{prog}", &program)
             .replace("{version}", &version)
             .replace("{credits}", &credits)

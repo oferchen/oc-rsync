@@ -1029,6 +1029,7 @@ dependencies = [
  "meta",
  "nix 0.27.1",
  "protocol",
+ "regex",
  "serial_test",
  "shell-words",
  "tempfile",
