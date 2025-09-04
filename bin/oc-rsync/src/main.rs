@@ -1,6 +1,6 @@
 // bin/oc-rsync/src/main.rs
 use oc_rsync_cli::options::OutBuf;
-use oc_rsync_cli::{branding, cli_command, EngineError};
+use oc_rsync_cli::{cli_command, EngineError};
 use protocol::ExitCode;
 use std::io::ErrorKind;
 use std::ptr::{self, NonNull};
@@ -8,30 +8,6 @@ use std::ptr::{self, NonNull};
 extern "C" {
     #[cfg_attr(target_os = "macos", link_name = "__stdoutp")]
     static mut stdout: *mut libc::FILE;
-}
-
-fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
-    use clap::error::ErrorKind::*;
-    match kind {
-        UnknownArgument => ExitCode::SyntaxOrUsage,
-        InvalidSubcommand => ExitCode::SyntaxOrUsage,
-        NoEquals => ExitCode::SyntaxOrUsage,
-        ValueValidation => ExitCode::SyntaxOrUsage,
-        TooManyValues => ExitCode::SyntaxOrUsage,
-        TooFewValues => ExitCode::SyntaxOrUsage,
-        WrongNumberOfValues => ExitCode::SyntaxOrUsage,
-        ArgumentConflict => ExitCode::SyntaxOrUsage,
-        MissingRequiredArgument => ExitCode::SyntaxOrUsage,
-        MissingSubcommand => ExitCode::SyntaxOrUsage,
-        InvalidUtf8 => ExitCode::SyntaxOrUsage,
-        DisplayHelpOnMissingArgumentOrSubcommand => ExitCode::SyntaxOrUsage,
-        InvalidValue => ExitCode::Unsupported,
-        DisplayHelp => ExitCode::Ok,
-        DisplayVersion => ExitCode::Ok,
-        Io => ExitCode::FileIo,
-        Format => ExitCode::FileIo,
-        _ => ExitCode::SyntaxOrUsage,
-    }
 }
 
 #[doc = r"Returns a handle to the C `stdout` stream.
@@ -71,33 +47,9 @@ fn main() {
         return;
     }
     let mut cmd = cli_command();
-    let matches = cmd.try_get_matches_from_mut(&args).unwrap_or_else(|e| {
-        use clap::error::ErrorKind;
-        let kind = e.kind();
-        let code = exit_code_from_error_kind(kind);
-        if kind == ErrorKind::DisplayHelp {
-            println!("{}", oc_rsync_cli::render_help(&cmd));
-        } else {
-            let first = e.to_string();
-            let first = first.lines().next().unwrap_or("");
-            let msg = match kind {
-                ErrorKind::UnknownArgument => {
-                    let arg = first.split('\'').nth(1).unwrap_or("");
-                    format!("{arg}: unknown option")
-                }
-                _ => first.strip_prefix("error: ").unwrap_or(first).to_string(),
-            };
-            let desc = match code {
-                ExitCode::Unsupported => "requested action not supported",
-                _ => "syntax or usage error",
-            };
-            let code_num = u8::from(code);
-            let prog = branding::program_name();
-            eprintln!("{prog}: {msg}");
-            eprintln!("{prog} error: {desc} (code {code_num})");
-        }
-        std::process::exit(u8::from(code) as i32);
-    });
+    let matches = cmd
+        .try_get_matches_from_mut(&args)
+        .unwrap_or_else(|e| oc_rsync_cli::handle_clap_error(&cmd, e));
     if let Some(mode) = matches.get_one::<OutBuf>("outbuf") {
         let m = match mode {
             OutBuf::N => libc::_IONBF,
@@ -141,9 +93,9 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::exit_code_from_error_kind;
     use super::set_stream_buffer;
     use clap::error::ErrorKind::*;
+    use oc_rsync_cli::exit_code_from_error_kind;
     use protocol::ExitCode;
     use std::ptr;
 

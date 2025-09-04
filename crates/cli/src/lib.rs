@@ -46,6 +46,60 @@ use users::get_user_by_uid;
 
 pub mod version;
 
+pub fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
+    use clap::error::ErrorKind::*;
+    match kind {
+        UnknownArgument
+        | InvalidSubcommand
+        | NoEquals
+        | ValueValidation
+        | TooManyValues
+        | TooFewValues
+        | WrongNumberOfValues
+        | ArgumentConflict
+        | MissingRequiredArgument
+        | MissingSubcommand
+        | InvalidUtf8
+        | DisplayHelpOnMissingArgumentOrSubcommand => ExitCode::SyntaxOrUsage,
+        InvalidValue => ExitCode::Unsupported,
+        DisplayHelp | DisplayVersion => ExitCode::Ok,
+        Io | Format => ExitCode::FileIo,
+        _ => ExitCode::SyntaxOrUsage,
+    }
+}
+
+pub fn handle_clap_error(cmd: &clap::Command, e: clap::Error) -> ! {
+    use clap::error::ErrorKind;
+    let kind = e.kind();
+    let code = exit_code_from_error_kind(kind);
+    if kind == ErrorKind::DisplayHelp {
+        println!("{}", render_help(cmd));
+    } else {
+        let first = e.to_string();
+        let first = first.lines().next().unwrap_or("");
+        let msg = if matches!(kind, ErrorKind::ValueValidation | ErrorKind::InvalidValue)
+            && first.contains("--block-size")
+        {
+            let val = first.split('\'').nth(1).unwrap_or("");
+            format!("--block-size={val} is invalid")
+        } else if kind == ErrorKind::UnknownArgument {
+            let arg = first.split('\'').nth(1).unwrap_or("");
+            format!("{arg}: unknown option")
+        } else {
+            first.strip_prefix("error: ").unwrap_or(first).to_string()
+        };
+        let desc = match code {
+            ExitCode::Unsupported => "requested action not supported",
+            _ => "syntax or usage error",
+        };
+        let code_num = u8::from(code);
+        let prog = branding::program_name();
+        eprintln!("{prog}: {msg}");
+        eprintln!("{prog} error: {desc} (code {code_num})");
+    }
+    std::process::exit(u8::from(code) as i32);
+}
+
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     let mut opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
