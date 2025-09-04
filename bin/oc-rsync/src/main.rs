@@ -23,6 +23,11 @@ fn main() {
     }
     if let Err(e) = oc_rsync_cli::run(&matches) {
         eprintln!("{e}");
+        if let EngineError::Io(err) = &e {
+            if err.to_string().contains("code 255") {
+                std::process::exit(255);
+            }
+        }
         let code = match &e {
             EngineError::Io(err)
                 if matches!(
@@ -36,8 +41,16 @@ fn main() {
             {
                 ExitCode::ConnTimeout
             }
+            EngineError::Io(err)
+                if matches!(
+                    err.kind(),
+                    ErrorKind::ConnectionReset | ErrorKind::UnexpectedEof
+                ) =>
+            {
+                ExitCode::StreamIo
+            }
             EngineError::MaxAlloc => ExitCode::Malloc,
-            EngineError::Exit(code, _) => *code,
+            EngineError::Exit(code, _) => ExitCode::try_from(*code).unwrap_or(ExitCode::Protocol),
             _ => ExitCode::Protocol,
         };
         std::process::exit(u8::from(code) as i32);

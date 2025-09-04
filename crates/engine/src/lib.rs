@@ -105,7 +105,7 @@ pub enum EngineError {
     #[error("max-alloc limit exceeded")]
     MaxAlloc,
     #[error("{1}")]
-    Exit(ExitCode, String),
+    Exit(u8, String),
     #[error("{0}")]
     Other(String),
 }
@@ -144,7 +144,7 @@ fn check_time_limit(start: Instant, opts: &SyncOptions) -> Result<()> {
     if let Some(limit) = opts.stop_after {
         if start.elapsed() >= limit {
             return Err(EngineError::Exit(
-                ExitCode::Timeout,
+                ExitCode::Timeout as u8,
                 "operation timed out".into(),
             ));
         }
@@ -152,7 +152,7 @@ fn check_time_limit(start: Instant, opts: &SyncOptions) -> Result<()> {
     if let Some(limit) = opts.stop_at {
         if SystemTime::now() >= limit {
             return Err(EngineError::Exit(
-                ExitCode::Timeout,
+                ExitCode::Timeout as u8,
                 "operation timed out".into(),
             ));
         }
@@ -2354,7 +2354,7 @@ pub fn sync(
                     .join(src)
             };
             return Err(EngineError::Exit(
-                ExitCode::Partial,
+                ExitCode::Partial as u8,
                 format!(
                     "rsync: [sender] link_stat \"{}\" failed: No such file or directory (2)\nrsync error: some files/attrs were not transferred (see previous errors) (code 23)",
                     abs.display(),

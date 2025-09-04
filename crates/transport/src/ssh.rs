@@ -474,6 +474,23 @@ impl SshStdioTransport {
                 Ok(v) => v,
                 Err(mut e) => {
                     let (stderr, _) = t.stderr();
+                    if let Some(handle) = t.handle.as_mut() {
+                        if let Ok(status) = handle.child.wait() {
+                            if let Some(code) = status.code() {
+                                let mut msg = String::from_utf8_lossy(&stderr).into_owned();
+                                if !msg.ends_with('\n') {
+                                    msg.push('\n');
+                                }
+                                if msg.is_empty() {
+                                    msg.push_str("connection unexpectedly closed\n");
+                                }
+                                msg.push_str(&format!(
+                                    "rsync error: unexplained error (code {code})"
+                                ));
+                                return Err(io::Error::other(msg));
+                            }
+                        }
+                    }
                     if !stderr.is_empty() {
                         let mut msg = String::from_utf8_lossy(&stderr).into_owned();
                         if !msg.ends_with('\n') {

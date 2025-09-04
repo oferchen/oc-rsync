@@ -1,3 +1,4 @@
 # Differences
 
-No outstanding differences. Tracked gaps are recorded in [gaps.md](gaps.md).
+No outstanding differences. Transport error handling matches upstream rsync.
+Tracked gaps are recorded in [gaps.md](gaps.md).

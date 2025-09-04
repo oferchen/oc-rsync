@@ -290,7 +290,10 @@ fn run_single(
 
                 if !has_privs {
                     if maps_requested {
-                        return Err(EngineError::Exit(ExitCode::StartClient, priv_msg.into()));
+                        return Err(EngineError::Exit(
+                            ExitCode::StartClient as u8,
+                            priv_msg.into(),
+                        ));
                     }
                     let owner_explicit =
                         matches.value_source("owner") == Some(ValueSource::CommandLine);
@@ -310,7 +313,10 @@ fn run_single(
                     if downgraded {
                         tracing::warn!("{priv_msg}: disabling owner/group");
                     } else {
-                        return Err(EngineError::Exit(ExitCode::StartClient, priv_msg.into()));
+                        return Err(EngineError::Exit(
+                            ExitCode::StartClient as u8,
+                            priv_msg.into(),
+                        ));
                     }
                 }
             }
