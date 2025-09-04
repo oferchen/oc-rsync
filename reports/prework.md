@@ -26,7 +26,7 @@ This document tracks the current state of failing tests in `oc-rsync` ahead of b
 ## `cargo nextest run --workspace --no-fail-fast`
 - **Status:** Failed
 - **Details:** Linker error: `/usr/bin/ld: cannot find -lacl`
-- **Impacted tests:** `engine` crate tests (e.g., `streaming`), `oc-rsync-bin` binary tests
+- **Impacted tests:** `engine` crate tests (e.g., `streaming`), `oc-rsync` binary tests
 - **Applied fixes:** None
 - **Remaining risks:** Missing ACL development library blocks building and testing
 

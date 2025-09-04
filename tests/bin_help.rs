@@ -1,4 +1,4 @@
-// bin/oc-rsync/tests/help.rs
+// tests/bin_help.rs
 use assert_cmd::Command;
 
 #[test]
