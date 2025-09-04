@@ -67,6 +67,35 @@ fn is_device(file_type: &std::fs::FileType) -> bool {
     }
 }
 
+fn is_remote_spec(path: &Path) -> bool {
+    if let Some(s) = path.to_str() {
+        if s.starts_with("rsync://") {
+            return true;
+        }
+        if s.starts_with('[') && s.contains("]:") {
+            return true;
+        }
+        if s.contains("::") {
+            return true;
+        }
+        if let Some(idx) = s.find(':') {
+            if idx == 1 {
+                let bytes = s.as_bytes();
+                if bytes[0].is_ascii_alphabetic()
+                    && bytes
+                        .get(2)
+                        .map(|c| *c == b'/' || *c == b'\\')
+                        .unwrap_or(false)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+    false
+}
+
 #[derive(Debug, Error)]
 pub enum EngineError {
     #[error(transparent)]
@@ -2209,10 +2238,15 @@ pub fn sync(
         .write_batch
         .as_ref()
         .and_then(|p| OpenOptions::new().create(true).append(true).open(p).ok());
-    let src_root = fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf());
+    let src_is_remote = is_remote_spec(src);
+    let src_root = if src_is_remote {
+        src.to_path_buf()
+    } else {
+        fs::canonicalize(src).unwrap_or_else(|_| src.to_path_buf())
+    };
     let mut stats = Stats::default();
     let start = Instant::now();
-    if !src_root.exists() {
+    if !src_is_remote && !src_root.exists() {
         if opts.delete_missing_args {
             if dst.exists() {
                 if let Some(max) = opts.max_delete {

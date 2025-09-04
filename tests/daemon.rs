@@ -2175,19 +2175,23 @@ fn daemon_preserves_hard_links_remote_source() {
     fs::write(&f1, b"hi").unwrap();
     let f2 = src.join("b");
     fs::hard_link(&f1, &f2).unwrap();
-    let dst = tempfile::tempdir().unwrap();
-    Command::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            "-aH",
-            &format!("rsync://127.0.0.1:{port}/data/"),
-            dst.path().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-    let ino1 = fs::metadata(dst.path().join("a")).unwrap().ino();
-    let ino2 = fs::metadata(dst.path().join("b")).unwrap().ino();
-    assert_eq!(ino1, ino2);
+    for spec in [
+        format!("rsync://127.0.0.1:{port}/data/"),
+        "127.0.0.1::data/".to_string(),
+    ] {
+        let dst = tempdir().unwrap();
+        let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+        cmd.arg("-aH");
+        if spec.starts_with("127.0.0.1::") {
+            cmd.args(["--port", &port.to_string()]);
+        }
+        cmd.args([&spec, dst.path().to_str().unwrap()])
+            .assert()
+            .success();
+        let ino1 = fs::metadata(dst.path().join("a")).unwrap().ino();
+        let ino2 = fs::metadata(dst.path().join("b")).unwrap().ino();
+        assert_eq!(ino1, ino2);
+    }
     let _ = child.kill();
     let _ = child.wait();
 }
