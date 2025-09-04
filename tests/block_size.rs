@@ -5,7 +5,6 @@ use assert_cmd::Command;
 use checksums::ChecksumConfigBuilder;
 use engine::{block_size, compute_delta, Op, SyncOptions};
 use std::fs;
-use std::process::Command as StdCommand;
 use tempfile::tempdir;
 
 fn parse_literal(stats: &str) -> usize {
@@ -82,23 +81,13 @@ fn delta_block_size_matches_rsync() {
             })
             .sum();
 
-        let output = StdCommand::new("rsync")
-            .arg("--stats")
-            .arg("--recursive")
-            .arg("--block-size")
-            .arg(block_size.to_string())
-            .arg("--no-whole-file")
-            .arg("--checksum")
-            .arg(format!("{}/", src_dir.display()))
-            .arg(dst_dir.to_str().unwrap())
-            .output()
-            .unwrap();
-        assert!(output.status.success());
-        let rsync_literal = parse_literal(std::str::from_utf8(&output.stdout).unwrap());
+        let stats = fs::read_to_string(format!(
+            "tests/golden/block_size/delta_block_size_matches_rsync_bs{block_size}.stdout"
+        ))
+        .unwrap();
+        let rsync_literal = parse_literal(&stats);
         assert_eq!(literal, rsync_literal);
         assert_eq!(literal, block_size);
-
-        fs::write(&dst_file, &basis).unwrap();
     }
 }
 
@@ -146,19 +135,9 @@ fn delta_block_size_large_file() {
         })
         .sum();
 
-    let output = StdCommand::new("rsync")
-        .arg("--stats")
-        .arg("--recursive")
-        .arg("--block-size")
-        .arg(block_size.to_string())
-        .arg("--no-whole-file")
-        .arg("--checksum")
-        .arg(format!("{}/", src_dir.display()))
-        .arg(dst_dir.to_str().unwrap())
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let rsync_literal = parse_literal(std::str::from_utf8(&output.stdout).unwrap());
+    let stats =
+        fs::read_to_string("tests/golden/block_size/delta_block_size_large_file.stdout").unwrap();
+    let rsync_literal = parse_literal(&stats);
     assert_eq!(literal, rsync_literal);
     assert_eq!(literal, block_size);
 }
@@ -207,19 +186,10 @@ fn delta_block_size_unaligned_edit() {
         })
         .sum();
 
-    let output = StdCommand::new("rsync")
-        .arg("--stats")
-        .arg("--recursive")
-        .arg("--block-size")
-        .arg(block_size.to_string())
-        .arg("--no-whole-file")
-        .arg("--checksum")
-        .arg(format!("{}/", src_dir.display()))
-        .arg(dst_dir.to_str().unwrap())
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let rsync_literal = parse_literal(std::str::from_utf8(&output.stdout).unwrap());
+    let stats =
+        fs::read_to_string("tests/golden/block_size/delta_block_size_unaligned_edit.stdout")
+            .unwrap();
+    let rsync_literal = parse_literal(&stats);
     assert_eq!(literal, rsync_literal);
     assert_eq!(literal, block_size * 2);
 }
@@ -268,19 +238,9 @@ fn delta_block_size_non_power_two() {
         })
         .sum();
 
-    let output = StdCommand::new("rsync")
-        .arg("--stats")
-        .arg("--recursive")
-        .arg("--block-size")
-        .arg(block_size.to_string())
-        .arg("--no-whole-file")
-        .arg("--checksum")
-        .arg(format!("{}/", src_dir.display()))
-        .arg(dst_dir.to_str().unwrap())
-        .output()
+    let stats = fs::read_to_string("tests/golden/block_size/delta_block_size_non_power_two.stdout")
         .unwrap();
-    assert!(output.status.success());
-    let rsync_literal = parse_literal(std::str::from_utf8(&output.stdout).unwrap());
+    let rsync_literal = parse_literal(&stats);
     assert!(literal >= rsync_literal);
 }
 
@@ -327,25 +287,14 @@ fn delta_block_size_smaller_file() {
         })
         .sum();
 
-    let output = StdCommand::new("rsync")
-        .arg("--stats")
-        .arg("--recursive")
-        .arg("--block-size")
-        .arg(block_size.to_string())
-        .arg("--no-whole-file")
-        .arg("--checksum")
-        .arg(format!("{}/", src_dir.display()))
-        .arg(dst_dir.to_str().unwrap())
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let rsync_literal = parse_literal(std::str::from_utf8(&output.stdout).unwrap());
+    let stats =
+        fs::read_to_string("tests/golden/block_size/delta_block_size_smaller_file.stdout").unwrap();
+    let rsync_literal = parse_literal(&stats);
     assert_eq!(literal, rsync_literal);
     assert_eq!(literal, size);
 }
 
 #[test]
-#[ignore = "rsync binary not available"]
 fn cli_block_size_matches_rsync() {
     let block_size_str = "1k";
     let block_size = 1024usize;
@@ -370,21 +319,15 @@ fn cli_block_size_matches_rsync() {
 
     let src_arg = format!("{}/", src_dir.display());
     let dst_arg = dst_dir.to_str().unwrap();
-    let rsync = StdCommand::new("rsync")
-        .arg("--stats")
-        .arg("--recursive")
-        .arg("--block-size")
-        .arg(block_size_str)
-        .arg("--no-whole-file")
-        .arg("--checksum")
-        .arg(&src_arg)
-        .arg(dst_arg)
-        .output()
-        .unwrap();
-    assert!(rsync.status.success());
-    let rsync_literal = parse_literal(std::str::from_utf8(&rsync.stdout).unwrap());
-
-    fs::write(&dst_file, &basis).unwrap();
+    let stats =
+        fs::read_to_string("tests/golden/block_size/cli_block_size_matches_rsync.stdout").unwrap();
+    let expected_status: i32 =
+        fs::read_to_string("tests/golden/block_size/cli_block_size_matches_rsync.exit")
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+    let rsync_literal = parse_literal(&stats);
 
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -399,7 +342,7 @@ fn cli_block_size_matches_rsync() {
         .arg(dst_arg)
         .output()
         .unwrap();
-    assert!(ours.status.success());
+    assert_eq!(ours.status.code(), Some(expected_status));
     let our_literal = parse_literal(std::str::from_utf8(&ours.stdout).unwrap());
 
     assert_eq!(our_literal, rsync_literal);
@@ -407,25 +350,29 @@ fn cli_block_size_matches_rsync() {
 }
 
 #[test]
-#[ignore = "rsync binary not available"]
 fn cli_block_size_errors_match_rsync() {
     let tmp = tempdir().unwrap();
     let dst = tmp.path().join("dst");
     fs::create_dir_all(&dst).unwrap();
 
-    let rsync = StdCommand::new("rsync")
-        .args(["--block-size=1x", "/dev/null", dst.to_str().unwrap()])
-        .output()
-        .unwrap();
+    let expected_code: i32 =
+        fs::read_to_string("tests/golden/block_size/cli_block_size_errors_match_rsync.exit")
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+    let rsync_err =
+        fs::read_to_string("tests/golden/block_size/cli_block_size_errors_match_rsync.stderr")
+            .unwrap();
+    let rsync_first = rsync_err.lines().next().unwrap();
+
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--block-size=1x", "/dev/null", "--", dst.to_str().unwrap()])
         .output()
         .unwrap();
-    assert_eq!(rsync.status.code(), ours.status.code());
-    let rsync_err = String::from_utf8(rsync.stderr).unwrap();
+    assert_eq!(ours.status.code(), Some(expected_code));
     let ours_err = String::from_utf8(ours.stderr).unwrap();
-    let rsync_first = rsync_err.lines().next().unwrap();
     let ours_first = ours_err.lines().next().unwrap();
     assert_eq!(rsync_first, ours_first);
 }
