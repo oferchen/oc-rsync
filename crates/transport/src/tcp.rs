@@ -201,6 +201,7 @@ impl TcpTransport {
                         target_os = "linux",
                     )))]
                     {
+                        let _ = iface;
                         return Err(io::Error::new(
                             io::ErrorKind::Unsupported,
                             "SO_BINDTODEVICE is only supported on Linux-like systems",
