@@ -107,6 +107,9 @@ pub fn handle_clap_error(cmd: &clap::Command, e: clap::Error) -> ! {
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
     let mut opts =
         ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
+    if matches.contains_id("old-d") {
+        opts.old_dirs = true;
+    }
     if opts.no_D {
         opts.no_devices = true;
         opts.no_specials = true;
