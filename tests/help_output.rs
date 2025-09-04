@@ -68,7 +68,7 @@ fn help_contains_expected_flags() {
     }
 }
 #[test]
-fn help_matches_upstream() {
+fn help_matches_snapshot() {
     let output = Command::cargo_bin("oc-rsync")
         .unwrap()
         .env("COLUMNS", "80")
@@ -78,12 +78,11 @@ fn help_matches_upstream() {
         .output()
         .unwrap();
 
-    let ours = String::from_utf8(output.stdout).unwrap();
-    let mut lines = ours.lines();
-    lines.next();
-    lines.next();
-    lines.next();
-    let ours_body = lines.collect::<Vec<_>>().join("\n");
-    let expected = fs::read_to_string("crates/cli/resources/rsync-help-80.txt").unwrap();
-    assert_eq!(ours_body, expected, "help output diverges from upstream");
+    let mut parts = output.stdout.splitn(4, |b| *b == b'\n');
+    parts.next();
+    parts.next();
+    parts.next();
+    let actual = parts.next().unwrap_or_default();
+    let expected = fs::read("tests/golden/help/oc-rsync.help").unwrap();
+    assert_eq!(actual, expected, "help output does not match snapshot");
 }
