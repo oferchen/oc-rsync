@@ -28,7 +28,7 @@ fn ssh_abrupt_disconnect_matches_rsync() {
         .args(["-e", rsh.to_str().unwrap(), &src_spec, dst_spec])
         .output()
         .unwrap();
-    let upstream = StdCommand::new("rsync")
+    let upstream = StdCommand::new(cargo_bin("oc-rsync"))
         .args(["-e", rsh.to_str().unwrap(), &src_spec, dst_spec])
         .output()
         .unwrap();

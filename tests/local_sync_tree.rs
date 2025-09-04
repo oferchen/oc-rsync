@@ -219,7 +219,8 @@ fn sync_xattrs_match_rsync() {
         .assert()
         .success();
 
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args(["-aX", &src_arg, dst_rs.to_str().unwrap()])
         .assert()
         .success();
@@ -262,7 +263,8 @@ fn sync_acls_match_rsync() {
         .assert()
         .success();
 
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args(["-aA", &src_arg, dst_rs.to_str().unwrap()])
         .assert()
         .success();
@@ -347,7 +349,8 @@ fn sync_removes_acls_match_rsync() {
         .assert()
         .success();
 
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args(["-aA", &src_arg, dst_rs.to_str().unwrap()])
         .assert()
         .success();

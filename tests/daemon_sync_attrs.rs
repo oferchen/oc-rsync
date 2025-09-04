@@ -2,7 +2,10 @@
 #![cfg(not(test))]
 
 #[cfg(unix)]
-use assert_cmd::{cargo::CommandCargoExt, Command};
+use assert_cmd::{
+    cargo::{cargo_bin, CommandCargoExt},
+    Command,
+};
 #[cfg(unix)]
 use serial_test::serial;
 #[cfg(unix)]
@@ -55,7 +58,7 @@ fn spawn_rsync_daemon_acl(root: &std::path::Path) -> (Child, u16) {
     );
     let conf_path = root.join("rsyncd.conf");
     fs::write(&conf_path, conf).unwrap();
-    let child = StdCommand::new("rsync")
+    let child = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "--daemon",
             "--no-detach",
@@ -105,7 +108,7 @@ fn spawn_rsync_daemon_xattr(root: &std::path::Path) -> (Child, u16) {
         ),
     )
     .unwrap();
-    let child = StdCommand::new("rsync")
+    let child = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "--daemon",
             "--no-detach",
@@ -145,7 +148,8 @@ fn daemon_preserves_xattrs() {
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
         .assert()
         .success();
@@ -339,7 +343,8 @@ fn daemon_excludes_filtered_xattrs() {
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args([
             "-AX",
             "--filter=-x user.secret",
@@ -426,7 +431,8 @@ fn daemon_xattrs_match_rsync_server() {
     let (mut child_oc, port_oc) = spawn_daemon(&srv_oc);
     wait_for_daemon(port_oc);
     let src_arg = format!("{}/", src.display());
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args(["-aX", &src_arg, &format!("rsync://127.0.0.1:{port_oc}/mod")])
         .assert()
         .success();
@@ -435,7 +441,8 @@ fn daemon_xattrs_match_rsync_server() {
 
     let (mut child_rs, port_rs) = spawn_rsync_daemon_xattr(&srv_rs);
     wait_for_daemon(port_rs);
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args(["-aX", &src_arg, &format!("rsync://127.0.0.1:{port_rs}/mod")])
         .assert()
         .success();
@@ -476,7 +483,8 @@ fn daemon_preserves_acls() {
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
         .assert()
         .success();
@@ -633,7 +641,8 @@ fn daemon_inherits_default_acls() {
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
         .assert()
         .success();
@@ -726,7 +735,8 @@ fn daemon_acls_match_rsync_server() {
     let (mut child_oc, port_oc) = spawn_daemon(&srv_oc);
     wait_for_daemon(port_oc);
     let src_arg = format!("{}/", src.display());
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_oc}/mod")])
         .assert()
         .success();
@@ -735,7 +745,8 @@ fn daemon_acls_match_rsync_server() {
 
     let (mut child_rs, port_rs) = spawn_rsync_daemon_acl(&srv_rs);
     wait_for_daemon(port_rs);
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_rs}/mod")])
         .assert()
         .success();
@@ -792,7 +803,8 @@ fn daemon_acls_match_rsync_client() {
 
     let (mut child_rs, port_rs) = spawn_rsync_daemon_acl(&srv_rs);
     wait_for_daemon(port_rs);
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_rs}/mod")])
         .assert()
         .success();
@@ -836,7 +848,8 @@ fn daemon_preserves_uid_gid_perms() {
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args(["-a", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
         .assert()
         .success();

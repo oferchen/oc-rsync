@@ -1,6 +1,6 @@
 // tests/out_format.rs
-use assert_cmd::Command as TestCommand;
-use std::{fs, process::Command};
+use assert_cmd::{cargo::cargo_bin, Command as TestCommand};
+use std::{fs, process::Command as StdCommand};
 use tempfile::tempdir;
 
 #[test]
@@ -36,7 +36,7 @@ fn out_format_file_matches_rsync() {
         .unwrap();
     let ours_msg = ours_line.split("info::name: ").nth(1).unwrap().trim();
 
-    let output = Command::new("rsync")
+    let output = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--out-format=%o:%n",
@@ -92,7 +92,7 @@ fn out_format_symlink_matches_rsync() {
         .unwrap();
     let ours_msg = ours_line.split("info::name: ").nth(1).unwrap().trim();
 
-    let output = Command::new("rsync")
+    let output = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "-l",

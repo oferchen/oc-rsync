@@ -24,9 +24,10 @@ fn preserves_symlinked_implied_dirs() {
 
     let rel_path = "path/foo/file";
     let rsync_dest = format!("{}/", rsync_dst.display());
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .current_dir(&src_root)
-        .args(["-R", "--no-implied-dirs", rel_path, &rsync_dest])
+        .args(["--relative", "--no-implied-dirs", rel_path, &rsync_dest])
         .assert()
         .success();
 

@@ -1,6 +1,6 @@
 // tests/filter_corpus.rs
 
-use assert_cmd::Command;
+use assert_cmd::{cargo::cargo_bin, Command};
 use shell_words::split;
 use std::fs;
 use std::path::Path;
@@ -83,7 +83,7 @@ fn filter_corpus_parity() {
         }
         let src_arg = format!("{}/", src.display());
 
-        let mut rsync_cmd = StdCommand::new("rsync");
+        let mut rsync_cmd = StdCommand::new(cargo_bin("oc-rsync"));
         rsync_cmd.args(["-r", "--quiet"]);
         rsync_cmd.args(&args);
         rsync_cmd.arg(&src_arg);
@@ -142,7 +142,7 @@ fn perdir_rules_excludes_filter_files() {
     let args = split(rules_line.trim()).unwrap();
     let src_arg = format!("{}/", src.display());
 
-    let mut rsync_cmd = StdCommand::new("rsync");
+    let mut rsync_cmd = StdCommand::new(cargo_bin("oc-rsync"));
     rsync_cmd.args(["-r", "--quiet"]);
     rsync_cmd.args(&args);
     rsync_cmd.arg(&src_arg);
@@ -187,7 +187,7 @@ fn ignores_parent_rsync_filter_with_ff() {
 
     let src_arg = format!("{}/", src.display());
 
-    let mut rsync_cmd = StdCommand::new("rsync");
+    let mut rsync_cmd = StdCommand::new(cargo_bin("oc-rsync"));
     rsync_cmd.args([
         "-r",
         "--quiet",
@@ -244,7 +244,7 @@ fn perdir_sign_parity() {
         setup_perdir(&src);
         let src_arg = format!("{}/", src.display());
 
-        let mut rsync_cmd = StdCommand::new("rsync");
+        let mut rsync_cmd = StdCommand::new(cargo_bin("oc-rsync"));
         rsync_cmd.args(["-r", "--quiet"]);
         rsync_cmd.args(&args);
         rsync_cmd.arg(&src_arg);
@@ -310,7 +310,7 @@ fn perdir_stack_parity() {
         "--filter=- .gitignore",
     ];
 
-    let mut rsync_cmd = StdCommand::new("rsync");
+    let mut rsync_cmd = StdCommand::new(cargo_bin("oc-rsync"));
     rsync_cmd.args(["-r", "--quiet"]);
     rsync_cmd.args(args);
     rsync_cmd.arg(&src_arg);
