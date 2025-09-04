@@ -29,7 +29,7 @@ Options
 
 const UPSTREAM_HELP_SUFFIX: &str = r#"Use "rsync --daemon --help" to see the daemon-mode command-line options.
 Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
-For project updates and documentation, visit https://github.com/oc-rsync/oc-rsync.
+For project updates and documentation, visit https://github.com/oferchen/oc-rsync.
 "#;
 
 pub const ARG_ORDER: &[&str] = &[
