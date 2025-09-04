@@ -4,7 +4,7 @@ mod stdio;
 
 use oc_rsync_cli::options::OutBuf;
 use std::ptr;
-use stdio::{set_stdout_buffering, set_stream_buffer};
+use stdio::{set_stdout_buffering, set_stream_buffer, stdout_stream};
 
 #[test]
 fn mode_changes_ok() {
@@ -26,4 +26,25 @@ fn invalid_setvbuf_returns_error() {
 #[test]
 fn null_stream_returns_error() {
     assert!(set_stream_buffer(ptr::null_mut(), libc::_IONBF).is_err());
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+#[test]
+fn unix_stdout_stream_is_valid() {
+    let stream = stdout_stream().unwrap();
+    assert!(!stream.as_ptr().is_null());
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_stdout_stream_is_valid() {
+    let stream = stdout_stream().unwrap();
+    assert!(!stream.as_ptr().is_null());
+}
+
+#[cfg(windows)]
+#[test]
+fn windows_stdout_stream_is_valid() {
+    let stream = stdout_stream().unwrap();
+    assert!(!stream.as_ptr().is_null());
 }
