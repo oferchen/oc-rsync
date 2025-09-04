@@ -7,26 +7,26 @@ when available. Do not exceed functionality of upstream at <https://rsync.samba.
 
 ## Interop matrix scenarios
 
-  - `base`
-  - `delete`
-  - `delete_before`
-  - `delete_during`
-  - `delete_after`
-  - `compress`
-  - `hard_links`
-  - `rsh`
-  - `drop_connection`
-  - `vanished`
-  - `remote_remote`
-  - `append`
-  - `append_verify`
-  - `partial`
-  - `inplace`
-  - `resume`
-  - `progress`
-  - `resume_progress`
-  - `progress2`
-  - `resume_progress2`
+  - `base`: baseline transfer using [run_matrix.sh](../tests/interop/run_matrix.sh)
+  - `delete`: `--delete` removes extraneous files
+  - `delete_before`: `--delete-before` prunes destination prior to transfer
+  - `delete_during`: `--delete-during` removes files mid-transfer
+  - `delete_after`: `--delete-after` cleans up once transfer completes
+  - `compress`: verifies `--compress` negotiation
+  - `hard_links`: preserves hard links
+  - `rsh`: remote shell invocation via `--rsh`
+  - `drop_connection`: aborts transfer mid-stream
+  - `vanished`: handles disappearing source files gracefully
+  - `remote_remote`: third-party copy between two remotes
+  - `append`: appends to existing destination files
+  - `append_verify`: verifies appended data with checksums
+  - `partial`: keeps partially transferred files
+  - `inplace`: updates destination files in place
+  - `resume`: resumes interrupted transfer with `--partial`
+  - `progress`: shows incremental progress output
+  - `resume_progress`: resumes with progress enabled
+  - `progress2`: uses `--info=progress2` for aggregate progress
+  - `resume_progress2`: resumes transfer with progress2 output
 
 ## Parser Parity
 | Feature | Status | Tests | Source |
