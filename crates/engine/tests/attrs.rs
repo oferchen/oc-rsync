@@ -1,4 +1,5 @@
 // crates/engine/tests/attrs.rs
+
 #![cfg(unix)]
 
 use std::fs::{self, File};
@@ -917,7 +918,7 @@ fn metadata_matches_source() {
     let cr_src = meta_src.created().ok();
     let cr_dst = meta_dst.created().ok();
     if cr_src.is_some() && cr_dst.is_some() {
-        // Creation times may vary slightly across filesystems; ensure both exist.
+         Creation times may vary slightly across filesystems; ensure both exist.
     }
 }
 
