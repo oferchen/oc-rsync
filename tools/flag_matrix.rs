@@ -116,6 +116,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let oc_rsync_help = Command::new("cargo")
         .args(["run", "--quiet", "--bin", "oc-rsync", "--", "--help"])
         .output()?;
+    let status = oc_rsync_help.status;
+    if !status.success() {
+        return Err(format!(
+            "`cargo run --quiet --bin oc-rsync -- --help` failed: {}",
+            status
+        )
+        .into());
+    }
     let oc_rsync_help_str = String::from_utf8(oc_rsync_help.stdout)?;
     let (mut oc_rsync_flags, oc_rsync_aliases, _oc_rsync_alias_desc) =
         parse_help(&oc_rsync_help_str);
