@@ -49,6 +49,18 @@ pub fn program_name() -> String {
         .unwrap_or_else(|_| "oc-rsync".to_string())
 }
 
+pub const DEFAULT_UPSTREAM_NAME: &str = "rsync";
+
+pub fn upstream_name() -> String {
+    env::var("OC_RSYNC_UPSTREAM_NAME")
+        .or_else(|_| {
+            option_env!("OC_RSYNC_UPSTREAM_NAME")
+                .map(str::to_string)
+                .ok_or(env::VarError::NotPresent)
+        })
+        .unwrap_or_else(|_| DEFAULT_UPSTREAM_NAME.to_string())
+}
+
 pub fn brand_version() -> String {
     let prefix = env::var("OC_RSYNC_VERSION_PREFIX")
         .or_else(|_| {
