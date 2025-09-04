@@ -7,6 +7,8 @@ use logging::{subscriber, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
 use std::path::{Path, PathBuf};
 use tracing::subscriber::with_default;
 
+pub use meta;
+
 #[derive(Clone)]
 pub struct SyncConfig {
     pub log_format: LogFormat,

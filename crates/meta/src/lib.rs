@@ -15,6 +15,9 @@ pub use nix::sys::stat::{major, makedev, minor};
 #[cfg(target_os = "macos")]
 pub use libc::{major, makedev, minor};
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub use nix::sys::stat::{Mode, SFlag};
+
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
 mod stub;
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
