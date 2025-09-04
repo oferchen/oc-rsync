@@ -6,8 +6,11 @@ overview of project goals and features is available in the
 lives in the [README's CLI section](../README.md#cli).
 For a complete list of flags and their implementation status, see the [feature matrix](feature_matrix.md), which is the authoritative reference for contributors.
 The full `--help` output is captured in [cli-help.txt](cli-help.txt) and checked in CI to match the binary.
-Help text formatting depends on the `COLUMNS` environment variable; for
-tests we snapshot `oc-rsync --dump-help-body` at specific widths.
+The upstream `rsync --help` text wrapped to 80 columns is stored in
+`crates/cli/resources/rsync-help-80.txt`. A unit test derives the expected
+option ordering from this file and compares it to the `ARG_ORDER` constant used
+to render our help text. If upstream adds or reorders options, update this
+resource and adjust `ARG_ORDER` so the test continues to pass.
 
 ## Usage
 
