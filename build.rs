@@ -1,7 +1,7 @@
 // build.rs
 
-use chrono::Datelike;
 use std::{env, fs, path::Path};
+use time::OffsetDateTime;
 
 const UPSTREAM_VERSION: &str = "3.4.1";
 const UPSTREAM_PROTOCOLS: &[u32] = &[32, 31, 30, 29];
@@ -36,7 +36,8 @@ fn main() {
         println!("cargo:rerun-if-env-changed={key}");
     }
 
-    let year = env::var("CURRENT_YEAR").unwrap_or_else(|_| chrono::Utc::now().year().to_string());
+    let year =
+        env::var("CURRENT_YEAR").unwrap_or_else(|_| OffsetDateTime::now_utc().year().to_string());
     println!("cargo:rustc-env=CURRENT_YEAR={year}");
     println!("cargo:rerun-if-env-changed=CURRENT_YEAR");
 
