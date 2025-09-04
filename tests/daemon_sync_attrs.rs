@@ -1,5 +1,4 @@
 // tests/daemon_sync_attrs.rs
-#![cfg(not(test))]
 
 #[cfg(unix)]
 use assert_cmd::{cargo::CommandCargoExt, Command};
@@ -454,6 +453,7 @@ fn daemon_xattrs_match_rsync_server() {
 #[cfg(unix)]
 #[test]
 #[serial]
+#[cfg_attr(not(target_os = "linux"), ignore = "requires Linux ACLs")]
 fn daemon_preserves_acls() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -496,6 +496,7 @@ fn daemon_preserves_acls() {
 #[cfg(unix)]
 #[test]
 #[serial]
+#[cfg_attr(not(target_os = "linux"), ignore = "requires Linux ACLs")]
 fn daemon_preserves_acls_rr_client() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -539,6 +540,7 @@ fn daemon_preserves_acls_rr_client() {
 #[cfg(unix)]
 #[test]
 #[serial]
+#[cfg_attr(not(target_os = "linux"), ignore = "requires Linux ACLs")]
 fn daemon_removes_acls() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -754,6 +756,7 @@ fn daemon_acls_match_rsync_server() {
 #[cfg(unix)]
 #[test]
 #[serial]
+#[cfg_attr(not(target_os = "linux"), ignore = "requires Linux ACLs")]
 fn daemon_acls_match_rsync_client() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -811,10 +814,16 @@ fn daemon_acls_match_rsync_client() {
 #[cfg(unix)]
 #[test]
 #[serial]
+#[cfg_attr(not(target_os = "linux"), ignore = "requires Linux uid/gid semantics")]
 fn daemon_preserves_uid_gid_perms() {
     use nix::sys::stat::{fchmodat, FchmodatFlags, Mode};
     use nix::unistd::{chown, Gid, Uid};
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
+
+    if !Uid::effective().is_root() {
+        eprintln!("skipping: requires root privileges");
+        return;
+    }
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
