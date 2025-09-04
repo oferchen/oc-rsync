@@ -123,11 +123,7 @@ pub fn help_prefix() -> String {
         .or_else(|_| env::var("OC_RSYNC_BRAND_HEADER"))
         .or_else(|_| {
             option_env!("OC_RSYNC_HELP_HEADER")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_HEADER")
+                .or(option_env!("OC_RSYNC_BRAND_HEADER"))
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
