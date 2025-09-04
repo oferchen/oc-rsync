@@ -1,6 +1,5 @@
 // crates/compress/src/lz4.rs
-// Placeholder for future LZ4 integration.
-// Tracking issue: https://github.com/oferchen/oc-rsync/pull/873
+
 use std::io;
 
 use crate::{Compressor, Decompressor};
