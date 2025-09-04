@@ -8,6 +8,10 @@ pub const DEFAULT_BRAND_URL: &str = "https://github.com/oc-rsync/oc-rsync";
 pub const DEFAULT_TAGLINE: &str = "Experimental pure-Rust rsync reimplementation.";
 pub const DEFAULT_COPYRIGHT: &str = "Copyright (C) 2025 oc-rsync authors";
 
+pub const DEFAULT_TAGLINE: &str = "Pure-Rust reimplementation of rsync (protocol v32).";
+pub const DEFAULT_URL: &str = DEFAULT_BRAND_URL;
+pub const DEFAULT_COPYRIGHT: &str = "Copyright (C) 2024-2025 oc-rsync contributors.";
+
 pub const DEFAULT_HELP_PREFIX: &str = r#"{prog} {version}
 {credits}
 
@@ -62,7 +66,7 @@ pub fn brand_version() -> String {
                 .ok_or(env::VarError::NotPresent)
         })
         .unwrap_or_default();
-    format!("{}{}", prefix, env!("CARGO_PKG_VERSION"))
+    format!("{}{}", prefix, DEFAULT_BRAND_VERSION)
 }
 
 pub fn brand_tagline() -> String {
@@ -73,6 +77,26 @@ pub fn brand_tagline() -> String {
                 .ok_or(env::VarError::NotPresent)
         })
         .unwrap_or_else(|_| DEFAULT_TAGLINE.to_string())
+}
+
+pub fn brand_url() -> String {
+    env::var("OC_RSYNC_BRAND_URL")
+        .or_else(|_| {
+            option_env!("OC_RSYNC_BRAND_URL")
+                .map(str::to_string)
+                .ok_or(env::VarError::NotPresent)
+        })
+        .unwrap_or_else(|_| DEFAULT_URL.to_string())
+}
+
+pub fn brand_credits() -> String {
+    env::var("OC_RSYNC_BRAND_CREDITS")
+        .or_else(|_| {
+            option_env!("OC_RSYNC_BRAND_CREDITS")
+                .map(str::to_string)
+                .ok_or(env::VarError::NotPresent)
+        })
+        .unwrap_or_else(|_| DEFAULT_BRAND_CREDITS.to_string())
 }
 
 pub fn brand_copyright() -> String {
@@ -96,16 +120,6 @@ pub fn hide_credits() -> bool {
         .unwrap_or(false)
 }
 
-pub fn brand_url() -> String {
-    env::var("OC_RSYNC_BRAND_URL")
-        .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_URL")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .unwrap_or_else(|_| DEFAULT_BRAND_URL.to_string())
-}
-
 pub fn help_prefix() -> String {
     env::var("OC_RSYNC_HELP_HEADER")
         .or_else(|_| env::var("OC_RSYNC_BRAND_HEADER"))
@@ -115,7 +129,7 @@ pub fn help_prefix() -> String {
                 .ok_or(env::VarError::NotPresent)
         })
         .or_else(|_| {
-            option_env!("OC_RSYNC_HELP_HEADER")
+            option_env!("OC_RSYNC_BRAND_HEADER")
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
@@ -127,6 +141,11 @@ pub fn help_suffix() -> String {
         .or_else(|_| env::var("OC_RSYNC_BRAND_FOOTER"))
         .or_else(|_| {
             option_env!("OC_RSYNC_HELP_FOOTER")
+                .map(str::to_string)
+                .ok_or(env::VarError::NotPresent)
+        })
+        .or_else(|_| {
+            option_env!("OC_RSYNC_BRAND_FOOTER")
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })

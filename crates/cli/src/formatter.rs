@@ -183,10 +183,11 @@ pub fn render_help(cmd: &Command) -> String {
     let width = columns();
     let program = branding::program_name();
     let version = branding::brand_version();
-    let _tagline = if branding::hide_credits() {
+    let url = branding::brand_url();
+    let credits = if branding::hide_credits() {
         String::new()
     } else {
-        format!("\n{}", branding::brand_tagline())
+        branding::brand_tagline()
     };
     let url = branding::brand_url();
     let _url_line = if branding::hide_credits() {
