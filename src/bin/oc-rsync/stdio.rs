@@ -3,14 +3,27 @@ use oc_rsync_cli::options::OutBuf;
 use std::io::{self, ErrorKind};
 use std::ptr::{self, NonNull};
 
+#[cfg(not(target_os = "windows"))]
 extern "C" {
     #[cfg_attr(target_os = "macos", link_name = "__stdoutp")]
     static mut stdout: *mut libc::FILE;
 }
 
+#[cfg(not(target_os = "windows"))]
 fn stdout_stream() -> io::Result<NonNull<libc::FILE>> {
     unsafe {
         NonNull::new(stdout).ok_or_else(|| io::Error::new(ErrorKind::BrokenPipe, "stdout is null"))
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn stdout_stream() -> io::Result<NonNull<libc::FILE>> {
+    unsafe {
+        extern "C" {
+            fn __acrt_iob_func(idx: libc::c_uint) -> *mut libc::FILE;
+        }
+        NonNull::new(__acrt_iob_func(1))
+            .ok_or_else(|| io::Error::new(ErrorKind::BrokenPipe, "__acrt_iob_func returned null"))
     }
 }
 
