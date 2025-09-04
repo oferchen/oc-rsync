@@ -57,13 +57,16 @@ fn archive_matches_combination_and_rsync() {
     .unwrap();
     symlink("dir/file", src.join("link")).unwrap();
     meta::mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
-    meta::mknod(
-        &src.join("dev"),
-        SFlag::S_IFCHR,
-        Mode::from_bits_truncate(0o644),
-        makedev(1, 7),
-    )
-    .unwrap();
+    #[allow(clippy::useless_conversion)]
+    {
+        meta::mknod(
+            &src.join("dev"),
+            SFlag::S_IFCHR,
+            Mode::from_bits_truncate(0o644),
+            u64::from(makedev(1, 7)),
+        )
+        .unwrap();
+    }
 
     let dst_archive = tmp.path().join("dst_archive");
     let dst_combo = tmp.path().join("dst_combo");
