@@ -1,8 +1,8 @@
 oc-rsync 0.1.0 (protocol 32)
-rsync unknown
+compatible with rsync unknown (protocol 32)
 unknown unofficial
-Copyright (C) 1996-2025 by Andrew Tridgell, Wayne Davison, and others.
-Web site: https://rsync.samba.org/
+Copyright (C) 2024-2025 oc-rsync contributors.
+Web site: https://github.com/oc-rsync/oc-rsync
 Capabilities:
     64-bit files, 64-bit inums, 64-bit timestamps, 64-bit long ints,
     socketpairs, symlinks, symtimes, hardlinks, hardlink-specials,
@@ -13,10 +13,10 @@ Optimizations:
 Checksum list:
     xxh128 xxh3 xxh64 (xxhash) md5 md4 sha1 none
 Compress list:
-    zstd lz4 zlibx zlib none
+    zstd zlib none
 Daemon auth list:
     sha512 sha256 sha1 md5 md4
 
-rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
+oc-rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
 are welcome to redistribute it under certain conditions.  See the GNU
 General Public Licence for details.

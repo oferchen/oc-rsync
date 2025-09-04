@@ -1,43 +1,31 @@
 // crates/cli/src/branding.rs
 use std::env;
 
-pub const DEFAULT_BRAND_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const DEFAULT_BRAND_CREDITS: &str =
+pub const DEFAULT_TAGLINE: &str =
     "Automatic Rust re-implementation of rsync semantics by Ofer Chen (2025). Not affiliated with Samba.";
+pub const DEFAULT_URL: &str = "https://github.com/oc-rsync/oc-rsync";
+pub const DEFAULT_COPYRIGHT: &str = "Copyright (C) 2024-2025 oc-rsync contributors.";
 
-pub const DEFAULT_HELP_PREFIX: &str = r#"{prog} {version}
-{credits}
+pub const DEFAULT_HELP_PREFIX: &str = r#"{prog} {version}{tagline}
 
-rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
-are welcome to redistribute it under certain conditions.  See the GNU
-General Public Licence for details.
-
-rsync is a file transfer program capable of efficient remote update
-via a fast differencing algorithm.
-
-Usage: rsync [OPTION]... SRC [SRC]... DEST
-  or   rsync [OPTION]... SRC [SRC]... [USER@]HOST:DEST
-  or   rsync [OPTION]... SRC [SRC]... [USER@]HOST::DEST
-  or   rsync [OPTION]... SRC [SRC]... rsync://[USER@]HOST[:PORT]/DEST
-  or   rsync [OPTION]... [USER@]HOST:SRC [DEST]
-  or   rsync [OPTION]... [USER@]HOST::SRC [DEST]
-  or   rsync [OPTION]... rsync://[USER@]HOST[:PORT]/SRC [DEST]
-The ':' usages connect via remote shell, while '::' & 'rsync://' usages connect
-to an rsync daemon, and require SRC or DEST to start with a module name.
-
+Usage: {prog} [OPTION]... SRC [SRC]... DEST
+  or   {prog} [OPTION]... SRC [SRC]... [USER@]HOST:DEST
+  or   {prog} [OPTION]... SRC [SRC]... [USER@]HOST::DEST
+  or   {prog} [OPTION]... SRC [SRC]... {prog}://[USER@]HOST[:PORT]/DEST
+  or   {prog} [OPTION]... [USER@]HOST:SRC [DEST]
+  or   {prog} [OPTION]... [USER@]HOST::SRC [DEST]
+  or   {prog} [OPTION]... {prog}://[USER@]HOST[:PORT]/SRC [DEST]
 Options
 "#;
 
-pub const DEFAULT_HELP_SUFFIX: &str = r#"
-Use "rsync --daemon --help" to see the daemon-mode command-line options.
-Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
-See https://rsync.samba.org/ for updates, bug reports, and answers
+pub const DEFAULT_HELP_SUFFIX: &str = r#"Use "{prog} --daemon --help" to see the daemon-mode command-line options.
+Please see the {prog}(1) and {prog}d.conf(5) manpages for full documentation.{url_line}
 "#;
 
 pub fn program_name() -> String {
-    env::var("PROGRAM_NAME")
+    env::var("OC_RSYNC_BRAND_NAME")
         .or_else(|_| {
-            option_env!("PROGRAM_NAME")
+            option_env!("OC_RSYNC_BRAND_NAME")
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
@@ -45,29 +33,61 @@ pub fn program_name() -> String {
 }
 
 pub fn brand_version() -> String {
-    env::var("OC_RSYNC_BRAND_VERSION")
+    let prefix = env::var("OC_RSYNC_VERSION_PREFIX")
         .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_VERSION")
+            option_env!("OC_RSYNC_VERSION_PREFIX")
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
-        .unwrap_or_else(|_| DEFAULT_BRAND_VERSION.to_string())
+        .unwrap_or_default();
+    format!("{}{}", prefix, env!("CARGO_PKG_VERSION"))
 }
 
-pub fn brand_credits() -> String {
-    env::var("OC_RSYNC_BRAND_CREDITS")
+pub fn brand_tagline() -> String {
+    env::var("OC_RSYNC_BRAND_TAGLINE")
         .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_CREDITS")
+            option_env!("OC_RSYNC_BRAND_TAGLINE")
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
-        .unwrap_or_else(|_| DEFAULT_BRAND_CREDITS.to_string())
+        .unwrap_or_else(|_| DEFAULT_TAGLINE.to_string())
+}
+
+pub fn brand_url() -> String {
+    env::var("OC_RSYNC_BRAND_URL")
+        .or_else(|_| {
+            option_env!("OC_RSYNC_BRAND_URL")
+                .map(str::to_string)
+                .ok_or(env::VarError::NotPresent)
+        })
+        .unwrap_or_else(|_| DEFAULT_URL.to_string())
+}
+
+pub fn brand_copyright() -> String {
+    env::var("OC_RSYNC_BRAND_COPYRIGHT")
+        .or_else(|_| {
+            option_env!("OC_RSYNC_BRAND_COPYRIGHT")
+                .map(str::to_string)
+                .ok_or(env::VarError::NotPresent)
+        })
+        .unwrap_or_else(|_| DEFAULT_COPYRIGHT.to_string())
+}
+
+pub fn hide_credits() -> bool {
+    env::var("OC_RSYNC_HIDE_CREDITS")
+        .or_else(|_| {
+            option_env!("OC_RSYNC_HIDE_CREDITS")
+                .map(str::to_string)
+                .ok_or(env::VarError::NotPresent)
+        })
+        .map(|v| v != "0")
+        .unwrap_or(false)
 }
 
 pub fn help_prefix() -> String {
-    env::var("OC_RSYNC_BRAND_HEADER")
+    env::var("OC_RSYNC_HELP_HEADER")
         .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_HEADER")
+            option_env!("OC_RSYNC_HELP_HEADER")
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
@@ -75,11 +95,15 @@ pub fn help_prefix() -> String {
 }
 
 pub fn help_suffix() -> String {
-    env::var("OC_RSYNC_BRAND_FOOTER")
+    DEFAULT_HELP_SUFFIX.to_string()
+}
+
+pub fn version_header() -> Option<String> {
+    env::var("OC_RSYNC_VERSION_HEADER")
         .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_FOOTER")
+            option_env!("OC_RSYNC_VERSION_HEADER")
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
-        .unwrap_or_else(|_| DEFAULT_HELP_SUFFIX.to_string())
+        .ok()
 }
