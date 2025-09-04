@@ -1,4 +1,4 @@
-// bin/oc-rsync/src/main.rs
+// src/bin/oc-rsync/main.rs
 mod stdio;
 
 use oc_rsync_cli::options::OutBuf;
