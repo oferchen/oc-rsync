@@ -23,6 +23,7 @@ version = "0.1.0"
 description = "Pure-Rust reimplementation of rsync (protocol v32)"
 license = "Apache-2.0 OR MIT"
 edition = "2021"
+build = "build.rs"
 
 [dependencies]
 protocol = { path = "crates/protocol" }
