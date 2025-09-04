@@ -22,3 +22,18 @@ token2   mod3   ; another trailing comment
     );
     assert_eq!(parse_auth_token("missing", contents), None);
 }
+
+#[test]
+fn parse_auth_token_allows_comment_chars_in_quotes() {
+    let contents = r#"token1 "mod#1" 'mod;2'
+token2 "a#b" "c;d" ; trailing comment"#;
+
+    assert_eq!(
+        parse_auth_token("token1", contents),
+        Some(vec!["mod#1".to_string(), "mod;2".to_string()])
+    );
+    assert_eq!(
+        parse_auth_token("token2", contents),
+        Some(vec!["a#b".to_string(), "c;d".to_string()])
+    );
+}

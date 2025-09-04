@@ -646,11 +646,27 @@ pub fn load_config(path: Option<&Path>) -> io::Result<DaemonConfig> {
 
 pub fn parse_auth_token(token: &str, contents: &str) -> Option<Vec<String>> {
     for raw in contents.lines() {
-        let line = raw.split(['#', ';']).next().unwrap_or("").trim();
+        let mut in_single = false;
+        let mut in_double = false;
+        let mut end = raw.len();
+        for (i, ch) in raw.char_indices() {
+            match ch {
+                '\'' if !in_double => in_single = !in_single,
+                '"' if !in_single => in_double = !in_double,
+                '#' | ';' if !in_single && !in_double => {
+                    end = i;
+                    break;
+                }
+                _ => {}
+            }
+        }
+        let line = raw[..end].trim();
         if line.is_empty() {
             continue;
         }
-        let mut parts = line.split_whitespace();
+        let mut parts = line
+            .split_whitespace()
+            .map(|s| s.trim_matches(&['"', '\''][..]));
         if let Some(tok) = parts.next() {
             if tok == token {
                 return Some(parts.map(|s| s.to_string()).collect());
