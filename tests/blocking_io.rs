@@ -1,8 +1,5 @@
 // tests/blocking_io.rs
 use assert_cmd::Command;
-use std::io;
-use std::process::Command as StdCommand;
-
 #[doc = "Remove the first line of version output so banner customization does not affect comparisons."]
 fn strip_banner(output: &mut Vec<u8>) {
     if let Some(pos) = output.iter().position(|&b| b == b'\n') {
@@ -12,19 +9,9 @@ fn strip_banner(output: &mut Vec<u8>) {
     }
 }
 
-fn run_rsync(args: &[&str]) -> Option<std::process::Output> {
-    match StdCommand::new("rsync").args(args).output() {
-        Ok(out) => Some(out),
-        Err(err) if err.kind() == io::ErrorKind::NotFound => None,
-        Err(err) => panic!("failed to execute rsync: {err}"),
-    }
-}
-
 #[test]
 fn version_matches_upstream_nonblocking() {
-    let Some(mut up_output) = run_rsync(&["--version"]) else {
-        return;
-    };
+    let mut up_output = include_bytes!("golden/blocking_io/rsync_version.txt").to_vec();
 
     let mut oc_output = Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -35,21 +22,16 @@ fn version_matches_upstream_nonblocking() {
         .output()
         .unwrap();
     assert!(oc_output.status.success());
-    assert!(up_output.status.success());
-
     strip_banner(&mut oc_output.stdout);
-    strip_banner(&mut up_output.stdout);
-    if oc_output.stdout != up_output.stdout {
+    if oc_output.stdout != up_output {
         return;
     }
-    assert_eq!(oc_output.stdout, up_output.stdout);
+    assert_eq!(oc_output.stdout, up_output);
 }
 
 #[test]
 fn version_matches_upstream_blocking() {
-    let Some(mut up_output) = run_rsync(&["--blocking-io", "--version"]) else {
-        return;
-    };
+    let mut up_output = include_bytes!("golden/blocking_io/rsync_version.txt").to_vec();
 
     let mut oc_output = Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -60,12 +42,9 @@ fn version_matches_upstream_blocking() {
         .output()
         .unwrap();
     assert!(oc_output.status.success());
-    assert!(up_output.status.success());
-
     strip_banner(&mut oc_output.stdout);
-    strip_banner(&mut up_output.stdout);
-    if oc_output.stdout != up_output.stdout {
+    if oc_output.stdout != up_output {
         return;
     }
-    assert_eq!(oc_output.stdout, up_output.stdout);
+    assert_eq!(oc_output.stdout, up_output);
 }

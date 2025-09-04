@@ -29,7 +29,7 @@ Options
 
 const UPSTREAM_HELP_SUFFIX: &str = r#"Use "rsync --daemon --help" to see the daemon-mode command-line options.
 Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
-See https://rsync.samba.org/ for updates, bug reports, and answers
+For project updates and documentation, visit https://github.com/oc-rsync/oc-rsync.
 "#;
 
 pub const ARG_ORDER: &[&str] = &[
@@ -193,9 +193,11 @@ pub fn render_help(cmd: &Command) -> String {
     } else {
         branding::brand_url()
     };
+    let upstream = branding::upstream_name();
     let mut help_prefix = branding::help_prefix();
     let mut help_suffix = branding::help_suffix();
     for s in [&mut help_prefix, &mut help_suffix] {
+        *s = s.replace("rsync", &upstream);
         *s = s
             .replace("{prog}", &program)
             .replace("{version}", &version)
