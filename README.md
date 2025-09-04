@@ -1,12 +1,12 @@
 # oc-rsync — Pure-Rust rsync replica (compatible with rsync 3.4.1 / protocol 32)
 
-[![CI](https://github.com/oc-rsync/oc-rsync/actions/workflows/ci.yml/badge.svg)](https://github.com/oc-rsync/oc-rsync/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/oc-rsync/oc-rsync/branch/main/graph/badge.svg)](https://codecov.io/gh/oc-rsync/oc-rsync)
-[![Release](https://img.shields.io/github/v/release/oc-rsync/oc-rsync)](https://github.com/oc-rsync/oc-rsync/releases)
+[![CI](https://github.com/oferchen/oc-rsync/actions/workflows/ci.yml/badge.svg)](https://github.com/oferchen/oc-rsync/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/oferchen/oc-rsync/branch/main/graph/badge.svg)](https://codecov.io/gh/oferchen/oc-rsync)
+[![Release](https://img.shields.io/github/v/release/oferchen/oc-rsync)](https://github.com/oferchen/oc-rsync/releases)
 
 ## Project statement
 
-oc-rsync is an automatic re‑implementation of rsync’s behavior in Rust, created by Ofer Chen (2025). Not affiliated with the Samba project.
+oc-rsync is an automatic re‑implementation of rsync’s behavior in Rust, created by Ofer Chen (2025). This project is unaffiliated with the Samba team.
 
 ## Compatibility
 
@@ -16,6 +16,20 @@ oc-rsync is an automatic re‑implementation of rsync’s behavior in Rust, crea
 - Known gaps are cataloged in [docs/gaps.md](docs/gaps.md).
 
 ## Install
+
+Prebuilt binaries and packages are published on [GitHub Releases](https://github.com/oferchen/oc-rsync/releases).
+
+### Packages
+
+```bash
+# Debian/Ubuntu
+sudo dpkg -i oc-rsync_<version>_amd64.deb
+
+# Fedora/RHEL
+sudo rpm -i oc-rsync-<version>.x86_64.rpm
+```
+
+### From source
 
 ```bash
 cargo install oc-rsync
