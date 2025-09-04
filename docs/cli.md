@@ -6,6 +6,8 @@ overview of project goals and features is available in the
 lives in the [README's CLI section](../README.md#cli).
 For a complete list of flags and their implementation status, see the [feature matrix](feature_matrix.md), which is the authoritative reference for contributors.
 The full `--help` output is captured in [cli-help.txt](cli-help.txt) and checked in CI to match the binary.
+Help text formatting depends on the `COLUMNS` environment variable; for
+tests we snapshot `oc-rsync --dump-help-body` at specific widths.
 
 ## Usage
 
