@@ -49,22 +49,25 @@ pub mod version;
 pub fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
     use clap::error::ErrorKind::*;
     match kind {
-        UnknownArgument
-        | InvalidSubcommand
-        | NoEquals
-        | ValueValidation
-        | TooManyValues
-        | TooFewValues
-        | WrongNumberOfValues
-        | ArgumentConflict
-        | MissingRequiredArgument
-        | MissingSubcommand
-        | InvalidUtf8
-        | DisplayHelpOnMissingArgumentOrSubcommand => ExitCode::SyntaxOrUsage,
         InvalidValue => ExitCode::Unsupported,
-        DisplayHelp | DisplayVersion => ExitCode::Ok,
-        Io | Format => ExitCode::FileIo,
-        _ => ExitCode::SyntaxOrUsage,
+        UnknownArgument => ExitCode::SyntaxOrUsage,
+        InvalidSubcommand => ExitCode::SyntaxOrUsage,
+        NoEquals => ExitCode::SyntaxOrUsage,
+        ValueValidation => ExitCode::SyntaxOrUsage,
+        TooManyValues => ExitCode::SyntaxOrUsage,
+        TooFewValues => ExitCode::SyntaxOrUsage,
+        WrongNumberOfValues => ExitCode::SyntaxOrUsage,
+        ArgumentConflict => ExitCode::SyntaxOrUsage,
+        MissingRequiredArgument => ExitCode::SyntaxOrUsage,
+        MissingSubcommand => ExitCode::SyntaxOrUsage,
+        InvalidUtf8 => ExitCode::SyntaxOrUsage,
+        DisplayHelp => ExitCode::Ok,
+        DisplayHelpOnMissingArgumentOrSubcommand => ExitCode::SyntaxOrUsage,
+        DisplayVersion => ExitCode::Ok,
+        Io => ExitCode::FileIo,
+        Format => ExitCode::FileIo,
+        #[allow(unreachable_patterns)]
+        _ => unreachable!("unhandled clap::ErrorKind variant"),
     }
 }
 
