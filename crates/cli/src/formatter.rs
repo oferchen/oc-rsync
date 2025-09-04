@@ -189,8 +189,19 @@ pub fn render_help(cmd: &Command) -> String {
     } else {
         branding::brand_tagline()
     };
+    let url = branding::brand_url();
+    let _url_line = if branding::hide_credits() {
+        String::new()
+    } else {
+        format!("\nSee {} for updates, bug reports, and answers", url)
+    };
     let mut help_prefix = branding::help_prefix();
     let mut help_suffix = branding::help_suffix();
+    let credits = if branding::hide_credits() {
+        String::new()
+    } else {
+        branding::DEFAULT_BRAND_CREDITS.to_string()
+    };
     for s in [&mut help_prefix, &mut help_suffix] {
         *s = s
             .replace("{prog}", &program)
