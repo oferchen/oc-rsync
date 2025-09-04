@@ -5,6 +5,8 @@ pub const DEFAULT_BRAND_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DEFAULT_BRAND_CREDITS: &str =
     "Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Samba.";
 pub const DEFAULT_BRAND_URL: &str = "https://github.com/oc-rsync/oc-rsync";
+pub const DEFAULT_TAGLINE: &str = "Experimental pure-Rust rsync reimplementation.";
+pub const DEFAULT_COPYRIGHT: &str = "Copyright (C) 2025 oc-rsync authors";
 
 pub const DEFAULT_HELP_PREFIX: &str = r#"{prog} {version}
 {credits}
@@ -73,16 +75,6 @@ pub fn brand_tagline() -> String {
         .unwrap_or_else(|_| DEFAULT_TAGLINE.to_string())
 }
 
-pub fn brand_url() -> String {
-    env::var("OC_RSYNC_BRAND_URL")
-        .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_URL")
-                .map(str::to_string)
-                .ok_or(env::VarError::NotPresent)
-        })
-        .unwrap_or_else(|_| DEFAULT_URL.to_string())
-}
-
 pub fn brand_copyright() -> String {
     env::var("OC_RSYNC_BRAND_COPYRIGHT")
         .or_else(|_| {
@@ -138,6 +130,7 @@ pub fn help_suffix() -> String {
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
+        .unwrap_or_else(|_| DEFAULT_HELP_SUFFIX.to_string())
 }
 
 pub fn version_header() -> Option<String> {
