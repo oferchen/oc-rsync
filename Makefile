@@ -9,10 +9,10 @@ BUILD_REVISION     ?= $(shell git rev-parse --short=12 HEAD)
 VERIFY_COMMENT_FILES := $(shell git ls-files '*.rs')
 
 verify-comments:
-        @bash scripts/check-comments.sh $(VERIFY_COMMENT_FILES)
+	@bash scripts/check-comments.sh $(VERIFY_COMMENT_FILES)
 
 lint:
-        cargo fmt --all --check
+	cargo fmt --all --check
 
 fmt:
 	cargo fmt --all
@@ -32,10 +32,10 @@ coverage:
 		--fail-under-lines 95 --fail-under-functions 95
 
 interop:
-	bash tests/interop/run_matrix.sh
+	@bash tests/interop/run_matrix.sh
 
 test-golden:
-        env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" cargo build --quiet -p oc-rsync-bin --bin oc-rsync
+	env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" cargo build --quiet -p oc-rsync-bin --bin oc-rsync
 	@set -euo pipefail; \
 	for script in tests/golden/cli_parity/*.sh; do \
 		echo "Running $$script"; \
@@ -49,7 +49,7 @@ test-golden:
         bash tests/partial_dir_transfer_resume.sh
 
 refresh-upstream-goldens:
-        bash scripts/refresh_upstream_goldens.sh
+	@bash scripts/refresh_upstream_goldens.sh
 
 # Standard release build; honors env vars if provided:
 #   make build RSYNC_UPSTREAM_VER=3.4.1 OFFICIAL_BUILD=1
