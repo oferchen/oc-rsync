@@ -1,7 +1,9 @@
 This directory stores recorded wire transcripts, file-list goldens and
 filesystem trees for interoperability tests.
 
-- `wire/` contains captured protocol transcripts.
+- `wire/` contains captured protocol transcripts. Legacy transcripts may
+  remain for historical coverage; tests using them automatically skip when
+  a protocol version isn't supported.
 - `filelists/` stores `rsync --list-only` outputs.
 - `golden/` holds destination tree tarballs for interoperability tests. Each
   tarball is stored at
