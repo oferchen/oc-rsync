@@ -12,3 +12,9 @@ fn help_uses_program_name() {
     std::env::remove_var("OC_RSYNC_BRAND_NAME");
     std::env::remove_var("COLUMNS");
 }
+
+#[test]
+fn upstream_name_defaults_to_rsync() {
+    std::env::remove_var("OC_RSYNC_UPSTREAM_NAME");
+    assert_eq!(branding::upstream_name(), "rsync");
+}
