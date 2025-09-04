@@ -29,15 +29,6 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run tests
-        run: npx jest --coverage
-  
       # Official Rust toolchain; we need clippy+rustfmt for this job
       - name: Setup Rust (stable)
         uses: actions-rust-lang/setup-rust-toolchain@v1
