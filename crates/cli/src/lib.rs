@@ -32,7 +32,7 @@ use compress::{available_codecs, Codec};
 pub use engine::EngineError;
 use engine::{pipe_sessions, sync, DeleteMode, Result, Stats, StrongHash, SyncOptions};
 use filters::{default_cvs_rules, Matcher, Rule};
-pub use formatter::{render_help, ARG_ORDER};
+pub use formatter::{dump_help_body, render_help, ARG_ORDER};
 use logging::{human_bytes, parse_escapes, InfoFlag};
 use meta::{parse_chmod, parse_chown, IdKind};
 use protocol::{
