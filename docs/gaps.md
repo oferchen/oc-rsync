@@ -155,7 +155,7 @@ The following flags are parsed but lack verification against upstream `rsync`. A
 - `--old-d`: add interop tests for legacy `--dirs`. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: —.
 - `--old-dirs`: add interop tests for legacy directory handling. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--open-noatime`: add interop tests on platforms with `O_NOATIME`. Tests: [crates/engine/tests/open_noatime.rs](../crates/engine/tests/open_noatime.rs)<br>[tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs).
-- `--outbuf`: add interop tests verifying stdout buffering. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [bin/oc-rsync/src/main.rs](../bin/oc-rsync/src/main.rs).
+- `--outbuf`: add interop tests verifying stdout buffering. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [src/bin/oc-rsync/main.rs](../src/bin/oc-rsync/main.rs).
 - `--progress`: add interop tests for progress output. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `-P`: add interop tests verifying shorthand for `--partial --progress`. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
 - `--protocol`: add interop tests verifying protocol negotiation. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).

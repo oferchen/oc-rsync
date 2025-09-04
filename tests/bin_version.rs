@@ -1,4 +1,4 @@
-// bin/oc-rsync/tests/version.rs
+// tests/bin_version.rs
 use assert_cmd::Command;
 
 fn version_output() -> String {

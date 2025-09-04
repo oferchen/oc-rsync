@@ -48,10 +48,10 @@ sudo apt-get install -y build-essential libzstd-dev zlib1g-dev
 Run `scripts/preflight.sh` to verify these dependencies before building.
 
 ```bash
-cargo install --path bin/oc-rsync
+cargo install --path .
 # or download a prebuilt binary from GitHub Releases
 # or build from source
-cargo build -p oc-rsync-bin --bin oc-rsync
+cargo build --bin oc-rsync
 ```
 
 See [packaging/](packaging) for daemon configs and systemd units.

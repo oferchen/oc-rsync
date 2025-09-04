@@ -9,7 +9,7 @@ OUT_FILE="$OUT_DIR/interop-grid.log"
 # Build oc-rsync if needed
 if [ ! -x "$OC_RSYNC" ]; then
   echo "Building oc-rsync" >&2
-  cargo build --quiet -p oc-rsync-bin --bin oc-rsync
+  cargo build --quiet -p oc-rsync --bin oc-rsync
 fi
 
 FLAGS=(--archive --compress --delete)
