@@ -3,11 +3,21 @@ filesystem trees for interoperability tests.
 
 - `wire/` contains captured protocol transcripts.
 - `filelists/` stores `rsync --list-only` outputs.
-- `golden/` holds destination trees for rsync 3.4.1 client/server
-  interoperability tests. Trees are organized by
-  `<client>_<server>_<transport>`.
-- `run_matrix.sh` runs a matrix of rsync 3.4.1 client/server combinations over
-  both SSH and rsync:// transports. Set `UPDATE=1` to regenerate goldens.
+- `golden/` holds destination trees for interoperability tests. Trees are organized
+  by `<client>_<server>_<transport>` where `client` and `server` may be `oc-rsync`
+  or `upstream`.
+- `run_matrix.sh` runs a matrix of rsync client/server combinations over both SSH
+  and rsync:// transports. Set `UPDATE=1` to regenerate goldens.
+
+To record goldens against an upstream build, point `UPSTREAM_RSYNC` at a built
+rsync binary and limit the scenarios to `base`:
+
+```
+SCENARIOS=base UPDATE=1 \
+  CLIENT_VERSIONS="upstream oc-rsync" \
+  SERVER_VERSIONS="upstream oc-rsync" \
+  UPSTREAM_RSYNC=/path/to/rsync tests/interop/run_matrix.sh
+```
 - `interop-grid.log` is produced by `scripts/interop-grid.sh` and captures exit
   codes and stderr comparisons for key flag combinations.
 
