@@ -4,9 +4,9 @@ use assert_cmd::Command;
 #[cfg(unix)]
 use filetime::{set_file_mtime, FileTime};
 #[cfg(unix)]
-use nix::sys::stat::{Mode, SFlag};
+use nix::unistd::{chown, mkfifo, Gid, Uid};
 #[cfg(unix)]
-use nix::unistd::{chown, Gid, Uid};
+use oc_rsync::meta::{makedev, mknod, Mode, SFlag};
 #[cfg(unix)]
 use sha2::{Digest, Sha256};
 #[cfg(unix)]
@@ -38,7 +38,7 @@ fn hash_dir(dir: &Path) -> Vec<u8> {
 #[ignore = "--no-links not yet supported"]
 fn archive_matches_combination_and_rsync() {
     if !Uid::effective().is_root() {
-        eprintln!("skipping: requires root privileges");
+        println!("skipping: requires root privileges");
         return;
     }
 
@@ -61,7 +61,7 @@ fn archive_matches_combination_and_rsync() {
         &src.join("dev"),
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o644),
-        meta::makedev(1, 7),
+        makedev(1, 7),
     )
     .unwrap();
 
