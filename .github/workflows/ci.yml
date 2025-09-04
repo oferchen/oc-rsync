@@ -95,6 +95,9 @@ jobs:
         with:
           tool: cargo-nextest
 
+
+      - name: Run tests
+        run: cargo nextest run --all-features --no-fail-fast
       - name: Test with coverage (95% lines & functions)
         run: cargo llvm-cov nextest --all-features --fail-under-lines 95 --fail-under-functions 95 --html -- --no-fail-fast
 

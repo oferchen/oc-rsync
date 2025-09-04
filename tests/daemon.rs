@@ -193,6 +193,7 @@ fn chroot_requires_root() {
 
 #[cfg(unix)]
 #[test]
+#[serial]
 fn chroot_and_drop_privileges_rejects_missing_dir() {
     let missing = Path::new("/does/not/exist");
     let err = chroot_and_drop_privileges(missing, 0, 0, true).unwrap_err();
@@ -393,6 +394,7 @@ fn host_deny_blocks_connection() {
 }
 
 #[test]
+#[serial]
 fn host_allow_supports_cidr() {
     let ip: IpAddr = "127.0.0.1".parse().unwrap();
     assert!(host_allowed(&ip, &["127.0.0.0/8".into()], &[]));
@@ -400,6 +402,7 @@ fn host_allow_supports_cidr() {
 }
 
 #[test]
+#[serial]
 fn daemon_refuses_configured_option() {
     let module = Module {
         name: "data".into(),
@@ -432,6 +435,7 @@ fn daemon_refuses_configured_option() {
 }
 
 #[test]
+#[serial]
 fn daemon_refuses_numeric_ids_option() {
     let module = Module {
         name: "data".into(),
@@ -463,6 +467,7 @@ fn daemon_refuses_numeric_ids_option() {
 }
 
 #[test]
+#[serial]
 fn daemon_refuses_no_numeric_ids_option() {
     let module = Module {
         name: "data".into(),

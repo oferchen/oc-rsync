@@ -108,7 +108,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | --- | --- | --- | --- |
 | Module parsing and secrets auth | Implemented | [tests/daemon_config.rs](../tests/daemon_config.rs)<br>[tests/daemon_auth.sh](../tests/daemon_auth.sh) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
 | IPv6 listener and rate limiting | Implemented | [tests/daemon.rs](../tests/daemon.rs) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
-| Chroot and uid/gid dropping | Implemented | [tests/daemon_features.sh](../tests/daemon_features.sh) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
+| Chroot and uid/gid dropping | Implemented | [tests/daemon.rs](../tests/daemon.rs) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
 | `rsyncd.conf` file parsing | Implemented | [tests/daemon_config.rs](../tests/daemon_config.rs) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
 
 ## Messages/Logging
