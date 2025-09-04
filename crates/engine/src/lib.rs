@@ -1252,6 +1252,11 @@ impl Receiver {
         }
     }
 
+    #[cfg(unix)]
+    pub fn register_hard_link(&mut self, id: u64, path: &Path) -> bool {
+        self.link_map.register(id, path)
+    }
+
     pub fn apply<I>(&mut self, src: &Path, dest: &Path, _rel: &Path, delta: I) -> Result<PathBuf>
     where
         I: IntoIterator<Item = Result<Op>>,
@@ -2466,7 +2471,7 @@ pub fn sync(
                         let dev = walker.devs()[entry.dev];
                         let ino = walker.inodes()[entry.inode];
                         let group = meta::hard_link_id(dev, ino);
-                        if !receiver.link_map.register(group, &dest_path) {
+                        if !receiver.register_hard_link(group, &dest_path) {
                             if let Some(parent) = dest_path.parent() {
                                 fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
                             }
