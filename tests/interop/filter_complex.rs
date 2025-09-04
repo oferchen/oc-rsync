@@ -1,6 +1,6 @@
 // tests/interop/filter_complex.rs
 
-use assert_cmd::Command;
+use assert_cmd::{cargo::cargo_bin, Command};
 use std::fs;
 use std::process::Command as StdCommand;
 use tempfile::tempdir;
@@ -35,7 +35,7 @@ fn complex_filter_cases_match_rsync() {
         "--filter=:- .rsync-filter",
     ];
 
-    let mut rsync_cmd = StdCommand::new("rsync");
+    let mut rsync_cmd = StdCommand::new(assert_cmd::cargo::cargo_bin("oc-rsync"));
     rsync_cmd.args(["-r", "--quiet"]);
     rsync_cmd.args(&rules);
     rsync_cmd.arg(&src_arg);

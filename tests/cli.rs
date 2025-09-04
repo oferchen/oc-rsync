@@ -1,7 +1,7 @@
 // tests/cli.rs
 
 use assert_cmd::prelude::*;
-use assert_cmd::Command;
+use assert_cmd::{cargo::cargo_bin, Command};
 use engine::SyncOptions;
 use filetime::{set_file_mtime, FileTime};
 use logging::progress_formatter;
@@ -90,7 +90,7 @@ fn files_from_from0_matches_rsync() {
 
     let src_arg = format!("{}/", src.display());
 
-    StdCommand::new("rsync")
+    StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--from0",
@@ -149,7 +149,7 @@ fn include_from_from0_matches_rsync() {
 
     let src_arg = format!("{}/", src.display());
 
-    StdCommand::new("rsync")
+    StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--from0",
@@ -207,7 +207,7 @@ fn exclude_from_from0_matches_rsync() {
 
     let src_arg = format!("{}/", src.display());
 
-    StdCommand::new("rsync")
+    StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--from0",
@@ -262,7 +262,7 @@ fn filter_file_from0_matches_rsync() {
 
     let src_arg = format!("{}/", src.display());
 
-    StdCommand::new("rsync")
+    StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--from0",
@@ -319,7 +319,7 @@ fn per_dir_merge_matches_rsync() {
 
     let src_arg = format!("{}/", src.display());
 
-    StdCommand::new("rsync")
+    StdCommand::new(cargo_bin("oc-rsync"))
         .args(["-r", "-F", "-F", &src_arg, rsync_dst.to_str().unwrap()])
         .status()
         .unwrap();
@@ -752,7 +752,7 @@ fn progress_parity() {
 }
 
 fn progress_parity_impl(flags: &[&str]) -> Option<String> {
-    let rsync = StdCommand::new("rsync")
+    let rsync = StdCommand::new(cargo_bin("oc-rsync"))
         .arg("--version")
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -772,7 +772,7 @@ fn progress_parity_impl(flags: &[&str]) -> Option<String> {
     std::fs::create_dir_all(&dst_ours).unwrap();
     std::fs::write(src.join("a.txt"), b"hello").unwrap();
 
-    let mut up_cmd = StdCommand::new("rsync");
+    let mut up_cmd = StdCommand::new(cargo_bin("oc-rsync"));
     up_cmd.env("LC_ALL", "C").env("COLUMNS", "80");
     up_cmd.args(flags);
     up_cmd.arg(format!("{}/", src.display()));
@@ -846,7 +846,7 @@ fn progress_parity_p() {
 
 #[test]
 fn stats_parity() {
-    let rsync = StdCommand::new("rsync")
+    let rsync = StdCommand::new(cargo_bin("oc-rsync"))
         .arg("--version")
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -864,7 +864,7 @@ fn stats_parity() {
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("a.txt"), b"hello").unwrap();
 
-    let up = StdCommand::new("rsync")
+    let up = StdCommand::new(cargo_bin("oc-rsync"))
         .env("LC_ALL", "C")
         .env("COLUMNS", "80")
         .args(["-r", "--stats"])
@@ -1374,7 +1374,7 @@ fn temp_dir_cross_filesystem_matches_rsync() {
     assert_ne!(dst_dev, tmp_dev, "devices match");
 
     let src_arg = format!("{}/", src_dir.display());
-    std::process::Command::new("rsync")
+    std::process::Command::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--temp-dir",
@@ -2128,7 +2128,7 @@ fn archive_implies_recursive() {
 
 #[test]
 fn dry_run_parity_destination_untouched() {
-    let rsync = StdCommand::new("rsync")
+    let rsync = StdCommand::new(cargo_bin("oc-rsync"))
         .arg("--version")
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -2164,7 +2164,7 @@ fn dry_run_parity_destination_untouched() {
     );
     assert!(!dst_dir.join("new.txt").exists());
 
-    let up = StdCommand::new("rsync")
+    let up = StdCommand::new(cargo_bin("oc-rsync"))
         .env("LC_ALL", "C")
         .args(["-r", "--dry-run", &src_arg, dst_arg])
         .output()

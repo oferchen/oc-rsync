@@ -63,7 +63,7 @@ fn ssh_remote_option_matches_rsync() {
     fs::create_dir(&dst_dir).unwrap();
 
     let rs_log = dir.path().join("rs.log");
-    let status = StdCommand::new("rsync")
+    let status = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-e",
             rsh.to_str().unwrap(),
@@ -101,7 +101,7 @@ fn daemon_remote_option_matches_rsync() {
     )
     .unwrap();
 
-    let mut child = StdCommand::new("rsync")
+    let mut child = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "--daemon",
             "--no-detach",
@@ -139,7 +139,7 @@ fn daemon_remote_option_matches_rsync() {
     fs::create_dir(&dst_path).unwrap();
 
     let rs_log = dir.path().join("rs.log");
-    let status = StdCommand::new("rsync")
+    let status = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "--remote-option",
             &format!("--log-file={}", rs_log.display()),

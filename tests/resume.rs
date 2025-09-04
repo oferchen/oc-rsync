@@ -259,7 +259,8 @@ fn rsync_resumes_oc_partial_with_append() {
     std::fs::write(&dest_file, &data[..100_000]).unwrap();
 
     let src_arg = format!("{}/", src_dir.display());
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args([
             "--recursive",
             "--append",
@@ -290,7 +291,8 @@ fn rsync_append_verify_restarts_on_mismatch() {
     std::fs::write(&dest_file, &partial).unwrap();
 
     let src_arg = format!("{}/", src_dir.display());
-    Command::new("rsync")
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
         .args([
             "--recursive",
             "--append-verify",

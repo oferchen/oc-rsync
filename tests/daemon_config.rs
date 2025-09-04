@@ -1,7 +1,7 @@
 // tests/daemon_config.rs
 
 use assert_cmd::prelude::*;
-use assert_cmd::Command;
+use assert_cmd::{cargo::cargo_bin, Command};
 use daemon::{load_config, parse_config};
 use protocol::LATEST_VERSION;
 use serial_test::serial;
@@ -78,7 +78,7 @@ fn daemon_config_rsync_client() {
     let _guard = ChildGuard(child);
     wait_for_daemon(port);
     let url = format!("rsync://127.0.0.1:{port}/data/");
-    let status = StdCommand::new("rsync")
+    let status = StdCommand::new(cargo_bin("oc-rsync"))
         .args(["-r", &url, dst.to_str().unwrap()])
         .status()
         .expect("rsync not installed");

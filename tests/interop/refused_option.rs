@@ -34,7 +34,7 @@ fn ssh_refused_remote_option_matches_rsync() {
         ])
         .output()
         .unwrap();
-    let upstream = StdCommand::new("rsync")
+    let upstream = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-e",
             rsh.to_str().unwrap(),

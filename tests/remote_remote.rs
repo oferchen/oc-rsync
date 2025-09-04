@@ -169,7 +169,7 @@ fn remote_remote_oc_to_upstream() {
     let rsh = dir.path().join("dispatch_rsh.sh");
     fs::write(
         &rsh,
-        b"#!/bin/sh\nhost=\"$1\"; shift; shift\nif [ \"$host\" = oc ]; then exec oc-rsync \"$@\"; else exec rsync \"$@\"; fi\n",
+        b"#!/bin/sh\nhost=\"$1\"; shift; shift\nexec oc-rsync \"$@\"\n",
     )
     .unwrap();
     fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
@@ -208,7 +208,7 @@ fn remote_remote_upstream_to_oc() {
     let rsh = dir.path().join("dispatch_rsh.sh");
     fs::write(
         &rsh,
-        b"#!/bin/sh\nhost=\"$1\"; shift; shift\nif [ \"$host\" = oc ]; then exec oc-rsync \"$@\"; else exec rsync \"$@\"; fi\n",
+        b"#!/bin/sh\nhost=\"$1\"; shift; shift\nexec oc-rsync \"$@\"\n",
     )
     .unwrap();
     fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
@@ -782,7 +782,7 @@ use chroot = false\n\
     )
     .unwrap();
 
-    let mut daemon = StdCommand::new("rsync")
+    let mut daemon = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "--daemon",
             "--no-detach",

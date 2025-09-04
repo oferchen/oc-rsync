@@ -15,7 +15,7 @@ use std::os::unix::fs::PermissionsExt;
 #[cfg(unix)]
 use std::path::Path;
 #[cfg(unix)]
-use std::process::Command;
+use std::process::Command as StdCommand;
 use tempfile::tempdir;
 #[cfg(unix)]
 mod remote_utils;
@@ -82,7 +82,7 @@ fn custom_rsh_matches_stock_rsync() {
     std::thread::sleep(std::time::Duration::from_millis(50));
 
     let dst_rsync_spec = format!("ignored:{}", dst_rsync.display());
-    let output = Command::new("rsync")
+    let output = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-e",
             rsh.to_str().unwrap(),
@@ -163,7 +163,7 @@ fn rsh_parses_multi_argument_commands() {
         log.display()
     );
     let rsh = parse_rsh(Some(cmd)).unwrap();
-    let mut c = Command::new(&rsh.cmd[0]);
+    let mut c = StdCommand::new(&rsh.cmd[0]);
     c.args(&rsh.cmd[1..]);
     c.envs(rsh.env.clone());
     c.status().unwrap();
@@ -179,7 +179,7 @@ fn rsh_environment_variables_are_propagated() {
     let out = dir.path().join("env.txt");
     let cmd = format!("FOO=bar sh -c 'echo \"$FOO\" > {}'", out.display());
     let rsh = parse_rsh(Some(cmd)).unwrap();
-    let mut c = Command::new(&rsh.cmd[0]);
+    let mut c = StdCommand::new(&rsh.cmd[0]);
     c.args(&rsh.cmd[1..]);
     c.envs(rsh.env.clone());
     c.status().unwrap();

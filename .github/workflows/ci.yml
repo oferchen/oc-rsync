@@ -96,6 +96,8 @@ jobs:
         with:
           tool: cargo-nextest
 
+      - name: Remove system rsync
+        run: sudo rm -f $(command -v rsync) || true
 
       - name: Run tests
         run: cargo nextest run --no-fail-fast
