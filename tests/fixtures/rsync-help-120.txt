@@ -1,3 +1,6 @@
+oc-rsync 0.1.0
+Automatic Rust re-implementation of rsync semantics by Ofer Chen (2025). Not affiliated with Samba.
+
 rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
 are welcome to redistribute it under certain conditions.  See the GNU
 General Public Licence for details.
@@ -19,7 +22,6 @@ Options
 --verbose, -v            
 --info=FLAGS             
 --debug=FLAGS            
---stderr=e|a|c           
 --quiet, -q              
 --no-motd                
 --checksum, -c           
@@ -52,8 +54,9 @@ Options
 --devices                
 --copy-devices           
 --write-devices          write to devices as files (implies --inplace)
---specials               
--D                       
+--specials               preserve special files
+-D                       same as --devices --specials
+--no-D                   
 --times, -t              
 --atimes, -U             
 --crtimes, -N            
@@ -95,6 +98,7 @@ Options
 --groupmap=FROM:TO       
 --chown=USER:GROUP       
 --timeout=SECONDS        
+--connect-timeout=SECONDS  
 --ignore-times, -I       
 --size-only              
 --modify-window=SECONDS  
@@ -109,6 +113,7 @@ Options
 --skip-compress=LIST     
 --cvs-exclude, -C        auto-ignore files in the same way CVS does
 --filter=RULE, -f        
+--filter-file=FILE       
 -F                       
 --exclude=PATTERN        
 --exclude-from=FILE      
@@ -124,12 +129,15 @@ Options
 --sockopts=OPTIONS       
 --blocking-io            
 --stats                  
+--8-bit-output, -8       
 --human-readable         
 --progress               
 -P                       
 --itemize-changes, -i    output a change-summary for all updates
 --remote-option=OPT, -M  send OPTION to the remote side only
 --out-format=FORMAT      
+--log-file=FILE          
+--log-file-format=FMT    
 --password-file=FILE     
 --early-input=FILE       
 --list-only              
@@ -142,7 +150,6 @@ Options
 --checksum-seed=NUM      set block/file checksum seed (advanced)
 --ipv4, -4               
 --ipv6, -6               
---help, -h               Print help
 
 Use "rsync --daemon --help" to see the daemon-mode command-line options.
 Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
