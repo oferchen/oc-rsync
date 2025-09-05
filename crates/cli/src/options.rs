@@ -345,20 +345,51 @@ pub(crate) struct ClientOpts {
         overrides_with = "links"
     )]
     pub no_links: bool,
-    #[arg(short = 'L', long, help_heading = "Attributes")]
+    #[arg(
+        short = 'L',
+        long,
+        help_heading = "Attributes",
+        conflicts_with_all = [
+            "links",
+            "copy_dirlinks",
+            "keep_dirlinks",
+            "copy_unsafe_links",
+            "safe_links",
+            "munge_links",
+        ],
+    )]
     pub copy_links: bool,
-    #[arg(short = 'k', long, help_heading = "Attributes")]
+    #[arg(
+        short = 'k',
+        long,
+        help_heading = "Attributes",
+        conflicts_with = "copy_links"
+    )]
     pub copy_dirlinks: bool,
-    #[arg(short = 'K', long, help_heading = "Attributes")]
+    #[arg(
+        short = 'K',
+        long,
+        help_heading = "Attributes",
+        conflicts_with = "copy_links"
+    )]
     pub keep_dirlinks: bool,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(
+        long,
+        help_heading = "Attributes",
+        conflicts_with_all = ["copy_links", "safe_links", "munge_links"],
+    )]
     pub copy_unsafe_links: bool,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(
+        long,
+        help_heading = "Attributes",
+        conflicts_with_all = ["copy_links", "copy_unsafe_links", "munge_links"],
+    )]
     pub safe_links: bool,
     #[arg(
         long,
         help_heading = "Attributes",
-        help = "munge symlinks to make them safe & unusable"
+        help = "munge symlinks to make them safe & unusable",
+        conflicts_with_all = ["copy_links", "copy_unsafe_links", "safe_links"],
     )]
     pub munge_links: bool,
     #[arg(short = 'H', long = "hard-links", help_heading = "Attributes")]

@@ -43,7 +43,7 @@ pub struct Walk {
     prev_path: String,
     batch_size: usize,
     max_file_size: Option<u64>,
-    links: bool,
+    include_links: bool,
     one_file_system: bool,
     root_dev: u64,
     uid_map: HashMap<u32, usize>,
@@ -61,7 +61,7 @@ impl Walk {
         root: PathBuf,
         batch_size: usize,
         max_file_size: Option<u64>,
-        links: bool,
+        include_links: bool,
         one_file_system: bool,
     ) -> Self {
         #[cfg(windows)]
@@ -98,7 +98,7 @@ impl Walk {
             prev_path: String::new(),
             batch_size,
             max_file_size,
-            links,
+            include_links,
             one_file_system,
             root_dev,
             uid_map: HashMap::new(),
@@ -133,12 +133,17 @@ impl Walk {
     }
 }
 
-pub fn walk(root: impl AsRef<Path>, batch_size: usize, links: bool, one_file_system: bool) -> Walk {
+pub fn walk(
+    root: impl AsRef<Path>,
+    batch_size: usize,
+    include_links: bool,
+    one_file_system: bool,
+) -> Walk {
     Walk::new(
         root.as_ref().to_path_buf(),
         batch_size,
         None,
-        links,
+        include_links,
         one_file_system,
     )
 }
@@ -147,14 +152,14 @@ pub fn walk_with_max_size(
     root: impl AsRef<Path>,
     batch_size: usize,
     max_file_size: u64,
-    links: bool,
+    include_links: bool,
     one_file_system: bool,
 ) -> Walk {
     Walk::new(
         root.as_ref().to_path_buf(),
         batch_size,
         Some(max_file_size),
-        links,
+        include_links,
         one_file_system,
     )
 }
@@ -168,7 +173,7 @@ impl Iterator for Walk {
             match self.iter.next() {
                 Some(Ok(entry)) => {
                     let file_type = entry.file_type();
-                    if file_type.is_symlink() && !self.links {
+                    if file_type.is_symlink() && !self.include_links {
                         continue;
                     }
                     let path = {

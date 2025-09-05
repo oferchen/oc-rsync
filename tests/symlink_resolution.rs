@@ -1,6 +1,8 @@
 // tests/symlink_resolution.rs
 
 use assert_cmd::Command;
+#[cfg(all(unix, feature = "xattr"))]
+use std::ffi::OsString;
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -58,6 +60,23 @@ fn assert_same_tree(a: &Path, b: &Path) {
                     fs::read_link(&pa).unwrap(),
                     fs::read_link(&pb).unwrap(),
                     "symlink target differs for {:?}",
+                    name
+                );
+            }
+            #[cfg(feature = "xattr")]
+            {
+                fn list_xattrs(p: &Path) -> Vec<(OsString, Vec<u8>)> {
+                    let mut attrs: Vec<_> = xattr::list(p)
+                        .unwrap()
+                        .filter_map(|k| xattr::get(p, &k).unwrap().map(|v| (k.clone(), v)))
+                        .collect();
+                    attrs.sort_by(|a, b| a.0.cmp(&b.0));
+                    attrs
+                }
+                assert_eq!(
+                    list_xattrs(&pa),
+                    list_xattrs(&pb),
+                    "xattrs differ for {:?}",
                     name
                 );
             }
@@ -188,6 +207,38 @@ fn munge_links_matches_rsync() {
         Path::new("tests/golden/symlink_resolution/munge_links"),
         &dst_rr,
     );
+}
+
+#[cfg(all(unix, feature = "xattr"))]
+#[test]
+fn links_preserve_xattrs_matches_rsync() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst_rr = tmp.path().join("dst_rr");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("file"), b"hi").unwrap();
+    symlink("file", src.join("link"));
+    xattr::set(src.join("file"), "user.test", b"val").unwrap();
+    xattr::set(src.join("link"), "user.lnk", b"lnk").unwrap();
+
+    let ours_out = Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--links",
+            "--xattrs",
+            &format!("{}/", src.display()),
+            dst_rr.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(ours_out.status.success());
+    let ours_output = String::from_utf8_lossy(&ours_out.stdout).to_string()
+        + &String::from_utf8_lossy(&ours_out.stderr);
+    assert!(ours_output.is_empty());
+    let golden = Path::new("tests/golden/symlink_resolution/links_xattrs");
+    xattr::set(golden.join("file"), "user.test", b"val").unwrap();
+    xattr::set(golden.join("link"), "user.lnk", b"lnk").unwrap();
+    assert_same_tree(golden, &dst_rr);
 }
 
 #[cfg(unix)]
