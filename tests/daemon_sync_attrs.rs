@@ -1,26 +1,18 @@
 // tests/daemon_sync_attrs.rs
+#![cfg(all(unix, feature = "acl"))]
 
-#[cfg(unix)]
 use assert_cmd::{
     cargo::{cargo_bin, CommandCargoExt},
     Command,
 };
-#[cfg(unix)]
 use serial_test::serial;
-#[cfg(unix)]
 use std::fs;
-#[cfg(unix)]
 use std::net::{TcpListener, TcpStream};
-#[cfg(unix)]
 use std::process::{Child, Command as StdCommand};
-#[cfg(unix)]
 use std::thread::sleep;
-#[cfg(unix)]
 use std::time::Duration;
-#[cfg(unix)]
 use tempfile::tempdir;
 
-#[cfg(unix)]
 use posix_acl::{PosixACL, Qualifier, ACL_READ, ACL_WRITE};
 
 #[cfg(unix)]

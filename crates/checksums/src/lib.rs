@@ -2,8 +2,8 @@
 use md4::{Digest, Md4};
 use md5::Md5;
 use sha1::Sha1;
-use xxhash_rust::xxh3::{xxh3_128_with_seed, xxh3_64_with_seed};
-use xxhash_rust::xxh64::xxh64;
+use xxhash_rust::xxh3::{xxh3_128_with_seed, xxh3_64_with_seed, Xxh3};
+use xxhash_rust::xxh64::{xxh64, Xxh64};
 #[derive(Clone, Copy, Debug)]
 pub enum StrongHash {
     Md4,
@@ -69,6 +69,70 @@ impl ChecksumConfig {
         Checksums {
             weak: rolling_checksum_seeded(data, self.seed),
             strong: strong_digest(data, self.strong, self.seed),
+        }
+    }
+
+    pub fn strong_hasher(&self) -> StrongHasher {
+        match self.strong {
+            StrongHash::Md4 => {
+                let mut h = Md4::new();
+                h.update(&self.seed.to_le_bytes());
+                StrongHasher(StrongHasherInner::Md4(h))
+            }
+            StrongHash::Md5 => {
+                let mut h = Md5::new();
+                h.update(&self.seed.to_le_bytes());
+                StrongHasher(StrongHasherInner::Md5(h))
+            }
+            StrongHash::Sha1 => {
+                let mut h = Sha1::new();
+                h.update(&self.seed.to_le_bytes());
+                StrongHasher(StrongHasherInner::Sha1(h))
+            }
+            StrongHash::Xxh64 => {
+                StrongHasher(StrongHasherInner::Xxh64(Xxh64::with_seed(self.seed as u64)))
+            }
+            StrongHash::Xxh3 => {
+                StrongHasher(StrongHasherInner::Xxh3(Xxh3::with_seed(self.seed as u64)))
+            }
+            StrongHash::Xxh128 => {
+                StrongHasher(StrongHasherInner::Xxh128(Xxh3::with_seed(self.seed as u64)))
+            }
+        }
+    }
+}
+
+pub struct StrongHasher(StrongHasherInner);
+
+enum StrongHasherInner {
+    Md4(Md4),
+    Md5(Md5),
+    Sha1(Sha1),
+    Xxh64(Xxh64),
+    Xxh3(Xxh3),
+    Xxh128(Xxh3),
+}
+
+impl StrongHasher {
+    pub fn update(&mut self, data: &[u8]) {
+        match &mut self.0 {
+            StrongHasherInner::Md4(h) => h.update(data),
+            StrongHasherInner::Md5(h) => h.update(data),
+            StrongHasherInner::Sha1(h) => h.update(data),
+            StrongHasherInner::Xxh64(h) => h.update(data),
+            StrongHasherInner::Xxh3(h) => h.update(data),
+            StrongHasherInner::Xxh128(h) => h.update(data),
+        }
+    }
+
+    pub fn finalize(self) -> Vec<u8> {
+        match self.0 {
+            StrongHasherInner::Md4(h) => h.finalize().to_vec(),
+            StrongHasherInner::Md5(h) => h.finalize().to_vec(),
+            StrongHasherInner::Sha1(h) => h.finalize().to_vec(),
+            StrongHasherInner::Xxh64(h) => h.digest().to_be_bytes().to_vec(),
+            StrongHasherInner::Xxh3(h) => h.digest64().to_be_bytes().to_vec(),
+            StrongHasherInner::Xxh128(h) => h.digest128().to_be_bytes().to_vec(),
         }
     }
 }
