@@ -2426,24 +2426,36 @@ pub fn sync(
         }
         return Ok(stats);
     }
-    if !dst.exists() && !opts.only_write_batch {
-        fs::create_dir_all(dst).map_err(|e| {
-            std::io::Error::new(
-                e.kind(),
-                format!(
-                    "failed to create destination directory {}: {e}",
-                    dst.display()
-                ),
-            )
-        })?;
-        #[cfg(unix)]
-        if let Some((uid, gid)) = opts.copy_as {
-            let gid = gid.map(Gid::from_raw);
-            chown(dst, Some(Uid::from_raw(uid)), gid)
-                .map_err(|e| io_context(dst, std::io::Error::from(e)))?;
+    if !opts.only_write_batch {
+        let dir = if src_root.is_file() {
+            dst.parent()
+        } else if !dst.exists() {
+            Some(dst)
+        } else {
+            None
+        };
+
+        if let Some(dir) = dir {
+            if !dir.exists() {
+                fs::create_dir_all(dir).map_err(|e| {
+                    std::io::Error::new(
+                        e.kind(),
+                        format!(
+                            "failed to create destination directory {}: {e}",
+                            dir.display()
+                        ),
+                    )
+                })?;
+                #[cfg(unix)]
+                if let Some((uid, gid)) = opts.copy_as {
+                    let gid = gid.map(Gid::from_raw);
+                    chown(dir, Some(Uid::from_raw(uid)), gid)
+                        .map_err(|e| io_context(dir, std::io::Error::from(e)))?;
+                }
+                stats.files_created += 1;
+                stats.dirs_created += 1;
+            }
         }
-        stats.files_created += 1;
-        stats.dirs_created += 1;
     }
 
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
