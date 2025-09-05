@@ -2299,6 +2299,17 @@ fn daemon_accepts_sequential_chrooted_connections() {
         t.receive(&mut ok).unwrap();
         t.send(b"data\n").unwrap();
         t.send(b"\n").unwrap();
+        let mut msg = Vec::new();
+        loop {
+            let n = t.receive(&mut buf).unwrap();
+            if n == 0 {
+                panic!("connection closed before EXIT");
+            }
+            msg.extend_from_slice(&buf[..n]);
+            if msg.ends_with(b"@RSYNCD: EXIT\n") {
+                break;
+            }
+        }
         let n = t.receive(&mut buf).unwrap_or(0);
         assert_eq!(n, 0);
     }
