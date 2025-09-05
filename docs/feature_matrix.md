@@ -32,7 +32,7 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--cc` | ✅ | Y | Y | Y | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | alias for `--checksum-choice` |
 | `--checksum` | ✅ | Y | Y | Y | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | strong hashes: MD5 (default), SHA-1, MD4 (protocol < 30) |
 | `--checksum-choice` | ✅ | Y | Y | Y | [tests/golden/cli_parity/checksum-choice.sh](../tests/golden/cli_parity/checksum-choice.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | choose the strong hash algorithm (md5, sha1, md4) |
-| `--checksum-seed` | ✅ | Y | Y | Y | [tests/checksum_seed.rs](../tests/checksum_seed.rs)<br>[tests/checksum_seed_cli.rs](../tests/checksum_seed_cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | set block/file checksum seed |
+| `--checksum-seed` | ✅ | N | Y | Y | [tests/checksum_seed.rs](../tests/checksum_seed.rs)<br>[tests/checksum_seed_cli.rs](../tests/checksum_seed_cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | known transfer bug ([#1244](https://github.com/oferchen/oc-rsync/issues/1244)) |
 | `--chmod` | ✅ | Y | Y | Y | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/golden/cli_parity/chmod.sh](../tests/golden/cli_parity/chmod.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--chown` | ✅ | Y | Y | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires root or CAP_CHOWN |
 | `--compare-dest` | ✅ | Y | Y | Y | [tests/link_copy_compare_dest.rs](../tests/link_copy_compare_dest.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
