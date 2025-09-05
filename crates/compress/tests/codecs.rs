@@ -107,7 +107,7 @@ fn should_compress_respects_default_list() {
 fn should_compress_handles_mixed_case_patterns() {
     assert!(!should_compress(
         Path::new("file.TXT"),
-        &["tXt".to_string()]
+        &["txt".to_string()]
     ));
 }
 

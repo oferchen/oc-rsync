@@ -1489,7 +1489,7 @@ mod tests {
 
     #[test]
     fn parses_skip_compress_list() {
-        let opts = ClientOpts::parse_from(["prog", "--skip-compress=gz,zip", "src", "dst"]);
+        let opts = ClientOpts::parse_from(["prog", "--skip-compress=GZ,Zip", "src", "dst"]);
         assert_eq!(opts.skip_compress, vec!["gz", "zip"]);
     }
 
