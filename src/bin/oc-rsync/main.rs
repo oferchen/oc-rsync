@@ -6,6 +6,31 @@ use oc_rsync_cli::{cli_command, EngineError};
 use protocol::ExitCode;
 use std::io::ErrorKind;
 
+fn exit_code_from_engine_error(e: &EngineError) -> ExitCode {
+    match e {
+        EngineError::Io(err)
+            if matches!(
+                err.kind(),
+                ErrorKind::TimedOut
+                    | ErrorKind::ConnectionRefused
+                    | ErrorKind::AddrNotAvailable
+                    | ErrorKind::NetworkUnreachable
+                    | ErrorKind::WouldBlock
+                    | ErrorKind::ConnectionAborted
+                    | ErrorKind::ConnectionReset
+                    | ErrorKind::NotConnected
+                    | ErrorKind::HostUnreachable
+                    | ErrorKind::NetworkDown,
+            ) =>
+        {
+            ExitCode::ConnTimeout
+        }
+        EngineError::MaxAlloc => ExitCode::Malloc,
+        EngineError::Exit(code, _) => *code,
+        _ => ExitCode::Protocol,
+    }
+}
+
 fn main() {
     let args: Vec<_> = std::env::args_os().collect();
     if args.iter().any(|a| a == "--dump-help-body") {
@@ -32,23 +57,7 @@ fn main() {
     }
     if let Err(e) = oc_rsync_cli::run(&matches) {
         eprintln!("{e}");
-        let code = match &e {
-            EngineError::Io(err)
-                if matches!(
-                    err.kind(),
-                    ErrorKind::TimedOut
-                        | ErrorKind::ConnectionRefused
-                        | ErrorKind::AddrNotAvailable
-                        | ErrorKind::NetworkUnreachable
-                        | ErrorKind::WouldBlock,
-                ) =>
-            {
-                ExitCode::ConnTimeout
-            }
-            EngineError::MaxAlloc => ExitCode::Malloc,
-            EngineError::Exit(code, _) => *code,
-            _ => ExitCode::Protocol,
-        };
+        let code = exit_code_from_engine_error(&e);
         std::process::exit(u8::from(code) as i32);
     }
 }
@@ -58,6 +67,10 @@ mod tests {
     use clap::error::ErrorKind::*;
     use oc_rsync_cli::exit_code_from_error_kind;
     use protocol::ExitCode;
+    use std::io::ErrorKind;
+
+    use super::exit_code_from_engine_error;
+    use oc_rsync_cli::EngineError;
 
     #[test]
     fn maps_error_kinds_to_exit_codes() {
@@ -86,6 +99,31 @@ mod tests {
 
         for (kind, expected) in cases {
             assert_eq!(exit_code_from_error_kind(kind), expected);
+        }
+    }
+
+    #[test]
+    fn transient_network_errors_map_to_conn_timeout() {
+        let kinds = [
+            ErrorKind::TimedOut,
+            ErrorKind::ConnectionRefused,
+            ErrorKind::AddrNotAvailable,
+            ErrorKind::NetworkUnreachable,
+            ErrorKind::WouldBlock,
+            ErrorKind::ConnectionAborted,
+            ErrorKind::ConnectionReset,
+            ErrorKind::NotConnected,
+            ErrorKind::HostUnreachable,
+            ErrorKind::NetworkDown,
+        ];
+
+        for kind in kinds {
+            let err = EngineError::Io(std::io::Error::from(kind));
+            assert_eq!(
+                exit_code_from_engine_error(&err),
+                ExitCode::ConnTimeout,
+                "{kind:?} did not map to ConnTimeout",
+            );
         }
     }
 }
