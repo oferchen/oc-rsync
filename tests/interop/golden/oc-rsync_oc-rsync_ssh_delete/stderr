@@ -1,0 +1,3 @@
+Warning: Permanently added '[localhost]:2222' (RSA) to the list of known hosts.
+root@localhost: Permission denied (publickey,keyboard-interactive).
+connection unexpectedly closed

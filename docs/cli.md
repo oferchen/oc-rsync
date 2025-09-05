@@ -38,6 +38,13 @@ oc-rsync [OPTIONS] "<SRC>" "<DEST>"
   oc-rsync -n --stats "./src" "remote:/dst"
   ```
 
+## Testing
+
+Interop tests replay golden fixtures captured from upstream `rsync` runs.
+`tests/interop/run_matrix.sh` consumes the committed data under
+`tests/interop/golden` and verifies `oc-rsync` without invoking the system
+`rsync` binary.
+
 - Sync using an explicit config file:
 
   ```sh

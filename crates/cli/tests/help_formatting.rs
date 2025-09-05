@@ -46,15 +46,15 @@ fn help_wrapping_matches_upstream() {
     let cases = [
         (
             60,
-            include_str!("../../tests/golden/help/rsync-help-60.txt"),
+            include_str!("../../../tests/golden/help/rsync-help-60.txt"),
         ),
         (
             80,
-            include_str!("../../tests/golden/help/rsync-help-80.txt"),
+            include_str!("../../../tests/golden/help/rsync-help-80.txt"),
         ),
         (
             100,
-            include_str!("../../tests/golden/help/rsync-help-100.txt"),
+            include_str!("../../../tests/golden/help/rsync-help-100.txt"),
         ),
     ];
     for (cols, upstream) in cases {

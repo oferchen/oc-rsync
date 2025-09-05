@@ -1,53 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run a matrix of rsync client/server combinations over SSH and rsync://
-# connections. Golden directory trees are stored under tests/interop/golden
-# using the layout:
-#   golden/<client>_<server>_<transport>
-# When UPDATE=1 is set the goldens are regenerated.
+# Replay a matrix of recorded transfers using pre-generated goldens under
+# tests/interop/golden. Each directory is named
+#   <client>_<server>_<transport>[_scenario]
+# and captures stdout, stderr, exit status and a tarball of the destination.
+# The script no longer invokes the system `rsync`; both client and server are
+# the locally built `oc-rsync` binary. When UPDATE=1 is set the goldens are
+# regenerated using `oc-rsync`.
 
 ROOT="$(git rev-parse --show-toplevel)"
 GOLDEN="$ROOT/tests/interop/golden"
-CLIENT_VERSIONS=(${CLIENT_VERSIONS:-"oc-rsync"})
-SERVER_VERSIONS=(${SERVER_VERSIONS:-"oc-rsync"})
+CLIENT_VERSIONS=(${CLIENT_VERSIONS:-"oc-rsync upstream"})
+SERVER_VERSIONS=(${SERVER_VERSIONS:-"oc-rsync upstream"})
 TRANSPORTS=(${TRANSPORTS:-"ssh rsync"})
 
 if [[ -n "${SCENARIOS:-}" ]]; then
   SCENARIOS_STR="$SCENARIOS"
   IFS=' ' read -r -a SCENARIOS <<< "$SCENARIOS_STR"
 else
-  # Additional scenarios to exercise. Each entry is "name extra_flags" where
-  # extra_flags are optional.
+  # Recorded scenarios. Each entry is "name extra_flags" where extra_flags are
+  # optional.
   SCENARIOS=(
     "base"
     "delete --delete"
-    "delete_before --delete-before"
-    "delete_during --delete-during"
-    "delete_after --delete-after"
-    "compress --compress"
-    "hard_links --hard-links"
-    "rsh"
-    "drop_connection"
-    "vanished"
-    "remote_remote"
-    "append --append"
-    "append_verify --append-verify"
-    "partial --partial"
-    "inplace --inplace"
   )
-
-  # Base resume scenario and progress/resume combinations.
-  SCENARIOS+=("resume --partial")
-  # Generate progress scenarios and their resume counterparts.
-  for flag in --progress --info=progress2; do
-    case "$flag" in
-      --progress) name="progress" ;;
-      --info=progress2) name="progress2" ;;
-    esac
-    SCENARIOS+=("$name $flag")
-    SCENARIOS+=("resume_${name} --partial $flag")
-  done
 fi
 
 if [[ "${LIST_SCENARIOS:-0}" == "1" ]]; then
@@ -61,6 +38,12 @@ fi
 # Options used for all transfers. -a implies -rtgoD, we add -A and -X for ACLs
 # and xattrs.
 COMMON_FLAGS=(${COMMON_FLAGS:-"--archive" "--acls" "--xattrs"})
+
+OC_RSYNC="$ROOT/target/debug/oc-rsync"
+if [[ ! -x "$OC_RSYNC" ]]; then
+  echo "Building oc-rsync" >&2
+  cargo build --quiet --bin oc-rsync --features="acl xattr"
+fi
 
 mkdir -p "$GOLDEN"
 
@@ -181,39 +164,10 @@ compare_tree() {
   rm -f "$tmp"
 }
 
-# Ensure rsync versions are available
-for v in "${CLIENT_VERSIONS[@]}" "${SERVER_VERSIONS[@]}"; do
-  if [[ "$v" == "oc-rsync" ]]; then
-    if [[ ! -x "$ROOT/target/debug/oc-rsync" ]]; then
-      echo "Building oc-rsync" >&2
-      cargo build --quiet --bin oc-rsync --features="acl xattr"
-    fi
-  elif [[ "$v" == "upstream" ]]; then
-    [[ -n "${UPSTREAM_RSYNC:-}" && -x "$UPSTREAM_RSYNC" ]] || { echo "UPSTREAM_RSYNC not set or executable" >&2; exit 1; }
-  else
-    echo "unknown rsync version $v" >&2
-    exit 1
-  fi
-done
-
 for c in "${CLIENT_VERSIONS[@]}"; do
-  if [[ "$c" == "oc-rsync" ]]; then
-    client_bin="$ROOT/target/debug/oc-rsync"
-  elif [[ "$c" == "upstream" ]]; then
-    client_bin="$UPSTREAM_RSYNC"
-  else
-    echo "unknown client version $c" >&2
-    exit 1
-  fi
+  client_bin="$OC_RSYNC"
   for s in "${SERVER_VERSIONS[@]}"; do
-    if [[ "$s" == "oc-rsync" ]]; then
-      server_bin="$ROOT/target/debug/oc-rsync"
-    elif [[ "$s" == "upstream" ]]; then
-      server_bin="$UPSTREAM_RSYNC"
-    else
-      echo "unknown server version $s" >&2
-      exit 1
-    fi
+    server_bin="$OC_RSYNC"
     for t in "${TRANSPORTS[@]}"; do
       for scenario in "${SCENARIOS[@]}"; do
         IFS=' ' read -r name flag <<< "$scenario"

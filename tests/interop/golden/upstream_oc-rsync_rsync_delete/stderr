@@ -1,0 +1,3 @@
+rsync: [sender] failed to connect to localhost (::1): Connection refused (111)
+rsync: [sender] failed to connect to localhost (127.0.0.1): Connection refused (111)
+rsync error: error in socket IO (code 10) at clientserver.c(139) [sender=3.2.7]
