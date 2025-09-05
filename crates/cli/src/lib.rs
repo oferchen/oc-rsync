@@ -761,7 +761,11 @@ fn run_single(
             opts.whole_file
         },
         skip_compress: opts.skip_compress.clone(),
-        partial: opts.partial || opts.partial_progress || opts.partial_dir.is_some(),
+        partial: opts.partial
+            || opts.partial_progress
+            || opts.partial_dir.is_some()
+            || opts.append
+            || opts.append_verify,
         progress: opts.progress || opts.partial_progress,
         human_readable: opts.human_readable,
         itemize_changes: opts.itemize_changes,
