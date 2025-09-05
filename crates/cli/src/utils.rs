@@ -328,6 +328,7 @@ pub(crate) fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec> {
         let mut mp = mod_path.splitn(2, '/');
         let module = mp.next().unwrap_or("");
         let path = mp.next().unwrap_or("");
+        let path = if path.is_empty() { "." } else { path };
         if host.is_empty() {
             return Err(EngineError::Other("remote host missing".into()));
         }
