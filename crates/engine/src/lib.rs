@@ -15,7 +15,7 @@ use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
-use tempfile::{Builder, NamedTempFile};
+use tempfile::Builder;
 use transport::{pipe, Transport};
 
 pub use checksums::StrongHash;
@@ -298,10 +298,14 @@ fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
     };
     if cross_device {
         let parent = dst.parent().unwrap_or_else(|| Path::new("."));
-        let tmp = NamedTempFile::new_in(parent).map_err(|e| io_context(parent, e))?;
-        let tmp_path = tmp.into_temp_path();
-        fs::copy(src, &tmp_path).map_err(|e| io_context(src, e))?;
-        fs::rename(&tmp_path, dst).map_err(|e| io_context(dst, e))?;
+        let base = dst.file_name().unwrap_or_default().to_string_lossy();
+        let tmp = Builder::new()
+            .prefix(&format!(".{}.", base))
+            .rand_bytes(6)
+            .tempfile_in(parent)
+            .map_err(|e| io_context(parent, e))?;
+        fs::copy(src, tmp.path()).map_err(|e| io_context(src, e))?;
+        tmp.persist(dst).map_err(|e| io_context(dst, e.error))?;
         fs::remove_file(src).map_err(|e| io_context(src, e))?;
         Ok(())
     } else {
@@ -324,10 +328,14 @@ fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
                 };
                 if cross_device_err {
                     let parent = dst.parent().unwrap_or_else(|| Path::new("."));
-                    let tmp = NamedTempFile::new_in(parent).map_err(|e| io_context(parent, e))?;
-                    let tmp_path = tmp.into_temp_path();
-                    fs::copy(src, &tmp_path).map_err(|e| io_context(src, e))?;
-                    fs::rename(&tmp_path, dst).map_err(|e| io_context(dst, e))?;
+                    let base = dst.file_name().unwrap_or_default().to_string_lossy();
+                    let tmp = Builder::new()
+                        .prefix(&format!(".{}.", base))
+                        .rand_bytes(6)
+                        .tempfile_in(parent)
+                        .map_err(|e| io_context(parent, e))?;
+                    fs::copy(src, tmp.path()).map_err(|e| io_context(src, e))?;
+                    tmp.persist(dst).map_err(|e| io_context(dst, e.error))?;
                     fs::remove_file(src).map_err(|e| io_context(src, e))?;
                     Ok(())
                 } else {
