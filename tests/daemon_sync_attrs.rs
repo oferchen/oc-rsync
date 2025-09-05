@@ -882,9 +882,10 @@ fn daemon_preserves_hard_links_rr_client() {
     let (mut child, port) = spawn_daemon(&srv);
     wait_for_daemon(port);
     let src_arg = format!("{}/", src.display());
+    let dest = format!("rsync://127.0.0.1:{port}/mod");
     Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args(["-aH", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
+        .args(["-aH", &src_arg, &dest])
         .assert()
         .success();
     let meta1 = fs::symlink_metadata(srv.join("a")).unwrap();

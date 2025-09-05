@@ -333,7 +333,7 @@ pub(crate) fn run_daemon(opts: DaemonOpts, matches: &ArgMatches) -> Result<()> {
         None
     };
 
-    let handler: Arc<daemon::Handler> = Arc::new(|_| Ok(()));
+    let handler: Arc<daemon::Handler> = Arc::new(|_, _| Ok(()));
     let quiet = matches.get_flag("quiet");
 
     daemon::run_daemon(
