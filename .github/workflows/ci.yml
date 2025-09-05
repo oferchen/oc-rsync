@@ -222,17 +222,26 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
 
       - name: Install packaging tools
-        run: cargo install cargo-deb cargo-generate-rpm || true
+        run: cargo install cargo-deb cargo-rpm || true
+
+      - name: Install cyclonedx-rust-cargo
+        run: cargo install cyclonedx-rust-cargo || true
 
       - name: Build packages
         run: |
           cargo deb -p oc-rsync
-          cargo generate-rpm
+          cargo rpm build --release
+
+      - name: Generate SBOM
+        run: |
+          mkdir -p target/sbom
+          cyclonedx-rust-cargo --output target/sbom/oc-rsync.cdx.json
 
       - uses: actions/upload-artifact@v4
         with:
           name: oc-rsync-packages
           path: |
             target/debian/*.deb
-            target/generate-rpm/*.rpm
+            target/release/rpms/*.rpm
+            target/sbom/oc-rsync.cdx.json
             
