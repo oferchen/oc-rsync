@@ -360,6 +360,20 @@ impl TcpTransport {
     }
 }
 
+#[doc = "Borrow a file descriptor, ensuring it is non-negative.\n\n\
+# Safety\n\
+The caller must guarantee that `fd` refers to a valid open file descriptor for the\
+duration of the returned `BorrowedFd`."]
+fn borrow_fd(fd: RawFd) -> io::Result<BorrowedFd<'static>> {
+    if fd < 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "file descriptor must be non-negative",
+        ));
+    }
+    Ok(unsafe { BorrowedFd::borrow_raw(fd) })
+}
+
 fn wait_fd(fd: RawFd, flags: PollFlags, timeout: Option<Duration>) -> io::Result<()> {
     let timeout = match timeout {
         Some(dur) => {
@@ -367,7 +381,7 @@ fn wait_fd(fd: RawFd, flags: PollFlags, timeout: Option<Duration>) -> io::Result
         }
         None => PollTimeout::NONE,
     };
-    let mut fds = [PollFd::new(unsafe { BorrowedFd::borrow_raw(fd) }, flags)];
+    let mut fds = [PollFd::new(borrow_fd(fd)?, flags)];
     let res = poll(&mut fds, timeout).map_err(io::Error::from)?;
     if res == 0 {
         return Err(io::Error::new(
@@ -376,4 +390,15 @@ fn wait_fd(fd: RawFd, flags: PollFlags, timeout: Option<Duration>) -> io::Result
         ));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wait_fd_invalid_fd() {
+        let err = wait_fd(-1, PollFlags::POLLIN, None).unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+    }
 }
