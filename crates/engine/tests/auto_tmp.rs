@@ -9,7 +9,7 @@ use filters::Matcher;
 use tempfile::tempdir;
 
 #[test]
-fn uses_file_stem_for_auto_tmp() {
+fn hides_temp_files() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -34,12 +34,18 @@ fn uses_file_stem_for_auto_tmp() {
         })
     };
 
-    let tmp_path = dst.join("a.tmp");
-    while !handle.is_finished() && !tmp_path.exists() {
+    while !handle.is_finished() {
+        assert!(!dst.join("a.txt").exists());
+        for entry in fs::read_dir(&dst).unwrap() {
+            let entry = entry.unwrap();
+            let ty = entry.file_type().unwrap();
+            assert!(!ty.is_file());
+        }
         thread::sleep(Duration::from_millis(10));
     }
-    assert!(tmp_path.exists());
     handle.join().unwrap();
+    let entry = fs::read_dir(&dst).unwrap().next().unwrap().unwrap();
+    assert_eq!(entry.file_name(), "a.txt");
     assert!(dst.join("a.txt").exists());
-    assert!(!tmp_path.exists());
+    assert!(fs::read_dir(&dst).unwrap().nth(1).is_none());
 }
