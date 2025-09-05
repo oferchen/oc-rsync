@@ -1,7 +1,7 @@
 # Feature Matrix
 
 This table tracks the implementation status of rsync 3.4.x command-line options.
-Behavioral differences from upstream rsync are tracked in [differences.md](differences.md) and detailed per-domain coverage appears in [gaps.md](gaps.md).
+Behavioral differences from upstream rsync are tracked in [gaps.md](gaps.md).
 
 Classic `rsync` protocol versions 29–32 are supported.
 
@@ -176,3 +176,66 @@ Classic `rsync` protocol versions 29–32 are supported.
 | `--write-batch` | ✅ | Y | Y | Y | [tests/write_batch.rs](../tests/write_batch.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--write-devices` | ✅ | Y | Y | Y | [tests/write_devices.rs](../tests/write_devices.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | writes to existing devices |
 | `--xattrs` | ✅ | N | N | N | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | requires `xattr` feature |
+
+## Parser
+
+| Feature | Status | Tests | Source | Notes |
+| --- | --- | --- | --- | --- |
+| Comprehensive flag parsing parity | Implemented | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | |
+| Legacy arg protection (`--old-args`) | Partial | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | needs interop tests ([#918](https://github.com/oferchen/oc-rsync/issues/918)) |
+
+## Protocol
+
+| Feature | Status | Tests | Source | Notes |
+| --- | --- | --- | --- | --- |
+| Version negotiation and frame multiplexing | Implemented | [crates/protocol/tests/server.rs](../crates/protocol/tests/server.rs) | [crates/protocol/src/server.rs](../crates/protocol/src/server.rs) | |
+| Additional message codes | Missing | — | [crates/protocol/src/lib.rs](../crates/protocol/src/lib.rs) | [#708](https://github.com/oferchen/oc-rsync/issues/708) |
+
+## Filters
+
+| Feature | Status | Tests | Source | Notes |
+| --- | --- | --- | --- | --- |
+| `.rsync-filter` merge semantics | Implemented | [crates/filters/tests/merge.rs](../crates/filters/tests/merge.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) | |
+| Additional rule modifiers | Partial | — | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) | [#268](https://github.com/oferchen/oc-rsync/issues/268) |
+
+## Metadata
+
+| Feature | Status | Tests | Source | Notes |
+| --- | --- | --- | --- | --- |
+| POSIX ACL preservation | Implemented | [crates/meta/tests/acl_roundtrip.rs](../crates/meta/tests/acl_roundtrip.rs) | [crates/meta/src/unix.rs](../crates/meta/src/unix.rs) | |
+| Device node metadata | Partial | [tests/local_sync_tree.rs](../tests/local_sync_tree.rs) | [crates/meta/src/unix.rs](../crates/meta/src/unix.rs) | [#595](https://github.com/oferchen/oc-rsync/issues/595) |
+
+## Compression
+
+| Feature | Status | Tests | Source | Notes |
+| --- | --- | --- | --- | --- |
+| zstd and zlib codecs | Implemented | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/lib.rs](../crates/compress/src/lib.rs) | |
+| LZ4 codec | Missing | — | — | [#873](https://github.com/oferchen/oc-rsync/issues/873) |
+
+## Daemon
+
+| Feature | Status | Tests | Source | Notes |
+| --- | --- | --- | --- | --- |
+| `rsyncd.conf` parsing | Implemented | [tests/daemon_config.rs](../tests/daemon_config.rs) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) | |
+| Enhanced auth handling | Partial | — | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) | [#413](https://github.com/oferchen/oc-rsync/issues/413) |
+
+## Messages
+
+| Feature | Status | Tests | Source | Notes |
+| --- | --- | --- | --- | --- |
+| Custom out-format and log messages | Implemented | [tests/out_format.rs](../tests/out_format.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs) | |
+| Additional message categories | Missing | — | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs) | [#742](https://github.com/oferchen/oc-rsync/issues/742) |
+
+## Exit Codes
+
+| Feature | Status | Tests | Source | Notes |
+| --- | --- | --- | --- | --- |
+| Standard mapping | Implemented | [crates/protocol/tests/exit_codes.rs](../crates/protocol/tests/exit_codes.rs) | [crates/protocol/src/lib.rs](../crates/protocol/src/lib.rs) | |
+| Clap argument error mapping | Partial | — | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | [#763](https://github.com/oferchen/oc-rsync/issues/763) |
+
+## Tests and Coverage
+
+| Feature | Status | Tests | Source | Notes |
+| --- | --- | --- | --- | --- |
+| Workspace coverage via `cargo llvm-cov` | Implemented | [reports/metrics.md](../reports/metrics.md) | [Makefile](../Makefile) | |
+| Windows CI coverage gating | Missing | — | [codecov.yml](../codecov.yml) | [#989](https://github.com/oferchen/oc-rsync/issues/989) |

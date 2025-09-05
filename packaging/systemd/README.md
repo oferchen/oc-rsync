@@ -1,11 +1,12 @@
 # Systemd unit hardening
 
-The `oc-rsyncd.service` unit is configured with a minimal capability set. Only
-`CAP_NET_BIND_SERVICE` is retained so the daemon can listen on the privileged
-rsync port 873 while running as the unprivileged `ocrsync` user.
+The `oc-rsyncd.service` unit is configured with a minimal capability set.
+`CAP_DAC_READ_SEARCH`, `CAP_FOWNER`, `CAP_CHOWN`, and `CAP_DAC_OVERRIDE` are
+retained so the daemon can adjust ownership and bypass permission checks while
+running as the unprivileged `ocrsync` user.
 
-The service file assumes the binaries are installed in `/usr/bin` (`/usr/bin/oc-rsyncd`
-and `/usr/bin/oc-rsync`). If your distribution installs them elsewhere, override
+The service file assumes the binaries are installed in `/usr/bin` (`/usr/bin/oc-rsync`
+and `/usr/bin/oc-rsyncd`). If your distribution installs them elsewhere, override
 `ExecStart` via a systemd drop-in.
 
 ```

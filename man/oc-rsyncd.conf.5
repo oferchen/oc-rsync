@@ -116,10 +116,10 @@ read-only with \f[V]ProtectSystem=strict\f[R], hides user home
 directories via \f[V]ProtectHome=true\f[R], and restarts on failure
 after a short delay with \f[V]Restart=on-failure\f[R] and
 \f[V]RestartSec=2s\f[R].
-The unit grants only the \f[V]CAP_NET_BIND_SERVICE\f[R] capability via
-\f[V]CapabilityBoundingSet\f[R]/\f[V]AmbientCapabilities\f[R] and writes
-its PID and log to \f[V]/run/oc-rsyncd.pid\f[R] and
-\f[V]/var/log/oc-rsyncd.log\f[R].
+The unit grants the \f[V]CAP_DAC_READ_SEARCH\f[R], \f[V]CAP_FOWNER\f[R],
+\f[V]CAP_CHOWN\f[R], and \f[V]CAP_DAC_OVERRIDE\f[R] capabilities via
+\f[V]CapabilityBoundingSet\f[R]/\f[V]AmbientCapabilities\f[R] and writes its
+PID and log to \f[V]/run/oc-rsyncd.pid\f[R] and \f[V]/var/log/oc-rsyncd.log\f[R].
 These settings may be relaxed if the daemon requires additional
 privileges.
 .SS Module setup

@@ -14,42 +14,19 @@ RuntimeDirectory=oc-rsyncd
 LogsDirectory=oc-rsyncd
 StateDirectory=oc-rsyncd
 ConfigurationDirectory=oc-rsyncd
-ExecStart=/usr/bin/oc-rsyncd --no-detach --config=/etc/oc-rsyncd.conf
-# To run the daemon via the main oc-rsync CLI instead of the dedicated oc-rsyncd
-# binary, create a drop-in with the following lines:
+ExecStart=/usr/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf
+# To run the daemon via the dedicated oc-rsyncd binary instead of the main oc-rsync CLI,
+# create a drop-in with the following lines:
 # ExecStart=
-# ExecStart=/usr/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf
+# ExecStart=/usr/bin/oc-rsyncd --no-detach --config=/etc/oc-rsyncd.conf
 Restart=on-failure
 RestartSec=2s
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=true
-PrivateTmp=yes
-PrivateDevices=yes
-PrivateUsers=yes
-PrivateMounts=yes
-ProtectHostname=yes
-ProtectClock=yes
-ProtectKernelTunables=yes
-ProtectKernelModules=yes
-ProtectControlGroups=yes
-ProtectProc=invisible
-ProcSubset=pid
-RestrictSUIDSGID=yes
-RestrictRealtime=yes
-LockPersonality=yes
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE
+AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE
 RestrictNamespaces=yes
-# Allow binding to privileged port 873 while running as an unprivileged user
-CapabilityBoundingSet=CAP_NET_BIND_SERVICE
-AmbientCapabilities=CAP_NET_BIND_SERVICE
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-MemoryDenyWriteExecute=yes
-SystemCallFilter=@system-service
-SystemCallFilter=~@privileged
-SystemCallFilter=~@resources
-PrivateIPC=yes
-ProtectKernelLogs=yes
-SystemCallArchitectures=native
 
 [Install]
 WantedBy=multi-user.target
