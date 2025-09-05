@@ -1628,6 +1628,17 @@ impl Receiver {
                     .push((src.to_path_buf(), tmp_dest.clone(), dest.clone()));
             } else {
                 atomic_rename(&tmp_dest, &dest)?;
+                if (self.opts.partial || self.opts.partial_dir.is_some()) && partial != tmp_dest {
+                    let _ = fs::remove_file(&partial);
+                    if let Some(stem) = dest.file_stem() {
+                        let mut name = stem.to_os_string();
+                        name.push(".partial");
+                        let alt = dest.with_file_name(name);
+                        if alt != partial {
+                            let _ = fs::remove_file(alt);
+                        }
+                    }
+                }
                 if let Some(tmp_parent) = tmp_dest.parent() {
                     if dest.parent() != Some(tmp_parent)
                         && tmp_parent
