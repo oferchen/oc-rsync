@@ -1011,6 +1011,7 @@ dependencies = [
  "transport",
  "users",
  "wait-timeout",
+ "walkdir",
  "xattr",
 ]
 
