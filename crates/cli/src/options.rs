@@ -1,7 +1,7 @@
 // crates/cli/src/options.rs
 
-use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
+use std::{ffi::OsString, path::PathBuf};
 
 pub use crate::daemon::DaemonOpts;
 use crate::formatter;
@@ -402,7 +402,7 @@ pub(crate) struct ClientOpts {
         overrides_with_all = ["devices", "specials", "devices_specials"]
     )]
     pub no_D: bool,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(short = 'X', long, help_heading = "Attributes")]
     pub xattrs: bool,
     #[arg(
         short = 'A',
@@ -662,8 +662,9 @@ pub(crate) struct ClientOpts {
         value_name = "SRC",
         required_unless_present_any = ["daemon", "server", "probe"],
         num_args = 2..,
+        value_parser = clap::builder::OsStringValueParser::new()
     )]
-    pub paths: Vec<String>,
+    pub paths: Vec<OsString>,
     #[arg(short = 'f', long, value_name = "RULE", help_heading = "Selection")]
     pub filter: Vec<String>,
     #[arg(long, value_name = "FILE", help_heading = "Selection")]
