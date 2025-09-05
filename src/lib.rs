@@ -89,13 +89,21 @@ impl SyncConfigBuilder {
         self
     }
 
-    pub fn info(mut self, info: Vec<InfoFlag>) -> Self {
-        self.cfg.info = info;
+    pub fn info<I>(mut self, info: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<InfoFlag>,
+    {
+        self.cfg.info = info.into_iter().map(Into::into).collect();
         self
     }
 
-    pub fn debug(mut self, debug: Vec<DebugFlag>) -> Self {
-        self.cfg.debug = debug;
+    pub fn debug<I>(mut self, debug: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<DebugFlag>,
+    {
+        self.cfg.debug = debug.into_iter().map(Into::into).collect();
         self
     }
 
@@ -197,8 +205,8 @@ pub fn synchronize_with_config<P: AsRef<Path>>(src: P, dst: P, cfg: &SyncConfig)
     let sub_cfg = SubscriberConfig::builder()
         .format(cfg.log_format)
         .verbose(cfg.verbose)
-        .info(cfg.info.clone())
-        .debug(cfg.debug.clone())
+        .info(&cfg.info)
+        .debug(&cfg.debug)
         .quiet(cfg.quiet)
         .log_file(cfg.log_file.clone())
         .syslog(cfg.syslog)

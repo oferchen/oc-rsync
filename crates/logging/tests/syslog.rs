@@ -1,7 +1,7 @@
 // crates/logging/tests/syslog.rs
 #![cfg(all(unix, feature = "syslog"))]
 
-use logging::{init, LogFormat, SubscriberConfig};
+use logging::{init, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
 use std::os::unix::net::UnixDatagram;
 use tempfile::tempdir;
 use tracing::info;
@@ -15,8 +15,8 @@ fn syslog_emits_message() {
     let cfg = SubscriberConfig::builder()
         .format(LogFormat::Text)
         .verbose(1)
-        .info(vec![])
-        .debug(vec![])
+        .info(&[] as &[InfoFlag])
+        .debug(&[] as &[DebugFlag])
         .quiet(false)
         .log_file(None)
         .syslog(true)
