@@ -27,21 +27,20 @@ fn dump_help_body_lists_unique_options() {
     }
 }
 #[test]
-fn help_matches_snapshot() {
+fn help_output_matches_golden() {
     let output = Command::cargo_bin("oc-rsync")
         .unwrap()
         .env("COLUMNS", "80")
         .env("LC_ALL", "C")
         .env("LANG", "C")
-        .arg("--dump-help-body")
+        .arg("--help")
         .assert()
         .success()
         .get_output()
         .clone();
 
-    let actual = output.stdout;
     let expected = fs::read("tests/golden/help/oc-rsync.help").unwrap();
-    assert_eq!(actual, expected, "help output does not match snapshot");
+    assert_eq!(output.stdout, expected, "`--help` output mismatch");
 }
 
 #[test]

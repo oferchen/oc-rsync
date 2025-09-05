@@ -350,7 +350,21 @@ pub fn render_help(_cmd: &Command) -> String {
 }
 
 pub fn dump_help_body(cmd: &Command) -> String {
+    let prev = std::env::var("COLUMNS").ok();
+    unsafe {
+        std::env::set_var("COLUMNS", "80");
+    }
     let help = render_help(cmd);
+    if let Some(v) = prev {
+        unsafe {
+            std::env::set_var("COLUMNS", v);
+        }
+    } else {
+        unsafe {
+            std::env::remove_var("COLUMNS");
+        }
+    }
+
     let mut out = String::new();
     let mut in_options = false;
     let stop_marker = "Use \"rsync --daemon --help\"";

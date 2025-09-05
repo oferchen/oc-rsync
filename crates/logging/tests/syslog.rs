@@ -11,7 +11,9 @@ fn syslog_emits_message() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("sock");
     let server = UnixDatagram::bind(&path).unwrap();
-    std::env::set_var("OC_RSYNC_SYSLOG_PATH", &path);
+    unsafe {
+        std::env::set_var("OC_RSYNC_SYSLOG_PATH", &path);
+    }
     let cfg = SubscriberConfig::builder()
         .format(LogFormat::Text)
         .verbose(1)
@@ -31,5 +33,7 @@ fn syslog_emits_message() {
     let msg = std::str::from_utf8(&buf[..n]).unwrap();
     let expected = format!("<14>rsync[{}]: hello", std::process::id());
     assert_eq!(msg, expected);
-    std::env::remove_var("OC_RSYNC_SYSLOG_PATH");
+    unsafe {
+        std::env::remove_var("OC_RSYNC_SYSLOG_PATH");
+    }
 }

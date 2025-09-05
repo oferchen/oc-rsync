@@ -29,7 +29,9 @@ impl<'a> fmt::writer::MakeWriter<'a> for VecWriter {
 
 #[test]
 fn respects_columns_env_var() {
-    std::env::set_var("COLUMNS", "40");
+    unsafe {
+        std::env::set_var("COLUMNS", "40");
+    }
     let writer = VecWriter::default();
     let layer = fmt::layer()
         .with_target(false)
@@ -45,5 +47,7 @@ fn respects_columns_env_var() {
     let out = String::from_utf8(writer.0.lock().unwrap().clone()).unwrap();
     let expected = include_str!("../../../tests/golden/logging/wrap_40.txt");
     assert_eq!(out, expected);
-    std::env::remove_var("COLUMNS");
+    unsafe {
+        std::env::remove_var("COLUMNS");
+    }
 }

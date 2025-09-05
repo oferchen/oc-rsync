@@ -480,13 +480,19 @@ fn load_config_default_path() {
     fs::write(&cfg_path, "port = 873\n").unwrap();
     let var = "OC_RSYNC_CONFIG_PATH";
     let prev = std::env::var(var).ok();
-    std::env::set_var(var, &cfg_path);
+    unsafe {
+        std::env::set_var(var, &cfg_path);
+    }
     let cfg = load_config(None).unwrap();
     assert_eq!(cfg.port, Some(873));
     if let Some(v) = prev {
-        std::env::set_var(var, v);
+        unsafe {
+            std::env::set_var(var, v);
+        }
     } else {
-        std::env::remove_var(var);
+        unsafe {
+            std::env::remove_var(var);
+        }
     }
 }
 

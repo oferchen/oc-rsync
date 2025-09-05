@@ -4,7 +4,7 @@ use std::io::{self, ErrorKind};
 use std::ptr::{self, NonNull};
 
 #[cfg(not(target_os = "windows"))]
-extern "C" {
+unsafe extern "C" {
     #[cfg_attr(target_os = "macos", link_name = "__stdoutp")]
     static mut stdout: *mut libc::FILE;
     #[cfg_attr(target_os = "macos", link_name = "__stderrp")]
