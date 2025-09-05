@@ -1,9 +1,9 @@
 // tests/bin_daemon.rs
 use assert_cmd::cargo::{cargo_bin, CommandCargoExt};
 use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::net::TcpStream;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
 use tempfile::tempdir;
@@ -16,6 +16,26 @@ fn wait_for_daemon(port: u16) {
         sleep(Duration::from_millis(50));
     }
     panic!("daemon did not start");
+}
+
+fn read_port(child: &mut Child) -> u16 {
+    let stdout = child.stdout.take().unwrap();
+    let mut reader = BufReader::new(stdout);
+    let mut line = String::new();
+    reader.read_line(&mut line).unwrap();
+    let trimmed = line.trim();
+    if !trimmed.chars().all(|c| c.is_ascii_digit()) {
+        let _ = child.kill();
+        let mut stdout = line;
+        reader.read_to_string(&mut stdout).unwrap();
+        let mut stderr = String::new();
+        if let Some(mut e) = child.stderr.take() {
+            e.read_to_string(&mut stderr).unwrap();
+        }
+        let _ = child.wait();
+        panic!("daemon did not print a port number\nstdout: {stdout}\nstderr: {stderr}");
+    }
+    trimmed.parse::<u16>().unwrap()
 }
 
 #[test]
@@ -32,15 +52,11 @@ fn starts_daemon() {
             &format!("data={}", tmp.path().display()),
         ])
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .unwrap();
 
-    let port = {
-        let mut line = String::new();
-        let mut reader = BufReader::new(child.stdout.take().unwrap());
-        reader.read_line(&mut line).unwrap();
-        line.trim().parse::<u16>().unwrap()
-    };
+    let port = read_port(&mut child);
 
     wait_for_daemon(port);
 
@@ -74,15 +90,11 @@ fn accepts_config_option() {
             cfg_path.to_str().unwrap(),
         ])
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .unwrap();
 
-    let port = {
-        let mut line = String::new();
-        let mut reader = BufReader::new(child.stdout.take().unwrap());
-        reader.read_line(&mut line).unwrap();
-        line.trim().parse::<u16>().unwrap()
-    };
+    let port = read_port(&mut child);
 
     wait_for_daemon(port);
     assert!(pid_file.exists());
