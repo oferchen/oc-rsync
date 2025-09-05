@@ -16,7 +16,7 @@ fn handle_connection_empty_module_name() {
     let mut transport = LocalPipeTransport::new(reader, writer);
 
     let modules: HashMap<String, Module> = HashMap::new();
-    let handler: Arc<Handler> = Arc::new(|_t| Ok(()));
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
 
     handle_connection(
         &mut transport,

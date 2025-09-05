@@ -305,7 +305,7 @@ fn module_authentication_and_hosts_enforced() {
     };
     let mut modules = HashMap::new();
     modules.insert(module.name.clone(), module);
-    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
     let mut ok_t = pipe_transport("alice", "data");
     handle_connection(
         &mut ok_t,
@@ -373,7 +373,7 @@ fn host_deny_blocks_connection() {
     };
     let mut modules = HashMap::new();
     modules.insert(module.name.clone(), module);
-    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
     let mut t = pipe_transport("", "data");
     let err = handle_connection(
         &mut t,
@@ -414,7 +414,7 @@ fn daemon_refuses_configured_option() {
     };
     let mut modules = HashMap::new();
     modules.insert(module.name.clone(), module);
-    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
     let mut t = pipe_transport_opts("", "data", &["--delete"]);
     let err = handle_connection(
         &mut t,
@@ -446,7 +446,7 @@ fn daemon_refuses_numeric_ids_option() {
     };
     let mut modules = HashMap::new();
     modules.insert(module.name.clone(), module);
-    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
     let mut t = pipe_transport_opts("", "data", &["--numeric-ids"]);
     let err = handle_connection(
         &mut t,
@@ -479,7 +479,7 @@ fn daemon_refuses_no_numeric_ids_option() {
     };
     let mut modules = HashMap::new();
     modules.insert(module.name.clone(), module);
-    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
     let mut t = pipe_transport_opts("", "data", &["--no-numeric-ids"]);
     let err = handle_connection(
         &mut t,
@@ -516,7 +516,7 @@ fn rejects_missing_token() {
     };
     let mut modules = HashMap::new();
     modules.insert(module.name.clone(), module);
-    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
     let mut t = pipe_transport("", "data");
     let err = handle_connection(
         &mut t,
@@ -559,7 +559,7 @@ fn anonymous_module_listing_only_shows_listed_modules() {
         ..Module::default()
     };
     modules.insert("private".into(), private);
-    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
 
     handle_connection(
         &mut transport,

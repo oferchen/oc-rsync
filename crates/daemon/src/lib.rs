@@ -9,9 +9,7 @@ use std::sync::{atomic::AtomicUsize, atomic::Ordering, Arc};
 use std::time::Duration;
 
 #[cfg(unix)]
-use nix::errno::Errno;
-#[cfg(unix)]
-use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
+use nix::sys::wait::waitpid;
 #[cfg(unix)]
 use nix::unistd::{fork, setsid, ForkResult};
 #[cfg(unix)]
@@ -919,7 +917,7 @@ pub fn drop_privileges(_uid: u32, _gid: u32) -> io::Result<()> {
     Ok(())
 }
 
-pub type Handler = dyn Fn(&mut dyn Transport) -> io::Result<()> + Send + Sync;
+pub type Handler = dyn Fn(&mut dyn Transport, &[String]) -> io::Result<()> + Send + Sync;
 
 fn host_matches(ip: &IpAddr, pat: &str) -> bool {
     if pat == "*" {
@@ -1046,6 +1044,7 @@ pub fn handle_connection<T: Transport>(
         let mut opt_buf = [0u8; 256];
         let mut is_sender = false;
         let mut saw_server = false;
+        let mut opts = Vec::new();
         loop {
             let n = transport.receive(&mut opt_buf)?;
             let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
@@ -1058,10 +1057,13 @@ pub fn handle_connection<T: Transport>(
             if opt == "--server" {
                 saw_server = true;
             }
+            let mut consumed = false;
             if let Some(v) = opt.strip_prefix("--log-file=") {
                 log_file = Some(PathBuf::from(v));
+                consumed = true;
             } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
                 log_format = Some(v.to_string());
+                consumed = true;
             }
             if (opt == "--numeric-ids" && !module.numeric_ids)
                 || (opt == "--no-numeric-ids" && module.numeric_ids)
@@ -1073,6 +1075,9 @@ pub fn handle_connection<T: Transport>(
                     io::ErrorKind::PermissionDenied,
                     "option refused",
                 ));
+            }
+            if !consumed {
+                opts.push(opt);
             }
         }
         if module.read_only && saw_server && !is_sender {
@@ -1110,7 +1115,7 @@ pub fn handle_connection<T: Transport>(
         if module.max_connections.is_some() {
             module.connections.fetch_sub(1, Ordering::SeqCst);
         }
-        let res = handler(transport);
+        let res = handler(transport, &opts);
         let exit_res = transport.send(b"@RSYNCD: EXIT\n");
         let flush_res = transport.send(&[]);
         let log_flush_res = if let Some(f) = log.as_mut() {
@@ -1146,7 +1151,7 @@ pub fn run_daemon(
     state_dir: Option<PathBuf>,
     timeout: Option<Duration>,
     bwlimit: Option<u64>,
-    max_connections: Option<usize>,
+    _max_connections: Option<usize>,
     refuse_options: Vec<String>,
     list: bool,
     port: u16,
@@ -1245,27 +1250,8 @@ pub fn run_daemon(
     std::thread::spawn(|| {
         let _ = sd_notify::notify(false, &[NotifyState::Ready]);
     });
-    let active = Arc::new(AtomicUsize::new(0));
     loop {
-        #[cfg(unix)]
-        loop {
-            match waitpid(None, Some(WaitPidFlag::WNOHANG)) {
-                Ok(WaitStatus::StillAlive) | Err(Errno::ECHILD) => break,
-                Ok(_) => {
-                    if max_connections.is_some() {
-                        active.fetch_sub(1, Ordering::SeqCst);
-                    }
-                }
-                Err(_) => break,
-            }
-        }
         let (stream, addr) = TcpTransport::accept(&listener, &hosts_allow, &hosts_deny)?;
-        if let Some(max) = max_connections {
-            if active.load(Ordering::SeqCst) >= max {
-                continue;
-            }
-            active.fetch_add(1, Ordering::SeqCst);
-        }
         let peer = addr.ip().to_string();
         let modules = modules.clone();
         let secrets = secrets.clone();
@@ -1275,11 +1261,11 @@ pub fn run_daemon(
         let motd = motd.clone();
         let handler = handler.clone();
         let refuse = refuse_options.clone();
-        let active_conn = active.clone();
         #[cfg(unix)]
         match unsafe { fork() } {
-            Ok(ForkResult::Parent { .. }) => {
+            Ok(ForkResult::Parent { child }) => {
                 drop(stream);
+                let _ = waitpid(child, None);
             }
             Ok(ForkResult::Child) => {
                 let transport = TcpTransport::from_stream(stream);
@@ -1329,16 +1315,13 @@ pub fn run_daemon(
                 std::process::exit(0);
             }
             Err(e) => {
-                if max_connections.is_some() {
-                    active_conn.fetch_sub(1, Ordering::SeqCst);
-                }
                 if !quiet {
                     eprintln!("fork failed: {}", e);
                 }
             }
         }
         #[cfg(not(unix))]
-        std::thread::spawn(move || {
+        {
             let transport = TcpTransport::from_stream(stream);
             let res = (|| -> io::Result<()> {
                 let t = TimeoutTransport::new(transport, timeout)?;
@@ -1378,15 +1361,12 @@ pub fn run_daemon(
                     )
                 }
             })();
-            if max_connections.is_some() {
-                active_conn.fetch_sub(1, Ordering::SeqCst);
-            }
             if let Err(e) = res {
                 if !quiet {
                     eprintln!("connection error: {}", e);
                 }
             }
-        });
+        }
     }
 }
 
