@@ -797,10 +797,10 @@ impl Progress {
             bytes, percent, rate, time, self.file_idx, remaining, total_files
         );
         if done {
-            eprintln!("{line}");
+            println!("{line}");
         } else {
-            eprint!("{line}");
-            let _ = std::io::stderr().flush();
+            print!("{line}");
+            let _ = std::io::stdout().flush();
         }
     }
 }
