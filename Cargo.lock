@@ -995,6 +995,7 @@ dependencies = [
  "meta",
  "nix 0.27.1",
  "oc-rsync-cli",
+ "pkg-config",
  "posix-acl",
  "predicates",
  "protocol",

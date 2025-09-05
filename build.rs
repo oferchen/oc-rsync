@@ -1,6 +1,7 @@
 // build.rs
 
 use std::{env, fs, path::Path};
+
 use time::OffsetDateTime;
 
 const UPSTREAM_VERSION: &str = "3.4.1";
@@ -17,6 +18,12 @@ const BRANDING_VARS: &[&str] = &[
 fn main() {
     let revision = env::var("BUILD_REVISION").unwrap_or_else(|_| "unknown".to_string());
     let official = env::var("OFFICIAL_BUILD").unwrap_or_else(|_| "unofficial".to_string());
+
+    if env::var_os("CARGO_FEATURE_ACL").is_some() && pkg_config::Config::new().probe("acl").is_err()
+    {
+        println!("cargo:warning=libacl not found; ACL support will be disabled");
+        println!("cargo:rustc-cfg=libacl_missing");
+    }
 
     let protocols = UPSTREAM_PROTOCOLS
         .iter()

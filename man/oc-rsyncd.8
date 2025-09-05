@@ -35,6 +35,10 @@ Daemon behaviour and module definitions are controlled by the
 configuration file \f[V]oc-rsyncd.conf(5)\f[R].
 Clients connect using \f[V]oc-rsync(1)\f[R] and specify a module name in
 the \f[V]rsync://\f[R] URL.
+.PP
+Windows hosts are supported with the same path and metadata semantics as
+Unix systems, including normalization of extended
+\f[V]\[rs]\[rs]?\[rs]\f[R] paths and propagation of ACLs and timestamps.
 .SS Options
 .PP
 These flags influence the daemon when run from the command line:
