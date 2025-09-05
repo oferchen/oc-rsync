@@ -6,3 +6,5 @@ coverage:
     patch:
       default:
         target: 95%
+require_ci_to_pass: true
+verbose: true
