@@ -1,10 +1,20 @@
 // tests/bin_branding.rs
 use assert_cmd::Command;
 use predicates::str::contains;
+use serial_test::serial;
+
+fn set_env(key: &str, value: &str) {
+    unsafe { std::env::set_var(key, value) }
+}
+
+fn remove_env(key: &str) {
+    unsafe { std::env::remove_var(key) }
+}
 
 #[test]
+#[serial]
 fn errors_use_program_name() {
-    unsafe { std::env::set_var("OC_RSYNC_BRAND_NAME", "myrsync") };
+    set_env("OC_RSYNC_NAME", "myrsync");
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .arg("--bogus")
@@ -12,7 +22,7 @@ fn errors_use_program_name() {
         .failure()
         .stderr(contains("myrsync:"))
         .stderr(contains("myrsync error:"));
-    unsafe { std::env::remove_var("OC_RSYNC_BRAND_NAME") };
+    remove_env("OC_RSYNC_NAME");
 }
 
 #[test]
