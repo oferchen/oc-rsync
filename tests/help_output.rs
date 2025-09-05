@@ -77,3 +77,39 @@ fn dump_help_body_100_matches_golden() {
     let expected = fs::read("tests/golden/help/oc-rsync.dump-help-body.100").unwrap();
     assert_eq!(output.stdout, expected, "dump-help-body width 100 mismatch");
 }
+
+#[test]
+fn unknown_option_matches_snapshot() {
+    let output = Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .env("LC_ALL", "C")
+        .env("LANG", "C")
+        .arg("--bad-option")
+        .arg("src")
+        .arg("dst")
+        .assert()
+        .failure()
+        .get_output()
+        .clone();
+
+    let expected = fs::read("tests/golden/help/oc-rsync.bad-option.stderr").unwrap();
+    assert_eq!(output.stderr, expected, "unknown option stderr mismatch");
+}
+
+#[test]
+fn invalid_numeric_value_matches_snapshot() {
+    let output = Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .env("LC_ALL", "C")
+        .env("LANG", "C")
+        .arg("--timeout=abc")
+        .arg("src")
+        .arg("dst")
+        .assert()
+        .failure()
+        .get_output()
+        .clone();
+
+    let expected = fs::read("tests/golden/help/oc-rsync.invalid-timeout.stderr").unwrap();
+    assert_eq!(output.stderr, expected, "invalid timeout stderr mismatch");
+}

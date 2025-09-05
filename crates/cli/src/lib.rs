@@ -79,28 +79,51 @@ pub fn handle_clap_error(cmd: &clap::Command, e: clap::Error) -> ! {
     if kind == ErrorKind::DisplayHelp {
         println!("{}", render_help(cmd));
     } else {
-        let first = e.to_string();
-        let first = first.lines().next().unwrap_or("");
-        let msg = if matches!(kind, ErrorKind::ValueValidation | ErrorKind::InvalidValue)
-            && first.contains("--block-size")
-        {
-            let val = first.split('\'').nth(1).unwrap_or("");
-            format!("--block-size={val} is invalid")
+        let mut msg = e.to_string();
+        if matches!(kind, ErrorKind::ValueValidation | ErrorKind::InvalidValue) {
+            let first = msg.lines().next().unwrap_or("");
+            if first.contains("--block-size") {
+                let val = first.split('\'').nth(1).unwrap_or("");
+                msg = format!("--block-size={val} is invalid");
+            } else if let Some(rest) = first.strip_prefix("error: invalid value '") {
+                if let Some((val, rest)) = rest.split_once('\'') {
+                    if let Some(rest) = rest.strip_prefix(" for '") {
+                        if let Some((opt, _)) = rest.split_once('\'') {
+                            let opt_name = opt.split_whitespace().next().unwrap_or("");
+                            let kind = if first.contains("invalid digit") {
+                                "invalid numeric value"
+                            } else {
+                                "invalid value"
+                            };
+                            msg = format!("{opt_name}={val}: {kind}");
+                        }
+                    }
+                }
+            }
         } else if kind == ErrorKind::UnknownArgument {
+            let first = msg.lines().next().unwrap_or("");
             let arg = first.split('\'').nth(1).unwrap_or("");
-            format!("{arg}: unknown option")
-        } else {
-            first.strip_prefix("error: ").unwrap_or(first).to_string()
-        };
+            msg = format!("{arg}: unknown option");
+        } else if let Some(stripped) = msg.strip_prefix("error: ") {
+            msg = stripped.to_string();
+        }
+        msg = msg.trim_end().to_string();
         let desc = match code {
             ExitCode::Unsupported => "requested action not supported",
             _ => "syntax or usage error",
         };
         let code_num = u8::from(code);
         let prog = branding::program_name();
-
-        eprintln!("{prog}: {msg}");
-        eprintln!("{prog} error: {desc} (code {code_num})");
+        let mut lines = msg.lines();
+        if let Some(first) = lines.next() {
+            eprintln!("{prog}: {first}");
+            for line in lines {
+                eprintln!("{line}");
+            }
+        }
+        let version = option_env!("UPSTREAM_VERSION").unwrap_or("3.4.1");
+        let line_no = option_env!("MAIN_C_SYNTAX_LINE").unwrap_or("1836");
+        eprintln!("{prog} error: {desc} (code {code_num}) at main.c({line_no}) [client={version}]",);
     }
     std::process::exit(u8::from(code) as i32);
 }
