@@ -481,8 +481,10 @@ fn run_single(
 
     let known_hosts = opts.known_hosts.clone();
     let strict_host_key_checking = !opts.no_host_key_checking;
-    let rsh_raw = opts.rsh.clone().or_else(|| env::var("RSYNC_RSH").ok());
-    let rsh_cmd = parse_rsh(rsh_raw)?;
+    let rsh_cmd = match opts.rsh.clone() {
+        Some(cmd) => cmd,
+        None => parse_rsh(env::var("RSYNC_RSH").ok().or_else(|| env::var("RSH").ok()))?,
+    };
     let rsync_path_cmd = parse_rsync_path(opts.rsync_path.clone())?;
     let mut rsync_env: Vec<(String, String)> = env::vars()
         .filter(|(k, _)| k.starts_with("RSYNC_"))
@@ -1557,9 +1559,9 @@ mod tests {
     #[test]
     fn parses_rsh_flag_and_alias() {
         let opts = ClientOpts::parse_from(["prog", "--rsh", "ssh", "src", "dst"]);
-        assert_eq!(opts.rsh.as_deref(), Some("ssh"));
+        assert_eq!(opts.rsh.unwrap().cmd, vec!["ssh".to_string()]);
         let opts = ClientOpts::parse_from(["prog", "-e", "ssh", "src", "dst"]);
-        assert_eq!(opts.rsh.as_deref(), Some("ssh"));
+        assert_eq!(opts.rsh.unwrap().cmd, vec!["ssh".to_string()]);
     }
 
     #[test]

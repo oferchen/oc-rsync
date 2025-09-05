@@ -22,6 +22,9 @@ use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
 use sd_notify::{self, NotifyState};
 use transport::{AddressFamily, RateLimitedTransport, TcpTransport, TimeoutTransport, Transport};
 
+pub use meta::MetaOpts;
+pub const META_OPTS: MetaOpts = meta::META_OPTS;
+
 fn parse_list(val: &str) -> Vec<String> {
     val.split([' ', ','])
         .filter(|s| !s.is_empty())

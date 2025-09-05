@@ -36,6 +36,36 @@ See https://rsync.samba.org/ for updates, bug reports, and answers
 
 static RSYNC_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\brsync\b").unwrap());
 
+static UPSTREAM_OPTS: Lazy<Vec<(String, String)>> = Lazy::new(|| {
+    let mut opts = Vec::new();
+    let mut in_opts = false;
+    for line in RSYNC_HELP.lines() {
+        if line.trim() == "Options" {
+            in_opts = true;
+            continue;
+        }
+        if !in_opts {
+            continue;
+        }
+        if line.starts_with("Use \"rsync --daemon --help\"") {
+            break;
+        }
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Some(idx) = line.find("  ") {
+            let (spec, desc) = line.split_at(idx);
+            opts.push((spec.trim().to_string(), desc.trim().to_string()));
+        } else if let Some((_, last)) = opts.last_mut() {
+            if !last.is_empty() {
+                last.push(' ');
+            }
+            last.push_str(line.trim());
+        }
+    }
+    opts
+});
+
 pub const ARG_ORDER: &[&str] = &[
     "verbose",
     "info",
@@ -193,7 +223,7 @@ pub fn apply(mut cmd: Command) -> Command {
     cmd
 }
 
-pub fn render_help(cmd: &Command) -> String {
+pub fn render_help(_cmd: &Command) -> String {
     let width = columns();
     let program = branding::program_name();
     let version = branding::brand_version();
@@ -285,82 +315,28 @@ pub fn render_help(cmd: &Command) -> String {
     let mut out = String::new();
     out.push_str(&help_prefix);
 
-    let args: Vec<_> = cmd.get_arguments().collect();
-    for id in ARG_ORDER {
-        let Some(arg) = args.iter().find(|a| a.get_id().as_str() == *id) else {
-            continue;
-        };
-        if arg.is_hide_set() || arg.is_positional() {
-            continue;
-        }
-        let mut spec = String::new();
-        if let Some(long) = arg.get_long() {
-            spec.push_str("--");
-            spec.push_str(long);
-            if arg.get_action().takes_values() {
-                if let Some(names) = arg.get_value_names() {
-                    if let Some(name) = names.first() {
-                        spec.push('=');
-                        spec.push_str(name.as_str());
-                    }
-                }
-            }
-            if let Some(short) = arg.get_short() {
-                spec.push_str(", -");
-                spec.push(short);
-            }
-        } else if let Some(short) = arg.get_short() {
-            spec.push('-');
-            spec.push(short);
-        } else {
-            continue;
-        }
-
+    for (spec, desc) in UPSTREAM_OPTS.iter() {
         let pad = if spec.len() >= spec_width {
             2
         } else {
             spec_width - spec.len() + 2
         };
-
-        let help = arg.get_help().map(|s| s.to_string()).unwrap_or_default();
-        let mut lines = help.split('\n');
-        if let Some(first) = lines.next() {
-            let wrapped: Vec<String> = if let Some(opts) = &wrap_opts {
-                wrap(first, opts)
-                    .into_iter()
-                    .map(|c| c.into_owned())
-                    .collect()
-            } else {
-                vec![first.to_string()]
-            };
-            if let Some((wfirst, wrest)) = wrapped.split_first() {
-                out.push_str(&spec);
-                out.push_str(&" ".repeat(pad));
-                out.push_str(wfirst);
-                out.push('\n');
-                for line in wrest {
-                    out.push_str(&" ".repeat(spec_width + 2));
-                    out.push_str(line);
-                    out.push('\n');
-                }
-            }
-        }
-        for paragraph in lines {
-            if !paragraph.is_empty() {
-                let wrapped: Vec<String> = if let Some(opts) = &wrap_opts {
-                    wrap(paragraph, opts)
-                        .into_iter()
-                        .map(|c| c.into_owned())
-                        .collect()
-                } else {
-                    vec![paragraph.to_string()]
-                };
-                for line in wrapped {
-                    out.push_str(&" ".repeat(spec_width + 2));
-                    out.push_str(&line);
-                    out.push('\n');
-                }
-            } else {
+        let wrapped: Vec<String> = if let Some(opts) = &wrap_opts {
+            wrap(desc, opts)
+                .into_iter()
+                .map(|c| c.into_owned())
+                .collect()
+        } else {
+            vec![desc.to_string()]
+        };
+        if let Some((first, rest)) = wrapped.split_first() {
+            out.push_str(spec);
+            out.push_str(&" ".repeat(pad));
+            out.push_str(first);
+            out.push('\n');
+            for line in rest {
+                out.push_str(&" ".repeat(spec_width + 2));
+                out.push_str(line);
                 out.push('\n');
             }
         }
@@ -388,6 +364,7 @@ pub fn dump_help_body(cmd: &Command) -> String {
             std::env::remove_var("COLUMNS");
         }
     }
+
     let mut out = String::new();
     let mut in_options = false;
     let stop_marker = "Use \"rsync --daemon --help\"";
@@ -409,10 +386,10 @@ pub fn dump_help_body(cmd: &Command) -> String {
             let (spec, desc) = line.split_at(idx);
             if let Some(flag) = spec.split(',').find(|s| s.trim_start().starts_with("--")) {
                 let flag = flag.trim();
-                let desc = desc.split_whitespace().collect::<String>();
+                let desc = desc.trim_start();
                 out.push_str(flag);
                 out.push('\t');
-                out.push_str(&desc);
+                out.push_str(desc);
                 out.push('\n');
             }
         }

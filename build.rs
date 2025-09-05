@@ -5,7 +5,7 @@ use std::{env, fs, path::Path, path::PathBuf, process::Command};
 use time::OffsetDateTime;
 
 const UPSTREAM_VERSION: &str = "3.4.1";
-const UPSTREAM_PROTOCOLS: &[u32] = &[32, 31, 30, 29];
+const UPSTREAM_PROTOCOLS: &[u32] = &[32, 31, 30];
 const BRANDING_VARS: &[&str] = &[
     "OC_RSYNC_BRAND_NAME",
     "OC_RSYNC_BRAND_TAGLINE",

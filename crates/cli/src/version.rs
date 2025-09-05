@@ -11,7 +11,7 @@ const UPSTREAM_VERSION: &str = match option_env!("UPSTREAM_VERSION") {
 };
 const UPSTREAM_PROTOCOLS: &str = match option_env!("UPSTREAM_PROTOCOLS") {
     Some(v) => v,
-    None => "32,31,30,29",
+    None => "32,31,30",
 };
 
 const CAPABILITIES: &[&str] = &[

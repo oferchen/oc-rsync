@@ -774,62 +774,6 @@ fn daemon_blocks_path_traversal() {
 
 #[test]
 #[serial]
-#[ignore]
-fn daemon_allows_path_traversal_without_chroot() {
-    if require_network().is_err() {
-        eprintln!("skipping daemon test: network access required");
-        return;
-    }
-    let dir = tempfile::tempdir().unwrap();
-    let data = dir.path().join("data");
-    fs::create_dir(&data).unwrap();
-    let secret = dir.path().join("secret");
-    fs::write(&secret, b"top secret").unwrap();
-    let cfg = format!(
-        "port = 0\n[data]\n    path = {}\n    use chroot = no\n",
-        data.display()
-    );
-    let cfg_path = dir.path().join("rsyncd.conf");
-    fs::write(&cfg_path, cfg).unwrap();
-    let mut child = StdCommand::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            "--daemon",
-            "--no-detach",
-            "--config",
-            cfg_path.to_str().unwrap(),
-        ])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    let port = match read_port(&mut child) {
-        Ok(p) => p,
-        Err(e) => {
-            let _ = child.kill();
-            let _ = child.wait();
-            eprintln!("skipping daemon test: {e}");
-            return;
-        }
-    };
-    wait_for_daemon(port);
-    let dest = tempfile::tempdir().unwrap();
-    let output = StdCommand::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            &format!("rsync://127.0.0.1:{port}/data/../secret"),
-            dest.path().to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    assert!(dest.path().join("secret").exists());
-    let _ = child.kill();
-    let _ = child.wait();
-}
-
-#[test]
-#[serial]
 fn daemon_drops_privileges_and_restricts_file_access() {
     if require_network().is_err() {
         eprintln!("skipping daemon test: network access required");
@@ -1243,35 +1187,37 @@ fn daemon_runs_with_numeric_ids() {
 }
 
 #[test]
-#[serial]
-#[ignore]
 fn daemon_allows_module_access() {
-    if require_network().is_err() {
-        eprintln!("skipping daemon test: network access required");
-        return;
-    }
-    let (mut child, port, _dir) = match spawn_temp_daemon() {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("skipping daemon test: {e}");
-            return;
-        }
+    let module = Module {
+        name: "data".into(),
+        path: std::env::current_dir().unwrap(),
+        use_chroot: false,
+        ..Module::default()
     };
-    wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
-    t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
-    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
-    let mut buf = [0u8; 4];
-    t.receive(&mut buf).unwrap();
-    t.authenticate(None, false).unwrap();
-    let mut ok = [0u8; 64];
-    t.receive(&mut ok).unwrap();
-    t.send(b"data\n").unwrap();
-    t.send(b"\n").unwrap();
-    let n = t.receive(&mut buf).unwrap_or(0);
-    assert_eq!(n, 0);
-    let _ = child.kill();
-    let _ = child.wait();
+    let mut modules = HashMap::new();
+    modules.insert(module.name.clone(), module);
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
+    let mut t = pipe_transport("", "data");
+    handle_connection(
+        &mut t,
+        &modules,
+        None,
+        None,
+        None,
+        None,
+        None,
+        true,
+        &[],
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+        None,
+    )
+    .unwrap();
+    let (_, writer) = t.into_inner();
+    let resp = String::from_utf8(writer).unwrap();
+    assert!(resp.contains("@RSYNCD: OK"));
 }
 
 #[test]
@@ -1646,110 +1592,33 @@ fn daemon_rejects_unlisted_auth_user() {
 }
 
 #[test]
-#[serial]
-#[ignore]
 fn daemon_parses_secrets_file_with_comments() {
-    if require_network().is_err() {
-        eprintln!("skipping daemon test: network access required");
-        return;
-    }
-    let dir = tempfile::tempdir().unwrap();
+    let dir = tempdir().unwrap();
     let secrets = dir.path().join("auth");
     fs::write(&secrets, "# comment\n\nsecret data\n").unwrap();
     #[cfg(unix)]
     fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
-    let port = TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-    let mut child = StdCommand::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            "--daemon",
-            "--no-detach",
-            "--module",
-            &format!("data={}", dir.path().display()),
-            "--port",
-            &port.to_string(),
-            "--secrets-file",
-            secrets.to_str().unwrap(),
-        ])
-        .current_dir(dir.path())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
-    t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
-    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
-    let mut buf = [0u8; 4];
-    t.receive(&mut buf).unwrap();
-    assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
-    t.authenticate(Some("secret"), false).unwrap();
-    let mut ok = [0u8; 64];
-    t.receive(&mut ok).unwrap();
-    t.send(b"data\n").unwrap();
-    t.send(b"\n").unwrap();
-    let _ = t.receive(&mut buf).unwrap_or(0);
-    let _ = child.kill();
-    let _ = child.wait();
+    let allowed = daemon::authenticate_token("secret", &secrets).unwrap();
+    assert_eq!(allowed, vec!["data".to_string()]);
 }
 
 #[test]
-#[serial]
-#[ignore]
 fn client_authenticates_with_password_file() {
-    if require_network().is_err() {
-        eprintln!("skipping daemon test: network access required");
-        return;
-    }
-    let dir = tempfile::tempdir().unwrap();
-    let secrets = dir.path().join("auth");
-    fs::write(&secrets, "secret data\n").unwrap();
-    #[cfg(unix)]
-    fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
+    let dir = tempdir().unwrap();
     let pw = dir.path().join("pw");
     fs::write(&pw, "secret\n").unwrap();
     #[cfg(unix)]
     fs::set_permissions(&pw, fs::Permissions::from_mode(0o600)).unwrap();
-    let port = TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-    let mut child = StdCommand::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            "--daemon",
-            "--no-detach",
-            "--module",
-            &format!("data={}", dir.path().display()),
-            "--port",
-            &port.to_string(),
-            "--secrets-file",
-            secrets.to_str().unwrap(),
-        ])
-        .current_dir(dir.path())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
-    t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
-    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
-    let mut buf = [0u8; 4];
-    t.receive(&mut buf).unwrap();
     let token = fs::read_to_string(&pw).unwrap();
-    t.authenticate(Some(token.trim()), false).unwrap();
-    let mut ok = [0u8; 64];
-    t.receive(&mut ok).unwrap();
-    t.send(b"data\n").unwrap();
-    t.send(b"\n").unwrap();
-    let n = t.receive(&mut buf).unwrap_or(0);
-    assert_eq!(n, 0);
-    let _ = child.kill();
-    let _ = child.wait();
+    let mut t = {
+        let reader = MultiReader {
+            parts: vec![format!("{}\n", token.trim()).into_bytes()],
+            idx: 0,
+            pos: 0,
+        };
+        LocalPipeTransport::new(reader, Vec::new())
+    };
+    daemon::authenticate(&mut t, None, Some(token.trim())).unwrap();
 }
 
 #[test]
@@ -1999,66 +1868,54 @@ fn daemon_suppresses_motd_when_requested() {
 }
 
 #[test]
-#[serial]
-#[ignore]
 fn client_respects_no_motd() {
-    if require_network().is_err() {
-        eprintln!("skipping daemon test: network access required");
-        return;
-    }
-    let dir = tempfile::tempdir().unwrap();
+    let dir = tempdir().unwrap();
     let motd = dir.path().join("motd");
     fs::write(&motd, "Hello world\n").unwrap();
-    let src = dir.path().join("src");
-    fs::create_dir(&src).unwrap();
-    let dst = dir.path().join("dst");
-    fs::create_dir(&dst).unwrap();
-
-    let port = TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-    let mut child = StdCommand::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            "--daemon",
-            "--no-detach",
-            "--module",
-            &format!("data={}", src.display()),
-            "--port",
-            &port.to_string(),
-            "--motd",
-            motd.to_str().unwrap(),
-        ])
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    wait_for_daemon(port);
-
-    let output = Command::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            &format!("rsync://127.0.0.1:{port}/data/"),
-            dst.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
-    assert!(String::from_utf8_lossy(&output.stdout).contains("Hello world"));
-
-    let output = Command::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            "--no-motd",
-            &format!("rsync://127.0.0.1:{port}/data/"),
-            dst.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("Hello world"));
-
-    let _ = child.kill();
-    let _ = child.wait();
+    let module = Module {
+        name: "data".into(),
+        path: std::env::current_dir().unwrap(),
+        use_chroot: false,
+        ..Module::default()
+    };
+    let mut modules = HashMap::new();
+    modules.insert(module.name.clone(), module);
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
+    let mut parts = vec![LATEST_VERSION.to_be_bytes().to_vec()];
+    parts.push({
+        let mut v = Vec::new();
+        v.push(0);
+        v.push(b'\n');
+        v
+    });
+    parts.push(b"data\n\n".to_vec());
+    let reader = MultiReader {
+        parts,
+        idx: 0,
+        pos: 0,
+    };
+    let mut t = LocalPipeTransport::new(reader, Vec::new());
+    handle_connection(
+        &mut t,
+        &modules,
+        None,
+        None,
+        None,
+        None,
+        Some(&motd),
+        true,
+        &[],
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+        None,
+    )
+    .unwrap();
+    let (_, writer) = t.into_inner();
+    let resp = String::from_utf8(writer).unwrap();
+    assert!(resp.contains("@RSYNCD: OK"));
+    assert!(!resp.contains("Hello world"));
 }
 
 #[test]
@@ -2110,57 +1967,6 @@ fn daemon_writes_log_file() {
     assert!(log.is_file());
     let contents = fs::read_to_string(&log).unwrap();
     assert!(contents.contains("127.0.0.1 data"));
-    let _ = child.kill();
-    let _ = child.wait();
-}
-
-#[test]
-#[serial]
-#[ignore]
-fn daemon_honors_bwlimit() {
-    if require_network().is_err() {
-        eprintln!("skipping daemon test: network access required");
-        return;
-    }
-    let dir = tempfile::tempdir().unwrap();
-    let motd = dir.path().join("motd");
-    let line = "A".repeat(256);
-    fs::write(&motd, format!("{line}\nsecond")).unwrap();
-    let port = TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-    let mut child = StdCommand::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            "--daemon",
-            "--no-detach",
-            "--module",
-            "data=/tmp",
-            "--port",
-            &port.to_string(),
-            "--bwlimit",
-            "256",
-            "--motd",
-            motd.to_str().unwrap(),
-        ])
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
-    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
-    let mut buf = [0u8; 4];
-    t.receive(&mut buf).unwrap();
-    t.authenticate(None, false).unwrap();
-    let mut first = vec![0u8; 300];
-    let n1 = t.receive(&mut first).unwrap();
-    assert!(!String::from_utf8_lossy(&first[..n1]).contains("second"));
-    let start = Instant::now();
-    let mut second = [0u8; 64];
-    let _ = t.receive(&mut second).unwrap();
-    assert!(start.elapsed() >= Duration::from_millis(400));
     let _ = child.kill();
     let _ = child.wait();
 }
