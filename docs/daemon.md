@@ -82,10 +82,11 @@ The bundled `oc-rsyncd.service` applies systemd sandboxing features to reduce
 attack surface. It enables `NoNewPrivileges=yes`, mounts the host filesystem
 read-only with `ProtectSystem=strict`, hides user home directories via
 `ProtectHome=true`, and restarts on failure after a short delay with
-`Restart=on-failure` and `RestartSec=2s`. The unit grants only the
-`CAP_NET_BIND_SERVICE` capability via `CapabilityBoundingSet`/`AmbientCapabilities`
-and writes its PID and log to `/run/oc-rsyncd.pid` and `/var/log/oc-rsyncd.log`.
-These settings may be relaxed if the daemon requires additional privileges.
+`Restart=on-failure` and `RestartSec=2s`. The unit grants
+`CAP_DAC_READ_SEARCH`, `CAP_FOWNER`, `CAP_CHOWN`, and `CAP_DAC_OVERRIDE`
+via `CapabilityBoundingSet`/`AmbientCapabilities` and writes its PID and log to
+`/run/oc-rsyncd.pid` and `/var/log/oc-rsyncd.log`. These settings may be
+relaxed if the daemon requires additional privileges.
 
 ## Module setup
 
