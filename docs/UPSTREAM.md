@@ -13,7 +13,7 @@ When connecting to a peer, the highest shared version from this list is selected
 
 ```
 UPSTREAM_VERSION=3.4.1
-UPSTREAM_PROTOCOLS=[32,31,30]
+SUPPORTED_PROTOCOLS=[32,31,30]
 ```
 
-The build scripts for `oc-rsync` and `oc-rsyncd` embed these values into the binaries by exporting them as compile-time environment variables (for example `cargo:rustc-env=UPSTREAM_VERSION=…` and `cargo:rustc-env=UPSTREAM_PROTOCOLS=…`) in `build.rs`.
+The build scripts for `oc-rsync` and `oc-rsyncd` embed these values into the binaries by exporting them as compile-time environment variables (for example `cargo:rustc-env=UPSTREAM_VERSION=…` and `cargo:rustc-env=SUPPORTED_PROTOCOLS=…`) in `build.rs`.
