@@ -30,19 +30,19 @@ fn walk_includes_files_dirs_and_symlinks() {
             entries.push((path, e.file_type));
         }
     }
-    assert!(entries.iter().any(|(p, t)| p == &root && t.is_dir()));
+    assert!(entries.iter().any(|(p, t)| p == root && t.is_dir()));
     assert!(entries
         .iter()
-        .any(|(p, t)| p == &root.join("dir") && t.is_dir()));
+        .any(|(p, t)| p.as_path() == root.join("dir").as_path() && t.is_dir()));
     assert!(entries
         .iter()
-        .any(|(p, t)| p == &root.join("dir/large.txt") && t.is_file()));
+        .any(|(p, t)| p.as_path() == root.join("dir/large.txt").as_path() && t.is_file()));
     assert!(entries
         .iter()
-        .any(|(p, t)| p == &link_path && t.is_symlink()));
+        .any(|(p, t)| p == link_path.as_path() && t.is_symlink()));
     assert!(entries
         .iter()
-        .any(|(p, t)| p == &root.join("small.txt") && t.is_file()));
+        .any(|(p, t)| p.as_path() == root.join("small.txt").as_path() && t.is_file()));
 }
 
 #[test]
@@ -58,8 +58,7 @@ fn walk_preserves_order_and_bounds_batches() {
 
     let mut paths = Vec::new();
     let mut state = String::new();
-    let mut walker = walk(root, 2, false, false);
-    while let Some(batch) = walker.next() {
+    for batch in walk(root, 2, false, false) {
         let batch = batch.unwrap();
         assert!(batch.len() <= 2);
         for e in batch {
@@ -111,8 +110,7 @@ fn walk_skips_cross_device_entries() {
 
     let mut state = String::new();
     let mut found_pts = false;
-    let mut walker = walk(root, 100, false, false);
-    while let Some(batch) = walker.next() {
+    for batch in walk(root, 100, false, false) {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
@@ -127,9 +125,8 @@ fn walk_skips_cross_device_entries() {
     }
     assert!(found_pts, "expected to see /dev/pts without restriction");
 
-    let mut walker = walk(root, 100, false, true);
     state.clear();
-    while let Some(batch) = walker.next() {
+    for batch in walk(root, 100, false, true) {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);

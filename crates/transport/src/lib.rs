@@ -485,7 +485,7 @@ mod tests {
         t.send(b"ok").unwrap();
 
         t.last = Instant::now() - dur;
-        let err = t.send(b"fail").err().expect("timeout error");
+        let err = t.send(b"fail").expect_err("timeout error");
         assert_eq!(err.kind(), io::ErrorKind::TimedOut);
     }
 }
