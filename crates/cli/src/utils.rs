@@ -327,6 +327,12 @@ pub(crate) fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
         let mut mp = mod_path.splitn(2, '/');
         let module = mp.next().unwrap_or("");
         let path = mp.next().unwrap_or("");
+        if host.is_empty() {
+            return Err(EngineError::Other("remote host missing".into()));
+        }
+        if module.is_empty() {
+            return Err(EngineError::Other("remote module missing".into()));
+        }
         return Ok(RemoteSpec::Remote {
             host: host.to_string(),
             path: PathSpec {
@@ -340,6 +346,12 @@ pub(crate) fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
         if let Some(end) = rest.find(']') {
             let host = &rest[..end];
             if let Some(path) = rest[end + 1..].strip_prefix(':') {
+                if host.is_empty() {
+                    return Err(EngineError::Other("remote host missing".into()));
+                }
+                if path.is_empty() || !path.starts_with('/') {
+                    return Err(EngineError::Other("remote path missing".into()));
+                }
                 return Ok(RemoteSpec::Remote {
                     host: host.to_string(),
                     path: PathSpec {
@@ -360,6 +372,15 @@ pub(crate) fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
         let mut rest = s[idx + 2..].splitn(2, '/');
         let module = rest.next().unwrap_or("");
         let path = rest.next().unwrap_or("");
+        if host.is_empty() {
+            return Err(EngineError::Other("remote host missing".into()));
+        }
+        if module.is_empty() {
+            return Err(EngineError::Other("remote module missing".into()));
+        }
+        if path.is_empty() {
+            return Err(EngineError::Other("remote path missing".into()));
+        }
         return Ok(RemoteSpec::Remote {
             host: host.to_string(),
             path: PathSpec {
@@ -386,6 +407,12 @@ pub(crate) fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
             }
         }
         let (host, path) = s.split_at(idx);
+        if host.is_empty() {
+            return Err(EngineError::Other("remote host missing".into()));
+        }
+        if path[1..].is_empty() {
+            return Err(EngineError::Other("remote path missing".into()));
+        }
         return Ok(RemoteSpec::Remote {
             host: host.to_string(),
             path: PathSpec {
