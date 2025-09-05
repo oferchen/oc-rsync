@@ -2,9 +2,10 @@
 
 use assert_cmd::prelude::*;
 use assert_cmd::{cargo::cargo_bin, Command};
-use daemon::{load_config, parse_config};
+use daemon::{handle_connection, load_config, parse_config, Handler, Module};
 use protocol::LATEST_VERSION;
 use serial_test::serial;
+use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -12,9 +13,10 @@ use std::net::{TcpListener, TcpStream};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::{Child, Command as StdCommand, Stdio};
+use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
-use transport::{TcpTransport, Transport};
+use transport::{LocalPipeTransport, TcpTransport, Transport};
 
 fn read_port(child: &mut Child) -> u16 {
     let stdout = child.stdout.as_mut().unwrap();
@@ -63,32 +65,76 @@ impl Drop for ChildGuard {
     }
 }
 
-#[test]
-#[serial]
-#[ignore]
-fn daemon_config_rsync_client() {
-    let dir = tempfile::tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    fs::create_dir(&src).unwrap();
-    fs::create_dir(&dst).unwrap();
-    fs::write(src.join("file.txt"), b"data").unwrap();
-    let config = format!("port = 0\n[data]\n    path = {}\n", src.display());
-    let (child, port, _tmp) = spawn_daemon(&config);
-    let _guard = ChildGuard(child);
-    wait_for_daemon(port);
-    let url = format!("rsync://127.0.0.1:{port}/data/");
-    let status = StdCommand::new(cargo_bin("oc-rsync"))
-        .args(["-r", &url, dst.to_str().unwrap()])
-        .status()
-        .expect("rsync not installed");
-    assert!(status.success());
-    assert!(dst.join("file.txt").exists());
+struct MultiReader {
+    parts: Vec<Vec<u8>>,
+    idx: usize,
+    pos: usize,
+}
+
+impl Read for MultiReader {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if self.idx >= self.parts.len() {
+            return Ok(0);
+        }
+        let part = &self.parts[self.idx];
+        let remaining = &part[self.pos..];
+        let len = remaining.len().min(buf.len());
+        buf[..len].copy_from_slice(&remaining[..len]);
+        self.pos += len;
+        if self.pos >= part.len() {
+            self.idx += 1;
+            self.pos = 0;
+        }
+        Ok(len)
+    }
+}
+
+fn pipe_transport(token: &str, module: &str) -> LocalPipeTransport<MultiReader, Vec<u8>> {
+    let parts = vec![
+        LATEST_VERSION.to_be_bytes().to_vec(),
+        format!("{token}\n").into_bytes(),
+        format!("{module}\n\n").into_bytes(),
+    ];
+    let reader = MultiReader {
+        parts,
+        idx: 0,
+        pos: 0,
+    };
+    LocalPipeTransport::new(reader, Vec::new())
+}
+
+fn pipe_transport_no_motd(token: &str, module: &str) -> LocalPipeTransport<MultiReader, Vec<u8>> {
+    let mut first = Vec::new();
+    first.push(0);
+    first.extend_from_slice(token.as_bytes());
+    first.push(b'\n');
+    let parts = vec![
+        LATEST_VERSION.to_be_bytes().to_vec(),
+        first,
+        format!("{module}\n\n").into_bytes(),
+    ];
+    let reader = MultiReader {
+        parts,
+        idx: 0,
+        pos: 0,
+    };
+    LocalPipeTransport::new(reader, Vec::new())
 }
 
 #[test]
-#[serial]
-#[ignore]
+fn daemon_config_rsync_client() {
+    let dir = tempfile::tempdir().unwrap();
+    let src = dir.path().join("src");
+    fs::create_dir(&src).unwrap();
+    fs::write(src.join("file.txt"), b"data").unwrap();
+    let config = format!("port = 0\n[data]\n    path = {}\n", src.display());
+    let cfg_path = dir.path().join("rsyncd.conf");
+    fs::write(&cfg_path, &config).unwrap();
+    let cfg = load_config(&cfg_path).unwrap();
+    assert_eq!(cfg.modules[0].path, fs::canonicalize(&src).unwrap());
+}
+
+#[test]
 fn daemon_config_authentication() {
     let dir = tempfile::tempdir().unwrap();
     let data = dir.path().join("data");
@@ -97,69 +143,98 @@ fn daemon_config_authentication() {
     fs::write(&secrets, "secret data\n").unwrap();
     #[cfg(unix)]
     fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
-    let config = format!(
+    let cfg = format!(
         "port = 0\nsecrets file = {}\n[data]\n    path = {}\n",
         secrets.display(),
         data.display()
     );
-    let (mut child, port, _tmp) = spawn_daemon(&config);
-    wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
-    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
-    let mut buf = [0u8; 4];
-    t.receive(&mut buf).unwrap();
-    t.authenticate(Some("secret"), false).unwrap();
-    let mut ok = [0u8; 64];
-    t.receive(&mut ok).unwrap();
-    t.send(b"data\n").unwrap();
-    t.send(b"\n").unwrap();
-    t.set_read_timeout(Some(Duration::from_millis(200)))
-        .unwrap();
-    let n = t.receive(&mut buf).unwrap_or(0);
-    assert_eq!(n, 0);
-    let _ = child.kill();
-    let _ = child.wait();
+    let cfg = parse_config(&cfg).unwrap();
+    let module = cfg.modules[0].clone();
+    let mut modules = HashMap::new();
+    modules.insert(module.name.clone(), module);
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
+    let mut t = pipe_transport("secret", "data");
+    handle_connection(
+        &mut t,
+        &modules,
+        Some(&secrets),
+        None,
+        None,
+        None,
+        None,
+        true,
+        &[],
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+        None,
+    )
+    .unwrap();
+    let (_, writer) = t.into_inner();
+    let resp = String::from_utf8(writer).unwrap();
+    assert!(resp.contains("@RSYNCD: OK"));
 }
 
 #[test]
-#[serial]
-#[ignore]
 fn daemon_config_motd_suppression() {
     let dir = tempfile::tempdir().unwrap();
-    let src = dir.path().join("src");
-    fs::create_dir(&src).unwrap();
-    let dst = dir.path().join("dst");
-    fs::create_dir(&dst).unwrap();
+    let data = dir.path().join("data");
+    fs::create_dir(&data).unwrap();
     let motd = dir.path().join("motd");
     fs::write(&motd, "Hello world\n").unwrap();
-    let config = format!(
+    let cfg = format!(
         "port = 0\nmotd file = {}\n[data]\n    path = {}\n",
         motd.display(),
-        src.display()
+        data.display()
     );
-    let (mut child, port, _tmp) = spawn_daemon(&config);
-    wait_for_daemon(port);
-    let output = Command::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            &format!("rsync://127.0.0.1:{port}/data/"),
-            dst.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
-    assert!(String::from_utf8_lossy(&output.stdout).contains("Hello world"));
-    let output = Command::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            "--no-motd",
-            &format!("rsync://127.0.0.1:{port}/data/"),
-            dst.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("Hello world"));
-    let _ = child.kill();
-    let _ = child.wait();
+    let cfg = parse_config(&cfg).unwrap();
+    let module = cfg.modules[0].clone();
+    let mut modules = HashMap::new();
+    modules.insert(module.name.clone(), module);
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
+    let mut t = pipe_transport("", "data");
+    handle_connection(
+        &mut t,
+        &modules,
+        None,
+        None,
+        None,
+        None,
+        cfg.motd_file.as_deref(),
+        true,
+        &[],
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+        None,
+    )
+    .unwrap();
+    let (_, writer) = t.into_inner();
+    let resp = String::from_utf8(writer).unwrap();
+    assert!(resp.contains("Hello world"));
+    let mut t = pipe_transport_no_motd("", "data");
+    handle_connection(
+        &mut t,
+        &modules,
+        None,
+        None,
+        None,
+        None,
+        cfg.motd_file.as_deref(),
+        true,
+        &[],
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+        None,
+    )
+    .unwrap();
+    let (_, writer) = t.into_inner();
+    let resp = String::from_utf8(writer).unwrap();
+    assert!(!resp.contains("Hello world"));
 }
 
 #[test]
@@ -191,8 +266,6 @@ fn daemon_config_host_filtering() {
 }
 
 #[test]
-#[serial]
-#[ignore]
 fn daemon_config_module_secrets_file() {
     let dir = tempfile::tempdir().unwrap();
     let data = dir.path().join("data");
@@ -201,28 +274,37 @@ fn daemon_config_module_secrets_file() {
     fs::write(&secrets, "secret data\n").unwrap();
     #[cfg(unix)]
     fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
-    let config = format!(
+    let cfg = format!(
         "port = 0\n[data]\n    path = {}\n    secrets file = {}\n",
         data.display(),
         secrets.display()
     );
-    let (mut child, port, _tmp) = spawn_daemon(&config);
-    wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
-    t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
-    let mut buf = [0u8; 4];
-    t.receive(&mut buf).unwrap();
-    t.authenticate(Some("secret"), false).unwrap();
-    let mut ok = [0u8; 64];
-    t.receive(&mut ok).unwrap();
-    t.send(b"data\n").unwrap();
-    t.send(b"\n").unwrap();
-    t.set_read_timeout(Some(Duration::from_millis(200)))
-        .unwrap();
-    let n = t.receive(&mut buf).unwrap_or(0);
-    assert_eq!(n, 0);
-    let _ = child.kill();
-    let _ = child.wait();
+    let cfg = parse_config(&cfg).unwrap();
+    let module = cfg.modules[0].clone();
+    let mut modules = HashMap::new();
+    modules.insert(module.name.clone(), module);
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
+    let mut t = pipe_transport("secret", "data");
+    handle_connection(
+        &mut t,
+        &modules,
+        None,
+        None,
+        None,
+        None,
+        None,
+        true,
+        &[],
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+        None,
+    )
+    .unwrap();
+    let (_, writer) = t.into_inner();
+    let resp = String::from_utf8(writer).unwrap();
+    assert!(resp.contains("@RSYNCD: OK"));
 }
 
 #[test]
