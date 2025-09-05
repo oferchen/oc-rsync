@@ -34,7 +34,7 @@ kept up to date from their results.
 |---------|----------------|
 | 30 | [protocol override test](../crates/cli/src/lib.rs#L1958-L2030) |
 | 31 | [server handshake test](../crates/protocol/tests/server.rs#L1-L80) |
-| 32 | [rsync 3.3.0 transcript](../tests/interop/wire/rsync-3.3.0.log) |
+| 32 | [rsync 3.4.1 transcript](../tests/interop/wire/rsync-3.4.1.log) |
 
 ## Interoperability caveats
 

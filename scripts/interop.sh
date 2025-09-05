@@ -6,7 +6,7 @@ OC_RSYNC="$ROOT/target/debug/oc-rsync"
 INTEROP_DIR="$ROOT/tests/interop"
 WIRE_DIR="$INTEROP_DIR/wire"
 FILELIST_DIR="$INTEROP_DIR/filelists"
-VERSIONS=("3.1.3" "3.2.7" "3.3.0")
+VERSIONS=("3.1.3" "3.2.7" "3.4.1")
 FLAGS=(--recursive --times --perms)
 
 mkdir -p "$WIRE_DIR" "$FILELIST_DIR"
