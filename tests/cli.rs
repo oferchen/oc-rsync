@@ -242,16 +242,16 @@ fn exclude_from_from0_matches_rsync() {
 }
 
 #[test]
-fn filter_file_from0_matches_rsync() {
+fn filter_merge_from0_matches_filter_file() {
     use std::process::Command as StdCommand;
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
-    let rsync_dst = tmp.path().join("rsync");
-    let ours_dst = tmp.path().join("ours");
+    let merge_dst = tmp.path().join("merge");
+    let file_dst = tmp.path().join("file");
     fs::create_dir_all(&src).unwrap();
-    fs::create_dir_all(&rsync_dst).unwrap();
-    fs::create_dir_all(&ours_dst).unwrap();
+    fs::create_dir_all(&merge_dst).unwrap();
+    fs::create_dir_all(&file_dst).unwrap();
 
     fs::write(src.join("a.txt"), "hi").unwrap();
     fs::write(src.join("b.log"), "no").unwrap();
@@ -269,7 +269,7 @@ fn filter_file_from0_matches_rsync() {
             "--filter",
             &format!("merge {}", filter.display()),
             &src_arg,
-            rsync_dst.to_str().unwrap(),
+            merge_dst.to_str().unwrap(),
         ])
         .status()
         .unwrap();
@@ -282,15 +282,15 @@ fn filter_file_from0_matches_rsync() {
             "--filter-file",
             filter.to_str().unwrap(),
             &src_arg,
-            ours_dst.to_str().unwrap(),
+            file_dst.to_str().unwrap(),
         ])
         .assert()
         .success();
 
     let diff = StdCommand::new("diff")
         .arg("-r")
-        .arg(&rsync_dst)
-        .arg(&ours_dst)
+        .arg(&merge_dst)
+        .arg(&file_dst)
         .status()
         .unwrap();
     assert!(diff.success(), "directory trees differ");
