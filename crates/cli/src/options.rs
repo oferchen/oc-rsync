@@ -625,6 +625,7 @@ pub(crate) struct ClientOpts {
         long = "write-batch",
         value_name = "FILE",
         help_heading = "Misc",
+        help = "write a binary batch file capturing flist, checksums, and data",
         conflicts_with_all = ["read_batch", "only_write_batch"]
     )]
     pub write_batch: Option<PathBuf>,
@@ -640,7 +641,7 @@ pub(crate) struct ClientOpts {
         long = "read-batch",
         value_name = "FILE",
         help_heading = "Misc",
-        help = "read a batched update from FILE",
+        help = "replay a binary batch file created by --write-batch",
         conflicts_with_all = ["write_batch", "only_write_batch"]
     )]
     pub read_batch: Option<PathBuf>,
