@@ -15,8 +15,10 @@ if ! ldconfig -p 2>/dev/null | grep -q 'libz\.so'; then
   missing+=("zlib (install zlib1g-dev)")
 fi
 
+missing_optional=()
+
 if ! ldconfig -p 2>/dev/null | grep -q libacl; then
-  missing+=("libacl (install libacl1-dev)")
+  missing_optional+=("libacl (install libacl1-dev or disable the 'acl' feature)")
 fi
 
 if ((${#missing[@]})); then
@@ -25,6 +27,13 @@ if ((${#missing[@]})); then
     echo "  - $dep" >&2
   done
   exit 1
+fi
+
+if ((${#missing_optional[@]})); then
+  echo "Warning: missing optional build dependencies:" >&2
+  for dep in "${missing_optional[@]}"; do
+    echo "  - $dep" >&2
+  done
 fi
 
 echo "All required linkers and libraries are present."

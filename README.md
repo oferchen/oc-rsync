@@ -52,6 +52,12 @@ sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
 Run `scripts/preflight.sh` to verify these dependencies before building. Then
 install from crates.io or build from a local checkout:
 
+If `libacl1-dev` isn't available, disable ACL support with
+
+```bash
+cargo build --no-default-features --features xattr
+```
+
 ```bash
 # install from crates.io
 cargo install oc-rsync
