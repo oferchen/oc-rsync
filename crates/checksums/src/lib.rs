@@ -76,21 +76,21 @@ impl ChecksumConfig {
         match self.strong {
             StrongHash::Md4 => {
                 let mut h = Md4::new();
-                h.update(&self.seed.to_le_bytes());
+                h.update(self.seed.to_le_bytes());
                 StrongHasher(StrongHasherInner::Md4(h))
             }
             StrongHash::Md5 => {
                 let mut h = Md5::new();
-                h.update(&self.seed.to_le_bytes());
+                h.update(self.seed.to_le_bytes());
                 StrongHasher(StrongHasherInner::Md5(h))
             }
             StrongHash::Sha1 => {
                 let mut h = Sha1::new();
-                h.update(&self.seed.to_le_bytes());
+                h.update(self.seed.to_le_bytes());
                 StrongHasher(StrongHasherInner::Sha1(h))
             }
             StrongHash::Xxh64 => {
-                StrongHasher(StrongHasherInner::Xxh64(Xxh64::with_seed(self.seed as u64)))
+                StrongHasher(StrongHasherInner::Xxh64(Xxh64::new(self.seed as u64)))
             }
             StrongHash::Xxh3 => {
                 StrongHasher(StrongHasherInner::Xxh3(Xxh3::with_seed(self.seed as u64)))
@@ -131,7 +131,7 @@ impl StrongHasher {
             StrongHasherInner::Md5(h) => h.finalize().to_vec(),
             StrongHasherInner::Sha1(h) => h.finalize().to_vec(),
             StrongHasherInner::Xxh64(h) => h.digest().to_be_bytes().to_vec(),
-            StrongHasherInner::Xxh3(h) => h.digest64().to_be_bytes().to_vec(),
+            StrongHasherInner::Xxh3(h) => h.digest().to_be_bytes().to_vec(),
             StrongHasherInner::Xxh128(h) => h.digest128().to_be_bytes().to_vec(),
         }
     }
