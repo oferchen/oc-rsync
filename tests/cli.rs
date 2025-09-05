@@ -1173,10 +1173,22 @@ fn destination_is_replaced_atomically() {
         .spawn()
         .unwrap();
 
-    let tmp_file = dst_dir.join("a.tmp");
     let mut found = false;
     for _ in 0..50 {
-        if tmp_file.exists() {
+        let tmp_present = fs::read_dir(&dst_dir)
+            .unwrap()
+            .filter_map(|e| {
+                let entry = e.ok()?;
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                if name.starts_with(".a.txt.") {
+                    Some(entry.path())
+                } else {
+                    None
+                }
+            })
+            .next();
+        if tmp_present.is_some() {
             let out = std::fs::read(&dst_file).unwrap();
             assert_eq!(out, b"old");
             found = true;
@@ -1186,7 +1198,7 @@ fn destination_is_replaced_atomically() {
     }
     assert!(
         found,
-        "temp file not created in destination during transfer"
+        "temp file not created in destination during transfer",
     );
 
     child.wait().unwrap();
