@@ -3345,7 +3345,7 @@ mod tests {
         let mut stats = Stats::default();
         sender.start();
         for path in [src.join("inside.txt"), outside.clone()] {
-            if let Some(rel) = path.strip_prefix(&src).ok() {
+            if let Ok(rel) = path.strip_prefix(&src) {
                 let dest_path = dst.join(rel);
                 sender
                     .process_file(&path, &dest_path, rel, &mut receiver, &mut stats)
@@ -3449,7 +3449,7 @@ mod tests {
             tmp.write_all(&chunk).unwrap();
         }
         let path = tmp.path().to_path_buf();
-        let mut sender = Sender::new(
+        let sender = Sender::new(
             RSYNC_BLOCK_SIZE,
             Matcher::default(),
             None,
