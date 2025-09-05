@@ -199,12 +199,11 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 }
 
 fn print_stats(stats: &Stats, opts: &ClientOpts) {
-    let num_files = stats.files_total + stats.dirs_total;
+    println!("Number of files: {}", stats.files_total);
     println!(
-        "Number of files: {} (reg: {}, dir: {})",
-        num_files, stats.files_total, stats.dirs_total
+        "Number of created files: {}",
+        stats.files_created - stats.dirs_created
     );
-    println!("Number of created files: {}", stats.files_created);
     println!("Number of deleted files: {}", stats.files_deleted);
     println!(
         "Number of regular files transferred: {}",
