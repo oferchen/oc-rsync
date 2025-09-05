@@ -41,7 +41,7 @@ headers:
 5. A maintainer will review your PR and may request changes.
 
 ## Testing Requirements
-- Install `cargo-nextest` if it's not already installed. Run `./scripts/install-nextest.sh` to verify or install it.
+- Install `cargo-nextest` with `cargo install cargo-nextest --locked` if it's not already installed, or run `./scripts/install-nextest.sh` to verify or install it.
 - Ensure `cargo nextest run --workspace --no-fail-fast` (and `--all-features`) passes locally.
 - Add or update tests for any new code.
 - Prefer small, focused commits that each pass the test suite.

@@ -29,7 +29,7 @@ fn read_prunes_trivial_acls() -> std::io::Result<()> {
 
     let subdir = dir.path().join("d");
     fs::create_dir(&subdir)?;
-    let dacl = PosixACL::new(0o777);
+    let mut dacl = PosixACL::new(0o777);
     dacl.write_default_acl(&subdir).map_err(acl_to_io)?;
     let (_, default_acl) = read_acl(&subdir, false)?;
     assert!(default_acl.is_empty());

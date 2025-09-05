@@ -183,6 +183,7 @@ This agent architecture provides a **clean separation of responsibilities** and 
 - Lint with `cargo clippy --all-targets --all-features -- -D warnings`.
 
 ### Mandatory Checks
+- Install `cargo-nextest` with `cargo install cargo-nextest --locked` if it is not already available.
 - Run `cargo nextest run --workspace --no-fail-fast` (and `--all-features`) and ensure all tests pass.
 - Execute `make verify-comments` to validate file header comments.
 - Use `make lint` to confirm formatting.

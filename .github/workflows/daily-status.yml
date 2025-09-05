@@ -21,7 +21,7 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
       - run: cargo install cargo-llvm-cov
-      - run: cargo install cargo-nextest
+      - run: cargo install cargo-nextest --locked
       - run: mkdir -p reports && cargo llvm-cov nextest --workspace --json --summary-only --output-path reports/coverage.json -- --no-fail-fast
       - run: cargo run --package xtask --bin status
 
