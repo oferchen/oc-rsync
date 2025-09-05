@@ -29,27 +29,99 @@ The \f[V]-4\f[R] and \f[V]-6\f[R] flags restrict the listener to IPv4 or
 IPv6 addresses respectively.
 These can be combined with \f[V]--address\f[R] to bind a specific
 interface.
+.SS \f[V]oc-rsyncd\f[R]
+.PP
+A dedicated \f[V]oc-rsyncd\f[R] binary ships alongside the main CLI and
+enables daemon mode without remembering \f[V]--daemon\f[R].
+It is functionally equivalent to invoking \f[V]oc-rsync --daemon\f[R]
+and exposes the same flags.
+.IP
+.nf
+\f[C]
+$ oc-rsyncd --help
+Usage: oc-rsyncd [OPTIONS] --module NAME=PATH...
+
+Options:
+  --config <FILE>        Load daemon configuration
+  --module <NAME=PATH>   Export a module (repeatable)
+  --address <ADDRESS>    Bind to a specific interface
+  --port <PORT>          Listen on a custom TCP port
+  --secrets-file <FILE>  Authentication tokens
+  --no-detach            Stay in the foreground
+\f[R]
+.fi
+.PP
+Common invocations:
+.IP
+.nf
+\f[C]
+# Inline module definition
+oc-rsyncd --module \[aq]data=/srv/export\[aq]
+
+# Load modules from a config file
+oc-rsyncd --config /etc/oc-rsyncd.conf
+\f[R]
+.fi
+.PP
+The configuration syntax is documented in \f[V]oc-rsyncd.conf(5)\f[R].
+A hardened systemd unit is available under
+\f[V]packaging/systemd/oc-rsyncd.service\f[R].
+.PP
+The \f[V]oc-rsync\f[R] client can also launch the daemon directly:
+.IP
+.nf
+\f[C]
+oc-rsync --daemon --module \[aq]data=/srv/export\[aq]
+\f[R]
+.fi
+.SS Configuration file
+.PP
+\f[V]oc-rsync\f[R] understands a configuration file that mirrors
+\f[V]rsyncd.conf(5)\f[R] (https://download.samba.org/pub/rsync/rsyncd.conf.html).
+Pass \f[V]--config /path/to/rsyncd.conf\f[R] to the daemon and declare
+global options and modules inside.
+Keys are case insensitive and accept spaces, dashes, or underscores
+interchangeably:
+.IP
+.nf
+\f[C]
+port = 8730
+motd-file = /etc/oc-rsyncd.motd
+
+[data]
+    path = /srv/export
+    hosts-allow = 192.0.2.1
+\f[R]
+.fi
+.PP
+Each module requires a \f[V]path\f[R] directive which is resolved and
+canonicalised at startup.
+Unknown directives are ignored for now but using the canonical names
+from \f[V]rsyncd.conf(5)\f[R] ensures forward compatibility.
 .SS Example packaging
 .PP
 Sample files for running the daemon are provided under
 \f[V]packaging/\f[R] and are included in release artifacts:
 .IP \[bu] 2
-\f[V]packaging/examples/oc-rsyncd.conf\f[R] \[en] example configuration file
+\f[V]packaging/examples/oc-rsyncd.conf\f[R] \[en] example configuration
+file
 .IP \[bu] 2
 \f[V]packaging/systemd/oc-rsyncd.service\f[R] \[en] systemd service unit
 .SS systemd hardening
 .PP
 The bundled \f[V]oc-rsyncd.service\f[R] applies systemd sandboxing
-features to reduce attack surface. It enables
-\f[V]NoNewPrivileges=yes\f[R], mounts the host filesystem read-only with
-\f[V]ProtectSystem=strict\f[R], hides user home directories via
-\f[V]ProtectHome=true\f[R], and restarts on failure after a short delay
-with \f[V]Restart=on-failure\f[R] and \f[V]RestartSec=2s\f[R]. The unit
-grants only the \f[V]CAP_NET_BIND_SERVICE\f[R] capability via
-\f[V]CapabilityBoundingSet\f[R]/\f[V]AmbientCapabilities\f[R] and
-writes its PID and log to \f[V]/run/oc-rsyncd.pid\f[R] and
-\f[V]/var/log/oc-rsyncd.log\f[R]. These settings may be relaxed if the
-daemon requires additional privileges.
+features to reduce attack surface.
+It enables \f[V]NoNewPrivileges=yes\f[R], mounts the host filesystem
+read-only with \f[V]ProtectSystem=strict\f[R], hides user home
+directories via \f[V]ProtectHome=true\f[R], and restarts on failure
+after a short delay with \f[V]Restart=on-failure\f[R] and
+\f[V]RestartSec=2s\f[R].
+The unit grants only the \f[V]CAP_NET_BIND_SERVICE\f[R] capability via
+\f[V]CapabilityBoundingSet\f[R]/\f[V]AmbientCapabilities\f[R] and writes
+its PID and log to \f[V]/run/oc-rsyncd.pid\f[R] and
+\f[V]/var/log/oc-rsyncd.log\f[R].
+These settings may be relaxed if the daemon requires additional
+privileges.
 .SS Module setup
 .PP
 Modules map a name to a directory on disk.
@@ -108,8 +180,15 @@ will be ignored.
 .PP
 Before serving files the daemon confines itself to the module root.
 On Unix platforms it performs a \f[V]chroot\f[R] to the module path,
-changes its working directory to \f[V]/\f[R], and drops privileges to
-the nobody user and group (UID/GID 65534).
+changes its working directory to \f[V]/\f[R], and drops privileges to a
+less privileged user and group (UID/GID 65534 by default).
+The \f[V]uid\f[R] and \f[V]gid\f[R] module directives may override the
+default IDs for specific exports.
+.PP
+Unit tests exercising this chroot and privilege-dropping behavior
+require root privileges.
+When run as an unprivileged user these tests are skipped, so CI
+environments must provide sufficient permissions to execute them.
 .SS Hosts allow/deny lists
 .PP
 The daemon can restrict connections based on client address.

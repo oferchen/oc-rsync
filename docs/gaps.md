@@ -35,6 +35,7 @@ when available. Do not exceed functionality of upstream at <https://rsync.samba.
 | Composite `--archive` flag expansion | ✅ | [tests/archive.rs](../tests/archive.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | Remote-only option parsing (`--remote-option`) | ✅ | [tests/interop/remote_option.rs](../tests/interop/remote_option.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | `--version` output parity | ✅ | [tests/version_output.rs](../tests/version_output.rs) | [crates/cli/src/version.rs](../crates/cli/src/version.rs) |
+| Null-delimited list parsing (`--from0`) | ✅ | [tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 
 Note: [tests/archive.rs](../tests/archive.rs) demonstrates the composite `--archive` flag expansion.
 
@@ -64,13 +65,14 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | --- | --- | --- | --- |
 | zstd and zlib codecs | Implemented | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/lib.rs](../crates/compress/src/lib.rs) |
 | `--skip-compress` suffix handling | Implemented | [tests/skip_compress.rs](../tests/skip_compress.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| LZ4 codec (experimental) | Planned post-parity ([#873](https://github.com/oferchen/oc-rsync/pull/873)) | — | — |
+| LZ4 codec | Removed pending parity ([#1183](https://github.com/oferchen/oc-rsync/pull/1183)); planned post-parity ([#873](https://github.com/oferchen/oc-rsync/pull/873)) | — | — |
 
 ## Filters
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
 | Include/Exclude parser | Implemented | [crates/filters/tests/include_exclude.rs](../crates/filters/tests/include_exclude.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | `.rsync-filter` merge semantics | Implemented | [crates/filters/tests/merge.rs](../crates/filters/tests/merge.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
+| Null-delimited filter lists and merges (`--from0`) | Implemented | [crates/filters/tests/include_from.rs](../crates/filters/tests/include_from.rs)<br>[crates/filters/tests/from0_merges.rs](../crates/filters/tests/from0_merges.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | Rule logging and statistics | Implemented | [crates/filters/tests/rule_stats.rs](../crates/filters/tests/rule_stats.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 
 ## File Selection
@@ -89,6 +91,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | Permissions and ownership restoration | Implemented | [crates/meta/tests/chmod.rs](../crates/meta/tests/chmod.rs) | [crates/meta/src/unix.rs](../crates/meta/src/unix.rs) |
 | `--fake-super` xattr fallback | Implemented | [crates/meta/tests/fake_super.rs](../crates/meta/tests/fake_super.rs) | [crates/meta/src/unix.rs](../crates/meta/src/unix.rs) |
 | POSIX ACL preservation | Implemented | [crates/meta/tests/acl_roundtrip.rs](../crates/meta/tests/acl_roundtrip.rs) | [crates/meta/src/unix.rs](../crates/meta/src/unix.rs) |
+| Windows metadata preservation | Implemented | [tests/windows.rs](../tests/windows.rs) | [crates/meta/src/windows.rs](../crates/meta/src/windows.rs) |
 
 ## Transport
 | Feature | Status | Tests | Source |

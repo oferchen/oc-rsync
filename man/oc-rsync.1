@@ -28,6 +28,13 @@ For a complete list of flags and their implementation status, see the
 feature matrix, which is the authoritative reference for contributors.
 The full \f[V]--help\f[R] output is captured in cli-help.txt and checked
 in CI to match the binary.
+The upstream \f[V]rsync --help\f[R] text wrapped to 80 columns is stored
+in \f[V]crates/cli/resources/rsync-help-80.txt\f[R].
+A unit test derives the expected option ordering from this file and
+compares it to the \f[V]ARG_ORDER\f[R] constant used to render our help
+text.
+If upstream adds or reorders options, update this resource and adjust
+\f[V]ARG_ORDER\f[R] so the test continues to pass.
 .SS Usage
 .IP
 .nf
@@ -1747,6 +1754,33 @@ Built-in defaults
 .PP
 No configuration file is loaded unless \f[V]--config\f[R] is supplied.
 Settings specified earlier in the list override later sources.
+.SS Branding environment variables
+.PP
+The CLI\[cq]s branding can be customized at runtime via the following
+environment variables:
+.IP \[bu] 2
+\f[V]OC_RSYNC_BRAND_NAME\f[R] \[en] override the displayed program name.
+.IP \[bu] 2
+\f[V]OC_RSYNC_BRAND_TAGLINE\f[R] \[en] one-line tagline shown in
+\f[V]--help\f[R] output.
+.IP \[bu] 2
+\f[V]OC_RSYNC_BRAND_URL\f[R] \[en] project URL printed in
+\f[V]--help\f[R] and \f[V]--version\f[R].
+.IP \[bu] 2
+\f[V]OC_RSYNC_BRAND_COPYRIGHT\f[R] \[en] copyright line used in
+\f[V]--version\f[R] output.
+.IP \[bu] 2
+\f[V]OC_RSYNC_HIDE_CREDITS\f[R] \[en] if set to a non-zero value, hides
+the tagline and URL.
+.IP \[bu] 2
+\f[V]OC_RSYNC_VERSION_PREFIX\f[R] \[en] prefix prepended to the package
+version.
+.IP \[bu] 2
+\f[V]OC_RSYNC_HELP_HEADER\f[R] \[en] replaces the default help header
+text.
+.IP \[bu] 2
+\f[V]OC_RSYNC_VERSION_HEADER\f[R] \[en] replaces the default version
+header text.
 .SS Filters
 .PP
 \f[V]oc-rsync\f[R] supports include and exclude rules using the same
