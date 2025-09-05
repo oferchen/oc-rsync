@@ -668,15 +668,22 @@ pub fn rate_formatter(bytes_per_sec: f64) -> String {
 }
 
 fn escape_bytes(bytes: &[u8], eight_bit_output: bool) -> String {
-    let mut out = Vec::new();
+    let mut out = String::new();
     for &b in bytes {
-        if (b < 0x20 && b != b'\t') || b == 0x7f || (!eight_bit_output && b >= 0x80) {
-            out.extend_from_slice(format!("\\#{:03o}", b).as_bytes());
+        if (b < 0x20 && b != b'\t') || b == 0x7f {
+            out.push_str(&format!("\\#{:03o}", b));
+        } else if b < 0x80 {
+            out.push(b as char);
+        } else if eight_bit_output {
+            out.push(char::from(b));
         } else {
-            out.push(b);
+            let mut buf = [0u8; 4];
+            for &ub in char::from(b).encode_utf8(&mut buf).as_bytes() {
+                out.push_str(&format!("\\#{:03o}", ub));
+            }
         }
     }
-    String::from_utf8_lossy(&out).into_owned()
+    out
 }
 
 pub fn escape_path(path: &Path, eight_bit_output: bool) -> String {
