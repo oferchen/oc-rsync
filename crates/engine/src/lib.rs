@@ -1064,19 +1064,25 @@ impl Sender {
         recv: &mut Receiver,
         stats: &mut Stats,
     ) -> Result<bool> {
+        let mut dest = dest.to_path_buf();
+        if dest.is_dir() {
+            if let Some(name) = path.file_name() {
+                dest.push(name);
+            }
+        }
         if self.opts.checksum {
-            if let Ok(dst_sum) = self.strong_file_checksum(dest) {
+            if let Ok(dst_sum) = self.strong_file_checksum(&dest) {
                 let src_sum = self.strong_file_checksum(path)?;
                 if src_sum == dst_sum {
-                    recv.copy_metadata(path, dest)?;
+                    recv.copy_metadata(path, &dest)?;
                     return Ok(false);
                 }
-            } else if self.metadata_unchanged(path, dest) {
-                recv.copy_metadata(path, dest)?;
+            } else if self.metadata_unchanged(path, &dest) {
+                recv.copy_metadata(path, &dest)?;
                 return Ok(false);
             }
-        } else if self.metadata_unchanged(path, dest) {
-            recv.copy_metadata(path, dest)?;
+        } else if self.metadata_unchanged(path, &dest) {
+            recv.copy_metadata(path, &dest)?;
             return Ok(false);
         }
 
@@ -1109,22 +1115,24 @@ impl Sender {
                 dir.join(file)
             }
         } else {
-            dest.with_extension("partial")
+            let mut name = dest.file_name().unwrap_or_default().to_os_string();
+            name.push(".partial");
+            dest.with_file_name(name)
         };
         let basis_path = if self.opts.partial && partial_path.exists() {
             partial_path.clone()
         } else if self.opts.fuzzy && !dest.exists() {
-            fuzzy_match(dest).unwrap_or_else(|| dest.to_path_buf())
+            fuzzy_match(&dest).unwrap_or_else(|| dest.clone())
         } else {
-            dest.to_path_buf()
+            dest.clone()
         };
         let mut resume = if self.opts.partial && partial_path.exists() {
             last_good_block(&self.cfg, path, &partial_path, block_size, &self.opts)?
         } else if self.opts.append || self.opts.append_verify {
             if self.opts.append_verify {
-                last_good_block(&self.cfg, path, dest, block_size, &self.opts)?
+                last_good_block(&self.cfg, path, &dest, block_size, &self.opts)?
             } else {
-                let dest_meta = fs::metadata(dest).map_err(|e| io_context(dest, e))?;
+                let dest_meta = fs::metadata(&dest).map_err(|e| io_context(&dest, e))?;
                 dest_meta.len()
             }
         } else {
@@ -1193,7 +1201,7 @@ impl Sender {
             if let Some(parent) = backup_path.parent() {
                 fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
             }
-            atomic_rename(dest, &backup_path)?;
+            atomic_rename(&dest, &backup_path)?;
         }
         let mut skip = resume as u64;
         let mut literal = 0u64;
@@ -1258,11 +1266,11 @@ impl Sender {
             Ok(op)
         });
         if !self.opts.only_write_batch {
-            recv.apply(path, dest, rel, ops)?;
+            recv.apply(path, &dest, rel, ops)?;
             stats.literal_data += literal;
             stats.matched_data += matched;
             drop(atime_guard);
-            recv.copy_metadata(path, dest)?;
+            recv.copy_metadata(path, &dest)?;
         } else {
             drop(atime_guard);
             for op in ops {
@@ -1314,6 +1322,12 @@ impl Receiver {
         I: IntoIterator<Item = Result<Op>>,
     {
         self.state = ReceiverState::Applying;
+        let mut dest = dest.to_path_buf();
+        if dest.is_dir() {
+            if let Some(name) = src.file_name() {
+                dest.push(name);
+            }
+        }
         let partial = if let Some(dir) = &self.opts.partial_dir {
             let file = dest.file_name().unwrap_or_default();
             if let Some(parent) = dest.parent() {
@@ -1322,19 +1336,21 @@ impl Receiver {
                 dir.join(file)
             }
         } else {
-            dest.with_extension("partial")
+            let mut name = dest.file_name().unwrap_or_default().to_os_string();
+            name.push(".partial");
+            dest.with_file_name(name)
         };
         let basis_path = if self.opts.inplace {
-            dest.to_path_buf()
+            dest.clone()
         } else if self.opts.partial && partial.exists() {
             partial.clone()
         } else {
-            dest.to_path_buf()
+            dest.clone()
         };
         let dest_parent = dest.parent().unwrap_or_else(|| Path::new("."));
         let mut auto_tmp = false;
         let mut tmp_dest = if self.opts.inplace {
-            dest.to_path_buf()
+            dest.clone()
         } else if let Some(dir) = &self.opts.temp_dir {
             #[cfg(unix)]
             let same_dev = match (fs::metadata(dest_parent), fs::metadata(dir)) {
@@ -1364,7 +1380,7 @@ impl Receiver {
         } else if self.opts.partial {
             partial.clone()
         } else {
-            dest.to_path_buf()
+            dest.clone()
         };
         if !self.opts.inplace
             && !self.opts.partial
@@ -1373,13 +1389,17 @@ impl Receiver {
             && !self.opts.write_devices
         {
             auto_tmp = true;
-            tmp_dest = dest.with_extension("tmp");
+            let mut name = dest.file_name().unwrap_or_default().to_os_string();
+            name.push(".tmp");
+            tmp_dest = dest.with_file_name(name);
         }
         let mut needs_rename =
             !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some() || auto_tmp);
         if self.opts.delay_updates && !self.opts.inplace && !self.opts.write_devices {
             if tmp_dest == dest {
-                tmp_dest = dest.with_extension("tmp");
+                let mut name = dest.file_name().unwrap_or_default().to_os_string();
+                name.push(".tmp");
+                tmp_dest = dest.with_file_name(name);
             }
             needs_rename = true;
         }
@@ -1447,7 +1467,7 @@ impl Receiver {
         }
         #[cfg(unix)]
         if !self.opts.write_devices {
-            let check_path = if auto_tmp { dest } else { &tmp_dest };
+            let check_path: &Path = if auto_tmp { &dest } else { &tmp_dest };
             if let Ok(meta) = fs::symlink_metadata(check_path) {
                 let ft = meta.file_type();
                 if ft.is_block_device() || ft.is_char_device() {
@@ -1496,7 +1516,7 @@ impl Receiver {
         };
         let mut progress = if self.opts.progress {
             Some(Progress::new(
-                dest,
+                &dest,
                 src_len,
                 self.opts.human_readable,
                 resume,
@@ -1534,9 +1554,9 @@ impl Receiver {
         if needs_rename {
             if self.opts.delay_updates {
                 self.delayed
-                    .push((src.to_path_buf(), tmp_dest.clone(), dest.to_path_buf()));
+                    .push((src.to_path_buf(), tmp_dest.clone(), dest.clone()));
             } else {
-                atomic_rename(&tmp_dest, dest)?;
+                atomic_rename(&tmp_dest, &dest)?;
                 if let Some(tmp_parent) = tmp_dest.parent() {
                     if dest.parent() != Some(tmp_parent)
                         && tmp_parent
@@ -1551,22 +1571,22 @@ impl Receiver {
             #[cfg(unix)]
             if let Some((uid, gid)) = self.opts.copy_as {
                 let gid = gid.map(Gid::from_raw);
-                chown(dest, Some(Uid::from_raw(uid)), gid)
-                    .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
+                chown(&dest, Some(Uid::from_raw(uid)), gid)
+                    .map_err(|e| io_context(&dest, std::io::Error::from(e)))?;
             }
         } else {
             #[cfg(unix)]
             if let Some((uid, gid)) = self.opts.copy_as {
                 let gid = gid.map(Gid::from_raw);
-                chown(dest, Some(Uid::from_raw(uid)), gid)
-                    .map_err(|e| io_context(dest, std::io::Error::from(e)))?;
+                chown(&dest, Some(Uid::from_raw(uid)), gid)
+                    .map_err(|e| io_context(&dest, std::io::Error::from(e)))?;
             }
         }
         self.state = ReceiverState::Finished;
         Ok(if self.opts.delay_updates && needs_rename {
             tmp_dest
         } else {
-            dest.to_path_buf()
+            dest
         })
     }
 }
@@ -2520,7 +2540,12 @@ pub fn sync(
                 {
                     continue;
                 }
-                let dest_path = dst.join(rel);
+                let mut dest_path = dst.join(rel);
+                if file_type.is_file() && dest_path.is_dir() {
+                    if let Some(name) = path.file_name() {
+                        dest_path.push(name);
+                    }
+                }
                 if opts.dirs && !file_type.is_dir() {
                     continue;
                 }
@@ -2557,7 +2582,12 @@ pub fn sync(
                                 dir.join(file)
                             }
                         } else {
-                            dest_path.with_extension("partial")
+                            {
+                                let mut name =
+                                    dest_path.file_name().unwrap_or_default().to_os_string();
+                                name.push(".partial");
+                                dest_path.with_file_name(name)
+                            }
                         };
                         partial_path.exists()
                     } else {

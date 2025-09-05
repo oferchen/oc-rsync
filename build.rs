@@ -23,9 +23,7 @@ fn main() {
     if cfg!(unix) {
         if env::var_os("CARGO_FEATURE_ACL").is_some() {
             match pkg_config::Config::new().probe("acl") {
-                Ok(_) => {
-                    // pkg-config emits the required cargo directives
-                }
+                Ok(_) => {}
                 Err(_) => {
                     let mut lib_dir: Option<PathBuf> = None;
 
