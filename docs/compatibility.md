@@ -4,7 +4,7 @@ This page summarizes the operating systems and interoperability scenarios that
 have been exercised with `oc-rsync`. Cross-platform tests are now integrated
 into CI, and their results populate the detailed matrix in
 [compat_matrix.md](compat_matrix.md). Known behavioral differences from classic
-`rsync` are tracked in [differences.md](differences.md).
+`rsync` are tracked in [gaps.md](gaps.md).
 
 ## Protocol versions
 

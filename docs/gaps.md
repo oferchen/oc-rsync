@@ -1,5 +1,7 @@
 # Feature Gaps
 
+All divergences from upstream `rsync` should be recorded here; the previous `docs/differences.md` file is intentionally empty.
+
 This document summarizes parity status across major domains of `oc-rsync`.  Each
 table lists notable features that are either implemented, only partially
 completed, or still missing.  Entries link to the source and corresponding tests
