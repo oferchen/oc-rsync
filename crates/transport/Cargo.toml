@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 protocol = { path = "../protocol" }
 compress = { path = "../compress" }
-nix = { version = "0.28", default-features = false, features = ["poll", "fs"] }
+nix = { version = "0.30.1", default-features = false, features = ["poll", "fs"] }
 socket2 = { version = "0.5", features = ["all"] }
 checksums = { path = "../checksums" }
 ipnet = "2"

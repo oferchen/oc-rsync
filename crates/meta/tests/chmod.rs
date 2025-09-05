@@ -3,6 +3,7 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
 use meta::{normalize_mode, parse_chmod, Metadata, Options};
+use nix::fcntl::AT_FDCWD;
 use nix::sys::stat::{fchmodat, FchmodatFlags, Mode};
 use tempfile::tempdir;
 
@@ -13,7 +14,7 @@ fn chmod_numeric_mode_normalized() -> std::io::Result<()> {
     fs::write(&path, b"test")?;
 
     fchmodat(
-        None,
+        AT_FDCWD,
         &path,
         Mode::from_bits_truncate(0o600),
         FchmodatFlags::NoFollowSymlink,

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-clap = { version = "4", features = ["derive", "env"] }
+clap = { version = "4.5.47", features = ["derive", "env"] }
 engine = { path = "../engine" }
 protocol = { path = "../protocol" }
 filters = { path = "../filters" }
@@ -22,7 +22,7 @@ regex = "1"
 once_cell = "1"
 
 [target.'cfg(unix)'.dependencies]
-nix = { version = "0.27", features = ["user", "fs"] }
+nix = { version = "0.30.1", features = ["user", "fs"] }
 users = "0.11"
 
 [target.'cfg(target_os = "linux")'.dependencies]

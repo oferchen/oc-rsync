@@ -517,6 +517,8 @@ fn inner_pipe(inner: Option<&mut InnerPipe>) -> io::Result<&mut InnerPipe> {
 }
 
 fn set_fd_blocking(fd: RawFd, blocking: bool) -> io::Result<()> {
+    use std::os::fd::BorrowedFd;
+    let fd = unsafe { BorrowedFd::borrow_raw(fd) };
     let flags = OFlag::from_bits_truncate(fcntl(fd, FcntlArg::F_GETFL).map_err(io::Error::from)?);
     let mut new_flags = flags;
     if blocking {

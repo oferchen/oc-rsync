@@ -6,8 +6,6 @@ use oc_rsync_cli::cli_command;
 use predicates::str::contains;
 use std::fs;
 use std::net::TcpListener;
-#[cfg(unix)]
-use std::os::fd::AsRawFd;
 use std::path::Path;
 use std::thread;
 use std::time::Duration;
@@ -44,8 +42,7 @@ fn blocking_io_nonblocking_by_default() {
     #[cfg(unix)]
     {
         let stream = t.into_inner();
-        let fd = stream.as_raw_fd();
-        let flags = OFlag::from_bits_truncate(fcntl(fd, FcntlArg::F_GETFL).unwrap());
+        let flags = OFlag::from_bits_truncate(fcntl(&stream, FcntlArg::F_GETFL).unwrap());
         assert!(flags.contains(OFlag::O_NONBLOCK));
     }
     #[cfg(not(unix))]
@@ -68,8 +65,7 @@ fn blocking_io_flag_enables_blocking_mode() {
     #[cfg(unix)]
     {
         let stream = t.into_inner();
-        let fd = stream.as_raw_fd();
-        let flags = OFlag::from_bits_truncate(fcntl(fd, FcntlArg::F_GETFL).unwrap());
+        let flags = OFlag::from_bits_truncate(fcntl(&stream, FcntlArg::F_GETFL).unwrap());
         assert!(!flags.contains(OFlag::O_NONBLOCK));
     }
     #[cfg(not(unix))]
