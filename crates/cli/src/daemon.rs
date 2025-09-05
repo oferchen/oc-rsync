@@ -15,7 +15,7 @@ use clap::{ArgMatches, Args};
 use daemon::{parse_config_file, parse_module, Module};
 use engine::{EngineError, Result, SyncOptions};
 use logging::parse_escapes;
-use protocol::{negotiate_version, CharsetConv};
+use protocol::{negotiate_version, CharsetConv, ExitCode};
 use transport::{parse_sockopts, AddressFamily, SockOpt, TcpTransport, Transport};
 
 #[derive(Args, Debug, Clone)]
@@ -115,12 +115,19 @@ pub fn spawn_daemon_session(
             if line == b"@RSYNCD: OK\n" {
                 break;
             }
+            let s = if let Some(cv) = iconv {
+                cv.decode_remote(&line)
+            } else {
+                String::from_utf8_lossy(&line).into_owned()
+            };
+            if let Some(err) = s.strip_prefix("@ERROR: ") {
+                let msg = err.trim().to_string();
+                if msg == "timeout waiting for daemon connection" {
+                    return Err(EngineError::Exit(ExitCode::Timeout, msg));
+                }
+                return Err(EngineError::Other(msg));
+            }
             if !no_motd {
-                let s = if let Some(cv) = iconv {
-                    cv.decode_remote(&line)
-                } else {
-                    String::from_utf8_lossy(&line).into_owned()
-                };
                 if let Some(msg) = s.strip_prefix("@RSYNCD: ") {
                     print!("{msg}");
                 } else {

@@ -321,6 +321,7 @@ fn module_authentication_and_hosts_enforced() {
         uid,
         gid,
         &handler,
+        None,
     )
     .unwrap();
 
@@ -339,6 +340,7 @@ fn module_authentication_and_hosts_enforced() {
         uid,
         gid,
         &handler,
+        None,
     )
     .unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
@@ -357,6 +359,7 @@ fn module_authentication_and_hosts_enforced() {
         uid,
         gid,
         &handler,
+        None,
     )
     .unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
@@ -389,6 +392,7 @@ fn host_deny_blocks_connection() {
         0,
         0,
         &handler,
+        None,
     )
     .unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
@@ -430,6 +434,7 @@ fn daemon_refuses_configured_option() {
         0,
         0,
         &handler,
+        None,
     )
     .unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
@@ -462,6 +467,7 @@ fn daemon_refuses_numeric_ids_option() {
         0,
         0,
         &handler,
+        None,
     )
     .unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
@@ -495,6 +501,7 @@ fn daemon_refuses_no_numeric_ids_option() {
         0,
         0,
         &handler,
+        None,
     )
     .unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
@@ -532,6 +539,7 @@ fn rejects_missing_token() {
         0,
         0,
         &handler,
+        None,
     )
     .unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
@@ -575,6 +583,7 @@ fn anonymous_module_listing_only_shows_listed_modules() {
         0,
         0,
         &handler,
+        None,
     )
     .unwrap();
 

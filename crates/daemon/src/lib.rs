@@ -6,7 +6,7 @@ use std::io::{self, Write};
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::{atomic::AtomicUsize, atomic::Ordering, Arc};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[cfg(unix)]
 use nix::sys::wait::waitpid;
@@ -954,11 +954,38 @@ pub fn handle_connection<T: Transport>(
     uid: u32,
     gid: u32,
     handler: &Arc<Handler>,
+    timeout: Option<Duration>,
 ) -> io::Result<()> {
     let mut log_file = log_file.map(|p| p.to_path_buf());
     let mut log_format = log_format.map(|s| s.to_string());
+    let deadline = timeout.map(|d| Instant::now() + d);
+
+    let check_deadline = |t: &mut T| -> io::Result<()> {
+        if let Some(dl) = deadline {
+            if Instant::now() >= dl {
+                let _ = t.send(b"@ERROR: timeout waiting for daemon connection");
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "timeout waiting for daemon connection",
+                ));
+            }
+        }
+        Ok(())
+    };
+
+    check_deadline(transport)?;
     let mut buf = [0u8; 4];
-    let n = transport.receive(&mut buf)?;
+    let n = match transport.receive(&mut buf) {
+        Ok(n) => n,
+        Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {
+            let _ = transport.send(b"@ERROR: timeout waiting for daemon connection");
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "timeout waiting for daemon connection",
+            ));
+        }
+        Err(e) => return Err(e),
+    };
     if n == 0 {
         return Ok(());
     }
@@ -977,9 +1004,21 @@ pub fn handle_connection<T: Transport>(
             }
         }
     }
+    check_deadline(transport)?;
     transport.send(b"@RSYNCD: OK\n")?;
     let mut name_buf = [0u8; 256];
-    let n = transport.receive(&mut name_buf)?;
+    check_deadline(transport)?;
+    let n = match transport.receive(&mut name_buf) {
+        Ok(n) => n,
+        Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {
+            let _ = transport.send(b"@ERROR: timeout waiting for daemon connection");
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "timeout waiting for daemon connection",
+            ));
+        }
+        Err(e) => return Err(e),
+    };
     let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
     if name.is_empty() {
         if list {
@@ -1046,7 +1085,18 @@ pub fn handle_connection<T: Transport>(
         let mut saw_server = false;
         let mut opts = Vec::new();
         loop {
-            let n = transport.receive(&mut opt_buf)?;
+            check_deadline(transport)?;
+            let n = match transport.receive(&mut opt_buf) {
+                Ok(n) => n,
+                Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {
+                    let _ = transport.send(b"@ERROR: timeout waiting for daemon connection");
+                    return Err(io::Error::new(
+                        io::ErrorKind::TimedOut,
+                        "timeout waiting for daemon connection",
+                    ));
+                }
+                Err(e) => return Err(e),
+            };
             let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
             if opt.is_empty() {
                 break;
@@ -1287,6 +1337,7 @@ pub fn run_daemon(
                             uid,
                             gid,
                             &handler,
+                            timeout,
                         )
                     } else {
                         let mut t = t;
@@ -1304,6 +1355,7 @@ pub fn run_daemon(
                             uid,
                             gid,
                             &handler,
+                            timeout,
                         )
                     }
                 })();
@@ -1341,6 +1393,7 @@ pub fn run_daemon(
                         uid,
                         gid,
                         &handler,
+                        timeout,
                     )
                 } else {
                     let mut t = t;
@@ -1358,6 +1411,7 @@ pub fn run_daemon(
                         uid,
                         gid,
                         &handler,
+                        timeout,
                     )
                 }
             })();
