@@ -7,7 +7,7 @@ use std::fs;
 use std::net::TcpListener;
 #[cfg(unix)]
 use std::os::fd::AsRawFd;
-use std::process::Command as StdCommand;
+use std::path::Path;
 use std::thread;
 use tempfile::{tempdir, NamedTempFile};
 use transport::tcp::TcpTransport;
@@ -249,45 +249,61 @@ fn legacy_old_dirs_matches(flag: &str) {
     fs::create_dir_all(src.join("sub")).unwrap();
     fs::write(src.join("sub/file.txt"), b"data").unwrap();
 
-    let rsync_dst = tmp.path().join("rsync");
-    fs::create_dir_all(&rsync_dst).unwrap();
     let oc_dst = tmp.path().join("oc");
     fs::create_dir_all(&oc_dst).unwrap();
 
     let src_arg = format!("{}/", src.display());
-    let rsync_dest = format!("{}/", rsync_dst.display());
     let oc_dest = format!("{}/", oc_dst.display());
 
-    assert!(StdCommand::new("rsync")
-        .arg(flag)
-        .arg(&src_arg)
-        .arg(&rsync_dest)
-        .status()
+    let status_path = match flag {
+        "--old-dirs" => "tests/golden/cli_flags/old-dirs.status",
+        "--old-d" => "tests/golden/cli_flags/old-d.status",
+        _ => unreachable!(),
+    };
+    let expected_status: i32 = fs::read_to_string(status_path)
         .unwrap()
-        .success());
+        .trim()
+        .parse()
+        .unwrap();
 
-    Command::cargo_bin("oc-rsync")
+    let output = Command::cargo_bin("oc-rsync")
         .unwrap()
         .arg(flag)
         .arg(&src_arg)
         .arg(&oc_dest)
-        .assert()
-        .success();
-
-    assert!(rsync_dst.join("sub").exists());
-    assert!(oc_dst.join("sub").exists());
-    assert!(!rsync_dst.join("sub/file.txt").exists());
-    assert!(!oc_dst.join("sub/file.txt").exists());
-
-    let diff = StdCommand::new("diff")
-        .arg("-r")
-        .arg(&rsync_dst)
-        .arg(&oc_dst)
         .output()
         .unwrap();
-    assert!(
-        diff.status.success(),
-        "directory trees differ: {}",
-        String::from_utf8_lossy(&diff.stderr)
-    );
+    assert_eq!(output.status.code(), Some(expected_status));
+
+    let tree_path = match flag {
+        "--old-dirs" => "tests/golden/cli_flags/old-dirs.tree",
+        "--old-d" => "tests/golden/cli_flags/old-d.tree",
+        _ => unreachable!(),
+    };
+    let expected: Vec<String> = fs::read_to_string(tree_path)
+        .unwrap()
+        .lines()
+        .map(|s| s.to_string())
+        .collect();
+
+    fn collect_paths(root: &Path) -> Vec<String> {
+        fn visit(dir: &Path, root: &Path, paths: &mut Vec<String>) {
+            for entry in fs::read_dir(dir).unwrap() {
+                let entry = entry.unwrap();
+                let path = entry.path();
+                let rel = path.strip_prefix(root).unwrap();
+                paths.push(format!("/{}", rel.display()));
+                if path.is_dir() {
+                    visit(&path, root, paths);
+                }
+            }
+        }
+        let mut paths = vec![String::new()];
+        visit(root, root, &mut paths);
+        paths.sort();
+        paths
+    }
+
+    let actual = collect_paths(&oc_dst);
+    assert_eq!(actual, expected);
 }
