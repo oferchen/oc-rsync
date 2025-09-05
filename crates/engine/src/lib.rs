@@ -1326,9 +1326,32 @@ impl Receiver {
     {
         self.state = ReceiverState::Applying;
         let mut dest = dest.to_path_buf();
+        while dest
+            .as_os_str()
+            .to_string_lossy()
+            .ends_with(std::path::MAIN_SEPARATOR)
+        {
+            if !dest.pop() {
+                break;
+            }
+        }
         if dest.is_dir() {
-            if let Some(name) = src.file_name() {
-                dest.push(name);
+            if _rel.as_os_str().is_empty() {
+                if let Some(name) = src.file_name() {
+                    dest.push(name);
+                }
+            } else {
+                let mut rel = _rel.to_path_buf();
+                while rel
+                    .as_os_str()
+                    .to_string_lossy()
+                    .ends_with(std::path::MAIN_SEPARATOR)
+                {
+                    if !rel.pop() {
+                        break;
+                    }
+                }
+                dest.push(rel);
             }
         }
         let partial = if let Some(dir) = &self.opts.partial_dir {
@@ -1394,7 +1417,7 @@ impl Receiver {
             auto_tmp = true;
             let mut name = dest.file_name().unwrap_or_default().to_os_string();
             name.push(".tmp");
-            tmp_dest = dest.with_file_name(name);
+            tmp_dest = dest_parent.join(name);
         }
         let mut needs_rename =
             !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some() || auto_tmp);
@@ -1402,7 +1425,7 @@ impl Receiver {
             if tmp_dest == dest {
                 let mut name = dest.file_name().unwrap_or_default().to_os_string();
                 name.push(".tmp");
-                tmp_dest = dest.with_file_name(name);
+                tmp_dest = dest_parent.join(name);
             }
             needs_rename = true;
         }
