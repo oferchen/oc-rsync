@@ -17,6 +17,7 @@ use std::io::{Seek, SeekFrom, Write};
 use std::os::unix::fs::symlink;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
+use std::path::PathBuf;
 use std::process::Command as StdCommand;
 use std::thread;
 use std::time::Duration;
@@ -1201,7 +1202,7 @@ fn destination_is_replaced_atomically() {
         .unwrap();
 
     let mut found = false;
-    let mut tmp_file: Option<std::path::PathBuf> = None;
+    let mut tmp_file: Option<PathBuf> = None;
     for _ in 0..50 {
         let tmp_present = fs::read_dir(&dst_dir)
             .unwrap()
@@ -1231,9 +1232,8 @@ fn destination_is_replaced_atomically() {
     );
 
     child.wait().unwrap();
-    if let Some(tmp_file) = &tmp_file {
-        assert!(!tmp_file.exists(), "temp file not removed after transfer",);
-    }
+    let tmp_file = tmp_file.unwrap();
+    assert!(!tmp_file.exists(), "temp file not removed after transfer",);
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out.len(), 50_000);
 }
