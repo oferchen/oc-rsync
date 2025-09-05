@@ -159,7 +159,7 @@ fn check_time_limit(start: Instant, opts: &SyncOptions) -> Result<()> {
 }
 
 #[cfg(unix)]
-fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
+pub fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     {
         use nix::fcntl::{fallocate, FallocateFlags};
@@ -227,7 +227,7 @@ fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
 }
 
 #[cfg(not(unix))]
-fn preallocate(_file: &File, _len: u64) -> std::io::Result<()> {
+pub fn preallocate(_file: &File, _len: u64) -> std::io::Result<()> {
     Ok(())
 }
 
