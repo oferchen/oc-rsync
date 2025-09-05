@@ -1,15 +1,15 @@
 // crates/cli/src/version.rs
-use protocol::SUPPORTED_PROTOCOLS;
+use protocol::SUPPORTED_PROTOCOLS as SUPPORTED_PROTOCOL_LIST;
 
 use crate::branding;
 
-pub const RSYNC_PROTOCOL: u32 = SUPPORTED_PROTOCOLS[0];
+pub const RSYNC_PROTOCOL: u32 = SUPPORTED_PROTOCOL_LIST[0];
 
 const UPSTREAM_VERSION: &str = match option_env!("UPSTREAM_VERSION") {
     Some(v) => v,
     None => "unknown",
 };
-const UPSTREAM_PROTOCOLS: &str = match option_env!("UPSTREAM_PROTOCOLS") {
+const SUPPORTED_PROTOCOLS: &str = match option_env!("SUPPORTED_PROTOCOLS") {
     Some(v) => v,
     None => "32,31,30",
 };
@@ -33,7 +33,7 @@ pub fn render_version_lines() -> Vec<String> {
         env!("CARGO_PKG_VERSION"),
         RSYNC_PROTOCOL
     ));
-    let proto = UPSTREAM_PROTOCOLS
+    let proto = SUPPORTED_PROTOCOLS
         .split(',')
         .next()
         .and_then(|s| s.parse::<u32>().ok())

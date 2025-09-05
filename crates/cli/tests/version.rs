@@ -12,7 +12,7 @@ fn banner_is_static() {
             SUPPORTED_PROTOCOLS[0],
         ),
         {
-            let proto = option_env!("UPSTREAM_PROTOCOLS")
+            let proto = option_env!("SUPPORTED_PROTOCOLS")
                 .unwrap_or("32,31,30")
                 .split(',')
                 .next()
