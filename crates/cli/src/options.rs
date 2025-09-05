@@ -402,7 +402,7 @@ pub(crate) struct ClientOpts {
         overrides_with_all = ["devices", "specials", "devices_specials"]
     )]
     pub no_D: bool,
-    #[arg(long, help_heading = "Attributes")]
+    #[arg(short = 'X', long, help_heading = "Attributes")]
     pub xattrs: bool,
     #[arg(
         short = 'A',
