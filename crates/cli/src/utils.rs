@@ -380,9 +380,7 @@ pub(crate) fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec> {
         if module.is_empty() {
             return Err(EngineError::Other("remote module missing".into()));
         }
-        if path.is_empty() {
-            return Err(EngineError::Other("remote path missing".into()));
-        }
+        let path = if path.is_empty() { "." } else { path };
         return Ok(RemoteSpec::Remote {
             host: host.to_string(),
             path: PathSpec {
