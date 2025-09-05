@@ -112,9 +112,3 @@ fn invalid_numeric_value_matches_snapshot() {
     let expected = fs::read("tests/golden/help/oc-rsync.invalid-timeout.stderr").unwrap();
     assert_eq!(output.stderr, expected, "invalid timeout stderr mismatch");
 }
-
-#[test]
-#[ignore]
-fn help_flag_matches_snapshot() {
-    todo!("snapshot `oc-rsync --help` output (#1274)");
-}
