@@ -52,6 +52,8 @@ jobs:
       - name: Validate interop matrix docs
         run: scripts/check-run-matrix-docs.sh
 
+      - uses: Homebrew/actions/setup-homebrew@v3
+
       - name: Lint Homebrew formula
         run: brew audit --strict --new-formula ./packaging/brew/oc-rsync.rb
 
