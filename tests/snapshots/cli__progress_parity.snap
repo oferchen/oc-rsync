@@ -1,6 +1,6 @@
 ---
 source: tests/cli.rs
-assertion_line: 804
-expression: normalized
+assertion_line: 762
+expression: norm
 ---
               5 100% XKB/s 00:00:00

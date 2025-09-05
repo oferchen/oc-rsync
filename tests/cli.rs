@@ -745,8 +745,18 @@ fn progress_flag_shows_output() {
     assert!(stdout.contains(progress_line_raw));
 }
 
+fn sanitize_progress_line(line: &str) -> String {
+    let mut parts: Vec<_> = line.split_whitespace().collect();
+    if parts.len() >= 4 {
+        parts[2] = "XKB/s";
+        parts[3] = "00:00:00";
+        format!("{:>15} {:>4} {} {}", parts[0], parts[1], parts[2], parts[3])
+    } else {
+        line.to_string()
+    }
+}
+
 #[test]
-#[ignore]
 fn progress_parity() {
     let norm = progress_parity_impl(&["-r", "--progress"], "progress");
     insta::assert_snapshot!("progress_parity", norm);
@@ -819,24 +829,12 @@ fn progress_parity_impl(flags: &[&str], fixture: &str) -> String {
         strip_progress(&our_stderr_txt)
     );
 
-    let normalize = |line: &str| {
-        let mut parts: Vec<_> = line.split_whitespace().collect();
-        if parts.len() > 2 {
-            parts[2] = "XKB/s";
-        }
-        if parts.len() > 3 {
-            parts[3] = "00:00:00";
-        }
-        format!("{:>15} {:>4} {} {}", parts[0], parts[1], parts[2], parts[3])
-    };
-
-    let normalized = normalize(&our_line);
-    assert_eq!(normalize(&up_line), normalized);
+    let normalized = sanitize_progress_line(&our_line);
+    assert_eq!(sanitize_progress_line(&up_line), normalized);
     normalized
 }
 
 #[test]
-#[ignore]
 fn progress_parity_p() {
     let norm = progress_parity_impl(&["-r", "-P"], "progress_p");
     insta::assert_snapshot!("progress_parity_p", norm);
