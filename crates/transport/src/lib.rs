@@ -151,6 +151,10 @@ impl Transport for SshStdioTransport {
             "ssh transport is not supported on this platform",
         ))
     }
+
+    fn close(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(not(unix))]
@@ -217,6 +221,10 @@ pub trait Transport {
         Ok(())
     }
 
+    fn close(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+
     fn update_timeout(&mut self) {}
 }
 
@@ -251,6 +259,10 @@ impl<R: Read, W: Write> Transport for LocalPipeTransport<R, W> {
 
     fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.reader.read(buf)
+    }
+
+    fn close(&mut self) -> io::Result<()> {
+        self.writer.flush()
     }
 }
 

@@ -2046,8 +2046,10 @@ fn daemon_writes_log_file() {
         t.receive(&mut ok).unwrap();
         t.send(b"data\n").unwrap();
         t.send(b"\n").unwrap();
+        t.close().unwrap();
     }
     sleep(Duration::from_millis(100));
+    assert!(log.is_file());
     let contents = fs::read_to_string(&log).unwrap();
     assert!(contents.contains("127.0.0.1 data"));
     let _ = child.kill();
