@@ -1460,16 +1460,20 @@ impl Receiver {
             && !self.opts.write_devices
         {
             auto_tmp = true;
-            let mut name = dest.file_stem().unwrap_or_default().to_os_string();
-            name.push(".tmp");
+            let stem = dest
+                .file_stem()
+                .unwrap_or_else(|| dest.file_name().unwrap_or_default());
+            let name = format!("{}.tmp", stem.to_string_lossy());
             tmp_dest = dest_parent.join(name);
         }
         let mut needs_rename =
             !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some() || auto_tmp);
         if self.opts.delay_updates && !self.opts.inplace && !self.opts.write_devices {
             if tmp_dest == dest {
-                let mut name = dest.file_stem().unwrap_or_default().to_os_string();
-                name.push(".tmp");
+                let stem = dest
+                    .file_stem()
+                    .unwrap_or_else(|| dest.file_name().unwrap_or_default());
+                let name = format!("{}.tmp", stem.to_string_lossy());
                 tmp_dest = dest_parent.join(name);
             }
             needs_rename = true;
