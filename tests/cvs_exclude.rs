@@ -54,6 +54,9 @@ fn cvs_exclude_parity() {
 
     assert!(ours_output.is_empty());
 
+    assert!(ours_dst.join("sub/local_ignored").exists());
+    assert!(ours_dst.join("sub/nested/sub_ignored").exists());
+
     let diff = StdCommand::new("diff")
         .arg("-r")
         .arg("tests/golden/cvs_exclude/expected")
