@@ -1468,13 +1468,14 @@ impl Receiver {
                 auto_tmp = true;
                 dest_parent
             };
+            #[allow(deprecated)]
             let dir_path = Builder::new()
                 .prefix(".oc-rsync-tmp.")
                 .rand_bytes(6)
                 .tempdir_in(tmp_parent)
                 .map_err(|e| io_context(tmp_parent, e))?
-                .into_temp_path()
-                .keep();
+                .into_path();
+            dir_path
         } else if (self.opts.partial || self.opts.append || self.opts.append_verify)
             && existing_partial.is_some()
         {

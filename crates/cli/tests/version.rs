@@ -13,7 +13,7 @@ fn banner_is_static() {
         ),
         {
             let proto = option_env!("UPSTREAM_PROTOCOLS")
-                .unwrap_or("32,31,30,29")
+                .unwrap_or("32,31,30")
                 .split(',')
                 .next()
                 .unwrap_or("0");

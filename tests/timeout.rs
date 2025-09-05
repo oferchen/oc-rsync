@@ -184,7 +184,7 @@ fn daemon_handshake_timeout_message() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
     let modules: HashMap<String, Module> = HashMap::new();
-    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
     thread::spawn(move || {
         let (stream, _) = listener.accept().unwrap();
         let transport = TcpTransport::from_stream(stream);

@@ -1,8 +1,7 @@
 // tests/daemon_config.rs
 
 use assert_cmd::prelude::*;
-use assert_cmd::{cargo::cargo_bin, Command};
-use daemon::{handle_connection, load_config, parse_config, Handler, Module};
+use daemon::{handle_connection, load_config, parse_config, Handler};
 use protocol::LATEST_VERSION;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -130,7 +129,7 @@ fn daemon_config_rsync_client() {
     let config = format!("port = 0\n[data]\n    path = {}\n", src.display());
     let cfg_path = dir.path().join("rsyncd.conf");
     fs::write(&cfg_path, &config).unwrap();
-    let cfg = load_config(&cfg_path).unwrap();
+    let cfg = load_config(Some(&cfg_path)).unwrap();
     assert_eq!(cfg.modules[0].path, fs::canonicalize(&src).unwrap());
 }
 
