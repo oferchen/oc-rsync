@@ -939,14 +939,9 @@ fn stats_parity() {
         out.lines()
             .find_map(|l| {
                 let l = l.trim_start();
-                if l.starts_with(prefix) {
-                    l[prefix.len()..]
-                        .trim()
-                        .strip_suffix(" seconds")
-                        .and_then(|v| v.parse::<f64>().ok())
-                } else {
-                    None
-                }
+                l.strip_prefix(prefix)
+                    .and_then(|rest| rest.trim().strip_suffix(" seconds"))
+                    .and_then(|v| v.parse::<f64>().ok())
             })
             .unwrap_or(0.0)
     };

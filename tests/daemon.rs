@@ -11,7 +11,7 @@ use protocol::LATEST_VERSION;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::fs;
-use std::io::{self, Read, Write};
+use std::io::{self, Cursor, Read, Write};
 use std::net::{IpAddr, TcpListener, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -535,6 +535,54 @@ fn rejects_missing_token() {
     )
     .unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+}
+
+#[test]
+fn anonymous_module_listing_only_shows_listed_modules() {
+    let mut input = Vec::new();
+    input.extend_from_slice(&LATEST_VERSION.to_be_bytes());
+    input.extend_from_slice(b"\n\n");
+    let reader = Cursor::new(input);
+    let writer = Cursor::new(Vec::new());
+    let mut transport = LocalPipeTransport::new(reader, writer);
+
+    let mut modules = HashMap::new();
+    let public = Module {
+        name: "public".into(),
+        list: true,
+        ..Module::default()
+    };
+    modules.insert("public".into(), public);
+    let private = Module {
+        name: "private".into(),
+        list: false,
+        ..Module::default()
+    };
+    modules.insert("private".into(), private);
+    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+
+    handle_connection(
+        &mut transport,
+        &modules,
+        None,
+        None,
+        None,
+        None,
+        None,
+        true,
+        &[],
+        "127.0.0.1",
+        0,
+        0,
+        &handler,
+    )
+    .unwrap();
+
+    let (_, writer) = transport.into_inner();
+    let out = writer.into_inner();
+    let text = String::from_utf8_lossy(&out[4..]);
+    assert!(text.contains("public"));
+    assert!(!text.contains("private"));
 }
 
 #[cfg(unix)]
@@ -2045,6 +2093,7 @@ fn daemon_writes_log_file() {
         let mut ok = [0u8; 64];
         t.receive(&mut ok).unwrap();
         t.send(b"data\n").unwrap();
+        t.receive(&mut ok).unwrap();
         t.send(b"\n").unwrap();
     }
     sleep(Duration::from_millis(100));

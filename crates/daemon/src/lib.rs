@@ -962,7 +962,7 @@ pub fn handle_connection<T: Transport>(
     let latest = SUPPORTED_PROTOCOLS[0];
     transport.send(&latest.to_be_bytes())?;
     negotiate_version(latest, peer_ver).map_err(|e| io::Error::other(e.to_string()))?;
-    let (mut token, global_allowed, no_motd) = authenticate(transport, secrets, password)?;
+    let (token, global_allowed, no_motd) = authenticate(transport, secrets, password)?;
     if !no_motd {
         if let Some(mpath) = motd {
             if let Ok(content) = fs::read_to_string(mpath) {
@@ -974,15 +974,9 @@ pub fn handle_connection<T: Transport>(
         }
     }
     transport.send(b"@RSYNCD: OK\n")?;
-    let name = if global_allowed.is_empty() && secrets.is_none() {
-        token
-            .take()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::PermissionDenied, "auth token missing"))?
-    } else {
-        let mut name_buf = [0u8; 256];
-        let n = transport.receive(&mut name_buf)?;
-        String::from_utf8_lossy(&name_buf[..n]).trim().to_string()
-    };
+    let mut name_buf = [0u8; 256];
+    let n = transport.receive(&mut name_buf)?;
+    let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
     if name.is_empty() {
         if list {
             for m in modules.values().filter(|m| m.list) {
