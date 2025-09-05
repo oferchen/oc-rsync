@@ -89,8 +89,7 @@ fn files_from_from0_matches_rsync() {
     fs::write(&list, b"include_me.txt\0omit.log\0").unwrap();
 
     let src_arg = format!("{}/", src.display());
-
-    StdCommand::new(cargo_bin("oc-rsync"))
+    let status = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--from0",
@@ -103,6 +102,7 @@ fn files_from_from0_matches_rsync() {
         ])
         .status()
         .unwrap();
+    assert!(status.success());
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -148,8 +148,7 @@ fn include_from_from0_matches_rsync() {
     fs::write(&list, b"a.txt\0c.txt\0").unwrap();
 
     let src_arg = format!("{}/", src.display());
-
-    StdCommand::new(cargo_bin("oc-rsync"))
+    let status = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--from0",
@@ -162,6 +161,7 @@ fn include_from_from0_matches_rsync() {
         ])
         .status()
         .unwrap();
+    assert!(status.success());
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -206,8 +206,7 @@ fn exclude_from_from0_matches_rsync() {
     fs::write(&list, b"drop.txt\0").unwrap();
 
     let src_arg = format!("{}/", src.display());
-
-    StdCommand::new(cargo_bin("oc-rsync"))
+    let status = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--from0",
@@ -218,6 +217,7 @@ fn exclude_from_from0_matches_rsync() {
         ])
         .status()
         .unwrap();
+    assert!(status.success());
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -261,8 +261,7 @@ fn filter_file_from0_matches_rsync() {
     fs::write(&filter, b"+ *.txt\0- *\0").unwrap();
 
     let src_arg = format!("{}/", src.display());
-
-    StdCommand::new(cargo_bin("oc-rsync"))
+    let status = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--from0",
@@ -273,6 +272,7 @@ fn filter_file_from0_matches_rsync() {
         ])
         .status()
         .unwrap();
+    assert!(status.success());
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -318,11 +318,11 @@ fn per_dir_merge_matches_rsync() {
     fs::write(src.join("sub").join(".rsync-filter"), b"- omit2.txt\n").unwrap();
 
     let src_arg = format!("{}/", src.display());
-
-    StdCommand::new(cargo_bin("oc-rsync"))
+    let status = StdCommand::new(cargo_bin("oc-rsync"))
         .args(["-r", "-F", "-F", &src_arg, rsync_dst.to_str().unwrap()])
         .status()
         .unwrap();
+    assert!(status.success());
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -758,7 +758,9 @@ fn progress_parity_impl(flags: &[&str]) -> Option<String> {
         .stderr(std::process::Stdio::null())
         .status()
         .ok();
-    if rsync.is_none() {
+    if let Some(status) = rsync {
+        assert!(status.success());
+    } else {
         eprintln!("skipping test: rsync not installed");
         return None;
     }
@@ -778,6 +780,7 @@ fn progress_parity_impl(flags: &[&str]) -> Option<String> {
     up_cmd.arg(format!("{}/", src.display()));
     up_cmd.arg(&dst_up);
     let up = up_cmd.output().unwrap();
+    assert!(up.status.success());
 
     let mut our_cmd = Command::cargo_bin("oc-rsync").unwrap();
     our_cmd.env("LC_ALL", "C").env("COLUMNS", "80");
@@ -852,7 +855,9 @@ fn stats_parity() {
         .stderr(std::process::Stdio::null())
         .status()
         .ok();
-    if rsync.is_none() {
+    if let Some(status) = rsync {
+        assert!(status.success());
+    } else {
         eprintln!("skipping test: rsync not installed");
         return;
     }
@@ -872,6 +877,7 @@ fn stats_parity() {
         .arg(&dst_up)
         .output()
         .unwrap();
+    assert!(up.status.success());
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
         .env("LC_ALL", "C")
@@ -2134,7 +2140,9 @@ fn dry_run_parity_destination_untouched() {
         .stderr(std::process::Stdio::null())
         .status()
         .ok();
-    if rsync.is_none() {
+    if let Some(status) = rsync {
+        assert!(status.success());
+    } else {
         eprintln!("skipping test: rsync not installed");
         return;
     }
@@ -2163,12 +2171,12 @@ fn dry_run_parity_destination_untouched() {
         "keep"
     );
     assert!(!dst_dir.join("new.txt").exists());
-
     let up = StdCommand::new(cargo_bin("oc-rsync"))
         .env("LC_ALL", "C")
         .args(["-r", "--dry-run", &src_arg, dst_arg])
         .output()
         .unwrap();
+    assert!(up.status.success());
 
     assert_eq!(up.status.code(), ours.status.code());
     assert_eq!(up.stdout, ours.stdout);
