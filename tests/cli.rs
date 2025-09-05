@@ -844,7 +844,7 @@ fn progress_parity_p() {
 
 #[test]
 fn stats_parity() {
-    let rsync = StdCommand::new(cargo_bin("oc-rsync"))
+    let rsync = StdCommand::new("rsync")
         .arg("--version")
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -864,7 +864,7 @@ fn stats_parity() {
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("a.txt"), b"hello").unwrap();
 
-    let up = StdCommand::new(cargo_bin("oc-rsync"))
+    let up = StdCommand::new("rsync")
         .env("LC_ALL", "C")
         .env("COLUMNS", "80")
         .args(["-r", "--stats"])
@@ -897,9 +897,11 @@ fn stats_parity() {
         .lines()
         .filter_map(|l| {
             let l = l.trim_start();
-            if l.starts_with("Number of deleted files")
+            if l.starts_with("Number of created files")
+                || l.starts_with("Number of deleted files")
                 || l.starts_with("Number of regular files transferred")
                 || l.starts_with("Total transferred file size")
+                || l.starts_with("File list size")
             {
                 Some(l.to_string())
             } else {
@@ -907,7 +909,7 @@ fn stats_parity() {
             }
         })
         .collect();
-    if up_stats.len() != 3 {
+    if up_stats.len() != 5 {
         eprintln!("skipping test: rsync stats output not recognized");
         return;
     }
@@ -917,9 +919,11 @@ fn stats_parity() {
         .lines()
         .filter_map(|l| {
             let l = l.trim_start();
-            if l.starts_with("Number of deleted files")
+            if l.starts_with("Number of created files")
+                || l.starts_with("Number of deleted files")
                 || l.starts_with("Number of regular files transferred")
                 || l.starts_with("Total transferred file size")
+                || l.starts_with("File list size")
             {
                 Some(l.to_string())
             } else {
@@ -927,10 +931,32 @@ fn stats_parity() {
             }
         })
         .collect();
-
     our_stats.sort();
     up_stats.sort();
     assert_eq!(our_stats, up_stats);
+
+    let parse_time = |out: &str, prefix: &str| -> f64 {
+        out.lines()
+            .find_map(|l| {
+                let l = l.trim_start();
+                if l.starts_with(prefix) {
+                    l[prefix.len()..]
+                        .trim()
+                        .strip_suffix(" seconds")
+                        .and_then(|v| v.parse::<f64>().ok())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0.0)
+    };
+    let up_gen = parse_time(&up_stdout, "File list generation time:");
+    let our_gen = parse_time(&our_stdout, "File list generation time:");
+    let up_xfer = parse_time(&up_stdout, "File list transfer time:");
+    let our_xfer = parse_time(&our_stdout, "File list transfer time:");
+    assert!((up_gen - our_gen).abs() < 0.05);
+    assert!((up_xfer - our_xfer).abs() < 0.05);
+
     insta::assert_snapshot!("stats_parity", our_stats.join("\n"));
 }
 

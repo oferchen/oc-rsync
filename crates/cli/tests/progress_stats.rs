@@ -66,10 +66,27 @@ fn stats_parity() {
         .unwrap();
 
     let our_stdout = String::from_utf8_lossy(&ours.stdout);
-    let mut our_stats: Vec<&str> = our_stdout.lines().collect();
+    let mut our_stats: Vec<String> = our_stdout
+        .lines()
+        .filter_map(|l| {
+            let l = l.trim_start();
+            if l.starts_with("Number of created files")
+                || l.starts_with("Number of deleted files")
+                || l.starts_with("Number of regular files transferred")
+                || l.starts_with("Total transferred file size")
+                || l.starts_with("File list size")
+            {
+                Some(l.to_string())
+            } else {
+                None
+            }
+        })
+        .collect();
     our_stats.sort_unstable();
 
     let expected = [
+        "File list size: 0",
+        "Number of created files: 1",
         "Number of deleted files: 0",
         "Number of regular files transferred: 1",
         "Total transferred file size: 5 bytes",
