@@ -52,22 +52,6 @@ jobs:
       - name: Validate interop matrix docs
         run: scripts/check-run-matrix-docs.sh
 
-      - name: Set up Homebrew
-        id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@main
-      
-      - name: Cache Homebrew Bundler RubyGems
-        id: cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.set-up-homebrew.outputs.gems-path }}
-          key: ${{ runner.os }}-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
-          restore-keys: ${{ runner.os }}-rubygems-
-      
-      - name: Install Homebrew Bundler RubyGems
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: brew install-bundler-gems
-
       - name: Cargo check (cross targets)
         if: runner.os == 'Linux' && env.MACOS_SDK_PATH != ''
         run: |
@@ -80,7 +64,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # llvm-tools-preview is required by cargo-llvm-cov
       - name: Setup Rust (stable + llvm-tools)
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -103,9 +86,6 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
-
-      - name: Remove system rsync
-        run: sudo rm -f $(command -v rsync) || true
 
       - name: Run tests
         run: cargo nextest run --no-fail-fast
