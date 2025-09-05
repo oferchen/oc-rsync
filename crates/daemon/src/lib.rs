@@ -1111,13 +1111,18 @@ pub fn handle_connection<T: Transport>(
             module.connections.fetch_sub(1, Ordering::SeqCst);
         }
         let res = handler(transport);
-        let flush_res = if let Some(f) = log.as_mut() {
+        let exit_res = transport.send(b"@RSYNCD: EXIT\n");
+        let flush_res = transport.send(&[]);
+        let log_flush_res = if let Some(f) = log.as_mut() {
             f.flush()
         } else {
             Ok(())
         };
         let close_res = transport.close();
-        res.and(flush_res).and(close_res)
+        res.and(exit_res)
+            .and(flush_res)
+            .and(log_flush_res)
+            .and(close_res)
     } else {
         let _ = transport.send(b"@ERROR: unknown module");
         Err(io::Error::new(io::ErrorKind::NotFound, "unknown module"))

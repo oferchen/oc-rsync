@@ -66,11 +66,12 @@ fn stats_parity() {
         .unwrap();
 
     let our_stdout = String::from_utf8_lossy(&ours.stdout);
-    let mut our_stats: Vec<String> = our_stdout
+    let our_stats: Vec<String> = our_stdout
         .lines()
         .filter_map(|l| {
             let l = l.trim_start();
-            if l.starts_with("Number of created files")
+            if l.starts_with("Number of files")
+                || l.starts_with("Number of created files")
                 || l.starts_with("Number of deleted files")
                 || l.starts_with("Number of regular files transferred")
                 || l.starts_with("Total transferred file size")
@@ -82,14 +83,14 @@ fn stats_parity() {
             }
         })
         .collect();
-    our_stats.sort_unstable();
 
     let expected = [
-        "File list size: 0",
-        "Number of created files: 2 (reg: 1, dir: 1)",
+        "Number of files: 1",
+        "Number of created files: 1",
         "Number of deleted files: 0",
         "Number of regular files transferred: 1",
         "Total transferred file size: 5 bytes",
+        "File list size: 0",
     ];
     assert_eq!(our_stats, expected);
     insta::assert_snapshot!("stats_parity", our_stats.join("\n"));

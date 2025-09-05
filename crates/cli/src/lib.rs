@@ -1,6 +1,7 @@
 // crates/cli/src/lib.rs
 use std::collections::HashSet;
 use std::env;
+use std::ffi::OsStr;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
@@ -165,8 +166,15 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         .cloned()
         .ok_or_else(|| EngineError::Other("missing SRC or DST".into()))?;
     let srcs = opts.paths[..opts.paths.len() - 1].to_vec();
-    if srcs.len() > 1 {
+    if opts.fuzzy && srcs.len() == 1 {
         if let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(&dst_arg) {
+            if ps.path.is_dir() {
+                return Err(EngineError::Other("Not a directory".into()));
+            }
+        }
+    }
+    if srcs.len() > 1 {
+        if let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(dst_arg.as_os_str()) {
             if !ps.path.is_dir() {
                 return Err(EngineError::Other("destination must be a directory".into()));
             }
@@ -174,7 +182,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
     }
     let mut total = Stats::default();
     for src in srcs {
-        let stats = run_single(opts.clone(), matches, &src, &dst_arg)?;
+        let stats = run_single(opts.clone(), matches, src.as_os_str(), dst_arg.as_os_str())?;
         total.files_total += stats.files_total;
         total.dirs_total += stats.dirs_total;
         total.files_transferred += stats.files_transferred;
@@ -198,16 +206,10 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 }
 
 fn print_stats(stats: &Stats, opts: &ClientOpts) {
-    let num_files = stats.files_total + stats.dirs_total;
+    println!("Number of files: {}", stats.files_total);
     println!(
-        "Number of files: {} (reg: {}, dir: {})",
-        num_files, stats.files_total, stats.dirs_total
-    );
-    println!(
-        "Number of created files: {} (reg: {}, dir: {})",
-        stats.files_created,
-        stats.files_created - stats.dirs_created,
-        stats.dirs_created
+        "Number of created files: {}",
+        stats.files_created - stats.dirs_created
     );
     println!("Number of deleted files: {}", stats.files_deleted);
     println!(
@@ -304,8 +306,8 @@ fn mock_caps_has_cap(res: std::result::Result<bool, caps::errors::CapsError>) {
 fn run_single(
     mut opts: ClientOpts,
     matches: &ArgMatches,
-    src_arg: &str,
-    dst_arg: &str,
+    src_arg: &OsStr,
+    dst_arg: &OsStr,
 ) -> Result<Stats> {
     if opts.archive {
         opts.recursive = true;
@@ -1400,11 +1402,12 @@ mod tests {
     use ::daemon::authenticate;
     use clap::Parser;
     use engine::SyncOptions;
+    use std::ffi::OsStr;
     use std::path::PathBuf;
 
     #[test]
     fn windows_paths_are_local() {
-        let spec = parse_remote_spec("C:/tmp/foo").unwrap();
+        let spec = parse_remote_spec(OsStr::new("C:/tmp/foo")).unwrap();
         assert!(matches!(spec, RemoteSpec::Local(_)));
     }
 
@@ -1418,7 +1421,7 @@ mod tests {
 
     #[test]
     fn ipv6_specs_are_remote() {
-        let spec = parse_remote_spec("[::1]:/tmp").unwrap();
+        let spec = parse_remote_spec(OsStr::new("[::1]:/tmp")).unwrap();
         match spec {
             RemoteSpec::Remote { host, path, module } => {
                 assert_eq!(host, "::1");
@@ -1459,7 +1462,7 @@ mod tests {
 
     #[test]
     fn rsync_url_specs_are_remote() {
-        let spec = parse_remote_spec("rsync://host/mod/path").unwrap();
+        let spec = parse_remote_spec(OsStr::new("rsync://host/mod/path")).unwrap();
         match spec {
             RemoteSpec::Remote { host, module, path } => {
                 assert_eq!(host, "host");
@@ -1472,7 +1475,7 @@ mod tests {
 
     #[test]
     fn daemon_double_colon_specs_are_remote() {
-        let spec = parse_remote_spec("host::mod/path").unwrap();
+        let spec = parse_remote_spec(OsStr::new("host::mod/path")).unwrap();
         match spec {
             RemoteSpec::Remote { host, module, path } => {
                 assert_eq!(host, "host");
@@ -1485,7 +1488,7 @@ mod tests {
 
     #[test]
     fn host_path_specs_are_remote() {
-        let spec = parse_remote_spec("host:/tmp").unwrap();
+        let spec = parse_remote_spec(OsStr::new("host:/tmp")).unwrap();
         match spec {
             RemoteSpec::Remote { host, module, path } => {
                 assert_eq!(host, "host");
@@ -1498,17 +1501,17 @@ mod tests {
 
     #[test]
     fn malformed_rsync_url_is_error() {
-        assert!(parse_remote_spec("rsync://").is_err());
+        assert!(parse_remote_spec(OsStr::new("rsync://")).is_err());
     }
 
     #[test]
     fn malformed_daemon_spec_is_error() {
-        assert!(parse_remote_spec("host::mod").is_err());
+        assert!(parse_remote_spec(OsStr::new("host::mod")).is_err());
     }
 
     #[test]
     fn malformed_ipv6_spec_is_error() {
-        assert!(parse_remote_spec("[::1]:module").is_err());
+        assert!(parse_remote_spec(OsStr::new("[::1]:module")).is_err());
     }
 
     #[test]
@@ -1795,7 +1798,7 @@ mod tests {
             .unwrap();
         let opts = ClientOpts::from_arg_matches(&matches).unwrap();
 
-        let err = run_single(opts, &matches, "src", "dst").unwrap_err();
+        let err = run_single(opts, &matches, OsStr::new("src"), OsStr::new("dst")).unwrap_err();
         match err {
             EngineError::Other(msg) => {
                 assert!(msg.contains("failed to detect CAP_CHOWN capability"));

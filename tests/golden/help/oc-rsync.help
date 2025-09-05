@@ -32,7 +32,7 @@
 --executability	preserveexecutability
 --chmod=CHMOD	affectfileand/ordirectorypermissions
 --acls	preserveACLs(implies--perms)
---xattrs	preserveextendedattributes
+--xattrs,-X	preserveextendedattributes
 --owner	preserveowner(super-useronly)
 --group	preservegroup
 --devices	preservedevicefiles(super-useronly)
