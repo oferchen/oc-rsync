@@ -2,16 +2,11 @@
 use md4::{Digest, Md4};
 use md5::Md5;
 use sha1::Sha1;
-use xxhash_rust::xxh3::{xxh3_128_with_seed, xxh3_64_with_seed, Xxh3};
-use xxhash_rust::xxh64::{xxh64, Xxh64};
 #[derive(Clone, Copy, Debug)]
 pub enum StrongHash {
     Md4,
     Md5,
     Sha1,
-    Xxh64,
-    Xxh3,
-    Xxh128,
 }
 
 #[derive(Clone, Debug)]
@@ -89,15 +84,6 @@ impl ChecksumConfig {
                 h.update(self.seed.to_le_bytes());
                 StrongHasher(StrongHasherInner::Sha1(h))
             }
-            StrongHash::Xxh64 => {
-                StrongHasher(StrongHasherInner::Xxh64(Xxh64::new(self.seed as u64)))
-            }
-            StrongHash::Xxh3 => {
-                StrongHasher(StrongHasherInner::Xxh3(Xxh3::with_seed(self.seed as u64)))
-            }
-            StrongHash::Xxh128 => {
-                StrongHasher(StrongHasherInner::Xxh128(Xxh3::with_seed(self.seed as u64)))
-            }
         }
     }
 }
@@ -108,9 +94,6 @@ enum StrongHasherInner {
     Md4(Md4),
     Md5(Md5),
     Sha1(Sha1),
-    Xxh64(Xxh64),
-    Xxh3(Xxh3),
-    Xxh128(Xxh3),
 }
 
 impl StrongHasher {
@@ -119,9 +102,6 @@ impl StrongHasher {
             StrongHasherInner::Md4(h) => h.update(data),
             StrongHasherInner::Md5(h) => h.update(data),
             StrongHasherInner::Sha1(h) => h.update(data),
-            StrongHasherInner::Xxh64(h) => h.update(data),
-            StrongHasherInner::Xxh3(h) => h.update(data),
-            StrongHasherInner::Xxh128(h) => h.update(data),
         }
     }
 
@@ -130,9 +110,6 @@ impl StrongHasher {
             StrongHasherInner::Md4(h) => h.finalize().to_vec(),
             StrongHasherInner::Md5(h) => h.finalize().to_vec(),
             StrongHasherInner::Sha1(h) => h.finalize().to_vec(),
-            StrongHasherInner::Xxh64(h) => h.digest().to_be_bytes().to_vec(),
-            StrongHasherInner::Xxh3(h) => h.digest().to_be_bytes().to_vec(),
-            StrongHasherInner::Xxh128(h) => h.digest128().to_be_bytes().to_vec(),
         }
     }
 }
@@ -159,9 +136,6 @@ pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
             hasher.update(data);
             hasher.finalize().to_vec()
         }
-        StrongHash::Xxh64 => xxh64(data, seed as u64).to_be_bytes().to_vec(),
-        StrongHash::Xxh3 => xxh3_64_with_seed(data, seed as u64).to_be_bytes().to_vec(),
-        StrongHash::Xxh128 => xxh3_128_with_seed(data, seed as u64).to_be_bytes().to_vec(),
     }
 }
 
@@ -463,18 +437,6 @@ mod tests {
         assert_eq!(
             hex::encode(digest_sha1),
             "1fb6475c524899f98b088f7608bdab8f1591e078",
-        );
-
-        let digest_xxh64 = strong_digest(b"hello world", StrongHash::Xxh64, 0);
-        assert_eq!(hex::encode(&digest_xxh64), "45ab6734b21e6968");
-
-        let digest_xxh3 = strong_digest(b"hello world", StrongHash::Xxh3, 0);
-        assert_eq!(hex::encode(&digest_xxh3), "d447b1ea40e6988b");
-
-        let digest_xxh128 = strong_digest(b"hello world", StrongHash::Xxh128, 0);
-        assert_eq!(
-            hex::encode(&digest_xxh128),
-            "df8d09e93f874900a99b8775cc15b6c7",
         );
     }
 

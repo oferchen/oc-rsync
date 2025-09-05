@@ -509,7 +509,7 @@ fn run_single(
         let list: Vec<&str> = if proto < V30 {
             vec!["md4", "md5", "sha1"]
         } else {
-            vec!["xxh128", "xxh3", "xxh64", "md5", "md4", "sha1"]
+            vec!["md5", "md4", "sha1"]
         };
         rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
     }
@@ -524,9 +524,6 @@ fn run_single(
             "md4" => StrongHash::Md4,
             "md5" => StrongHash::Md5,
             "sha1" => StrongHash::Sha1,
-            "xxh64" | "xxhash" => StrongHash::Xxh64,
-            "xxh3" => StrongHash::Xxh3,
-            "xxh128" => StrongHash::Xxh128,
             other => {
                 return Err(EngineError::Other(format!("unknown checksum {other}")));
             }
@@ -539,18 +536,6 @@ fn run_single(
         };
         for name in list.split(',') {
             match name {
-                "xxh128" => {
-                    chosen = StrongHash::Xxh128;
-                    break;
-                }
-                "xxh3" => {
-                    chosen = StrongHash::Xxh3;
-                    break;
-                }
-                "xxh64" | "xxhash" => {
-                    chosen = StrongHash::Xxh64;
-                    break;
-                }
                 "sha1" => {
                     chosen = StrongHash::Sha1;
                     break;
@@ -1560,8 +1545,6 @@ mod tests {
         assert_eq!(opts.checksum_choice.as_deref(), Some("sha1"));
         let opts = ClientOpts::parse_from(["prog", "--cc", "md5", "src", "dst"]);
         assert_eq!(opts.checksum_choice.as_deref(), Some("md5"));
-        let opts = ClientOpts::parse_from(["prog", "--checksum-choice", "xxh64", "src", "dst"]);
-        assert_eq!(opts.checksum_choice.as_deref(), Some("xxh64"));
     }
 
     #[test]
