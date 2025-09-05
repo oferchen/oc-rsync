@@ -158,3 +158,78 @@ fn pipe_refreshes_timeouts_on_slow_send() {
     let writer = dst.into_inner().into_inner();
     assert_eq!(writer, b"y");
 }
+
+struct InterruptReceiveTransport {
+    data: Vec<u8>,
+    pos: usize,
+    interrupts: usize,
+}
+
+impl InterruptReceiveTransport {
+    fn new(data: Vec<u8>, interrupts: usize) -> Self {
+        Self {
+            data,
+            pos: 0,
+            interrupts,
+        }
+    }
+}
+
+impl Transport for InterruptReceiveTransport {
+    fn send(&mut self, _data: &[u8]) -> std::io::Result<()> {
+        Ok(())
+    }
+
+    fn receive(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        if self.interrupts > 0 {
+            self.interrupts -= 1;
+            return Err(std::io::Error::from(std::io::ErrorKind::Interrupted));
+        }
+        if self.pos >= self.data.len() {
+            return Ok(0);
+        }
+        let n = std::cmp::min(buf.len(), self.data.len() - self.pos);
+        buf[..n].copy_from_slice(&self.data[self.pos..self.pos + n]);
+        self.pos += n;
+        Ok(n)
+    }
+}
+
+struct InterruptSendTransport {
+    written: Vec<u8>,
+    interrupts: usize,
+}
+
+impl InterruptSendTransport {
+    fn new(interrupts: usize) -> Self {
+        Self {
+            written: Vec::new(),
+            interrupts,
+        }
+    }
+}
+
+impl Transport for InterruptSendTransport {
+    fn send(&mut self, data: &[u8]) -> std::io::Result<()> {
+        if self.interrupts > 0 {
+            self.interrupts -= 1;
+            return Err(std::io::Error::from(std::io::ErrorKind::Interrupted));
+        }
+        self.written.extend_from_slice(data);
+        Ok(())
+    }
+
+    fn receive(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+        Ok(0)
+    }
+}
+
+#[test]
+fn pipe_retries_on_interrupted() {
+    let mut src = InterruptReceiveTransport::new(b"retry".to_vec(), 1);
+    let mut dst = InterruptSendTransport::new(1);
+
+    let bytes = pipe(&mut src, &mut dst).unwrap();
+    assert_eq!(bytes, 5);
+    assert_eq!(dst.written, b"retry");
+}

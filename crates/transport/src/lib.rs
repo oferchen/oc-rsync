@@ -168,13 +168,29 @@ where
     let mut buf = [0u8; 8192];
     let mut total = 0u64;
     loop {
-        let n = src.receive(&mut buf)?;
+        let n = loop {
+            match src.receive(&mut buf) {
+                Ok(n) => break n,
+                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                Err(e) => return Err(e),
+            }
+        };
         if n == 0 {
             break;
         }
         src.update_timeout();
         dst.update_timeout();
-        dst.send(&buf[..n])?;
+        loop {
+            match dst.send(&buf[..n]) {
+                Ok(()) => break,
+                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {
+                    src.update_timeout();
+                    dst.update_timeout();
+                    continue;
+                }
+                Err(e) => return Err(e),
+            }
+        }
         src.update_timeout();
         dst.update_timeout();
         total += n as u64;
