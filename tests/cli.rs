@@ -995,7 +995,7 @@ fn resumes_from_partial_file() {
     std::fs::create_dir_all(&src_dir).unwrap();
     std::fs::create_dir_all(&dst_dir).unwrap();
     std::fs::write(src_dir.join("a.txt"), b"hello").unwrap();
-    std::fs::write(dst_dir.join("a.partial"), b"he").unwrap();
+    std::fs::write(dst_dir.join("a.txt.partial"), b"he").unwrap();
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
@@ -1004,7 +1004,35 @@ fn resumes_from_partial_file() {
 
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, b"hello");
-    assert!(!dst_dir.join("a.partial").exists());
+    assert!(!dst_dir.join("a.txt.partial").exists());
+}
+
+#[test]
+fn resumes_from_partial_file_with_temp_dir() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    let tmp_dir = dir.path().join("tmp");
+    std::fs::create_dir_all(&src_dir).unwrap();
+    std::fs::create_dir_all(&dst_dir).unwrap();
+    std::fs::create_dir_all(&tmp_dir).unwrap();
+    std::fs::write(src_dir.join("a.txt"), b"hello").unwrap();
+    std::fs::write(dst_dir.join("a.txt.partial"), b"he").unwrap();
+
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    let src_arg = format!("{}/", src_dir.display());
+    cmd.args([
+        "--partial",
+        "--temp-dir",
+        tmp_dir.to_str().unwrap(),
+        &src_arg,
+        dst_dir.to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
+    assert_eq!(out, b"hello");
+    assert!(!dst_dir.join("a.txt.partial").exists());
 }
 
 #[test]
