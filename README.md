@@ -89,13 +89,13 @@ Report vulnerabilities via [SECURITY.md](SECURITY.md). The daemon aims to match 
 
 ## Roadmap
 
-- M1—Bootstrap: repository builds; walk and checksum crates generate file signatures.
-- M2—Delta Engine: local delta transfers with metadata preservation.
-- M3—Remote Protocol: rsync protocol v32 over SSH and `rsync://`.
-- M4—Metadata Fidelity: permissions, symlinks, hard links, sparse files, xattrs/ACLs.
-- M5—Filters & Compression: include/exclude rules and compression negotiation.
-- M6—Robust Transfers: resume partials, verify checksums, hardened I/O.
-- M7—Stabilization: cross‑platform builds, performance tuning, and compatibility matrix completion.
+- M1-Bootstrap: repository builds; walk and checksum crates generate file signatures.
+- M2-Delta Engine: local delta transfers with metadata preservation.
+- M3-Remote Protocol: rsync protocol v32 over SSH and `rsync://`.
+- M4-Metadata Fidelity: permissions, symlinks, hard links, sparse files, xattrs/ACLs.
+- M5-Filters & Compression: include/exclude rules and compression negotiation.
+- M6-Robust Transfers: resume partials, verify checksums, hardened I/O.
+- M7-Stabilization: cross‑platform builds, performance tuning, and compatibility matrix completion.
 
 ## License
 
