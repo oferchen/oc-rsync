@@ -25,8 +25,8 @@ fn main() {
         return;
     }
     if let Some(mode) = matches.get_one::<OutBuf>("outbuf") {
-        if let Err(err) = stdio::set_stdout_buffering(*mode) {
-            eprintln!("failed to set stdout buffer: {err}");
+        if let Err(err) = stdio::set_std_buffering(*mode) {
+            eprintln!("failed to set stdio buffers: {err}");
             std::process::exit(u8::from(ExitCode::FileIo) as i32);
         }
     }
