@@ -733,14 +733,16 @@ fn progress_flag_shows_output() {
     let out = assert.get_output();
     let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
     let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
-    let text = if !stdout.is_empty() { stdout } else { stderr };
-    let mut lines = text.lines();
+    assert!(stderr.is_empty(), "{}", stderr);
+    let mut lines = stdout.lines();
     assert_eq!(lines.next().unwrap(), "sending incremental file list");
     assert_eq!(lines.next().unwrap(), "a.txt");
-    let progress_line = lines.next().unwrap().trim_start_matches('\r').trim_end();
+    let progress_line_raw = lines.next().unwrap();
+    let progress_line = progress_line_raw.trim_start_matches('\r').trim_end();
     let bytes = progress_formatter(2048, false);
     let expected_prefix = format!("{:>15} {:>3}%", bytes, 100);
     assert!(progress_line.starts_with(&expected_prefix));
+    assert!(stdout.contains(progress_line_raw));
 }
 
 #[test]
