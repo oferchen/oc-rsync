@@ -217,7 +217,7 @@ fn rsh_env_var_assignments_are_honored() {
     let dst_spec = format!("ignored:{}", dst_dir.display());
     let rsh_spec = format!("FOO=bar {}", rsh.display());
     let mut cmd = AssertCommand::cargo_bin("oc-rsync").unwrap();
-    cmd.env("RSYNC_RSH", rsh_spec);
+    cmd.env("RSH", rsh_spec);
     cmd.args([
         "--rsync-path",
         remote_bin.to_str().unwrap(),
@@ -252,7 +252,7 @@ fn rsync_path_respects_rsh_env_var() {
     let src_spec = format!("{}/", src_dir.display());
     let dst_spec = format!("ignored:{}", dst_dir.display());
     let mut cmd = AssertCommand::cargo_bin("oc-rsync").unwrap();
-    cmd.env("RSYNC_RSH", rsh.to_str().unwrap());
+    cmd.env("RSH", rsh.to_str().unwrap());
     cmd.args([
         "--rsync-path",
         remote_bin.to_str().unwrap(),
