@@ -721,14 +721,16 @@ const PROGRESS_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 impl Progress {
     fn new(dest: &Path, total: u64, human_readable: bool, initial: u64, quiet: bool) -> Self {
         if !quiet {
+            use std::io::Write as _;
             if !PROGRESS_HEADER.swap(true, Ordering::SeqCst) {
-                eprintln!("sending incremental file list");
+                println!("sending incremental file list");
             }
             if let Some(name) = dest.file_name() {
-                eprintln!("{}", name.to_string_lossy());
+                println!("{}", name.to_string_lossy());
             } else {
-                eprintln!("{}", dest.display());
+                println!("{}", dest.display());
             }
+            let _ = std::io::stdout().flush();
         }
         let now = std::time::Instant::now();
         let idx = FILE_COUNTER.fetch_add(1, Ordering::SeqCst) + 1;
