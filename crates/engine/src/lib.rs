@@ -378,6 +378,38 @@ fn remove_basename_partial(dest: &Path) {
     }
 }
 
+struct TempFileGuard {
+    path: PathBuf,
+}
+
+impl TempFileGuard {
+    fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+
+    fn disarm(&mut self) {
+        self.path.clear();
+    }
+}
+
+impl Drop for TempFileGuard {
+    fn drop(&mut self) {
+        if self.path.as_os_str().is_empty() {
+            return;
+        }
+        let _ = fs::remove_file(&self.path);
+        if let Some(parent) = self.path.parent() {
+            if parent
+                .read_dir()
+                .map(|mut i| i.next().is_none())
+                .unwrap_or(false)
+            {
+                let _ = fs::remove_dir(parent);
+            }
+        }
+    }
+}
+
 fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
     if opts.dry_run || opts.only_write_batch {
         return Ok(());
@@ -1430,24 +1462,19 @@ impl Receiver {
             };
             #[cfg(not(unix))]
             let same_dev = true;
-            let prefix = dest
-                .file_name()
-                .and_then(|n| n.to_str())
-                .map(|n| format!(".{n}."))
-                .unwrap_or_else(|| String::from(".tmp."));
             let tmp_parent: &Path = if same_dev {
                 dir.as_path()
             } else {
                 auto_tmp = true;
                 dest_parent
             };
-            Builder::new()
-                .prefix(&prefix)
-                .tempfile_in(tmp_parent)
+            let dir_path = Builder::new()
+                .prefix(".oc-rsync-tmp.")
+                .rand_bytes(6)
+                .tempdir_in(tmp_parent)
                 .map_err(|e| io_context(tmp_parent, e))?
-                .into_temp_path()
-                .keep()
-                .map_err(|e| io_context(tmp_parent, e.error))?
+                .keep();
+            dir_path.join("tmp")
         } else if self.opts.partial {
             partial.clone()
         } else {
@@ -1460,24 +1487,33 @@ impl Receiver {
             && !self.opts.write_devices
         {
             auto_tmp = true;
-            let stem = dest
-                .file_stem()
-                .unwrap_or_else(|| dest.file_name().unwrap_or_default());
-            let name = format!("{}.tmp", stem.to_string_lossy());
-            tmp_dest = dest_parent.join(name);
+            let dir_path = Builder::new()
+                .prefix(".oc-rsync-tmp.")
+                .rand_bytes(6)
+                .tempdir_in(dest_parent)
+                .map_err(|e| io_context(dest_parent, e))?
+                .keep();
+            tmp_dest = dir_path.join("tmp");
         }
         let mut needs_rename =
             !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some() || auto_tmp);
         if self.opts.delay_updates && !self.opts.inplace && !self.opts.write_devices {
             if tmp_dest == dest {
-                let stem = dest
-                    .file_stem()
-                    .unwrap_or_else(|| dest.file_name().unwrap_or_default());
-                let name = format!("{}.tmp", stem.to_string_lossy());
-                tmp_dest = dest_parent.join(name);
+                let dir_path = Builder::new()
+                    .prefix(".oc-rsync-tmp.")
+                    .rand_bytes(6)
+                    .tempdir_in(dest_parent)
+                    .map_err(|e| io_context(dest_parent, e))?
+                    .keep();
+                tmp_dest = dir_path.join("tmp");
             }
             needs_rename = true;
         }
+        let mut tmp_guard = if needs_rename {
+            Some(TempFileGuard::new(tmp_dest.clone()))
+        } else {
+            None
+        };
         let cfg = ChecksumConfigBuilder::new()
             .strong(self.opts.strong)
             .seed(self.opts.checksum_seed)
@@ -1630,8 +1666,14 @@ impl Receiver {
             if self.opts.delay_updates {
                 self.delayed
                     .push((src.to_path_buf(), tmp_dest.clone(), dest.clone()));
+                if let Some(g) = tmp_guard.as_mut() {
+                    g.disarm();
+                }
             } else {
                 atomic_rename(&tmp_dest, &dest)?;
+                if let Some(g) = tmp_guard.as_mut() {
+                    g.disarm();
+                }
                 if (self.opts.partial || self.opts.partial_dir.is_some()) && partial != tmp_dest {
                     let _ = fs::remove_file(&partial);
                     if let Some(stem) = dest.file_stem() {
