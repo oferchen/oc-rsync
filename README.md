@@ -79,7 +79,7 @@ oc-rsync 0.1.0 — Pure-Rust rsync replica (compatible with rsync 3.4.1 / protoc
 ...
 ```
 
-The CLI aims for byte-for-byte parity with upstream `rsync`. Additional examples and flag descriptions are in [docs/cli.md](docs/cli.md) and upstream differences in [docs/differences.md](docs/differences.md).
+The CLI aims for byte-for-byte parity with upstream `rsync`. Additional examples and flag descriptions are in [docs/cli.md](docs/cli.md), and any divergences from upstream are tracked in [docs/gaps.md](docs/gaps.md).
 
 ## Design/Architecture
 
