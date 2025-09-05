@@ -25,6 +25,12 @@ use transport::{AddressFamily, RateLimitedTransport, TcpTransport, TimeoutTransp
 pub use meta::MetaOpts;
 pub const META_OPTS: MetaOpts = meta::META_OPTS;
 
+fn finish_session<T: Transport>(transport: &mut T) {
+    let _ = transport.send(b"@RSYNCD: EXIT\n");
+    let _ = transport.send(&[]);
+    let _ = transport.close();
+}
+
 #[cfg(unix)]
 pub struct PrivilegeContext {
     root: File,
@@ -1113,6 +1119,7 @@ pub fn handle_connection<T: Transport>(
         if let Some(max) = module.max_connections {
             if module.connections.load(Ordering::SeqCst) >= max as usize {
                 let _ = transport.send(b"@ERROR: max connections reached");
+                finish_session(transport);
                 return Err(io::Error::other("max connections reached"));
             }
             module.connections.fetch_add(1, Ordering::SeqCst);
@@ -1159,6 +1166,7 @@ pub fn handle_connection<T: Transport>(
                 || module.refuse_options.iter().any(|r| opt.contains(r))
             {
                 let _ = transport.send(b"@ERROR: option refused");
+                finish_session(transport);
                 return Err(io::Error::new(
                     io::ErrorKind::PermissionDenied,
                     "option refused",
@@ -1173,6 +1181,7 @@ pub fn handle_connection<T: Transport>(
             if module.max_connections.is_some() {
                 module.connections.fetch_sub(1, Ordering::SeqCst);
             }
+            finish_session(transport);
             return Err(io::Error::new(io::ErrorKind::PermissionDenied, "read only"));
         }
         if module.write_only && saw_server && is_sender {
@@ -1180,6 +1189,7 @@ pub fn handle_connection<T: Transport>(
             if module.max_connections.is_some() {
                 module.connections.fetch_sub(1, Ordering::SeqCst);
             }
+            finish_session(transport);
             return Err(io::Error::new(
                 io::ErrorKind::PermissionDenied,
                 "write only",
@@ -1204,20 +1214,19 @@ pub fn handle_connection<T: Transport>(
             module.connections.fetch_sub(1, Ordering::SeqCst);
         }
         let res = handler(transport, &opts);
-        let exit_res = transport.send(b"@RSYNCD: EXIT\n");
-        let flush_res = transport.send(&[]);
         let log_flush_res = if let Some(f) = log.as_mut() {
             f.flush()
         } else {
             Ok(())
         };
-        let close_res = transport.close();
-        res.and(exit_res)
-            .and(flush_res)
-            .and(log_flush_res)
-            .and(close_res)
+        let finish_res = {
+            finish_session(transport);
+            Ok(())
+        };
+        res.and(log_flush_res).and(finish_res)
     } else {
         let _ = transport.send(b"@ERROR: unknown module");
+        finish_session(transport);
         Err(io::Error::new(io::ErrorKind::NotFound, "unknown module"))
     }
 }
