@@ -1003,7 +1003,6 @@ pub fn handle_connection<T: Transport>(
     let mut log_file = log_file.map(|p| p.to_path_buf());
     let mut log_format = log_format.map(|s| s.to_string());
     let deadline = timeout.map(|d| Instant::now() + d);
-    let mut log: Option<File> = None;
     let res: io::Result<()> = (|| {
         let check_deadline = |t: &mut T| -> io::Result<()> {
             if let Some(dl) = deadline {
@@ -1175,44 +1174,19 @@ pub fn handle_connection<T: Transport>(
                     opts.push(opt);
                 }
             }
-        }
-        if let Some(max) = module.max_connections {
-            if module.connections.load(Ordering::SeqCst) >= max as usize {
-                let _ = transport.send(b"@ERROR: max connections reached");
+            if module.read_only && saw_server && !is_sender {
+                let _ = transport.send(b"@ERROR: read only");
+                if module.max_connections.is_some() {
+                    module.connections.fetch_sub(1, Ordering::SeqCst);
+                }
                 finish_session(transport);
-                return Err(io::Error::other("max connections reached"));
+                return Err(io::Error::new(io::ErrorKind::PermissionDenied, "read only"));
             }
             if module.write_only && saw_server && is_sender {
                 let _ = transport.send(b"@ERROR: write only");
                 if module.max_connections.is_some() {
                     module.connections.fetch_sub(1, Ordering::SeqCst);
                 }
-                Err(e) => return Err(e),
-            };
-            let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
-            if opt.is_empty() {
-                break;
-            }
-            if opt == "--sender" {
-                is_sender = true;
-            }
-            if opt == "--server" {
-                saw_server = true;
-            }
-            let mut consumed = false;
-            if let Some(v) = opt.strip_prefix("--log-file=") {
-                log_file = Some(PathBuf::from(v));
-                consumed = true;
-            } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
-                log_format = Some(v.to_string());
-                consumed = true;
-            }
-            if (opt == "--numeric-ids" && !module.numeric_ids)
-                || (opt == "--no-numeric-ids" && module.numeric_ids)
-                || refuse.iter().any(|r| opt.contains(r))
-                || module.refuse_options.iter().any(|r| opt.contains(r))
-            {
-                let _ = transport.send(b"@ERROR: option refused");
                 finish_session(transport);
                 return Err(io::Error::new(
                     io::ErrorKind::PermissionDenied,
@@ -1225,7 +1199,7 @@ pub fn handle_connection<T: Transport>(
             }
             let m_uid = module.uid.unwrap_or(uid);
             let m_gid = module.gid.unwrap_or(gid);
-            let (log_opt, _guard) = serve_module(
+            let (mut log, _guard) = serve_module(
                 transport,
                 module,
                 peer,
@@ -1234,58 +1208,27 @@ pub fn handle_connection<T: Transport>(
                 m_uid,
                 m_gid,
             )?;
-            log = log_opt;
             if module.max_connections.is_some() {
                 module.connections.fetch_sub(1, Ordering::SeqCst);
             }
-            finish_session(transport);
-            return Err(io::Error::new(io::ErrorKind::PermissionDenied, "read only"));
-        }
-        if module.write_only && saw_server && is_sender {
-            let _ = transport.send(b"@ERROR: write only");
-            if module.max_connections.is_some() {
-                module.connections.fetch_sub(1, Ordering::SeqCst);
-            }
-            finish_session(transport);
-            return Err(io::Error::new(
-                io::ErrorKind::PermissionDenied,
-                "write only",
-            ));
-        }
-        if let Some(dur) = module.timeout {
-            transport.set_read_timeout(Some(dur))?;
-            transport.set_write_timeout(Some(dur))?;
-        }
-        let m_uid = module.uid.unwrap_or(uid);
-        let m_gid = module.gid.unwrap_or(gid);
-        let (mut log, _guard) = serve_module(
-            transport,
-            module,
-            peer,
-            log_file.as_deref(),
-            log_format.as_deref(),
-            m_uid,
-            m_gid,
-        )?;
-        if module.max_connections.is_some() {
-            module.connections.fetch_sub(1, Ordering::SeqCst);
-        }
-        let res = handler(transport, &opts);
-        let log_flush_res = if let Some(f) = log.as_mut() {
-            f.flush()
+            let res = handler(transport, &opts);
+            let log_flush_res = if let Some(f) = log.as_mut() {
+                f.flush()
+            } else {
+                Ok(())
+            };
+            let finish_res = {
+                finish_session(transport);
+                Ok(())
+            };
+            res.and(log_flush_res).and(finish_res)
         } else {
-            Ok(())
-        };
-        let finish_res = {
+            let _ = transport.send(b"@ERROR: unknown module");
             finish_session(transport);
-            Ok(())
-        };
-        res.and(log_flush_res).and(finish_res)
-    } else {
-        let _ = transport.send(b"@ERROR: unknown module");
-        finish_session(transport);
-        Err(io::Error::new(io::ErrorKind::NotFound, "unknown module"))
-    }
+            Err(io::Error::new(io::ErrorKind::NotFound, "unknown module"))
+        }
+    })();
+    res
 }
 
 #[allow(clippy::too_many_arguments)]
