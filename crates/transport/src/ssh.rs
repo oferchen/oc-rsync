@@ -600,6 +600,11 @@ impl Transport for SshStdioTransport {
         self.write_timeout = dur;
         Ok(())
     }
+
+    fn close(&mut self) -> io::Result<()> {
+        let pipe = inner_pipe(self.inner.as_mut())?;
+        pipe.writer_mut().flush()
+    }
 }
 
 impl SshTransport for SshStdioTransport {}

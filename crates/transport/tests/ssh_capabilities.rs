@@ -37,6 +37,10 @@ impl Transport for ChunkedTransport {
         }
         Ok(n)
     }
+
+    fn close(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 #[test]
