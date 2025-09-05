@@ -27,25 +27,23 @@ fn main() {
                 Err(_) => {
                     let mut lib_dir: Option<PathBuf> = None;
 
-                    if let Ok(output) = Command::new("ldconfig").arg("-p").output() {
-                        if output.status.success() {
-                            let stdout = String::from_utf8_lossy(&output.stdout);
-                            for line in stdout.lines() {
-                                if line.contains("libacl.so") {
-                                    if let Some(path) = line.split("=>").nth(1) {
-                                        let path = path.trim();
-                                        if let Some(dir) = Path::new(path).parent() {
-                                            lib_dir = Some(dir.to_path_buf());
-                                            break;
-                                        }
-                                    }
-                                }
+                    if let Ok(output) = Command::new("ldconfig").arg("-p").output()
+                        && output.status.success()
+                    {
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        for line in stdout.lines() {
+                            if line.contains("libacl.so")
+                                && let Some(path) = line.split("=>").nth(1)
+                                && let Some(dir) = Path::new(path.trim()).parent()
+                            {
+                                lib_dir = Some(dir.to_path_buf());
+                                break;
                             }
                         }
                     }
 
-                    if lib_dir.is_none() {
-                        if let Ok(output) = Command::new("find")
+                    if lib_dir.is_none()
+                        && let Ok(output) = Command::new("find")
                             .args([
                                 "/usr/lib",
                                 "/usr/lib64",
@@ -59,16 +57,11 @@ fn main() {
                             .arg("-print")
                             .arg("-quit")
                             .output()
-                        {
-                            if output.status.success() {
-                                let stdout = String::from_utf8_lossy(&output.stdout);
-                                if let Some(path) = stdout.lines().next() {
-                                    if let Some(dir) = Path::new(path.trim()).parent() {
-                                        lib_dir = Some(dir.to_path_buf());
-                                    }
-                                }
-                            }
-                        }
+                        && output.status.success()
+                        && let Some(path) = String::from_utf8_lossy(&output.stdout).lines().next()
+                        && let Some(dir) = Path::new(path.trim()).parent()
+                    {
+                        lib_dir = Some(dir.to_path_buf());
                     }
 
                     if let Some(dir) = lib_dir {

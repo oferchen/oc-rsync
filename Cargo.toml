@@ -16,12 +16,18 @@ members = [
 ]
 resolver = "2"
 
+[workspace.metadata.oc_rsync]
+upstream_version = "3.4.1"
+supported_protocols = [32, 31, 30]
+
 [package]
 name = "oc-rsync"
 version = "0.1.0"
 description = "Pure-Rust reimplementation of rsync (protocol v32)"
 license = "Apache-2.0 OR MIT"
-edition = "2021"
+edition = "2024"
+categories = ["command-line-utilities", "filesystem"]
+keywords = ["rsync", "sync", "filesystem"]
 build = "build.rs"
 
 [dependencies]
@@ -105,8 +111,10 @@ nightly = ["checksums/nightly", "compress/nightly"]
 
 [package.metadata.deb]
 maintainer = "oc-rsync maintainers <maintainers@rsync.rs>"
-depends = "$auto, systemd"
+depends = "$auto, systemd, libzstd1, zlib1g, libacl1"
 assets = [
+    ["target/release/oc-rsync", "/usr/bin/oc-rsync", "755"],
+    ["target/release/oc-rsyncd", "/usr/bin/oc-rsyncd", "755"],
     ["packaging/systemd/oc-rsyncd.service", "/lib/systemd/system/oc-rsyncd.service", "644"],
     ["packaging/examples/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf", "644"],
     ["packaging/systemd/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf", "644"],
@@ -114,7 +122,7 @@ assets = [
 
 [package.metadata.rpm]
 maintainer = "oc-rsync maintainers <maintainers@rsync.rs>"
-requires = ["systemd"]
+requires = ["systemd", "libzstd1", "zlib1g", "libacl1"]
 
 [package.metadata.rpm.targets.oc-rsync]
 path = "/usr/bin/oc-rsync"

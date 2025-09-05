@@ -11,7 +11,7 @@ fn daemon_syslog_emits_message() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("sock");
     let server = UnixDatagram::bind(&path).unwrap();
-    std::env::set_var("OC_RSYNC_SYSLOG_PATH", &path);
+    unsafe { std::env::set_var("OC_RSYNC_SYSLOG_PATH", &path) };
     init_logging(None, None, true, false, false);
     warn!(target: "test", "daemon syslog");
     let mut buf = [0u8; 256];
@@ -19,5 +19,5 @@ fn daemon_syslog_emits_message() {
     let msg = std::str::from_utf8(&buf[..n]).unwrap();
     let expected = format!("<12>rsync[{}]: daemon syslog", std::process::id());
     assert_eq!(msg, expected);
-    std::env::remove_var("OC_RSYNC_SYSLOG_PATH");
+    unsafe { std::env::remove_var("OC_RSYNC_SYSLOG_PATH") };
 }

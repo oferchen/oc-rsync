@@ -227,6 +227,9 @@ jobs:
       - name: Install cyclonedx-rust-cargo
         run: cargo install cyclonedx-rust-cargo || true
 
+      - name: Display workspace metadata
+        run: cargo metadata --format-version 1 --no-deps | jq '.workspace_metadata.oc_rsync'
+
       - name: Build packages
         run: |
           cargo deb -p oc-rsync

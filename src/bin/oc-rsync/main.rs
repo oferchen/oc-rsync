@@ -44,11 +44,11 @@ fn main() {
         print!("{}", oc_rsync_cli::dump_help_body(&cmd));
         return;
     }
-    if let Some(mode) = matches.get_one::<OutBuf>("outbuf") {
-        if let Err(err) = stdio::set_std_buffering(*mode) {
-            eprintln!("failed to set stdio buffers: {err}");
-            std::process::exit(u8::from(ExitCode::FileIo) as i32);
-        }
+    if let Some(mode) = matches.get_one::<OutBuf>("outbuf")
+        && let Err(err) = stdio::set_std_buffering(*mode)
+    {
+        eprintln!("failed to set stdio buffers: {err}");
+        std::process::exit(u8::from(ExitCode::FileIo) as i32);
     }
     if let Err(e) = oc_rsync_cli::run(&matches) {
         eprintln!("{e}");

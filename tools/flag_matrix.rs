@@ -52,10 +52,10 @@ fn parse_help(
             .filter(|t| t.starts_with("--"))
             .max_by_key(|t| t.len())
             .cloned();
-        if desc.contains("alias for") {
-            if let Some(idx) = desc.find("--") {
-                canonical = Some(clean_flag(&desc[idx..]));
-            }
+        if desc.contains("alias for")
+            && let Some(idx) = desc.find("--")
+        {
+            canonical = Some(clean_flag(&desc[idx..]));
         }
         let Some(canonical) = canonical else {
             continue;
