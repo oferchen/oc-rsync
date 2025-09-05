@@ -161,7 +161,7 @@ fn sync_preserves_symlink_xattrs() {
     assert_eq!(&val[..], b"val");
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "acl"))]
 #[test]
 fn sync_preserves_acls() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};
@@ -236,7 +236,7 @@ fn sync_xattrs_match_rsync() {
     assert_eq!(val_oc, val_rs);
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "acl"))]
 #[test]
 fn sync_acls_match_rsync() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};
@@ -280,7 +280,7 @@ fn sync_acls_match_rsync() {
     assert_eq!(dacl_oc.entries(), dacl_rs.entries());
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "acl"))]
 #[test]
 fn sync_removes_acls() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};
@@ -316,7 +316,7 @@ fn sync_removes_acls() {
     assert!(dacl_dst.entries().is_empty());
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "acl"))]
 #[test]
 fn sync_removes_acls_match_rsync() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};
@@ -366,7 +366,7 @@ fn sync_removes_acls_match_rsync() {
     assert_eq!(dacl_oc.entries(), dacl_rs.entries());
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "acl"))]
 #[test]
 fn sync_ignores_acls_without_flag() {
     use posix_acl::{PosixACL, Qualifier, ACL_READ};

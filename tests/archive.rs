@@ -10,8 +10,6 @@ use oc_rsync::meta::{makedev, Mode, SFlag};
 #[cfg(unix)]
 use sha2::{Digest, Sha256};
 #[cfg(unix)]
-use std::convert::TryInto;
-#[cfg(unix)]
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::{symlink, FileTypeExt, MetadataExt, PermissionsExt};
@@ -63,7 +61,7 @@ fn archive_matches_combination_and_rsync() {
         &src.join("dev"),
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o644),
-        makedev(1, 7).try_into().unwrap(),
+        u64::try_from(makedev(1, 7)).unwrap(),
     )
     .unwrap();
 

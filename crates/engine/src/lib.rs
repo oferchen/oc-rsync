@@ -1014,8 +1014,18 @@ impl Sender {
     }
 
     fn strong_file_checksum(&self, path: &Path) -> Result<Vec<u8>> {
-        let data = fs::read(path).map_err(|e| io_context(path, e))?;
-        Ok(self.cfg.checksum(&data).strong)
+        let file = File::open(path).map_err(|e| io_context(path, e))?;
+        let mut reader = BufReader::new(file);
+        let mut buf = [0u8; 8192];
+        let mut hasher = self.cfg.strong_hasher();
+        loop {
+            let n = reader.read(&mut buf).map_err(|e| io_context(path, e))?;
+            if n == 0 {
+                break;
+            }
+            hasher.update(&buf[..n]);
+        }
+        Ok(hasher.finalize())
     }
 
     fn metadata_unchanged(&self, path: &Path, dest: &Path) -> bool {
@@ -2426,24 +2436,36 @@ pub fn sync(
         }
         return Ok(stats);
     }
-    if !dst.exists() && !opts.only_write_batch {
-        fs::create_dir_all(dst).map_err(|e| {
-            std::io::Error::new(
-                e.kind(),
-                format!(
-                    "failed to create destination directory {}: {e}",
-                    dst.display()
-                ),
-            )
-        })?;
-        #[cfg(unix)]
-        if let Some((uid, gid)) = opts.copy_as {
-            let gid = gid.map(Gid::from_raw);
-            chown(dst, Some(Uid::from_raw(uid)), gid)
-                .map_err(|e| io_context(dst, std::io::Error::from(e)))?;
+    if !opts.only_write_batch {
+        let dir = if src_root.is_file() {
+            dst.parent()
+        } else if !dst.exists() {
+            Some(dst)
+        } else {
+            None
+        };
+
+        if let Some(dir) = dir {
+            if !dir.exists() {
+                fs::create_dir_all(dir).map_err(|e| {
+                    std::io::Error::new(
+                        e.kind(),
+                        format!(
+                            "failed to create destination directory {}: {e}",
+                            dir.display()
+                        ),
+                    )
+                })?;
+                #[cfg(unix)]
+                if let Some((uid, gid)) = opts.copy_as {
+                    let gid = gid.map(Gid::from_raw);
+                    chown(dir, Some(Uid::from_raw(uid)), gid)
+                        .map_err(|e| io_context(dir, std::io::Error::from(e)))?;
+                }
+                stats.files_created += 1;
+                stats.dirs_created += 1;
+            }
         }
-        stats.files_created += 1;
-        stats.dirs_created += 1;
     }
 
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
@@ -2908,7 +2930,10 @@ mod tests {
     use super::*;
     use checksums::rolling_checksum;
     use compress::available_codecs;
-    use tempfile::tempdir;
+    use filters::Matcher;
+    use std::fs;
+    use std::io::Write;
+    use tempfile::{tempdir, NamedTempFile};
 
     #[test]
     fn delta_roundtrip() {
@@ -3214,5 +3239,25 @@ mod tests {
         let file = std::fs::OpenOptions::new().read(true).open(&path).unwrap();
         let err = preallocate(&file, 1).unwrap_err();
         assert_eq!(err.raw_os_error(), Some(libc::EBADF));
+    }
+
+    #[test]
+    fn large_file_strong_checksum_matches() {
+        let mut tmp = NamedTempFile::new().unwrap();
+        let chunk = [0u8; 1024];
+        for _ in 0..(11 * 1024) {
+            tmp.write_all(&chunk).unwrap();
+        }
+        let path = tmp.path().to_path_buf();
+        let mut sender = Sender::new(
+            RSYNC_BLOCK_SIZE,
+            Matcher::default(),
+            None,
+            SyncOptions::default(),
+        );
+        let new_sum = sender.strong_file_checksum(&path).unwrap();
+        let data = fs::read(&path).unwrap();
+        let old_sum = sender.cfg.checksum(&data).strong;
+        assert_eq!(new_sum, old_sum);
     }
 }

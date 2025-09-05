@@ -1,4 +1,4 @@
-# oc-rsync — Pure-Rust rsync replica (compatible with rsync 3.4.1 / protocol 32)
+# oc-rsync - Pure-Rust rsync (compatible with rsync 3.4.1 / protocol 32)
 
 [![CI](https://github.com/oferchen/oc-rsync/actions/workflows/ci.yml/badge.svg)](https://github.com/oferchen/oc-rsync/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/oferchen/oc-rsync)](https://github.com/oferchen/oc-rsync/releases)
@@ -52,6 +52,12 @@ sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
 Run `scripts/preflight.sh` to verify these dependencies before building. Then
 install from crates.io or build from a local checkout:
 
+If `libacl1-dev` isn't available, disable ACL support with
+
+```bash
+cargo build --no-default-features --features xattr
+```
+
 ```bash
 # install from crates.io
 cargo install oc-rsync
@@ -89,13 +95,13 @@ Report vulnerabilities via [SECURITY.md](SECURITY.md). The daemon aims to match 
 
 ## Roadmap
 
-- M1—Bootstrap: repository builds; walk and checksum crates generate file signatures.
-- M2—Delta Engine: local delta transfers with metadata preservation.
-- M3—Remote Protocol: rsync protocol v32 over SSH and `rsync://`.
-- M4—Metadata Fidelity: permissions, symlinks, hard links, sparse files, xattrs/ACLs.
-- M5—Filters & Compression: include/exclude rules and compression negotiation.
-- M6—Robust Transfers: resume partials, verify checksums, hardened I/O.
-- M7—Stabilization: cross‑platform builds, performance tuning, and compatibility matrix completion.
+- M1-Bootstrap: repository builds; walk and checksum crates generate file signatures.
+- M2-Delta Engine: local delta transfers with metadata preservation.
+- M3-Remote Protocol: rsync protocol v32 over SSH and `rsync://`.
+- M4-Metadata Fidelity: permissions, symlinks, hard links, sparse files, xattrs/ACLs.
+- M5-Filters & Compression: include/exclude rules and compression negotiation.
+- M6-Robust Transfers: resume partials, verify checksums, hardened I/O.
+- M7-Stabilization: cross‑platform builds, performance tuning, and compatibility matrix completion.
 
 ## License
 
