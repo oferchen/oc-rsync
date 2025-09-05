@@ -105,6 +105,12 @@ impl InfoFlag {
     }
 }
 
+impl From<&InfoFlag> for InfoFlag {
+    fn from(flag: &InfoFlag) -> Self {
+        *flag
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, ValueEnum)]
 #[clap(rename_all = "kebab-case")]
 pub enum DebugFlag {
@@ -206,6 +212,12 @@ impl DebugFlag {
     }
 }
 
+impl From<&DebugFlag> for DebugFlag {
+    fn from(flag: &DebugFlag) -> Self {
+        *flag
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct SubscriberConfig {
     pub format: LogFormat,
@@ -261,13 +273,21 @@ impl SubscriberConfigBuilder {
         self
     }
 
-    pub fn info(mut self, info: Vec<InfoFlag>) -> Self {
-        self.cfg.info = info;
+    pub fn info<I>(mut self, info: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<InfoFlag>,
+    {
+        self.cfg.info = info.into_iter().map(Into::into).collect();
         self
     }
 
-    pub fn debug(mut self, debug: Vec<DebugFlag>) -> Self {
-        self.cfg.debug = debug;
+    pub fn debug<I>(mut self, debug: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<DebugFlag>,
+    {
+        self.cfg.debug = debug.into_iter().map(Into::into).collect();
         self
     }
 
