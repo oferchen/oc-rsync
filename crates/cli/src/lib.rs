@@ -180,6 +180,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         total.files_transferred += stats.files_transferred;
         total.files_deleted += stats.files_deleted;
         total.files_created += stats.files_created;
+        total.dirs_created += stats.dirs_created;
         total.total_file_size += stats.total_file_size;
         total.bytes_transferred += stats.bytes_transferred;
         total.literal_data += stats.literal_data;
@@ -202,7 +203,12 @@ fn print_stats(stats: &Stats, opts: &ClientOpts) {
         "Number of files: {} (reg: {}, dir: {})",
         num_files, stats.files_total, stats.dirs_total
     );
-    println!("Number of created files: {}", stats.files_created);
+    println!(
+        "Number of created files: {} (reg: {}, dir: {})",
+        stats.files_created,
+        stats.files_created - stats.dirs_created,
+        stats.dirs_created
+    );
     println!("Number of deleted files: {}", stats.files_deleted);
     println!(
         "Number of regular files transferred: {}",

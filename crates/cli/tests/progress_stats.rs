@@ -86,7 +86,7 @@ fn stats_parity() {
 
     let expected = [
         "File list size: 0",
-        "Number of created files: 1",
+        "Number of created files: 2 (reg: 1, dir: 1)",
         "Number of deleted files: 0",
         "Number of regular files transferred: 1",
         "Total transferred file size: 5 bytes",

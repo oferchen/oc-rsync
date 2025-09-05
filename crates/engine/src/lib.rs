@@ -2000,6 +2000,7 @@ pub struct Stats {
     pub files_transferred: usize,
     pub files_deleted: usize,
     pub files_created: usize,
+    pub dirs_created: usize,
     pub total_file_size: u64,
     pub bytes_transferred: u64,
     pub literal_data: u64,
@@ -2441,6 +2442,8 @@ pub fn sync(
             chown(dst, Some(Uid::from_raw(uid)), gid)
                 .map_err(|e| io_context(dst, std::io::Error::from(e)))?;
         }
+        stats.files_created += 1;
+        stats.dirs_created += 1;
     }
 
     let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
@@ -2684,6 +2687,7 @@ pub fn sync(
                     }
                     if created {
                         stats.files_created += 1;
+                        stats.dirs_created += 1;
                         #[cfg(unix)]
                         if let Some((uid, gid)) = opts.copy_as {
                             let gid = gid.map(Gid::from_raw);
