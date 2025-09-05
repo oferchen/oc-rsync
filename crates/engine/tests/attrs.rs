@@ -2,6 +2,7 @@
 
 #![cfg(unix)]
 
+use std::convert::TryInto;
 use std::fs::{self, File};
 use std::io::{Seek, SeekFrom, Write};
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
@@ -633,11 +634,12 @@ fn devices_roundtrip() {
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst).unwrap();
     let dev = src.join("null");
+    #[allow(clippy::useless_conversion)]
     mknod(
         &dev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
-        meta::makedev(1, 3),
+        meta::makedev(1, 3).try_into().unwrap(),
     )
     .unwrap();
     sync(
@@ -664,11 +666,12 @@ fn copy_devices_creates_regular_files() {
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst).unwrap();
     let dev = src.join("null");
+    #[allow(clippy::useless_conversion)]
     mknod(
         &dev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
-        meta::makedev(1, 3),
+        meta::makedev(1, 3).try_into().unwrap(),
     )
     .unwrap();
     sync(
@@ -696,11 +699,12 @@ fn copy_devices_handles_zero() {
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst).unwrap();
     let dev = src.join("zero");
+    #[allow(clippy::useless_conversion)]
     mknod(
         &dev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
-        meta::makedev(1, 5),
+        meta::makedev(1, 5).try_into().unwrap(),
     )
     .unwrap();
     sync(

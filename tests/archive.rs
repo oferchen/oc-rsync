@@ -148,7 +148,7 @@ fn archive_respects_no_options() {
         &src.join("dev"),
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o644),
-        u64::try_from(makedev(1, 7)).unwrap(),
+        makedev(1, 7).try_into().unwrap(),
     )
     .unwrap();
 
