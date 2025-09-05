@@ -25,8 +25,6 @@ This file documents tests marked `#[ignore]` and why they remain excluded from a
 | `tests/daemon.rs::client_authenticates_with_password_file` | Client password file authentication pending. |
 | `tests/daemon.rs::client_respects_no_motd` | MOTD suppression feature incomplete. |
 | `tests/daemon.rs::daemon_honors_bwlimit` | Bandwidth limiting not implemented. |
-| `tests/out_format.rs::out_format_file_matches_rsync` | Depends on external `rsync` for parity checks. |
-| `tests/out_format.rs::out_format_symlink_matches_rsync` | Depends on external `rsync` for parity checks. |
 | `tests/filter_corpus.rs::filter_corpus_parity` | Filter corpus parity with upstream not yet validated. |
 | `tests/filter_corpus.rs::perdir_sign_parity` | Per-directory signing parity pending. |
 | `tests/cli.rs::progress_parity` | Progress output parity requires upstream comparison. |
