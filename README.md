@@ -32,17 +32,18 @@ sudo rpm -i oc-rsync-<version>.x86_64.rpm
 
 #### Prerequisites
 
-The source build requires a C toolchain and compression libraries:
+The source build requires a C toolchain, compression libraries, and ACL headers:
 
 - `build-essential` (provides `gcc`/`ld`)
 - `libzstd-dev`
 - `zlib1g-dev`
+- `libacl1-dev`
 
 On Debian/Ubuntu systems:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y build-essential libzstd-dev zlib1g-dev
+sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
 ```
 
 Run `scripts/preflight.sh` to verify these dependencies before building. Then
