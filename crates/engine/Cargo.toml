@@ -12,20 +12,20 @@ compress = { path = "../compress" }
 filelist = { path = "../filelist" }
 protocol = { path = "../protocol" }
 nix = { version = "0.27", features = ["user", "fs"] }
-meta = { path = "../meta" }
+meta = { path = "../meta", default-features = false }
 logging = { path = "../logging" }
 libc = "0.2"
 memmap2 = "0.9"
 tempfile = "3"
 tracing = "0.1"
 transport = { path = "../transport" }
+posix-acl = { version = "1.2", optional = true }
 
 [dev-dependencies]
 compress = { path = "../compress" }
 criterion = { version = "0.5", default-features = false }
 filetime = "0.2"
 xattr = "1.3"
-posix-acl = "1.2"
 encoding_rs = "0.8"
 
 [[bench]]
@@ -48,4 +48,4 @@ harness = false
 default = ["zstd", "xattr", "acl"]
 zstd = []
 xattr = []
-acl = []
+acl = ["meta/acl", "posix-acl"]
