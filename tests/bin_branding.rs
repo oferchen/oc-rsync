@@ -4,9 +4,7 @@ use predicates::str::contains;
 
 #[test]
 fn errors_use_program_name() {
-    unsafe {
-        std::env::set_var("OC_RSYNC_BRAND_NAME", "myrsync");
-    }
+    std::env::set_var("OC_RSYNC_NAME", "myrsync");
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .arg("--bogus")
@@ -14,9 +12,7 @@ fn errors_use_program_name() {
         .failure()
         .stderr(contains("myrsync:"))
         .stderr(contains("myrsync error:"));
-    unsafe {
-        std::env::remove_var("OC_RSYNC_BRAND_NAME");
-    }
+    std::env::remove_var("OC_RSYNC_NAME");
 }
 
 #[test]

@@ -335,10 +335,10 @@ specified earlier in the list override later sources.
 The CLI's branding can be customized at runtime via the following environment
 variables:
 
-- `OC_RSYNC_BRAND_NAME` – override the displayed program name.
-- `OC_RSYNC_BRAND_TAGLINE` – one-line tagline shown in `--help` output.
-- `OC_RSYNC_BRAND_URL` – project URL printed in `--help` and `--version`.
-- `OC_RSYNC_BRAND_COPYRIGHT` – copyright line used in `--version` output.
+- `OC_RSYNC_NAME` – override the displayed program name.
+- `OC_RSYNC_VERSION` – override the program version displayed in `--version` output.
+- `OC_RSYNC_URL` – project URL printed in `--help` and `--version`.
+- `OC_RSYNC_COPYRIGHT` – copyright line used in `--version` output.
 - `OC_RSYNC_HIDE_CREDITS` – if set to a non-zero value, hides the tagline and URL.
 - `OC_RSYNC_VERSION_PREFIX` – prefix prepended to the package version.
 - `OC_RSYNC_HELP_HEADER` – replaces the default help header text.
