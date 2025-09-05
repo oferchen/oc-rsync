@@ -95,9 +95,9 @@ pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
             hasher.update(data);
             hasher.finalize().to_vec()
         }
-        StrongHash::Xxh64 => xxh64(data, seed as u64).to_be_bytes().to_vec(),
-        StrongHash::Xxh3 => xxh3_64_with_seed(data, seed as u64).to_be_bytes().to_vec(),
-        StrongHash::Xxh128 => xxh3_128_with_seed(data, seed as u64).to_be_bytes().to_vec(),
+        StrongHash::Xxh64 => xxh64(data, seed as u64).to_le_bytes().to_vec(),
+        StrongHash::Xxh3 => xxh3_64_with_seed(data, seed as u64).to_le_bytes().to_vec(),
+        StrongHash::Xxh128 => xxh3_128_with_seed(data, seed as u64).to_le_bytes().to_vec(),
     }
 }
 
@@ -402,16 +402,25 @@ mod tests {
         );
 
         let digest_xxh64 = strong_digest(b"hello world", StrongHash::Xxh64, 0);
-        assert_eq!(hex::encode(digest_xxh64), "45ab6734b21e6968");
+        assert_eq!(hex::encode(&digest_xxh64), "68691eb23467ab45");
+        let mut be64 = digest_xxh64.clone();
+        be64.reverse();
+        assert_eq!(hex::encode(be64), "45ab6734b21e6968");
 
         let digest_xxh3 = strong_digest(b"hello world", StrongHash::Xxh3, 0);
-        assert_eq!(hex::encode(digest_xxh3), "d447b1ea40e6988b");
+        assert_eq!(hex::encode(&digest_xxh3), "8b98e640eab147d4");
+        let mut be3 = digest_xxh3.clone();
+        be3.reverse();
+        assert_eq!(hex::encode(be3), "d447b1ea40e6988b");
 
         let digest_xxh128 = strong_digest(b"hello world", StrongHash::Xxh128, 0);
         assert_eq!(
-            hex::encode(digest_xxh128),
-            "df8d09e93f874900a99b8775cc15b6c7",
+            hex::encode(&digest_xxh128),
+            "c7b615cc75879ba90049873fe9098ddf",
         );
+        let mut be128 = digest_xxh128.clone();
+        be128.reverse();
+        assert_eq!(hex::encode(be128), "df8d09e93f874900a99b8775cc15b6c7",);
     }
 
     #[test]
