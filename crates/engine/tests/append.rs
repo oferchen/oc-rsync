@@ -14,8 +14,10 @@ fn append_errors_when_destination_missing() {
     fs::create_dir_all(&dst).unwrap();
     fs::write(src.join("file"), b"data").unwrap();
 
-    let mut opts = SyncOptions::default();
-    opts.append = true;
+    let opts = SyncOptions {
+        append: true,
+        ..Default::default()
+    };
     let err = sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts)
         .expect_err("expected error when appending without destination");
     if let EngineError::Io(e) = err {

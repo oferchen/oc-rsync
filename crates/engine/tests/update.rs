@@ -19,8 +19,10 @@ fn update_skips_newer_dest() {
     let dst_time = FileTime::from_unix_time(2_000_000_000, 0);
     set_file_mtime(src.join("file.txt"), src_time).unwrap();
     set_file_mtime(dst.join("file.txt"), dst_time).unwrap();
-    let mut opts = SyncOptions::default();
-    opts.update = true;
+    let opts = SyncOptions {
+        update: true,
+        ..Default::default()
+    };
     sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts).unwrap();
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"old");
 }
@@ -38,8 +40,10 @@ fn update_replaces_older_dest() {
     let dst_time = FileTime::from_unix_time(1_000_000_000, 0);
     set_file_mtime(src.join("file.txt"), src_time).unwrap();
     set_file_mtime(dst.join("file.txt"), dst_time).unwrap();
-    let mut opts = SyncOptions::default();
-    opts.update = true;
+    let opts = SyncOptions {
+        update: true,
+        ..Default::default()
+    };
     sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts).unwrap();
     assert_eq!(fs::read(dst.join("file.txt")).unwrap(), b"new");
 }
@@ -52,8 +56,10 @@ fn update_skips_new_files() {
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst).unwrap();
     fs::write(src.join("new.txt"), b"new").unwrap();
-    let mut opts = SyncOptions::default();
-    opts.update = true;
+    let opts = SyncOptions {
+        update: true,
+        ..Default::default()
+    };
     sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts).unwrap();
     assert!(!dst.join("new.txt").exists());
 }

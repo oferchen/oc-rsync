@@ -1468,13 +1468,14 @@ impl Receiver {
                 auto_tmp = true;
                 dest_parent
             };
+            #[allow(deprecated)]
             let dir_path = Builder::new()
                 .prefix(".oc-rsync-tmp.")
                 .rand_bytes(6)
                 .tempdir_in(tmp_parent)
                 .map_err(|e| io_context(tmp_parent, e))?
-                .into_temp_path()
-                .keep();
+                .into_path();
+            dir_path
         } else if (self.opts.partial || self.opts.append || self.opts.append_verify)
             && existing_partial.is_some()
         {
@@ -1490,12 +1491,13 @@ impl Receiver {
             && !self.opts.write_devices
         {
             auto_tmp = true;
+            #[allow(deprecated)]
             let dir_path = Builder::new()
                 .prefix(".oc-rsync-tmp.")
                 .rand_bytes(6)
                 .tempdir_in(dest_parent)
                 .map_err(|e| io_context(dest_parent, e))?
-                .keep();
+                .into_path();
             tmp_dest = dir_path.join("tmp");
         }
         let mut needs_rename = !self.opts.inplace
@@ -1505,12 +1507,13 @@ impl Receiver {
                 || auto_tmp);
         if self.opts.delay_updates && !self.opts.inplace && !self.opts.write_devices {
             if tmp_dest == dest {
+                #[allow(deprecated)]
                 let dir_path = Builder::new()
                     .prefix(".oc-rsync-tmp.")
                     .rand_bytes(6)
                     .tempdir_in(dest_parent)
                     .map_err(|e| io_context(dest_parent, e))?
-                    .keep();
+                    .into_path();
                 tmp_dest = dir_path.join("tmp");
             }
             needs_rename = true;
@@ -3342,7 +3345,7 @@ mod tests {
         let mut stats = Stats::default();
         sender.start();
         for path in [src.join("inside.txt"), outside.clone()] {
-            if let Some(rel) = path.strip_prefix(&src).ok() {
+            if let Ok(rel) = path.strip_prefix(&src) {
                 let dest_path = dst.join(rel);
                 sender
                     .process_file(&path, &dest_path, rel, &mut receiver, &mut stats)
@@ -3446,7 +3449,7 @@ mod tests {
             tmp.write_all(&chunk).unwrap();
         }
         let path = tmp.path().to_path_buf();
-        let mut sender = Sender::new(
+        let sender = Sender::new(
             RSYNC_BLOCK_SIZE,
             Matcher::default(),
             None,
