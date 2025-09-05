@@ -143,7 +143,7 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         .ok_or_else(|| EngineError::Other("missing SRC or DST".into()))?;
     let srcs = opts.paths[..opts.paths.len() - 1].to_vec();
     if srcs.len() > 1 {
-        if let RemoteSpec::Local(ps) = parse_remote_spec(&dst_arg)? {
+        if let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(&dst_arg) {
             if !ps.path.is_dir() {
                 return Err(EngineError::Other("destination must be a directory".into()));
             }
@@ -1428,6 +1428,21 @@ mod tests {
             }
             _ => panic!("expected remote spec"),
         }
+    }
+
+    #[test]
+    fn malformed_rsync_url_is_error() {
+        assert!(parse_remote_spec("rsync://").is_err());
+    }
+
+    #[test]
+    fn malformed_daemon_spec_is_error() {
+        assert!(parse_remote_spec("host::mod").is_err());
+    }
+
+    #[test]
+    fn malformed_ipv6_spec_is_error() {
+        assert!(parse_remote_spec("[::1]:module").is_err());
     }
 
     #[test]
