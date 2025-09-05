@@ -34,6 +34,15 @@ fn require_network() -> Result<(), Skip> {
     Ok(())
 }
 
+fn require_root() -> Result<(), Skip> {
+    use nix::unistd::Uid;
+    if Uid::effective().is_root() {
+        Ok(())
+    } else {
+        Err(Skip)
+    }
+}
+
 #[test]
 fn parse_daemon_args_parses_options() {
     let args = vec![
@@ -1188,6 +1197,10 @@ fn daemon_runs_with_numeric_ids() {
 
 #[test]
 fn daemon_allows_module_access() {
+    if require_root().is_err() {
+        eprintln!("skipping daemon_allows_module_access: requires root");
+        return;
+    }
     let module = Module {
         name: "data".into(),
         path: std::env::current_dir().unwrap(),
@@ -1869,6 +1882,10 @@ fn daemon_suppresses_motd_when_requested() {
 
 #[test]
 fn client_respects_no_motd() {
+    if require_root().is_err() {
+        eprintln!("skipping client_respects_no_motd: requires root");
+        return;
+    }
     let dir = tempdir().unwrap();
     let motd = dir.path().join("motd");
     fs::write(&motd, "Hello world\n").unwrap();
