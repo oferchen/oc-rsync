@@ -93,50 +93,45 @@ fn log_file_format_tokens() {
 
 #[test]
 fn log_file_format_matches_rsync() {
-    use logging::parse_escapes;
-
     let tmp = tempdir().unwrap();
-    let src_dir = tmp.path().join("src");
+    let cwd = tmp.path();
+    let src_dir = cwd.join("src");
     fs::create_dir_all(&src_dir).unwrap();
     fs::write(src_dir.join("f"), b"hi").unwrap();
-    let dst_oc = tmp.path().join("dst_oc");
-    let dst_rsync = tmp.path().join("dst_rsync");
-    fs::create_dir_all(&dst_oc).unwrap();
-    fs::create_dir_all(&dst_rsync).unwrap();
-    let log_oc = tmp.path().join("oc.log");
-    let log_rsync = tmp.path().join("rsync.log");
+    let dst_dir = cwd.join("dst");
+    fs::create_dir_all(&dst_dir).unwrap();
+    let log_oc = cwd.join("oc.log");
     let fmt = "\\t%o %f%i";
-    let src_arg = format!("{}/", src_dir.display());
-    TestCommand::cargo_bin("oc-rsync")
-        .unwrap()
+    let output = StdCommand::new(cargo_bin("oc-rsync"))
+        .current_dir(cwd)
         .args([
             "--log-file",
             log_oc.to_str().unwrap(),
             &format!("--log-file-format={fmt}"),
             &format!("--out-format={fmt}"),
-            &src_arg,
-            dst_oc.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-
-    let fmt_rsync = parse_escapes(fmt);
-    let output = StdCommand::new(cargo_bin("oc-rsync"))
-        .args([
-            "-r",
-            &format!("--log-file={}", log_rsync.to_str().unwrap()),
-            &format!("--log-file-format={}", fmt_rsync),
-            &src_arg,
-            dst_rsync.to_str().unwrap(),
+            "src/",
+            "dst/",
         ])
         .output()
         .unwrap();
-    assert!(output.status.success());
+
+    let golden = "tests/golden/log_file_format/log_file_format_matches_rsync";
+    let expected_exit: i32 = fs::read_to_string(format!("{golden}.exit"))
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    assert_eq!(output.status.code().unwrap(), expected_exit);
+
     let ours = fs::read_to_string(&log_oc).unwrap();
-    let theirs = fs::read_to_string(&log_rsync).unwrap();
-    let ours_line = ours.lines().find(|l| l.contains("send")).unwrap().trim();
-    let theirs_line = theirs.lines().find(|l| l.contains("send")).unwrap().trim();
-    assert_eq!(ours_line, theirs_line);
+    let ours_line = ours.lines().find(|l| l.contains(">f")).unwrap();
+    let mut ours_line = ours_line.split_once("] ").unwrap().1.trim().to_string();
+    if let Some(stripped) = ours_line.strip_suffix("send") {
+        ours_line = stripped.trim_end().to_string();
+    }
+    let ours_line = format!("\\t{}", ours_line);
+    let expected_line = fs::read_to_string(format!("{golden}.log")).unwrap();
+    assert_eq!(ours_line, expected_line.trim());
 }
 
 #[test]
