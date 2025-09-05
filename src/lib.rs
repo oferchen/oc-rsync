@@ -53,11 +53,11 @@ impl Default for SyncConfig {
             times: false,
             atimes: false,
             open_noatime: false,
-            links: true,
-            devices: true,
-            specials: true,
-            owner: true,
-            group: true,
+            links: false,
+            devices: false,
+            specials: false,
+            owner: false,
+            group: false,
             #[cfg(feature = "xattr")]
             xattrs: false,
             #[cfg(feature = "acl")]
