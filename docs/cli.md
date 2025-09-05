@@ -98,6 +98,13 @@ copied:
 - `oc-rsync "remote:/src/" "local/"` pulls the contents of `/src` from the remote
   host into `local`.
 
+### Privileged defaults
+
+Upstream `rsync` treats options that preserve symbolic links, device files,
+special files, and ownership as privileged. For parity, `oc-rsync` leaves
+`--links`, `--devices`, `--specials`, `--owner`, and `--group` disabled unless
+explicitly requested.
+
 ## Options
 
 The table below mirrors the full `rsync(1)` flag set. Defaults show the
