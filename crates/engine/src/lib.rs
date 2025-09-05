@@ -4,6 +4,7 @@ use nix::unistd::{chown, Gid, Uid};
 use rand::{distributions::Alphanumeric, Rng};
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
+use std::ffi::OsStr;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
 #[cfg(unix)]
@@ -382,6 +383,18 @@ fn remove_basename_partial(dest: &Path) {
     }
 }
 
+fn temp_file_path(parent: &Path, base: &OsStr) -> Result<PathBuf> {
+    #[allow(deprecated)]
+    let tmp = Builder::new()
+        .prefix(&format!(".{}.", base.to_string_lossy()))
+        .rand_bytes(6)
+        .tempfile_in(parent)
+        .map_err(|e| io_context(parent, e))?;
+    let path = tmp.path().to_path_buf();
+    tmp.close().map_err(|e| io_context(&path, e))?;
+    Ok(path)
+}
+
 struct TempFileGuard {
     path: PathBuf,
 }
@@ -402,15 +415,6 @@ impl Drop for TempFileGuard {
             return;
         }
         let _ = fs::remove_file(&self.path);
-        if let Some(parent) = self.path.parent() {
-            if parent
-                .read_dir()
-                .map(|mut i| i.next().is_none())
-                .unwrap_or(false)
-            {
-                let _ = fs::remove_dir(parent);
-            }
-        }
     }
 }
 
@@ -1466,6 +1470,7 @@ impl Receiver {
             dest.clone()
         };
         let dest_parent = dest.parent().unwrap_or_else(|| Path::new("."));
+        fs::create_dir_all(dest_parent).map_err(|e| io_context(dest_parent, e))?;
         let mut auto_tmp = false;
         let mut tmp_dest = if self.opts.inplace {
             dest.clone()
