@@ -56,13 +56,10 @@ fn main() {
                             .arg("-quit")
                             .output()
                         && output.status.success()
+                        && let Some(path) = String::from_utf8_lossy(&output.stdout).lines().next()
+                        && let Some(dir) = Path::new(path.trim()).parent()
                     {
-                        let stdout = String::from_utf8_lossy(&output.stdout);
-                        if let Some(path) = stdout.lines().next()
-                            && let Some(dir) = Path::new(path.trim()).parent()
-                        {
-                            lib_dir = Some(dir.to_path_buf());
-                        }
+                        lib_dir = Some(dir.to_path_buf());
                     }
 
                     if let Some(dir) = lib_dir {

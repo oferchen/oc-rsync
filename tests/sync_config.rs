@@ -296,15 +296,11 @@ fn custom_syslog_and_journald_settings() {
 
     let syslog_path = dir.path().join("syslog.sock");
     let syslog_server = UnixDatagram::bind(&syslog_path).unwrap();
-    unsafe {
-        std::env::set_var("OC_RSYNC_SYSLOG_PATH", &syslog_path);
-    }
+    unsafe { std::env::set_var("OC_RSYNC_SYSLOG_PATH", &syslog_path) };
 
     let journald_path = dir.path().join("journald.sock");
     let journald_server = UnixDatagram::bind(&journald_path).unwrap();
-    unsafe {
-        std::env::set_var("OC_RSYNC_JOURNALD_PATH", &journald_path);
-    }
+    unsafe { std::env::set_var("OC_RSYNC_JOURNALD_PATH", &journald_path) };
 
     let cfg = SyncConfig::builder()
         .verbose(1)
@@ -322,8 +318,6 @@ fn custom_syslog_and_journald_settings() {
     let jour_msg = std::str::from_utf8(&buf[..n]).unwrap();
     assert!(jour_msg.contains("MESSAGE"));
 
-    unsafe {
-        std::env::remove_var("OC_RSYNC_SYSLOG_PATH");
-        std::env::remove_var("OC_RSYNC_JOURNALD_PATH");
-    }
+    unsafe { std::env::remove_var("OC_RSYNC_SYSLOG_PATH") };
+    unsafe { std::env::remove_var("OC_RSYNC_JOURNALD_PATH") };
 }

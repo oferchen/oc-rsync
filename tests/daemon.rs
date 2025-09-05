@@ -21,7 +21,7 @@ use std::path::PathBuf;
 use std::process::{Child, Command as StdCommand, Stdio};
 use std::sync::{mpsc, Arc};
 use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tempfile::tempdir;
 use transport::{AddressFamily, LocalPipeTransport, TcpTransport, Transport};
 use wait_timeout::ChildExt;
@@ -1882,12 +1882,7 @@ fn client_respects_no_motd() {
     modules.insert(module.name.clone(), module);
     let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
     let mut parts = vec![LATEST_VERSION.to_be_bytes().to_vec()];
-    parts.push({
-        let mut v = Vec::new();
-        v.push(0);
-        v.push(b'\n');
-        v
-    });
+    parts.push(vec![0, b'\n']);
     parts.push(b"data\n\n".to_vec());
     let reader = MultiReader {
         parts,
