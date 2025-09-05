@@ -70,14 +70,3 @@ pub fn set_std_buffering(mode: OutBuf) -> io::Result<()> {
     let err = stderr_stream()?;
     set_stream_buffer(err.as_ptr(), mode)
 }
-
-#[allow(dead_code)]
-pub fn set_stdout_buffering(mode: OutBuf) -> io::Result<()> {
-    let mode = match mode {
-        OutBuf::N => libc::_IONBF,
-        OutBuf::L => libc::_IOLBF,
-        OutBuf::B => libc::_IOFBF,
-    };
-    let stream = stdout_stream()?;
-    set_stream_buffer(stream.as_ptr(), mode)
-}
