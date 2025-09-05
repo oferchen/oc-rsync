@@ -10,10 +10,10 @@ Type=notify
 NotifyAccess=main
 User=ocrsync
 Group=ocrsync
-RuntimeDirectory=oc-rsyncd
-LogsDirectory=oc-rsyncd
-StateDirectory=oc-rsyncd
-ConfigurationDirectory=oc-rsyncd
+RuntimeDirectory=oc-rsync
+LogsDirectory=oc-rsync
+StateDirectory=oc-rsync
+ConfigurationDirectory=oc-rsync
 ExecStart=/usr/bin/oc-rsync --daemon --no-detach --config=/etc/oc-rsyncd.conf
 # To run the daemon via the dedicated oc-rsyncd binary instead of the main oc-rsync CLI,
 # create a drop-in with the following lines:
@@ -27,6 +27,15 @@ ProtectHome=true
 CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE
 AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_FOWNER CAP_CHOWN CAP_DAC_OVERRIDE
 RestrictNamespaces=yes
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictRealtime=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
 
 [Install]
 WantedBy=multi-user.target
