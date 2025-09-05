@@ -8,8 +8,9 @@ use crate::normalize_mode;
 use caps::{CapSet, Capability};
 use filetime::{self, FileTime};
 use nix::errno::Errno;
+use nix::fcntl::{AtFlags, AT_FDCWD};
 use nix::sys::stat::{self, FchmodatFlags, Mode, SFlag};
-use nix::unistd::{self, FchownatFlags, Gid, Uid};
+use nix::unistd::{self, Gid, Uid};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -294,7 +295,7 @@ impl Metadata {
             if can_chown {
                 let res = if is_symlink {
                     match unistd::fchownat(
-                        None,
+                        AT_FDCWD,
                         path,
                         if opts.owner {
                             Some(Uid::from_raw(uid))
@@ -306,7 +307,7 @@ impl Metadata {
                         } else {
                             None
                         },
-                        FchownatFlags::NoFollowSymlink,
+                        AtFlags::AT_SYMLINK_NOFOLLOW,
                     ) {
                         Err(Errno::EOPNOTSUPP) => unistd::chown(
                             path,
@@ -392,7 +393,7 @@ impl Metadata {
             debug_assert_eq!(mode_val & !0o7777, 0);
             let mode_t: libc::mode_t = mode_val as libc::mode_t;
             let mode = Mode::from_bits_truncate(mode_t);
-            if let Err(err) = stat::fchmodat(None, path, mode, FchmodatFlags::NoFollowSymlink) {
+            if let Err(err) = stat::fchmodat(AT_FDCWD, path, mode, FchmodatFlags::NoFollowSymlink) {
                 match err {
                     Errno::EINVAL | Errno::EOPNOTSUPP => {
                         let perm = fs::Permissions::from_mode(mode_val);

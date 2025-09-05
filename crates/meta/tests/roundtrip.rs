@@ -5,6 +5,7 @@ use std::os::unix::fs::PermissionsExt;
 
 use filetime::FileTime;
 use meta::{Metadata, Options};
+use nix::fcntl::AT_FDCWD;
 use nix::unistd::{chown, geteuid, Gid, Uid};
 use std::time::SystemTime;
 use tempfile::tempdir;
@@ -25,7 +26,7 @@ fn roundtrip_full_metadata() -> std::io::Result<()> {
     let mtime = FileTime::from_unix_time(1_000_000, 123_456_789);
     let atime = FileTime::from_system_time(SystemTime::now());
     nix::sys::stat::fchmodat(
-        None,
+        AT_FDCWD,
         &src,
         nix::sys::stat::Mode::from_bits_truncate(mode),
         nix::sys::stat::FchmodatFlags::NoFollowSymlink,
@@ -33,7 +34,7 @@ fn roundtrip_full_metadata() -> std::io::Result<()> {
     filetime::set_file_times(&src, atime, mtime)?;
 
     nix::sys::stat::fchmodat(
-        None,
+        AT_FDCWD,
         &dst,
         nix::sys::stat::Mode::from_bits_truncate(0o600),
         nix::sys::stat::FchmodatFlags::NoFollowSymlink,
@@ -75,13 +76,13 @@ fn default_skips_owner_group_perms() -> std::io::Result<()> {
     fs::write(&dst, b"world")?;
 
     nix::sys::stat::fchmodat(
-        None,
+        AT_FDCWD,
         &src,
         nix::sys::stat::Mode::from_bits_truncate(0o741),
         nix::sys::stat::FchmodatFlags::NoFollowSymlink,
     )?;
     nix::sys::stat::fchmodat(
-        None,
+        AT_FDCWD,
         &dst,
         nix::sys::stat::Mode::from_bits_truncate(0o600),
         nix::sys::stat::FchmodatFlags::NoFollowSymlink,

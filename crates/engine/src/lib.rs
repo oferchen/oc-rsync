@@ -160,13 +160,10 @@ fn check_time_limit(start: Instant, opts: &SyncOptions) -> Result<()> {
 
 #[cfg(unix)]
 fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
-    use std::os::fd::AsRawFd;
-
     #[cfg(any(target_os = "linux", target_os = "android"))]
     {
         use nix::fcntl::{fallocate, FallocateFlags};
-        fallocate(file.as_raw_fd(), FallocateFlags::empty(), 0, len as i64)
-            .map_err(std::io::Error::from)
+        fallocate(file, FallocateFlags::empty(), 0, len as i64).map_err(std::io::Error::from)
     }
 
     #[cfg(target_os = "macos")]
@@ -677,12 +674,10 @@ fn write_sparse(file: &mut File, data: &[u8]) -> Result<()> {
             #[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
             {
                 use nix::fcntl::{fallocate, FallocateFlags};
-                use std::os::fd::AsRawFd;
 
-                let fd = file.as_raw_fd();
                 let offset = file.stream_position()?;
                 let _ = fallocate(
-                    fd,
+                    &*file,
                     FallocateFlags::FALLOC_FL_PUNCH_HOLE | FallocateFlags::FALLOC_FL_KEEP_SIZE,
                     offset as i64,
                     len as i64,

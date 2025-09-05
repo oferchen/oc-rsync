@@ -11,7 +11,7 @@ filters = { path = "../filters" }
 compress = { path = "../compress" }
 filelist = { path = "../filelist" }
 protocol = { path = "../protocol" }
-nix = { version = "0.27", features = ["user", "fs"] }
+nix = { version = "0.30.1", features = ["user", "fs"] }
 meta = { path = "../meta" }
 logging = { path = "../logging" }
 libc = "0.2"

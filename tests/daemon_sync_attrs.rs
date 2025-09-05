@@ -828,6 +828,7 @@ fn daemon_acls_match_rsync_client() {
 #[serial]
 #[cfg_attr(not(target_os = "linux"), ignore = "requires Linux uid/gid semantics")]
 fn daemon_preserves_uid_gid_perms() {
+    use nix::fcntl::AT_FDCWD;
     use nix::sys::stat::{fchmodat, FchmodatFlags, Mode};
     use nix::unistd::{chown, Gid, Uid};
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -845,7 +846,7 @@ fn daemon_preserves_uid_gid_perms() {
     let file = src.join("file");
     fs::write(&file, b"hi").unwrap();
     fchmodat(
-        None,
+        AT_FDCWD,
         &file,
         Mode::from_bits_truncate(0o741),
         FchmodatFlags::NoFollowSymlink,
