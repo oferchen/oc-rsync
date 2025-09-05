@@ -32,6 +32,7 @@ fn handle_connection_empty_module_name() {
         0,
         0,
         &handler,
+        None,
     )
     .expect("empty module name should succeed");
 

@@ -1,13 +1,16 @@
 // tests/timeout.rs
 #![allow(clippy::err_expect)]
 
+use std::collections::HashMap;
 use std::fs;
-use std::io::{self, Cursor};
-use std::net::TcpListener;
+use std::io::{self, Cursor, Read};
+use std::net::{TcpListener, TcpStream};
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use assert_cmd::Command;
+use daemon::{handle_connection, Handler, Module};
 use engine::{EngineError, SyncOptions};
 use oc_rsync_cli::spawn_daemon_session;
 use predicates::str::contains;
@@ -174,6 +177,43 @@ fn daemon_handshake_timeout() {
         }
         Err(other) => panic!("unexpected error: {other:?}"),
     }
+}
+
+#[test]
+fn daemon_handshake_timeout_message() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let modules: HashMap<String, Module> = HashMap::new();
+    let handler: Arc<Handler> = Arc::new(|_| Ok(()));
+    thread::spawn(move || {
+        let (stream, _) = listener.accept().unwrap();
+        let transport = TcpTransport::from_stream(stream);
+        let timeout = Some(Duration::from_millis(100));
+        let mut t = TimeoutTransport::new(transport, timeout).unwrap();
+        let _ = handle_connection(
+            &mut t,
+            &modules,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+            &[],
+            "127.0.0.1",
+            0,
+            0,
+            &handler,
+            timeout,
+        );
+    });
+    let mut sock = TcpStream::connect(addr).unwrap();
+    let mut buf = Vec::new();
+    sock.read_to_end(&mut buf).unwrap();
+    let msg = String::from_utf8_lossy(&buf);
+    let expected =
+        fs::read_to_string("tests/golden/messages/timeout/daemon_handshake.rsync.stderr").unwrap();
+    assert_eq!(msg.trim_end(), expected.trim_end());
 }
 
 #[test]
