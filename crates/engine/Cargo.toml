@@ -20,6 +20,7 @@ tempfile = "3"
 tracing = "0.1"
 transport = { path = "../transport" }
 posix-acl = { version = "1.2", optional = true }
+rand = "0.8"
 
 [dev-dependencies]
 compress = { path = "../compress" }
