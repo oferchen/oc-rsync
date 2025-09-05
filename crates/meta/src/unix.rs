@@ -664,7 +664,7 @@ fn read_acl_inner(
     mode: u32,
 ) -> io::Result<(Vec<posix_acl::ACLEntry>, Vec<posix_acl::ACLEntry>)> {
     if fake_super {
-        let acl = match xattr::get(path, "user.rsync.acl") {
+        let mut acl = match xattr::get(path, "user.rsync.acl") {
             Ok(Some(val)) => decode_acl(&val),
             Ok(None) => Vec::new(),
             Err(err) => {
@@ -675,7 +675,7 @@ fn read_acl_inner(
                 }
             }
         };
-        let default_acl = if is_dir {
+        let mut default_acl = if is_dir {
             match xattr::get(path, "user.rsync.dacl") {
                 Ok(Some(val)) => decode_acl(&val),
                 Ok(None) => Vec::new(),
@@ -690,6 +690,12 @@ fn read_acl_inner(
         } else {
             Vec::new()
         };
+        if is_trivial_acl(&acl, mode) {
+            acl.clear();
+        }
+        if is_dir && is_trivial_acl(&default_acl, 0o777) {
+            default_acl.clear();
+        }
         if !acl.is_empty() || !default_acl.is_empty() {
             return Ok((acl, default_acl));
         }
@@ -708,7 +714,7 @@ fn read_acl_inner(
     if is_trivial_acl(&acl, mode) {
         acl.clear();
     }
-    let default_acl = if is_dir {
+    let mut default_acl = if is_dir {
         match posix_acl::PosixACL::read_default_acl(path) {
             Ok(dacl) => dacl.entries(),
             Err(err) => {
@@ -722,6 +728,9 @@ fn read_acl_inner(
     } else {
         Vec::new()
     };
+    if is_dir && is_trivial_acl(&default_acl, 0o777) {
+        default_acl.clear();
+    }
     Ok((acl, default_acl))
 }
 
@@ -745,6 +754,18 @@ pub fn write_acl(
     let meta = fs::symlink_metadata(path)?;
     let is_dir = meta.file_type().is_dir();
     let cur_mode = normalize_mode(meta.permissions().mode());
+
+    let empty: &[posix_acl::ACLEntry] = &[];
+    let acl = if is_trivial_acl(acl, cur_mode) {
+        empty
+    } else {
+        acl
+    };
+    let default_acl = if is_dir && is_trivial_acl(default_acl, 0o777) {
+        empty
+    } else {
+        default_acl
+    };
 
     {
         if acl.is_empty() {
