@@ -1,4 +1,4 @@
-# oc-rsync — Pure-Rust rsync replica (compatible with rsync 3.4.1 / protocol 32)
+# oc-rsync - Pure-Rust rsync (compatible with rsync 3.4.1 / protocol 32)
 
 [![CI](https://github.com/oferchen/oc-rsync/actions/workflows/ci.yml/badge.svg)](https://github.com/oferchen/oc-rsync/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/oferchen/oc-rsync)](https://github.com/oferchen/oc-rsync/releases)
