@@ -221,18 +221,6 @@ impl<R: Read, W: Write> Server<R, W> {
                 };
                 for name in list.split(',') {
                     match name {
-                        "xxh128" => {
-                            chosen = StrongHash::Xxh128;
-                            break;
-                        }
-                        "xxh3" => {
-                            chosen = StrongHash::Xxh3;
-                            break;
-                        }
-                        "xxh64" | "xxhash" => {
-                            chosen = StrongHash::Xxh64;
-                            break;
-                        }
                         "sha1" => {
                             chosen = StrongHash::Sha1;
                             break;

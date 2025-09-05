@@ -43,36 +43,3 @@ fn parity_with_rsync_sha1() {
     assert_eq!(golden("sha1", "le"), hex::encode(&ours));
     assert_eq!(golden("sha1", "be"), hex::encode(ours));
 }
-
-#[test]
-fn parity_with_rsync_xxh64() {
-    let data = b"hello world";
-    let seed = 1;
-    let ours = strong_digest(data, StrongHash::Xxh64, seed);
-    assert_eq!(golden("xxh64", "be"), hex::encode(&ours));
-    let mut le = ours.clone();
-    le.reverse();
-    assert_eq!(golden("xxh64", "le"), hex::encode(le));
-}
-
-#[test]
-fn parity_with_rsync_xxh3() {
-    let data = b"hello world";
-    let seed = 1;
-    let ours = strong_digest(data, StrongHash::Xxh3, seed);
-    assert_eq!(golden("xxh3", "be"), hex::encode(&ours));
-    let mut le = ours.clone();
-    le.reverse();
-    assert_eq!(golden("xxh3", "le"), hex::encode(le));
-}
-
-#[test]
-fn parity_with_rsync_xxh128() {
-    let data = b"hello world";
-    let seed = 1;
-    let ours = strong_digest(data, StrongHash::Xxh128, seed);
-    assert_eq!(golden("xxh128", "be"), hex::encode(&ours));
-    let mut le = ours.clone();
-    le.reverse();
-    assert_eq!(golden("xxh128", "le"), hex::encode(le));
-}

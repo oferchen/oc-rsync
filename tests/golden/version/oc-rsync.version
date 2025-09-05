@@ -6,7 +6,7 @@ Capabilities:
 Optimizations:
     SIMD-roll, no asm-roll, openssl-crypto, no asm-MD5
 Checksum list:
-    xxh128 xxh3 xxh64 (xxhash) md5 md4 sha1 none
+    md5 md4 sha1 none
 Compress list:
     zstd zlibx zlib none
 Daemon auth list:
