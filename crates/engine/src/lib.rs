@@ -2150,6 +2150,15 @@ impl SyncOptions {
             self.remote_options.push("--one-file-system".into());
         }
     }
+
+    fn walk_links(&self) -> bool {
+        self.links
+            || self.copy_links
+            || self.copy_dirlinks
+            || self.copy_unsafe_links
+            || self.safe_links
+            || self.munge_links
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -2172,12 +2181,7 @@ pub struct Stats {
 }
 
 fn count_entries(src_root: &Path, matcher: &Matcher, opts: &SyncOptions) -> (usize, usize, u64) {
-    let walker = walk(
-        src_root,
-        1024,
-        opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
-        opts.one_file_system,
-    );
+    let walker = walk(src_root, 1024, opts.walk_links(), opts.one_file_system);
     let mut state = String::new();
     let mut files = 0usize;
     let mut dirs = 0usize;
@@ -2326,12 +2330,7 @@ fn delete_extraneous(
     stats: &mut Stats,
     start: Instant,
 ) -> Result<()> {
-    let mut walker = walk(
-        dst,
-        1,
-        opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
-        opts.one_file_system,
-    );
+    let mut walker = walk(dst, 1, opts.walk_links(), opts.one_file_system);
     let mut state = String::new();
     let mut first_err: Option<EngineError> = None;
     while let Some(batch) = walker.next() {
@@ -2578,12 +2577,7 @@ pub fn sync(
     }
     if opts.list_only {
         let matcher = matcher.clone().with_root(src_root.clone());
-        let walker = walk(
-            &src_root,
-            1024,
-            opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
-            opts.one_file_system,
-        );
+        let walker = walk(&src_root, 1024, opts.walk_links(), opts.one_file_system);
         let mut state = String::new();
         for batch in walker {
             let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
@@ -2713,12 +2707,7 @@ pub fn sync(
     sender.start();
     stats.file_list_transfer_time = flist_xfer_start.elapsed();
     let mut state = String::new();
-    let mut walker = walk(
-        &src_root,
-        1024,
-        opts.links || opts.copy_links || opts.copy_dirlinks || opts.copy_unsafe_links,
-        opts.one_file_system,
-    );
+    let mut walker = walk(&src_root, 1024, opts.walk_links(), opts.one_file_system);
     while let Some(batch) = walker.next() {
         check_time_limit(start, opts)?;
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
