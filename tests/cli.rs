@@ -939,8 +939,8 @@ fn stats_parity() {
         out.lines()
             .find_map(|l| {
                 let l = l.trim_start();
-                if l.starts_with(prefix) {
-                    l[prefix.len()..]
+                if let Some(stripped) = l.strip_prefix(prefix) {
+                    stripped
                         .trim()
                         .strip_suffix(" seconds")
                         .and_then(|v| v.parse::<f64>().ok())
