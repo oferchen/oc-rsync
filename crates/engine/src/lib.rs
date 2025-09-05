@@ -1415,7 +1415,7 @@ impl Receiver {
             && !self.opts.write_devices
         {
             auto_tmp = true;
-            let mut name = dest.file_name().unwrap_or_default().to_os_string();
+            let mut name = dest.file_stem().unwrap_or_default().to_os_string();
             name.push(".tmp");
             tmp_dest = dest_parent.join(name);
         }
@@ -1423,7 +1423,7 @@ impl Receiver {
             !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some() || auto_tmp);
         if self.opts.delay_updates && !self.opts.inplace && !self.opts.write_devices {
             if tmp_dest == dest {
-                let mut name = dest.file_name().unwrap_or_default().to_os_string();
+                let mut name = dest.file_stem().unwrap_or_default().to_os_string();
                 name.push(".tmp");
                 tmp_dest = dest_parent.join(name);
             }

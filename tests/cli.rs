@@ -1190,6 +1190,7 @@ fn destination_is_replaced_atomically() {
     );
 
     child.wait().unwrap();
+    assert!(!tmp_file.exists(), "temp file not removed after transfer",);
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out.len(), 50_000);
 }
