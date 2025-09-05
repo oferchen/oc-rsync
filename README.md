@@ -26,6 +26,9 @@ sudo dpkg -i oc-rsync_<version>_amd64.deb
 
 # Fedora/RHEL
 sudo rpm -i oc-rsync-<version>.x86_64.rpm
+
+# Homebrew
+brew install --build-from-source ./packaging/brew/oc-rsync.rb
 ```
 
 ### From source

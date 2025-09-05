@@ -55,6 +55,9 @@ jobs:
       - name: Validate interop matrix docs
         run: scripts/check-run-matrix-docs.sh
 
+      - name: Lint Homebrew formula
+        run: brew audit --strict --new-formula ./packaging/brew/oc-rsync.rb
+
       - name: Check CLI help against transcript
         run: |
           cargo run --quiet --bin oc-rsync -- --help | tail -n +4 > /tmp/oc-rsync-help.txt
