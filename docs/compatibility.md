@@ -8,7 +8,7 @@ into CI, and their results populate the detailed matrix in
 
 ## Protocol versions
 
-`oc-rsync` interoperates with classic `rsync` using protocol versions 29
+`oc-rsync` interoperates with classic `rsync` using protocol versions 30
 through 32.
 
 ## Tested platforms
@@ -32,7 +32,6 @@ kept up to date from their results.
 
 | Version | Tests/Fixtures |
 |---------|----------------|
-| 29 | [version negotiation test](../crates/protocol/tests/protocol.rs#L40-L45) |
 | 30 | [protocol override test](../crates/cli/src/lib.rs#L1958-L2030) |
 | 31 | [server handshake test](../crates/protocol/tests/server.rs#L1-L80) |
 | 32 | [rsync 3.3.0 transcript](../tests/interop/wire/rsync-3.3.0.log) |
