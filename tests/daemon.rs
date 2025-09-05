@@ -2052,13 +2052,12 @@ fn daemon_preserves_hard_links_remote_source() {
     ] {
         let dst = tempdir().unwrap();
         let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+        cmd.current_dir(dst.path());
         cmd.arg("-aH");
         if spec.starts_with("127.0.0.1::") {
             cmd.args(["--port", &port.to_string()]);
         }
-        cmd.args([&spec, dst.path().to_str().unwrap()])
-            .assert()
-            .success();
+        cmd.args([&spec, "."]).assert().success();
         let ino1 = fs::metadata(dst.path().join("a")).unwrap().ino();
         let ino2 = fs::metadata(dst.path().join("b")).unwrap().ino();
         assert_eq!(ino1, ino2);
