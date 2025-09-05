@@ -100,10 +100,7 @@ pub fn should_compress(path: &Path, skip: &[String]) -> bool {
         return !DEFAULT_SKIP_COMPRESS.iter().any(|s| name.ends_with(s));
     }
 
-    !skip
-        .iter()
-        .map(|s| s.to_ascii_lowercase())
-        .any(|s| name.ends_with(&s))
+    !skip.iter().any(|s| name.ends_with(s))
 }
 
 #[cfg(feature = "zlib")]

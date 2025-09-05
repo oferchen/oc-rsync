@@ -12,6 +12,10 @@ use clap::{Arg, ArgAction, Args, CommandFactory, Parser, ValueEnum};
 use logging::{DebugFlag, InfoFlag, StderrMode};
 use protocol::SUPPORTED_PROTOCOLS;
 
+fn parse_lowercase(value: &str) -> Result<String, String> {
+    Ok(value.to_ascii_lowercase())
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 #[clap(rename_all = "UPPER")]
 pub enum OutBuf {
@@ -432,7 +436,8 @@ pub(crate) struct ClientOpts {
         long = "skip-compress",
         value_name = "LIST",
         help_heading = "Compression",
-        value_delimiter = ','
+        value_delimiter = ',',
+        value_parser = parse_lowercase
     )]
     pub skip_compress: Vec<String>,
 
