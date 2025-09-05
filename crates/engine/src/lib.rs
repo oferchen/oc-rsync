@@ -15,7 +15,7 @@ use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
-use tempfile::{Builder, NamedTempFile};
+use tempfile::Builder;
 use transport::{pipe, Transport};
 
 pub use checksums::StrongHash;
@@ -298,10 +298,14 @@ fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
     };
     if cross_device {
         let parent = dst.parent().unwrap_or_else(|| Path::new("."));
-        let tmp = NamedTempFile::new_in(parent).map_err(|e| io_context(parent, e))?;
-        let tmp_path = tmp.into_temp_path();
-        fs::copy(src, &tmp_path).map_err(|e| io_context(src, e))?;
-        fs::rename(&tmp_path, dst).map_err(|e| io_context(dst, e))?;
+        let base = dst.file_name().unwrap_or_default().to_string_lossy();
+        let tmp = Builder::new()
+            .prefix(&format!(".{}.", base))
+            .rand_bytes(6)
+            .tempfile_in(parent)
+            .map_err(|e| io_context(parent, e))?;
+        fs::copy(src, tmp.path()).map_err(|e| io_context(src, e))?;
+        tmp.persist(dst).map_err(|e| io_context(dst, e.error))?;
         fs::remove_file(src).map_err(|e| io_context(src, e))?;
         Ok(())
     } else {
@@ -324,16 +328,52 @@ fn atomic_rename(src: &Path, dst: &Path) -> Result<()> {
                 };
                 if cross_device_err {
                     let parent = dst.parent().unwrap_or_else(|| Path::new("."));
-                    let tmp = NamedTempFile::new_in(parent).map_err(|e| io_context(parent, e))?;
-                    let tmp_path = tmp.into_temp_path();
-                    fs::copy(src, &tmp_path).map_err(|e| io_context(src, e))?;
-                    fs::rename(&tmp_path, dst).map_err(|e| io_context(dst, e))?;
+                    let base = dst.file_name().unwrap_or_default().to_string_lossy();
+                    let tmp = Builder::new()
+                        .prefix(&format!(".{}.", base))
+                        .rand_bytes(6)
+                        .tempfile_in(parent)
+                        .map_err(|e| io_context(parent, e))?;
+                    fs::copy(src, tmp.path()).map_err(|e| io_context(src, e))?;
+                    tmp.persist(dst).map_err(|e| io_context(dst, e.error))?;
                     fs::remove_file(src).map_err(|e| io_context(src, e))?;
                     Ok(())
                 } else {
                     Err(io_context(src, e))
                 }
             }
+        }
+    }
+}
+
+fn partial_paths(dest: &Path, partial_dir: Option<&Path>) -> (PathBuf, Option<PathBuf>) {
+    if let Some(dir) = partial_dir {
+        let file = dest.file_name().unwrap_or_default();
+        if let Some(parent) = dest.parent() {
+            (parent.join(dir).join(file), None)
+        } else {
+            (dir.join(file), None)
+        }
+    } else {
+        let mut name = dest.file_name().unwrap_or_default().to_os_string();
+        name.push(".partial");
+        let partial = dest.with_file_name(&name);
+        let alt = dest.file_stem().map(|stem| {
+            let mut n = stem.to_os_string();
+            n.push(".partial");
+            dest.with_file_name(n)
+        });
+        (partial, alt)
+    }
+}
+
+fn remove_basename_partial(dest: &Path) {
+    if let Some(stem) = dest.file_stem() {
+        let mut name = stem.to_os_string();
+        name.push(".partial");
+        let path = dest.with_file_name(name);
+        if path.exists() {
+            let _ = fs::remove_file(path);
         }
     }
 }
@@ -1110,27 +1150,32 @@ impl Sender {
         } else {
             None
         };
-        let partial_path = if let Some(dir) = &self.opts.partial_dir {
-            let file = dest.file_name().unwrap_or_default();
-            if let Some(parent) = dest.parent() {
-                parent.join(dir).join(file)
+        let (partial_path, basename_partial) =
+            partial_paths(&dest, self.opts.partial_dir.as_deref());
+        let existing_partial = if partial_path.exists() {
+            Some(partial_path.clone())
+        } else if let Some(bp) = basename_partial.as_ref() {
+            if bp.exists() {
+                Some(bp.clone())
             } else {
-                dir.join(file)
+                None
             }
         } else {
-            let mut name = dest.file_name().unwrap_or_default().to_os_string();
-            name.push(".partial");
-            dest.with_file_name(name)
+            None
         };
-        let basis_path = if self.opts.partial && partial_path.exists() {
-            partial_path.clone()
+        let basis_path = if self.opts.partial && existing_partial.is_some() {
+            existing_partial.clone().unwrap()
         } else if self.opts.fuzzy && !dest.exists() {
             fuzzy_match(&dest).unwrap_or_else(|| dest.clone())
         } else {
             dest.clone()
         };
-        let mut resume = if self.opts.partial && partial_path.exists() {
-            last_good_block(&self.cfg, path, &partial_path, block_size, &self.opts)?
+        let mut resume = if self.opts.partial {
+            if let Some(ref p) = existing_partial {
+                last_good_block(&self.cfg, path, p, block_size, &self.opts)?
+            } else {
+                0
+            }
         } else if self.opts.append || self.opts.append_verify {
             if self.opts.append_verify {
                 last_good_block(&self.cfg, path, &dest, block_size, &self.opts)?
@@ -1354,22 +1399,22 @@ impl Receiver {
                 dest.push(rel);
             }
         }
-        let partial = if let Some(dir) = &self.opts.partial_dir {
-            let file = dest.file_name().unwrap_or_default();
-            if let Some(parent) = dest.parent() {
-                parent.join(dir).join(file)
+        let (partial, basename_partial) = partial_paths(&dest, self.opts.partial_dir.as_deref());
+        let existing_partial = if partial.exists() {
+            Some(partial.clone())
+        } else if let Some(bp) = basename_partial.as_ref() {
+            if bp.exists() {
+                Some(bp.clone())
             } else {
-                dir.join(file)
+                None
             }
         } else {
-            let mut name = dest.file_name().unwrap_or_default().to_os_string();
-            name.push(".partial");
-            dest.with_file_name(name)
+            None
         };
         let basis_path = if self.opts.inplace {
             dest.clone()
-        } else if self.opts.partial && partial.exists() {
-            partial.clone()
+        } else if self.opts.partial && existing_partial.is_some() {
+            existing_partial.clone().unwrap()
         } else {
             dest.clone()
         };
@@ -1415,7 +1460,7 @@ impl Receiver {
             && !self.opts.write_devices
         {
             auto_tmp = true;
-            let mut name = dest.file_name().unwrap_or_default().to_os_string();
+            let mut name = dest.file_stem().unwrap_or_default().to_os_string();
             name.push(".tmp");
             tmp_dest = dest_parent.join(name);
         }
@@ -1423,7 +1468,7 @@ impl Receiver {
             !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some() || auto_tmp);
         if self.opts.delay_updates && !self.opts.inplace && !self.opts.write_devices {
             if tmp_dest == dest {
-                let mut name = dest.file_name().unwrap_or_default().to_os_string();
+                let mut name = dest.file_stem().unwrap_or_default().to_os_string();
                 name.push(".tmp");
                 tmp_dest = dest_parent.join(name);
             }
@@ -1439,11 +1484,12 @@ impl Receiver {
         } else {
             self.opts.block_size
         };
+        let resume_basis = existing_partial.as_ref().unwrap_or(&tmp_dest);
         let mut resume = if self.opts.partial || self.opts.append || self.opts.append_verify {
             if self.opts.append && !self.opts.append_verify {
                 fs::metadata(&tmp_dest).map(|m| m.len()).unwrap_or(0)
             } else {
-                last_good_block(&cfg, src, &tmp_dest, block_size, &self.opts)?
+                last_good_block(&cfg, src, resume_basis, block_size, &self.opts)?
             }
         } else {
             0
@@ -1603,6 +1649,7 @@ impl Receiver {
                         let _ = fs::remove_dir(tmp_parent);
                     }
                 }
+                remove_basename_partial(&dest);
             }
             #[cfg(unix)]
             if let Some((uid, gid)) = self.opts.copy_as {
@@ -1793,6 +1840,7 @@ impl Receiver {
                     let _ = fs::remove_dir(tmp_parent);
                 }
             }
+            remove_basename_partial(&dest);
             #[cfg(unix)]
             if let Some((uid, gid)) = self.opts.copy_as {
                 let gid = gid.map(Gid::from_raw);
@@ -2610,22 +2658,10 @@ pub fn sync(
                         }
                     }
                     let partial_exists = if opts.partial {
-                        let partial_path = if let Some(ref dir) = opts.partial_dir {
-                            let file = dest_path.file_name().unwrap_or_default();
-                            if let Some(parent) = dest_path.parent() {
-                                parent.join(dir).join(file)
-                            } else {
-                                dir.join(file)
-                            }
-                        } else {
-                            {
-                                let mut name =
-                                    dest_path.file_name().unwrap_or_default().to_os_string();
-                                name.push(".partial");
-                                dest_path.with_file_name(name)
-                            }
-                        };
+                        let (partial_path, basename_partial) =
+                            partial_paths(&dest_path, opts.partial_dir.as_deref());
                         partial_path.exists()
+                            || basename_partial.map(|p| p.exists()).unwrap_or(false)
                     } else {
                         false
                     };
