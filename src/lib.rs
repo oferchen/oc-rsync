@@ -3,7 +3,7 @@
 use compress::available_codecs;
 use engine::{Result, SyncOptions};
 use filters::Matcher;
-use logging::{subscriber, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
+use logging::{DebugFlag, InfoFlag, LogFormat, SubscriberConfig, subscriber};
 use std::path::{Path, PathBuf};
 use tracing::subscriber::with_default;
 

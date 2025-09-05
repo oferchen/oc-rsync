@@ -316,12 +316,13 @@ fn safe_links_skip() {
         .assert()
         .success();
 
-    assert!(dst
-        .join("safe")
-        .symlink_metadata()
-        .unwrap()
-        .file_type()
-        .is_symlink());
+    assert!(
+        dst.join("safe")
+            .symlink_metadata()
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
     assert!(!dst.join("unsafe").exists());
 }
 
@@ -348,12 +349,13 @@ fn safe_links_resolve_source_symlink() {
         .assert()
         .success();
 
-    assert!(dst
-        .join("safe")
-        .symlink_metadata()
-        .unwrap()
-        .file_type()
-        .is_symlink());
+    assert!(
+        dst.join("safe")
+            .symlink_metadata()
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
 }
 
 #[cfg(unix)]

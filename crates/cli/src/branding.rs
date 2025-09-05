@@ -161,7 +161,6 @@ mod tests {
     fn program_name_defaults_when_unset() {
         std::env::remove_var("OC_RSYNC_NAME");
         if option_env!("OC_RSYNC_NAME").is_none() {
-
             assert_eq!(program_name(), "oc-rsync");
         }
     }

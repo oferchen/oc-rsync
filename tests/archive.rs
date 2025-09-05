@@ -2,17 +2,17 @@
 #[cfg(unix)]
 use assert_cmd::Command;
 #[cfg(unix)]
-use filetime::{set_file_mtime, FileTime};
+use filetime::{FileTime, set_file_mtime};
 #[cfg(unix)]
-use nix::unistd::{chown, Gid, Uid};
+use nix::unistd::{Gid, Uid, chown};
 #[cfg(unix)]
-use oc_rsync::meta::{makedev, Mode, SFlag};
+use oc_rsync::meta::{Mode, SFlag, makedev};
 #[cfg(unix)]
 use sha2::{Digest, Sha256};
 #[cfg(unix)]
 use std::fs;
 #[cfg(unix)]
-use std::os::unix::fs::{symlink, FileTypeExt, MetadataExt, PermissionsExt};
+use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt, symlink};
 #[cfg(unix)]
 use std::path::Path;
 #[cfg(unix)]
@@ -209,10 +209,12 @@ fn archive_respects_no_options() {
         .assert()
         .success();
     assert!(!dst.join("dev").exists());
-    assert!(fs::symlink_metadata(dst.join("fifo"))
-        .unwrap()
-        .file_type()
-        .is_fifo());
+    assert!(
+        fs::symlink_metadata(dst.join("fifo"))
+            .unwrap()
+            .file_type()
+            .is_fifo()
+    );
 
     let dst = tmp.path().join("no_specials");
     Command::cargo_bin("oc-rsync")
@@ -220,9 +222,11 @@ fn archive_respects_no_options() {
         .args(["-a", "--no-specials", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
-    assert!(fs::symlink_metadata(dst.join("dev"))
-        .unwrap()
-        .file_type()
-        .is_char_device());
+    assert!(
+        fs::symlink_metadata(dst.join("dev"))
+            .unwrap()
+            .file_type()
+            .is_char_device()
+    );
     assert!(!dst.join("fifo").exists());
 }

@@ -4,7 +4,7 @@ use std::io::BufReader;
 use std::path::Path;
 
 use checksums::ChecksumConfigBuilder;
-use engine::{compute_delta, Receiver, Result as EngineResult, SyncOptions};
+use engine::{Receiver, Result as EngineResult, SyncOptions, compute_delta};
 use tempfile::tempdir;
 
 #[test]

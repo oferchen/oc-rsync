@@ -1,6 +1,6 @@
 // tests/filter_corpus.rs
 
-use assert_cmd::{cargo::cargo_bin, Command};
+use assert_cmd::{Command, cargo::cargo_bin};
 use shell_words::split;
 use std::fs;
 use std::path::Path;

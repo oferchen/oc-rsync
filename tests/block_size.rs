@@ -3,7 +3,7 @@
 
 use assert_cmd::Command;
 use checksums::ChecksumConfigBuilder;
-use engine::{block_size, compute_delta, Op, SyncOptions};
+use engine::{Op, SyncOptions, block_size, compute_delta};
 use std::fs;
 use tempfile::tempdir;
 

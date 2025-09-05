@@ -37,7 +37,7 @@ fn read_port(child: &mut Child) -> io::Result<u16> {
                     break Err(io::Error::new(
                         io::ErrorKind::UnexpectedEof,
                         "daemon closed",
-                    ))
+                    ));
                 }
                 Ok(1) => {
                     if byte[0] == b'\n' {

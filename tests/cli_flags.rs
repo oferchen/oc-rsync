@@ -1,7 +1,7 @@
 // tests/cli_flags.rs
 use assert_cmd::Command;
 #[cfg(unix)]
-use nix::fcntl::{fcntl, FcntlArg, OFlag};
+use nix::fcntl::{FcntlArg, OFlag, fcntl};
 use oc_rsync_cli::cli_command;
 use predicates::str::contains;
 use std::fs;
@@ -9,7 +9,7 @@ use std::net::TcpListener;
 use std::path::Path;
 use std::thread;
 use std::time::Duration;
-use tempfile::{tempdir, NamedTempFile};
+use tempfile::{NamedTempFile, tempdir};
 use transport::tcp::TcpTransport;
 
 #[test]

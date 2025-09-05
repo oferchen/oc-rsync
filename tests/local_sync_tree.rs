@@ -2,7 +2,7 @@
 
 use assert_cmd::Command;
 #[cfg(unix)]
-use filetime::{set_file_times, FileTime};
+use filetime::{FileTime, set_file_times};
 #[cfg(unix)]
 use meta::mkfifo;
 #[cfg(unix)]
@@ -14,7 +14,7 @@ use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::FileTypeExt;
 #[cfg(unix)]
-use std::os::unix::fs::{symlink, MetadataExt, PermissionsExt};
+use std::os::unix::fs::{MetadataExt, PermissionsExt, symlink};
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 
@@ -164,7 +164,7 @@ fn sync_preserves_symlink_xattrs() {
 #[cfg(all(unix, feature = "acl"))]
 #[test]
 fn sync_preserves_acls() {
-    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+    use posix_acl::{ACL_READ, PosixACL, Qualifier};
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -239,7 +239,7 @@ fn sync_xattrs_match_rsync() {
 #[cfg(all(unix, feature = "acl"))]
 #[test]
 fn sync_acls_match_rsync() {
-    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+    use posix_acl::{ACL_READ, PosixACL, Qualifier};
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -283,7 +283,7 @@ fn sync_acls_match_rsync() {
 #[cfg(all(unix, feature = "acl"))]
 #[test]
 fn sync_removes_acls() {
-    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+    use posix_acl::{ACL_READ, PosixACL, Qualifier};
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -319,7 +319,7 @@ fn sync_removes_acls() {
 #[cfg(all(unix, feature = "acl"))]
 #[test]
 fn sync_removes_acls_match_rsync() {
-    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+    use posix_acl::{ACL_READ, PosixACL, Qualifier};
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -369,7 +369,7 @@ fn sync_removes_acls_match_rsync() {
 #[cfg(all(unix, feature = "acl"))]
 #[test]
 fn sync_ignores_acls_without_flag() {
-    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+    use posix_acl::{ACL_READ, PosixACL, Qualifier};
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -398,7 +398,7 @@ fn sync_ignores_acls_without_flag() {
 #[test]
 fn sync_preserves_owner_and_group() {
     use nix::errno::Errno;
-    use nix::unistd::{chown, Gid, Uid};
+    use nix::unistd::{Gid, Uid, chown};
 
     if !Uid::effective().is_root() {
         eprintln!("not running as root; skipping");
@@ -593,7 +593,7 @@ fn sync_preserves_atimes() {
 #[test]
 fn sync_creates_device_nodes() {
     use nix::errno::Errno;
-    use nix::sys::stat::{major, minor, Mode, SFlag};
+    use nix::sys::stat::{Mode, SFlag, major, minor};
     use nix::unistd::Uid;
 
     if !Uid::effective().is_root() {

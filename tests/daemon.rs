@@ -1,11 +1,11 @@
 // tests/daemon.rs
 #![allow(clippy::io_other_error)]
 
-use assert_cmd::prelude::*;
 use assert_cmd::Command;
+use assert_cmd::prelude::*;
 use daemon::{
-    chroot_and_drop_privileges, drop_privileges, handle_connection, host_allowed, parse_config,
-    parse_daemon_args, parse_module, Handler, Module,
+    Handler, Module, chroot_and_drop_privileges, drop_privileges, handle_connection, host_allowed,
+    parse_config, parse_daemon_args, parse_module,
 };
 use protocol::LATEST_VERSION;
 use serial_test::serial;
@@ -19,7 +19,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Child, Command as StdCommand, Stdio};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use std::thread::sleep;
 use std::time::Duration;
 use tempfile::tempdir;
@@ -141,7 +141,7 @@ fn parse_config_resolves_symlink_path() {
 #[serial]
 fn chroot_drops_privileges() {
     use nix::sys::wait::waitpid;
-    use nix::unistd::{fork, getegid, geteuid, ForkResult};
+    use nix::unistd::{ForkResult, fork, getegid, geteuid};
 
     if geteuid().as_raw() != 0 {
         eprintln!("skipping chroot_drops_privileges: requires root");
@@ -170,7 +170,7 @@ fn chroot_drops_privileges() {
 #[serial]
 fn chroot_requires_root() {
     use nix::sys::wait::waitpid;
-    use nix::unistd::{fork, geteuid, ForkResult};
+    use nix::unistd::{ForkResult, fork, geteuid};
 
     if geteuid().as_raw() != 0 {
         eprintln!("skipping chroot_requires_root: requires root");
@@ -206,7 +206,7 @@ fn chroot_and_drop_privileges_rejects_missing_dir() {
 #[serial]
 fn drop_privileges_requires_root() {
     use nix::sys::wait::waitpid;
-    use nix::unistd::{fork, ForkResult};
+    use nix::unistd::{ForkResult, fork};
     match unsafe { fork() } {
         Ok(ForkResult::Parent { child }) => {
             let status = waitpid(child, None).unwrap();
@@ -599,7 +599,7 @@ fn anonymous_module_listing_only_shows_listed_modules() {
 #[serial]
 fn drop_privileges_changes_ids() {
     use nix::sys::wait::waitpid;
-    use nix::unistd::{fork, getegid, geteuid, ForkResult};
+    use nix::unistd::{ForkResult, fork, getegid, geteuid};
     match unsafe { fork() } {
         Ok(ForkResult::Parent { child }) => {
             let status = waitpid(child, None).unwrap();
@@ -630,7 +630,7 @@ fn read_port(child: &mut Child) -> io::Result<u16> {
                     break Err(io::Error::new(
                         io::ErrorKind::UnexpectedEof,
                         "daemon closed",
-                    ))
+                    ));
                 }
                 Ok(1) => {
                     if byte[0] == b'\n' {
