@@ -1433,16 +1433,15 @@ impl Receiver {
                 Err(_) => Box::new(Cursor::new(Vec::new())),
             }
         };
-        if let Some(parent) = tmp_dest.parent() {
-            let created = !parent.exists();
-            fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
-            #[cfg(unix)]
-            if created {
-                if let Some((uid, gid)) = self.opts.copy_as {
-                    let gid = gid.map(Gid::from_raw);
-                    chown(parent, Some(Uid::from_raw(uid)), gid)
-                        .map_err(|e| io_context(parent, std::io::Error::from(e)))?;
-                }
+        let parent = tmp_dest.parent().unwrap_or_else(|| Path::new("."));
+        let created = !parent.exists();
+        fs::create_dir_all(parent).map_err(|e| io_context(parent, e))?;
+        #[cfg(unix)]
+        if created {
+            if let Some((uid, gid)) = self.opts.copy_as {
+                let gid = gid.map(Gid::from_raw);
+                chown(parent, Some(Uid::from_raw(uid)), gid)
+                    .map_err(|e| io_context(parent, std::io::Error::from(e)))?;
             }
         }
         #[cfg(unix)]
