@@ -1,5 +1,6 @@
 // crates/cli/src/formatter.rs
 use clap::Command;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::env;
 use textwrap::{wrap, Options as WrapOptions};
@@ -32,6 +33,8 @@ const UPSTREAM_HELP_SUFFIX: &str = r#"Use "rsync --daemon --help" to see the dae
 Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
 See https://rsync.samba.org/ for updates, bug reports, and answers
 "#;
+
+static RSYNC_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\brsync\b").unwrap());
 
 pub const ARG_ORDER: &[&str] = &[
     "verbose",
@@ -207,10 +210,9 @@ pub fn render_help(cmd: &Command) -> String {
     let upstream = branding::upstream_name();
     let mut help_prefix = branding::help_prefix();
     let mut help_suffix = branding::help_suffix();
-    let rsync_re = Regex::new(r"\brsync\b").unwrap();
     for s in [&mut help_prefix, &mut help_suffix] {
         let haystack = s.clone();
-        *s = rsync_re
+        *s = RSYNC_RE
             .replace_all(&haystack, |caps: &regex::Captures| {
                 let m = caps.get(0).unwrap();
                 let start = m.start();
