@@ -2,7 +2,7 @@
 mod stdio;
 
 use oc_rsync_cli::options::OutBuf;
-use oc_rsync_cli::{cli_command, EngineError};
+use oc_rsync_cli::{EngineError, cli_command};
 use protocol::ExitCode;
 use std::io::ErrorKind;
 

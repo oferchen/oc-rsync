@@ -33,7 +33,7 @@ when available. Do not exceed functionality of upstream at <https://rsync.samba.
 ## Parser Parity
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
-| Comprehensive flag parsing and help text parity | ✅ | [tests/cli.rs](../tests/cli.rs)<br>[tests/help_output.rs](../tests/help_output.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| Comprehensive flag parsing and help text parity | Partial | [tests/cli.rs](../tests/cli.rs)<br>[tests/help_output.rs](../tests/help_output.rs)<br>missing `--help` snapshot ([#1274](https://github.com/oferchen/oc-rsync/issues/1274)) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | Composite `--archive` flag expansion | ✅ | [tests/archive.rs](../tests/archive.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | Remote-only option parsing (`--remote-option`) | ✅ | [tests/interop/remote_option.rs](../tests/interop/remote_option.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | `--version` output parity | ✅ | [tests/version_output.rs](../tests/version_output.rs) | [crates/cli/src/version.rs](../crates/cli/src/version.rs) |

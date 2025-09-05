@@ -1,9 +1,9 @@
 // tests/sync_config.rs
 
-use filetime::{set_file_times, FileTime};
-use oc_rsync::{synchronize, synchronize_with_config, SyncConfig};
+use filetime::{FileTime, set_file_times};
+use oc_rsync::{SyncConfig, synchronize, synchronize_with_config};
 use std::{fs, path::Path};
-use tempfile::{tempdir, TempDir};
+use tempfile::{TempDir, tempdir};
 
 fn setup_dirs() -> (TempDir, std::path::PathBuf, std::path::PathBuf) {
     let dir = tempdir().unwrap();
@@ -55,7 +55,7 @@ fn sync_creates_destination() {
 #[cfg(unix)]
 #[test]
 fn defaults_do_not_preserve_permissions_or_ownership() {
-    use nix::unistd::{chown, Gid, Uid};
+    use nix::unistd::{Gid, Uid, chown};
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
     let (_dir, src_dir, dst_dir) = setup_dirs();
@@ -78,8 +78,8 @@ fn defaults_do_not_preserve_permissions_or_ownership() {
 #[cfg(unix)]
 #[test]
 fn defaults_skip_devices_and_specials() {
-    use nix::unistd::{mkfifo, Uid};
-    use oc_rsync::meta::{makedev, mknod, Mode, SFlag};
+    use nix::unistd::{Uid, mkfifo};
+    use oc_rsync::meta::{Mode, SFlag, makedev, mknod};
     use std::convert::TryInto;
 
     let (_dir, src_dir, dst_dir) = setup_dirs();
@@ -216,7 +216,7 @@ fn sync_preserves_directory_metadata() {
 #[cfg(unix)]
 #[test]
 fn sync_preserves_ownership() {
-    use nix::unistd::{chown, Gid, Uid};
+    use nix::unistd::{Gid, Uid, chown};
     use std::os::unix::fs::MetadataExt;
 
     if !Uid::effective().is_root() {

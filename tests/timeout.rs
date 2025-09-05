@@ -10,15 +10,15 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use assert_cmd::Command;
-use daemon::{handle_connection, Handler, Module};
+use daemon::{Handler, Module, handle_connection};
 use engine::{EngineError, SyncOptions};
 use oc_rsync_cli::spawn_daemon_session;
 use predicates::str::contains;
-use protocol::{Demux, ExitCode, CAP_CODECS};
+use protocol::{CAP_CODECS, Demux, ExitCode};
 use tempfile::tempdir;
 use transport::{
-    rate_limited, ssh::SshStdioTransport, LocalPipeTransport, TcpTransport, TimeoutTransport,
-    Transport,
+    LocalPipeTransport, TcpTransport, TimeoutTransport, Transport, rate_limited,
+    ssh::SshStdioTransport,
 };
 
 #[test]

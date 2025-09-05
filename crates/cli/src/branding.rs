@@ -41,13 +41,14 @@ For project updates and documentation, visit {url}.
 
 fn option_env_lookup(key: &str) -> Option<&'static str> {
     match key {
-        "OC_RSYNC_BRAND_NAME" => option_env!("OC_RSYNC_BRAND_NAME"),
+        "OC_RSYNC_NAME" => option_env!("OC_RSYNC_NAME"),
         "OC_RSYNC_UPSTREAM_NAME" => option_env!("OC_RSYNC_UPSTREAM_NAME"),
+        "OC_RSYNC_VERSION" => option_env!("OC_RSYNC_VERSION"),
         "OC_RSYNC_VERSION_PREFIX" => option_env!("OC_RSYNC_VERSION_PREFIX"),
         "OC_RSYNC_BRAND_TAGLINE" => option_env!("OC_RSYNC_BRAND_TAGLINE"),
-        "OC_RSYNC_BRAND_URL" => option_env!("OC_RSYNC_BRAND_URL"),
+        "OC_RSYNC_URL" => option_env!("OC_RSYNC_URL"),
         "OC_RSYNC_BRAND_CREDITS" => option_env!("OC_RSYNC_BRAND_CREDITS"),
-        "OC_RSYNC_BRAND_COPYRIGHT" => option_env!("OC_RSYNC_BRAND_COPYRIGHT"),
+        "OC_RSYNC_COPYRIGHT" => option_env!("OC_RSYNC_COPYRIGHT"),
         "OC_RSYNC_HIDE_CREDITS" => option_env!("OC_RSYNC_HIDE_CREDITS"),
         "OC_RSYNC_HELP_HEADER" => option_env!("OC_RSYNC_HELP_HEADER"),
         "OC_RSYNC_BRAND_HEADER" => option_env!("OC_RSYNC_BRAND_HEADER"),
@@ -66,7 +67,7 @@ fn env_or_option(key: &str) -> Option<String> {
 }
 
 pub fn program_name() -> String {
-    env_or_option("OC_RSYNC_BRAND_NAME").unwrap_or_else(|| "oc-rsync".to_string())
+    env_or_option("OC_RSYNC_NAME").unwrap_or_else(|| "oc-rsync".to_string())
 }
 
 pub fn upstream_name() -> String {
@@ -74,8 +75,10 @@ pub fn upstream_name() -> String {
 }
 
 pub fn brand_version() -> String {
-    let prefix = env_or_option("OC_RSYNC_VERSION_PREFIX").unwrap_or_default();
-    format!("{}{}", prefix, DEFAULT_BRAND_VERSION)
+    env_or_option("OC_RSYNC_VERSION").unwrap_or_else(|| {
+        let prefix = env_or_option("OC_RSYNC_VERSION_PREFIX").unwrap_or_default();
+        format!("{}{}", prefix, DEFAULT_BRAND_VERSION)
+    })
 }
 
 pub fn brand_tagline() -> String {
@@ -83,7 +86,7 @@ pub fn brand_tagline() -> String {
 }
 
 pub fn brand_url() -> String {
-    env_or_option("OC_RSYNC_BRAND_URL").unwrap_or_else(|| DEFAULT_URL.to_string())
+    env_or_option("OC_RSYNC_URL").unwrap_or_else(|| DEFAULT_URL.to_string())
 }
 
 pub fn brand_credits() -> String {
@@ -96,9 +99,9 @@ fn default_copyright() -> String {
 }
 
 pub fn brand_copyright() -> String {
-    env::var("OC_RSYNC_BRAND_COPYRIGHT")
+    env::var("OC_RSYNC_COPYRIGHT")
         .or_else(|_| {
-            option_env!("OC_RSYNC_BRAND_COPYRIGHT")
+            option_env!("OC_RSYNC_COPYRIGHT")
                 .map(str::to_string)
                 .ok_or(env::VarError::NotPresent)
         })
@@ -137,12 +140,18 @@ mod tests {
     #[test]
     #[serial]
     fn env_or_option_respects_precedence() {
-        std::env::remove_var("BUILD_REVISION");
+        unsafe {
+            std::env::remove_var("BUILD_REVISION");
+        }
         assert_eq!(env_or_option("BUILD_REVISION"), Some("unknown".to_string()));
 
-        std::env::set_var("BUILD_REVISION", "runtime");
+        unsafe {
+            std::env::set_var("BUILD_REVISION", "runtime");
+        }
         assert_eq!(env_or_option("BUILD_REVISION"), Some("runtime".to_string()));
-        std::env::remove_var("BUILD_REVISION");
+        unsafe {
+            std::env::remove_var("BUILD_REVISION");
+        }
 
         assert_eq!(env_or_option("NON_EXISTENT_KEY"), None);
     }
@@ -150,8 +159,9 @@ mod tests {
     #[test]
     #[serial]
     fn program_name_defaults_when_unset() {
-        std::env::remove_var("OC_RSYNC_BRAND_NAME");
-        if option_env!("OC_RSYNC_BRAND_NAME").is_none() {
+        std::env::remove_var("OC_RSYNC_NAME");
+        if option_env!("OC_RSYNC_NAME").is_none() {
+
             assert_eq!(program_name(), "oc-rsync");
         }
     }
