@@ -156,10 +156,14 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         total.dirs_total += stats.dirs_total;
         total.files_transferred += stats.files_transferred;
         total.files_deleted += stats.files_deleted;
+        total.files_created += stats.files_created;
         total.total_file_size += stats.total_file_size;
         total.bytes_transferred += stats.bytes_transferred;
         total.literal_data += stats.literal_data;
         total.matched_data += stats.matched_data;
+        total.file_list_size += stats.file_list_size;
+        total.file_list_gen_time += stats.file_list_gen_time;
+        total.file_list_transfer_time += stats.file_list_transfer_time;
         total.bytes_sent += stats.bytes_sent;
         total.bytes_received += stats.bytes_received;
     }
@@ -175,7 +179,7 @@ fn print_stats(stats: &Stats, opts: &ClientOpts) {
         "Number of files: {} (reg: {}, dir: {})",
         num_files, stats.files_total, stats.dirs_total
     );
-    println!("Number of created files: 0");
+    println!("Number of created files: {}", stats.files_created);
     println!("Number of deleted files: {}", stats.files_deleted);
     println!(
         "Number of regular files transferred: {}",
@@ -195,9 +199,15 @@ fn print_stats(stats: &Stats, opts: &ClientOpts) {
     println!("Total transferred file size: {transferred}");
     println!("Literal data: {} bytes", stats.literal_data);
     println!("Matched data: {} bytes", stats.matched_data);
-    println!("File list size: 0");
-    println!("File list generation time: 0.000 seconds");
-    println!("File list transfer time: 0.000 seconds");
+    println!("File list size: {}", stats.file_list_size);
+    println!(
+        "File list generation time: {:.3} seconds",
+        stats.file_list_gen_time.as_secs_f64()
+    );
+    println!(
+        "File list transfer time: {:.3} seconds",
+        stats.file_list_transfer_time.as_secs_f64()
+    );
     println!("Total bytes sent: {}", stats.bytes_sent);
     println!("Total bytes received: {}", stats.bytes_received);
     println!(

@@ -1999,10 +1999,14 @@ pub struct Stats {
     pub dirs_total: usize,
     pub files_transferred: usize,
     pub files_deleted: usize,
+    pub files_created: usize,
     pub total_file_size: u64,
     pub bytes_transferred: u64,
     pub literal_data: u64,
     pub matched_data: u64,
+    pub file_list_size: u64,
+    pub file_list_gen_time: Duration,
+    pub file_list_transfer_time: Duration,
     pub bytes_sent: u64,
     pub bytes_received: u64,
 }
@@ -2404,7 +2408,9 @@ pub fn sync(
 
     let codec = select_codec(remote, opts);
     let matcher = matcher.clone().with_root(src_root.clone());
+    let list_start = Instant::now();
     let (file_cnt, dir_cnt, total_size) = count_entries(&src_root, &matcher, opts);
+    stats.file_list_gen_time = list_start.elapsed();
     stats.files_total = file_cnt;
     stats.dirs_total = dir_cnt;
     stats.total_file_size = total_size;
@@ -2470,7 +2476,9 @@ pub fn sync(
     if matches!(opts.delete, Some(DeleteMode::Before)) {
         delete_extraneous(&src_root, dst, &matcher, opts, &mut stats, start)?;
     }
+    let flist_xfer_start = Instant::now();
     sender.start();
+    stats.file_list_transfer_time = flist_xfer_start.elapsed();
     let mut state = String::new();
     let mut walker = walk(
         &src_root,
@@ -2596,6 +2604,7 @@ pub fn sync(
                             }
                         }
                     }
+                    let dest_missing = !dest_path.exists() && !partial_exists;
                     if sender.process_file(&path, &dest_path, rel, &mut receiver, &mut stats)? {
                         stats.files_transferred += 1;
                         stats.bytes_transferred +=
@@ -2607,6 +2616,9 @@ pub fn sync(
                             let name = escape_path(rel, opts.eight_bit_output);
                             log_name(rel, None, opts, format!(">f+++++++++ {}", name));
                         }
+                    }
+                    if dest_missing {
+                        stats.files_created += 1;
                     }
                     if opts.remove_source_files {
                         remove_file_opts(&path, opts)?;
@@ -2671,6 +2683,7 @@ pub fn sync(
                         fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
                     }
                     if created {
+                        stats.files_created += 1;
                         #[cfg(unix)]
                         if let Some((uid, gid)) = opts.copy_as {
                             let gid = gid.map(Gid::from_raw);
@@ -2733,19 +2746,23 @@ pub fn sync(
                                 stats.matched_data += sub.matched_data;
                                 stats.bytes_sent += sub.bytes_sent;
                                 stats.bytes_received += sub.bytes_received;
-                            } else if meta.is_file()
-                                && sender.process_file(
+                            } else if meta.is_file() {
+                                let dest_missing = !dest_path.exists();
+                                if sender.process_file(
                                     &target_path,
                                     &dest_path,
                                     rel,
                                     &mut receiver,
                                     &mut stats,
-                                )?
-                            {
-                                stats.files_transferred += 1;
-                                stats.bytes_transferred += meta.len();
-                                if let Some(f) = batch_file.as_mut() {
-                                    let _ = writeln!(f, "{}", rel.display());
+                                )? {
+                                    stats.files_transferred += 1;
+                                    stats.bytes_transferred += meta.len();
+                                    if let Some(f) = batch_file.as_mut() {
+                                        let _ = writeln!(f, "{}", rel.display());
+                                    }
+                                }
+                                if dest_missing {
+                                    stats.files_created += 1;
                                 }
                             }
                             if opts.remove_source_files {
@@ -2791,6 +2808,7 @@ pub fn sync(
                         }
                         receiver.copy_metadata(&path, &dest_path)?;
                         if created {
+                            stats.files_created += 1;
                             stats.files_transferred += 1;
                             if (opts.out_format.is_some() || opts.itemize_changes) && !opts.quiet {
                                 let name = escape_path(rel, opts.eight_bit_output);
@@ -2835,6 +2853,7 @@ pub fn sync(
                                 .map_err(|e| io_context(&dest_path, e))?;
                             receiver.copy_metadata_now(&path, &dest_path)?;
                             if created {
+                                stats.files_created += 1;
                                 stats.files_transferred += 1;
                                 if (opts.out_format.is_some() || opts.itemize_changes)
                                     && !opts.quiet
