@@ -3,8 +3,8 @@
 use std::collections::HashSet;
 use std::env;
 use std::ffi::OsString;
-use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
+use std::{ffi::OsStr, path::PathBuf};
 
 use clap::ArgMatches;
 use encoding_rs::Encoding;
@@ -314,11 +314,12 @@ pub enum RemoteSpec {
     },
 }
 
-pub(crate) fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
+pub(crate) fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec> {
+    let input = input.to_string_lossy();
     let (trailing_slash, s) = if input != "/" && input.ends_with('/') {
         (true, &input[..input.len() - 1])
     } else {
-        (false, input)
+        (false, &*input)
     };
     if let Some(rest) = s.strip_prefix("rsync://") {
         let mut parts = rest.splitn(2, '/');
@@ -363,7 +364,7 @@ pub(crate) fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
             }
         }
         return Ok(RemoteSpec::Local(PathSpec {
-            path: PathBuf::from(input),
+            path: PathBuf::from(input.as_ref()),
             trailing_slash,
         }));
     }
@@ -428,7 +429,7 @@ pub(crate) fn parse_remote_spec(input: &str) -> Result<RemoteSpec> {
     }))
 }
 
-pub(crate) fn parse_remote_specs(src: &str, dst: &str) -> Result<(RemoteSpec, RemoteSpec)> {
+pub(crate) fn parse_remote_specs(src: &OsStr, dst: &OsStr) -> Result<(RemoteSpec, RemoteSpec)> {
     let src_spec = parse_remote_spec(src)?;
     let dst_spec = parse_remote_spec(dst)?;
     if let (
