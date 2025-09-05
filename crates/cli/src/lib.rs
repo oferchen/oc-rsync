@@ -203,12 +203,7 @@ fn print_stats(stats: &Stats, opts: &ClientOpts) {
         "Number of files: {} (reg: {}, dir: {})",
         num_files, stats.files_total, stats.dirs_total
     );
-    println!(
-        "Number of created files: {} (reg: {}, dir: {})",
-        stats.files_created,
-        stats.files_created - stats.dirs_created,
-        stats.dirs_created
-    );
+    println!("Number of created files: {}", stats.files_created);
     println!("Number of deleted files: {}", stats.files_deleted);
     println!(
         "Number of regular files transferred: {}",
