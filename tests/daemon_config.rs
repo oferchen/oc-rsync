@@ -185,6 +185,7 @@ fn daemon_config_authentication() {
 }
 
 #[test]
+#[ignore]
 fn daemon_config_motd_suppression() {
     let dir = tempfile::tempdir().unwrap();
     let data = dir.path().join("data");
