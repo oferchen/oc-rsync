@@ -67,6 +67,7 @@ posix-acl = "1.2"
 
 [build-dependencies]
 time = { version = "0.3", default-features = false, features = ["std"] }
+pkg-config = "0.3"
 
 [[bin]]
 name = "oc-rsync"
