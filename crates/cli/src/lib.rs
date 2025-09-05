@@ -68,7 +68,7 @@ pub fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
         Io => ExitCode::FileIo,
         Format => ExitCode::FileIo,
         #[allow(unreachable_patterns)]
-        _ => unreachable!("unhandled clap::ErrorKind variant"),
+        _ => ExitCode::SyntaxOrUsage,
     }
 }
 
@@ -1697,5 +1697,13 @@ mod tests {
 
         env::set_current_dir(prev).unwrap();
         handle.join().unwrap();
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    #[allow(clippy::transmute)]
+    fn exit_code_handles_unknown_error_kind() {
+        let kind: clap::error::ErrorKind = unsafe { std::mem::transmute(u8::MAX) };
+        assert_eq!(exit_code_from_error_kind(kind), ExitCode::SyntaxOrUsage);
     }
 }
