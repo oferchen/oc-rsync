@@ -9,8 +9,8 @@ set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
 GOLDEN="$ROOT/tests/interop/golden"
-CLIENT_VERSIONS=(${CLIENT_VERSIONS:-"3.1.3 3.2.7 3.3.0 3.4.1 oc-rsync"})
-SERVER_VERSIONS=(${SERVER_VERSIONS:-"3.1.3 3.2.7 3.3.0 3.4.1 oc-rsync"})
+CLIENT_VERSIONS=(${CLIENT_VERSIONS:-"oc-rsync"})
+SERVER_VERSIONS=(${SERVER_VERSIONS:-"oc-rsync"})
 TRANSPORTS=(${TRANSPORTS:-"ssh rsync"})
 
 if [[ -n "${SCENARIOS:-}" ]]; then
@@ -68,21 +68,6 @@ mkdir -p "$GOLDEN"
 # output so that goldens remain stable across runs.
 sanitize_banners() {
   sed '/^@RSYNCD:/d'
-}
-
-fetch_rsync() {
-  local ver="$1"
-  local dir="$ROOT/rsync-$ver"
-  local bin="$dir/rsync"
-  if [[ ! -x "$bin" ]]; then
-    echo "Fetching rsync $ver" >&2
-    local tar="rsync-$ver.tar.gz"
-    local url="https://download.samba.org/pub/rsync/src/$tar"
-    curl -Ls "$url" -o "$tar"
-    tar -xf "$tar"
-    (cd "$dir" && ./configure >/dev/null && make rsync >/dev/null)
-  fi
-  echo "$bin"
 }
 
 setup_ssh() {
@@ -205,11 +190,9 @@ for v in "${CLIENT_VERSIONS[@]}" "${SERVER_VERSIONS[@]}"; do
     fi
   elif [[ "$v" == "upstream" ]]; then
     [[ -n "${UPSTREAM_RSYNC:-}" && -x "$UPSTREAM_RSYNC" ]] || { echo "UPSTREAM_RSYNC not set or executable" >&2; exit 1; }
-  elif [[ "$v" == "system" ]]; then
-    echo "system rsync is not supported; specify a version or set UPSTREAM_RSYNC" >&2
-    exit 1
   else
-    fetch_rsync "$v" >/dev/null
+    echo "unknown rsync version $v" >&2
+    exit 1
   fi
 done
 
@@ -219,7 +202,8 @@ for c in "${CLIENT_VERSIONS[@]}"; do
   elif [[ "$c" == "upstream" ]]; then
     client_bin="$UPSTREAM_RSYNC"
   else
-    client_bin="$ROOT/rsync-$c/rsync"
+    echo "unknown client version $c" >&2
+    exit 1
   fi
   for s in "${SERVER_VERSIONS[@]}"; do
     if [[ "$s" == "oc-rsync" ]]; then
@@ -227,7 +211,8 @@ for c in "${CLIENT_VERSIONS[@]}"; do
     elif [[ "$s" == "upstream" ]]; then
       server_bin="$UPSTREAM_RSYNC"
     else
-      server_bin="$ROOT/rsync-$s/rsync"
+      echo "unknown server version $s" >&2
+      exit 1
     fi
     for t in "${TRANSPORTS[@]}"; do
       for scenario in "${SCENARIOS[@]}"; do
