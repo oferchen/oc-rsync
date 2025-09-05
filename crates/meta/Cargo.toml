@@ -22,4 +22,5 @@ tempfile = "3"
 
 [features]
 default = []
+xattr = []
 acl = ["posix-acl"]

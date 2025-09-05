@@ -26,6 +26,17 @@ pub use stub::*;
 mod parse;
 pub use parse::{parse_chmod, parse_chmod_spec, parse_chown, parse_id_map, IdKind};
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct MetaOpts {
+    pub xattrs: bool,
+    pub acl: bool,
+}
+
+pub const META_OPTS: MetaOpts = MetaOpts {
+    xattrs: cfg!(feature = "xattr"),
+    acl: cfg!(feature = "acl"),
+};
+
 #[inline]
 pub const fn normalize_mode(mode: u32) -> u32 {
     mode & 0o7777

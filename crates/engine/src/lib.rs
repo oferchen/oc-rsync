@@ -27,6 +27,9 @@ use protocol::ExitCode;
 use thiserror::Error;
 pub mod flist;
 
+pub use meta::MetaOpts;
+pub const META_OPTS: MetaOpts = meta::META_OPTS;
+
 const RSYNC_BLOCK_SIZE: usize = 700;
 const RSYNC_MAX_BLOCK_SIZE: usize = 1 << 17;
 const MUNGE_PREFIX: &str = "/rsyncd-munged";
