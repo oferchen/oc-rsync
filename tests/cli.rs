@@ -850,12 +850,12 @@ fn stats_parity() {
 
     let golden = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/golden/stats/stats_parity.stdout");
-    let mut up_stats: Vec<String> = std::fs::read_to_string(golden)
+    let up_stats: Vec<String> = std::fs::read_to_string(golden)
         .unwrap()
         .lines()
         .map(|l| l.to_string())
         .collect();
-    assert_eq!(up_stats.len(), 5);
+    assert_eq!(up_stats.len(), 6);
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
         .env("LC_ALL", "C")
@@ -876,11 +876,12 @@ fn stats_parity() {
     );
 
     let our_stdout = String::from_utf8_lossy(&ours.stdout);
-    let mut our_stats: Vec<String> = our_stdout
+    let our_stats: Vec<String> = our_stdout
         .lines()
         .filter_map(|l| {
             let l = l.trim_start();
-            if l.starts_with("Number of created files")
+            if l.starts_with("Number of files")
+                || l.starts_with("Number of created files")
                 || l.starts_with("Number of deleted files")
                 || l.starts_with("Number of regular files transferred")
                 || l.starts_with("Total transferred file size")
@@ -892,8 +893,6 @@ fn stats_parity() {
             }
         })
         .collect();
-    our_stats.sort();
-    up_stats.sort();
     assert_eq!(our_stats, up_stats);
 
     insta::assert_snapshot!("stats_parity", our_stats.join("\n"));
