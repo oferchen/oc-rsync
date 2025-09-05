@@ -868,7 +868,7 @@ fn daemon_enforces_timeout() {
         }
     };
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     sleep(Duration::from_secs(2));
     let mut buf = [0u8; 1];
     match t.receive(&mut buf) {
@@ -1190,7 +1190,7 @@ fn daemon_accepts_connection_on_ephemeral_port() {
         }
     };
     wait_for_daemon(port);
-    TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -1228,7 +1228,7 @@ fn daemon_runs_with_numeric_ids() {
         }
     };
     wait_for_daemon(port);
-    TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -1249,7 +1249,7 @@ fn daemon_allows_module_access() {
         }
     };
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
@@ -1299,7 +1299,7 @@ fn daemon_rejects_world_readable_secrets_file() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
@@ -1347,7 +1347,7 @@ fn daemon_rejects_invalid_token() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
@@ -1395,7 +1395,7 @@ fn daemon_rejects_missing_token() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
@@ -1443,7 +1443,7 @@ fn daemon_rejects_unauthorized_module() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
@@ -1495,7 +1495,7 @@ fn daemon_accepts_authorized_client() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
@@ -1561,7 +1561,7 @@ fn daemon_accepts_listed_auth_user() {
         }
     };
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
@@ -1621,7 +1621,7 @@ fn daemon_rejects_unlisted_auth_user() {
         }
     };
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
@@ -1671,7 +1671,7 @@ fn daemon_parses_secrets_file_with_comments() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
@@ -1726,7 +1726,7 @@ fn client_authenticates_with_password_file() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
@@ -1926,7 +1926,7 @@ fn daemon_displays_motd() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -1977,7 +1977,7 @@ fn daemon_suppresses_motd_when_requested() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -2085,7 +2085,7 @@ fn daemon_writes_log_file() {
         .unwrap();
     wait_for_daemon(port);
     {
-        let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+        let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
         t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
         let mut buf = [0u8; 4];
         t.receive(&mut buf).unwrap();
@@ -2140,7 +2140,7 @@ fn daemon_honors_bwlimit() {
         .spawn()
         .unwrap();
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -2193,7 +2193,7 @@ fn daemon_hides_unlisted_modules() {
         }
     };
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -2289,7 +2289,7 @@ fn daemon_accepts_sequential_chrooted_connections() {
     };
     wait_for_daemon(port);
     for _ in 0..3 {
-        let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+        let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
         t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
         t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
         let mut buf = [0u8; 4];

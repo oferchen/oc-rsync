@@ -437,6 +437,7 @@ impl SshStdioTransport {
         strict_host_key_checking: bool,
         port: Option<u16>,
         connect_timeout: Option<Duration>,
+        timeout: Option<Duration>,
         family: Option<AddressFamily>,
         blocking_io: bool,
         version: u32,
@@ -466,6 +467,9 @@ impl SshStdioTransport {
                 .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "connection timed out"))?;
             t.set_read_timeout(Some(remaining))?;
             t.set_write_timeout(Some(remaining))?;
+        } else {
+            t.set_read_timeout(timeout)?;
+            t.set_write_timeout(timeout)?;
         }
         let (codecs, caps) =
             match Self::handshake(&mut t, rsync_env, remote_opts, token, version, caps) {
@@ -483,10 +487,8 @@ impl SshStdioTransport {
                     return Err(e);
                 }
             };
-        if connect_timeout.is_some() {
-            t.set_read_timeout(None)?;
-            t.set_write_timeout(None)?;
-        }
+        t.set_read_timeout(timeout)?;
+        t.set_write_timeout(timeout)?;
         Ok((t, codecs, caps))
     }
 

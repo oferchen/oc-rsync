@@ -104,7 +104,7 @@ fn daemon_config_authentication() {
     );
     let (mut child, port, _tmp) = spawn_daemon(&config);
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -208,7 +208,7 @@ fn daemon_config_module_secrets_file() {
     );
     let (mut child, port, _tmp) = spawn_daemon(&config);
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     t.receive(&mut buf).unwrap();
@@ -265,7 +265,7 @@ fn daemon_config_read_only_module_rejects_writes() {
     let (child, port, _tmp) = spawn_daemon(&config);
     let _child = ChildGuard(child);
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
@@ -301,7 +301,7 @@ fn daemon_config_write_only_module_rejects_reads() {
     let (child, port, _tmp) = spawn_daemon(&config);
     let _child = ChildGuard(child);
     wait_for_daemon(port);
-    let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+    let mut t = TcpTransport::connect("127.0.0.1", port, None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
     t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];

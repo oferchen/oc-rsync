@@ -15,11 +15,12 @@ fn tcp_prefers_ipv4() {
         let (mut stream, _) = listener.accept().unwrap();
         stream.write_all(b"4").unwrap();
     });
-    let mut t = TcpTransport::connect("localhost", port, None, Some(AddressFamily::V4)).unwrap();
+    let mut t =
+        TcpTransport::connect("localhost", port, None, None, Some(AddressFamily::V4)).unwrap();
     let mut buf = [0u8; 1];
     t.receive(&mut buf).unwrap();
     assert_eq!(&buf, b"4");
-    assert!(TcpTransport::connect("localhost", port, None, Some(AddressFamily::V6)).is_err());
+    assert!(TcpTransport::connect("localhost", port, None, None, Some(AddressFamily::V6)).is_err());
 }
 
 #[test]
@@ -36,11 +37,12 @@ fn tcp_prefers_ipv6() {
         let (mut stream, _) = listener.accept().unwrap();
         stream.write_all(b"6").unwrap();
     });
-    let mut t = TcpTransport::connect("localhost", port, None, Some(AddressFamily::V6)).unwrap();
+    let mut t =
+        TcpTransport::connect("localhost", port, None, None, Some(AddressFamily::V6)).unwrap();
     let mut buf = [0u8; 1];
     t.receive(&mut buf).unwrap();
     assert_eq!(&buf, b"6");
-    assert!(TcpTransport::connect("localhost", port, None, Some(AddressFamily::V4)).is_err());
+    assert!(TcpTransport::connect("localhost", port, None, None, Some(AddressFamily::V4)).is_err());
 }
 
 #[test]
@@ -63,7 +65,7 @@ fn tcp_retries_addresses() {
     });
 
     let mut t =
-        TcpTransport::connect("localhost", port, Some(Duration::from_secs(1)), None).unwrap();
+        TcpTransport::connect("localhost", port, Some(Duration::from_secs(1)), None, None).unwrap();
     let mut buf = [0u8; 1];
     t.receive(&mut buf).unwrap();
     assert_eq!(&buf, b"r");

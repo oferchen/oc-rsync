@@ -2,7 +2,7 @@
 #![allow(clippy::err_expect)]
 
 use std::fs;
-use std::io::{self, Cursor};
+use std::io::{self, Cursor, Read, Write};
 use std::net::TcpListener;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -85,7 +85,8 @@ fn tcp_read_timeout() {
         let (_sock, _) = listener.accept().unwrap();
         thread::sleep(Duration::from_secs(5));
     });
-    let mut t = TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None).unwrap();
+    let mut t =
+        TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_millis(100)))
         .unwrap();
     let mut buf = [0u8; 1];
@@ -113,8 +114,14 @@ fn tcp_handshake_timeout() {
     });
     let timeout = Duration::from_millis(100);
     let start = Instant::now();
-    let mut t =
-        TcpTransport::connect(&addr.ip().to_string(), addr.port(), Some(timeout), None).unwrap();
+    let mut t = TcpTransport::connect(
+        &addr.ip().to_string(),
+        addr.port(),
+        Some(timeout),
+        None,
+        None,
+    )
+    .unwrap();
     let remaining = timeout
         .checked_sub(start.elapsed())
         .unwrap_or_else(|| Duration::from_millis(0));
@@ -205,6 +212,46 @@ fn ssh_connection_timeout_exit_code() {
         .assert()
         .failure()
         .code(u8::from(ExitCode::ConnTimeout) as i32)
+        .stderr(contains("failed to read version"));
+}
+
+#[test]
+fn daemon_stalled_server_timeout_exit_code() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    thread::spawn(move || {
+        let (mut sock, _) = listener.accept().unwrap();
+        let mut buf = [0u8; 4];
+        sock.read_exact(&mut buf).unwrap();
+        sock.write_all(&buf).unwrap();
+        thread::sleep(Duration::from_secs(5));
+    });
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--timeout=1",
+            &format!("rsync://127.0.0.1:{}/mod/", addr.port()),
+            ".",
+        ])
+        .assert()
+        .failure()
+        .code(u8::from(ExitCode::Timeout) as i32)
+        .stderr(contains("operation timed out"));
+}
+
+#[test]
+fn ssh_stalled_server_timeout_exit_code() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--timeout=1",
+            "--rsh=sh -c 'sleep 5'",
+            "localhost:/tmp",
+            ".",
+        ])
+        .assert()
+        .failure()
+        .code(u8::from(ExitCode::Timeout) as i32)
         .stderr(contains("failed to read version"));
 }
 

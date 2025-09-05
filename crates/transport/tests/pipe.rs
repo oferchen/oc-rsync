@@ -62,8 +62,8 @@ fn pipe_tcp_transports() {
         fs::write(dst_file, buf).unwrap();
     });
 
-    let mut src_session = TcpTransport::connect("127.0.0.1", src_port, None, None).unwrap();
-    let mut dst_session = TcpTransport::connect("127.0.0.1", dst_port, None, None).unwrap();
+    let mut src_session = TcpTransport::connect("127.0.0.1", src_port, None, None, None).unwrap();
+    let mut dst_session = TcpTransport::connect("127.0.0.1", dst_port, None, None, None).unwrap();
 
     let _ = pipe(&mut src_session, &mut dst_session).unwrap();
     drop(dst_session);

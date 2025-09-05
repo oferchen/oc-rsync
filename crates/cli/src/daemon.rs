@@ -69,8 +69,8 @@ pub fn spawn_daemon_session(
         (host, port.unwrap_or(873))
     };
     let start = Instant::now();
-    let mut t =
-        TcpTransport::connect(host, port, connect_timeout, family).map_err(EngineError::from)?;
+    let mut t = TcpTransport::connect(host, port, connect_timeout, timeout, family)
+        .map_err(EngineError::from)?;
     t.set_blocking_io(opts.blocking_io)
         .map_err(EngineError::from)?;
     let parsed: Vec<SockOpt> = parse_sockopts(sockopts).map_err(EngineError::Other)?;
@@ -81,7 +81,8 @@ pub fn spawn_daemon_session(
                 .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "connection timed out"))
         })
         .transpose()
-        .map_err(EngineError::from)?;
+        .map_err(EngineError::from)?
+        .or(timeout);
     t.set_read_timeout(handshake_timeout)
         .map_err(EngineError::from)?;
     t.set_write_timeout(handshake_timeout)

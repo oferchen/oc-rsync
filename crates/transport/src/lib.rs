@@ -107,6 +107,7 @@ impl SshStdioTransport {
         _strict_host_key_checking: bool,
         _port: Option<u16>,
         _connect_timeout: Option<std::time::Duration>,
+        _timeout: Option<std::time::Duration>,
         _family: Option<AddressFamily>,
         _blocking_io: bool,
         _version: u32,

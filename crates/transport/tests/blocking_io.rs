@@ -37,8 +37,8 @@ fn tcp_blocking_mode() {
     let handle = thread::spawn(move || {
         let _ = listener.accept();
     });
-    let mut t =
-        TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None).expect("connect");
+    let mut t = TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None, None)
+        .expect("connect");
     t.set_blocking_io(true).expect("set");
     let stream = t.into_inner();
     let flags = OFlag::from_bits_truncate(fcntl(&stream, FcntlArg::F_GETFL).unwrap());
@@ -54,8 +54,8 @@ fn tcp_nonblocking_default() {
     let handle = thread::spawn(move || {
         let _ = listener.accept();
     });
-    let t =
-        TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None).expect("connect");
+    let t = TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None, None)
+        .expect("connect");
     let stream = t.into_inner();
     let flags = OFlag::from_bits_truncate(fcntl(&stream, FcntlArg::F_GETFL).unwrap());
     assert!(flags.contains(OFlag::O_NONBLOCK));

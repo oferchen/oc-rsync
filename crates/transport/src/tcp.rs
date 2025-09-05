@@ -25,6 +25,7 @@ impl TcpTransport {
         host: &str,
         port: u16,
         connect_timeout: Option<Duration>,
+        timeout: Option<Duration>,
         family: Option<AddressFamily>,
     ) -> io::Result<Self> {
         let addrs: Vec<SocketAddr> = (host, port).to_socket_addrs()?.collect();
@@ -51,11 +52,15 @@ impl TcpTransport {
 
             match stream_res {
                 Ok(stream) => {
+                    if let Some(dur) = timeout {
+                        let _ = stream.set_read_timeout(Some(dur));
+                        let _ = stream.set_write_timeout(Some(dur));
+                    }
                     let _ = stream.set_nonblocking(true);
                     return Ok(Self {
                         stream,
-                        read_timeout: None,
-                        write_timeout: None,
+                        read_timeout: timeout,
+                        write_timeout: timeout,
                         blocking_io: false,
                     });
                 }

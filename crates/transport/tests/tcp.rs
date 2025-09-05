@@ -18,7 +18,8 @@ fn send_receive_over_tcp() {
     });
 
     let mut transport =
-        TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None).expect("connect");
+        TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None, None)
+            .expect("connect");
     transport.send(b"ping").expect("send");
     let mut buf = [0u8; 4];
     let n = transport.receive(&mut buf).expect("receive");

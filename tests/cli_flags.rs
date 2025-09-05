@@ -38,7 +38,7 @@ fn blocking_io_nonblocking_by_default() {
         let (_conn, _) = listener.accept().unwrap();
         thread::sleep(Duration::from_millis(100));
     });
-    let t = TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None).unwrap();
+    let t = TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None, None).unwrap();
     #[cfg(unix)]
     {
         let stream = t.into_inner();
@@ -60,7 +60,8 @@ fn blocking_io_flag_enables_blocking_mode() {
         let (_conn, _) = listener.accept().unwrap();
         thread::sleep(Duration::from_millis(100));
     });
-    let mut t = TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None).unwrap();
+    let mut t =
+        TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None, None).unwrap();
     t.set_blocking_io(true).unwrap();
     #[cfg(unix)]
     {

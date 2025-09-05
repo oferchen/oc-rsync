@@ -135,6 +135,7 @@ fn custom_rsh_negotiates_codecs() {
         None,
         None,
         None,
+        None,
         false,
         LATEST_VERSION,
         CAP_CODECS,
