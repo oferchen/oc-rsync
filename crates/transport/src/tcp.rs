@@ -1,6 +1,8 @@
 // crates/transport/src/tcp.rs
 use std::io::{self, Read, Write};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
+use std::net::{
+    IpAddr, Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, TcpListener, TcpStream, ToSocketAddrs,
+};
 use std::os::fd::{AsRawFd, BorrowedFd, RawFd};
 use std::time::Duration;
 
@@ -336,6 +338,10 @@ impl Transport for TcpTransport {
             self.stream.set_write_timeout(None)?;
         }
         Ok(())
+    }
+
+    fn close(&mut self) -> io::Result<()> {
+        self.stream.shutdown(Shutdown::Both)
     }
 }
 

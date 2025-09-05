@@ -105,6 +105,10 @@ impl Transport for SlowReceiveTransport {
         self.pos += n;
         Ok(n)
     }
+
+    fn close(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 struct SlowSendTransport<W> {
@@ -130,6 +134,10 @@ impl<W: Write> Transport for SlowSendTransport<W> {
 
     fn receive(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
         Ok(0)
+    }
+
+    fn close(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
 }
 
@@ -193,6 +201,10 @@ impl Transport for InterruptReceiveTransport {
         self.pos += n;
         Ok(n)
     }
+
+    fn close(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 struct InterruptSendTransport {
@@ -221,6 +233,10 @@ impl Transport for InterruptSendTransport {
 
     fn receive(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
         Ok(0)
+    }
+
+    fn close(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
 }
 
