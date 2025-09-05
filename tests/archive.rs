@@ -145,11 +145,12 @@ fn archive_respects_no_options() {
     .unwrap();
     symlink("dir/file", src.join("link")).unwrap();
     meta::mkfifo(&src.join("fifo"), Mode::from_bits_truncate(0o644)).unwrap();
+    #[allow(clippy::useless_conversion)]
     meta::mknod(
         &src.join("dev"),
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o644),
-        makedev(1, 7),
+        makedev(1, 7).try_into().unwrap(),
     )
     .unwrap();
 

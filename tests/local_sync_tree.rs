@@ -8,6 +8,8 @@ use meta::mkfifo;
 #[cfg(unix)]
 use nix::sys::stat::Mode;
 use std::collections::BTreeMap;
+#[cfg(target_os = "linux")]
+use std::convert::TryInto;
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::FileTypeExt;
@@ -605,11 +607,12 @@ fn sync_creates_device_nodes() {
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst).unwrap();
     let cdev = src.join("char");
+    #[allow(clippy::useless_conversion)]
     if let Err(err) = meta::mknod(
         &cdev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
-        meta::makedev(1, 3),
+        meta::makedev(1, 3).try_into().unwrap(),
     ) {
         if err.raw_os_error() == Some(Errno::EPERM as i32) {
             eprintln!("skipping: failed to create char device: {err}");
@@ -618,11 +621,12 @@ fn sync_creates_device_nodes() {
         panic!("failed to create char device: {err}");
     }
     let bdev = src.join("block");
+    #[allow(clippy::useless_conversion)]
     if let Err(err) = meta::mknod(
         &bdev,
         SFlag::S_IFBLK,
         Mode::from_bits_truncate(0o600),
-        meta::makedev(8, 1),
+        meta::makedev(8, 1).try_into().unwrap(),
     ) {
         if err.raw_os_error() == Some(Errno::EPERM as i32) {
             eprintln!("skipping: failed to create block device: {err}");
@@ -675,11 +679,12 @@ fn sync_copies_device_contents() {
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst).unwrap();
     let dev = src.join("null");
+    #[allow(clippy::useless_conversion)]
     if let Err(err) = meta::mknod(
         &dev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
-        meta::makedev(1, 3),
+        meta::makedev(1, 3).try_into().unwrap(),
     ) {
         if err.raw_os_error() == Some(Errno::EPERM as i32) {
             eprintln!("skipping: failed to create char device: {err}");
@@ -721,11 +726,12 @@ fn sync_deletes_device_nodes() {
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&dst).unwrap();
     let dev = dst.join("null");
+    #[allow(clippy::useless_conversion)]
     if let Err(err) = meta::mknod(
         &dev,
         SFlag::S_IFCHR,
         Mode::from_bits_truncate(0o600),
-        meta::makedev(1, 3),
+        meta::makedev(1, 3).try_into().unwrap(),
     ) {
         if err.raw_os_error() == Some(Errno::EPERM as i32) {
             eprintln!("skipping: failed to create char device: {err}");
