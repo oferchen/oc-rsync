@@ -10,6 +10,7 @@ use std::net::TcpListener;
 use std::os::fd::AsRawFd;
 use std::path::Path;
 use std::thread;
+use std::time::Duration;
 use tempfile::{tempdir, NamedTempFile};
 use transport::tcp::TcpTransport;
 
@@ -32,17 +33,18 @@ fn blocking_io_flag_is_accepted() {
 }
 
 #[test]
-#[ignore]
 fn blocking_io_nonblocking_by_default() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
     let handle = thread::spawn(move || {
-        let _ = listener.accept();
+        let (_conn, _) = listener.accept().unwrap();
+        thread::sleep(Duration::from_millis(100));
     });
     let t = TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None).unwrap();
     #[cfg(unix)]
     {
-        let fd = t.into_inner().as_raw_fd();
+        let stream = t.into_inner();
+        let fd = stream.as_raw_fd();
         let flags = OFlag::from_bits_truncate(fcntl(fd, FcntlArg::F_GETFL).unwrap());
         assert!(flags.contains(OFlag::O_NONBLOCK));
     }
@@ -54,18 +56,19 @@ fn blocking_io_nonblocking_by_default() {
 }
 
 #[test]
-#[ignore]
 fn blocking_io_flag_enables_blocking_mode() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
     let handle = thread::spawn(move || {
-        let _ = listener.accept();
+        let (_conn, _) = listener.accept().unwrap();
+        thread::sleep(Duration::from_millis(100));
     });
     let mut t = TcpTransport::connect(&addr.ip().to_string(), addr.port(), None, None).unwrap();
     t.set_blocking_io(true).unwrap();
     #[cfg(unix)]
     {
-        let fd = t.into_inner().as_raw_fd();
+        let stream = t.into_inner();
+        let fd = stream.as_raw_fd();
         let flags = OFlag::from_bits_truncate(fcntl(fd, FcntlArg::F_GETFL).unwrap());
         assert!(!flags.contains(OFlag::O_NONBLOCK));
     }
