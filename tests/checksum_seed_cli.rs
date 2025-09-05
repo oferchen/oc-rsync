@@ -13,7 +13,6 @@ fn checksum_seed_flag_transfers_files() {
     let src_file = src_dir.join("a.txt");
     fs::write(&src_file, vec![0u8; 2048]).unwrap();
 
-    // destination is an existing directory
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
