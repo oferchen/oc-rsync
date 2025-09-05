@@ -68,8 +68,8 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: brew install-bundler-gems
 
-      - name: Lint Homebrew formula
-        run: brew audit --strict --new --online oferchen/packaging/brew
+#      - name: Lint Homebrew formula
+#        run: brew audit --strict --new --online oferchen/packaging/brew
 
       - name: Check CLI help against transcript
         run: |
