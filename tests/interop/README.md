@@ -9,11 +9,13 @@ filesystem trees for interoperability tests.
   tarball is stored at
   `golden/<client>_<server>_<transport>/tree.tar` where `client` and `server`
   may be `oc-rsync` or `upstream`.
-- `run_matrix.sh` runs a matrix of rsync client/server combinations over both SSH
-  and rsync:// transports. Set `UPDATE=1` to regenerate tarball goldens.
+- `run_matrix.sh` replays a matrix of rsync client/server combinations over both
+  SSH and rsync:// transports using the pre-generated fixtures in `golden/`.
+  Set `UPDATE=1` to regenerate tarball goldens from a locally built upstream
+  `rsync`.
 
-The committed goldens were recorded using `run_matrix.sh` against upstream
-`rsync` and the local `oc-rsync` build. To record fresh goldens, point
+The committed goldens were recorded in a controlled environment using upstream
+`rsync 3.4.1` and the local `oc-rsync` build. To record fresh goldens, point
 `UPSTREAM_RSYNC` at a built `rsync` binary and limit the scenarios to `base`:
 
 ```
@@ -25,5 +27,5 @@ SCENARIOS=base UPDATE=1 \
 - `interop-grid.log` is produced by `scripts/interop-grid.sh` and captures exit
   codes and stderr comparisons for key flag combinations.
 
-The CI workflow executes `run_matrix.sh` as a required status check to ensure
-interoperability across supported rsync versions.
+The CI workflow runs `run_matrix.sh` without network access and relies solely on
+the committed fixtures to verify interoperability.
