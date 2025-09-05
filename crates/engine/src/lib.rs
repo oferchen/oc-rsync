@@ -1471,8 +1471,7 @@ impl Receiver {
                 .tempdir_in(tmp_parent)
                 .map_err(|e| io_context(tmp_parent, e))?
                 .into_temp_path()
-                .keep()
-                .map_err(|e| io_context(tmp_parent, e.error))?
+                .keep();
         } else if (self.opts.partial || self.opts.append || self.opts.append_verify)
             && existing_partial.is_some()
         {
