@@ -13,6 +13,19 @@
 *.dylib
 /docs/build_info.md
 
+# Packaging and coverage outputs
+/dist/
+/coverage.lcov
+/target/debian/
+/target/release/rpmbuild/
+/*.deb
+/*.ddeb
+/*.build
+/*.changes
+/*.dsc
+/*.rpm
+/*.src.rpm
+
 # Upstream rsync sources
 /rsync-*.tar.gz
 /rsync-*/
