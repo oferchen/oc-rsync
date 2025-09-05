@@ -1480,6 +1480,19 @@ mod tests {
     }
 
     #[test]
+    fn rsync_url_module_specs_are_remote() {
+        let spec = parse_remote_spec(OsStr::new("rsync://host/mod")).unwrap();
+        match spec {
+            RemoteSpec::Remote { host, module, path } => {
+                assert_eq!(host, "host");
+                assert_eq!(module.as_deref(), Some("mod"));
+                assert_eq!(path.path, PathBuf::from("."));
+            }
+            _ => panic!("expected remote spec"),
+        }
+    }
+
+    #[test]
     fn daemon_double_colon_specs_are_remote() {
         let spec = parse_remote_spec(OsStr::new("host::mod/path")).unwrap();
         match spec {
