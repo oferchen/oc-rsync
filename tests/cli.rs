@@ -938,15 +938,11 @@ fn stats_parity() {
     let parse_time = |out: &str, prefix: &str| -> f64 {
         out.lines()
             .find_map(|l| {
-                let l = l.trim_start();
-                if l.starts_with(prefix) {
-                    l[prefix.len()..]
-                        .trim()
+                l.trim_start().strip_prefix(prefix).and_then(|rest| {
+                    rest.trim()
                         .strip_suffix(" seconds")
                         .and_then(|v| v.parse::<f64>().ok())
-                } else {
-                    None
-                }
+                })
             })
             .unwrap_or(0.0)
     };

@@ -2221,3 +2221,36 @@ fn daemon_stays_foreground_with_no_detach() {
     let _ = child.kill();
     let _ = child.wait();
 }
+
+#[test]
+#[serial]
+fn daemon_accepts_sequential_chrooted_connections() {
+    if require_network().is_err() {
+        eprintln!("skipping daemon test: network access required");
+        return;
+    }
+    let (mut child, port, _dir) = match spawn_daemon() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("skipping daemon test: {e}");
+            return;
+        }
+    };
+    wait_for_daemon(port);
+    for _ in 0..3 {
+        let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
+        t.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+        t.send(&LATEST_VERSION.to_be_bytes()).unwrap();
+        let mut buf = [0u8; 4];
+        t.receive(&mut buf).unwrap();
+        t.authenticate(None, false).unwrap();
+        let mut ok = [0u8; 64];
+        t.receive(&mut ok).unwrap();
+        t.send(b"data\n").unwrap();
+        t.send(b"\n").unwrap();
+        let n = t.receive(&mut buf).unwrap_or(0);
+        assert_eq!(n, 0);
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+}
