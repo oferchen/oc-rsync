@@ -1455,6 +1455,7 @@ impl Receiver {
             dest.clone()
         };
         let dest_parent = dest.parent().unwrap_or_else(|| Path::new("."));
+        fs::create_dir_all(dest_parent).map_err(|e| io_context(dest_parent, e))?;
         let mut auto_tmp = false;
         let mut tmp_dest = if self.opts.inplace {
             dest.clone()
@@ -1472,7 +1473,14 @@ impl Receiver {
                 auto_tmp = true;
                 dest_parent
             };
-            temp_file_path(tmp_parent, dest.file_name().unwrap_or_default())?
+            let dir = Builder::new()
+                .prefix(".oc-rsync-tmp.")
+                .rand_bytes(6)
+                .tempdir_in(tmp_parent)
+                .map_err(|e| io_context(tmp_parent, e))?;
+            #[allow(deprecated)]
+            let dir_path = dir.into_path();
+            dir_path.join("tmp")
         } else if (self.opts.partial || self.opts.append || self.opts.append_verify)
             && existing_partial.is_some()
         {
