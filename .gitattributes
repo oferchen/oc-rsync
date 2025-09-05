@@ -1,0 +1,20 @@
+# Mark common binary formats as binary and disable Git-LFS filters
+*.bin   -text -filter -diff -merge
+*.exe   -text -filter -diff -merge
+*.dll   -text -filter -diff -merge
+*.so    -text -filter -diff -merge
+*.dylib -text -filter -diff -merge
+*.zip   -text -filter -diff -merge
+*.tar   -text -filter -diff -merge
+*.gz    -text -filter -diff -merge
+*.tgz   -text -filter -diff -merge
+*.bz2   -text -filter -diff -merge
+*.xz    -text -filter -diff -merge
+*.7z    -text -filter -diff -merge
+*.rar   -text -filter -diff -merge
+*.png   -text -filter -diff -merge
+*.jpg   -text -filter -diff -merge
+*.jpeg  -text -filter -diff -merge
+*.gif   -text -filter -diff -merge
+*.bmp   -text -filter -diff -merge
+*.pdf   -text -filter -diff -merge
