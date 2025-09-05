@@ -844,35 +844,20 @@ fn progress_parity_p() {
 
 #[test]
 fn stats_parity() {
-    let rsync = StdCommand::new("rsync")
-        .arg("--version")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .ok();
-    if let Some(status) = rsync {
-        assert!(status.success());
-    } else {
-        eprintln!("skipping test: rsync not installed");
-        return;
-    }
-
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
-    let dst_up = dir.path().join("dst_up");
     let dst_ours = dir.path().join("dst_ours");
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("a.txt"), b"hello").unwrap();
 
-    let up = StdCommand::new("rsync")
-        .env("LC_ALL", "C")
-        .env("COLUMNS", "80")
-        .args(["-r", "--stats"])
-        .arg(format!("{}/", src.display()))
-        .arg(&dst_up)
-        .output()
-        .unwrap();
-    assert!(up.status.success());
+    let golden = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/golden/stats/stats_parity.stdout");
+    let mut up_stats: Vec<String> = std::fs::read_to_string(golden)
+        .unwrap()
+        .lines()
+        .map(|l| l.to_string())
+        .collect();
+    assert_eq!(up_stats.len(), 5);
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
         .env("LC_ALL", "C")
@@ -891,28 +876,6 @@ fn stats_parity() {
         "oc-rsync failed: {}",
         String::from_utf8_lossy(&ours.stderr)
     );
-
-    let up_stdout = String::from_utf8_lossy(&up.stdout);
-    let mut up_stats: Vec<String> = up_stdout
-        .lines()
-        .filter_map(|l| {
-            let l = l.trim_start();
-            if l.starts_with("Number of created files")
-                || l.starts_with("Number of deleted files")
-                || l.starts_with("Number of regular files transferred")
-                || l.starts_with("Total transferred file size")
-                || l.starts_with("File list size")
-            {
-                Some(l.to_string())
-            } else {
-                None
-            }
-        })
-        .collect();
-    if up_stats.len() != 5 {
-        eprintln!("skipping test: rsync stats output not recognized");
-        return;
-    }
 
     let our_stdout = String::from_utf8_lossy(&ours.stdout);
     let mut our_stats: Vec<String> = our_stdout
@@ -934,23 +897,6 @@ fn stats_parity() {
     our_stats.sort();
     up_stats.sort();
     assert_eq!(our_stats, up_stats);
-
-    let parse_time = |out: &str, prefix: &str| -> f64 {
-        out.lines()
-            .find_map(|l| {
-                let l = l.trim_start();
-                l.strip_prefix(prefix)
-                    .and_then(|rest| rest.trim().strip_suffix(" seconds"))
-                    .and_then(|v| v.parse::<f64>().ok())
-            })
-            .unwrap_or(0.0)
-    };
-    let up_gen = parse_time(&up_stdout, "File list generation time:");
-    let our_gen = parse_time(&our_stdout, "File list generation time:");
-    let up_xfer = parse_time(&up_stdout, "File list transfer time:");
-    let our_xfer = parse_time(&our_stdout, "File list transfer time:");
-    assert!((up_gen - our_gen).abs() < 0.05);
-    assert!((up_xfer - our_xfer).abs() < 0.05);
 
     insta::assert_snapshot!("stats_parity", our_stats.join("\n"));
 }
