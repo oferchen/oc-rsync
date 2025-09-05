@@ -5,7 +5,7 @@ use std::fs;
 use tempfile::tempdir;
 
 #[cfg(unix)]
-use nix::unistd::{chown, Gid, Uid};
+use nix::unistd::{Gid, Uid, chown};
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 

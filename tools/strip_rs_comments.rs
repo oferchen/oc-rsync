@@ -3,7 +3,7 @@ use std::env;
 use std::fs;
 use std::path::Path;
 
-use rustc_lexer::{tokenize, TokenKind};
+use rustc_lexer::{TokenKind, tokenize};
 
 fn strip_comments(src: &str) -> (String, bool) {
     let mut out = String::with_capacity(src.len());

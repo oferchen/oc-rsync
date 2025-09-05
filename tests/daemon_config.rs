@@ -1,7 +1,7 @@
 // tests/daemon_config.rs
 
 use assert_cmd::prelude::*;
-use daemon::{handle_connection, load_config, parse_config, Handler};
+use daemon::{Handler, handle_connection, load_config, parse_config};
 use protocol::LATEST_VERSION;
 use serial_test::serial;
 use std::collections::HashMap;

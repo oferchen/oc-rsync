@@ -2,8 +2,8 @@
 #![cfg(all(unix, feature = "acl"))]
 
 use assert_cmd::{
-    cargo::{cargo_bin, CommandCargoExt},
     Command,
+    cargo::{CommandCargoExt, cargo_bin},
 };
 use serial_test::serial;
 use std::fs;
@@ -13,7 +13,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use tempfile::tempdir;
 
-use posix_acl::{PosixACL, Qualifier, ACL_READ, ACL_WRITE};
+use posix_acl::{ACL_READ, ACL_WRITE, PosixACL, Qualifier};
 
 #[cfg(unix)]
 fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
@@ -815,8 +815,8 @@ fn daemon_acls_match_rsync_client() {
 #[cfg_attr(not(target_os = "linux"), ignore = "requires Linux uid/gid semantics")]
 fn daemon_preserves_uid_gid_perms() {
     use nix::fcntl::AT_FDCWD;
-    use nix::sys::stat::{fchmodat, FchmodatFlags, Mode};
-    use nix::unistd::{chown, Gid, Uid};
+    use nix::sys::stat::{FchmodatFlags, Mode, fchmodat};
+    use nix::unistd::{Gid, Uid, chown};
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
     if !Uid::effective().is_root() {

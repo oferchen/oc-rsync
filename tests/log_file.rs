@@ -1,5 +1,5 @@
 // tests/log_file.rs
-use assert_cmd::{cargo::cargo_bin, Command as TestCommand};
+use assert_cmd::{Command as TestCommand, cargo::cargo_bin};
 use std::{fs, process::Command as StdCommand};
 use tempfile::tempdir;
 

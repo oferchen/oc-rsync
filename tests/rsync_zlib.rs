@@ -1,7 +1,7 @@
 // tests/rsync_zlib.rs
 
 use compress::Codec;
-use protocol::{negotiate_version, CAP_CODECS, LATEST_VERSION};
+use protocol::{CAP_CODECS, LATEST_VERSION, negotiate_version};
 use std::io;
 use transport::Transport;
 

@@ -1,7 +1,7 @@
 // tests/copy_as.rs
 use assert_cmd::Command;
 #[cfg(unix)]
-use nix::unistd::{chown, Gid, Uid, User};
+use nix::unistd::{Gid, Uid, User, chown};
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 use tempfile::tempdir;

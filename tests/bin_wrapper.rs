@@ -1,5 +1,5 @@
 // tests/bin_wrapper.rs
-use assert_cmd::cargo::{cargo_bin, CommandCargoExt};
+use assert_cmd::cargo::{CommandCargoExt, cargo_bin};
 use std::process::Command;
 
 #[test]
