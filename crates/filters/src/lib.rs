@@ -1306,15 +1306,14 @@ pub fn parse_with_options(
                     if !visited.insert(path.clone()) {
                         return Err(ParseError::RecursiveInclude(path));
                     }
-                    let content = fs::read_to_string(&path)
-                        .map_err(|_| ParseError::InvalidRule(raw_line.to_string()))?;
-                    rules.extend(parse_with_options(
-                        &content,
-                        from0,
-                        visited,
-                        depth + 1,
-                        Some(path.clone()),
-                    )?);
+                    let sub = match parse_file(&path, from0, visited, depth + 1) {
+                        Ok(r) => r,
+                        Err(ParseError::Io(_)) => {
+                            return Err(ParseError::InvalidRule(raw_line.to_string()))
+                        }
+                        Err(e) => return Err(e),
+                    };
+                    rules.extend(sub);
                     continue;
                 }
                 "dir-merge" => {
