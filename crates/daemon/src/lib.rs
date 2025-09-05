@@ -997,229 +997,232 @@ pub fn handle_connection<T: Transport>(
     let mut log_file = log_file.map(|p| p.to_path_buf());
     let mut log_format = log_format.map(|s| s.to_string());
     let deadline = timeout.map(|d| Instant::now() + d);
-
-    let check_deadline = |t: &mut T| -> io::Result<()> {
-        if let Some(dl) = deadline {
-            if Instant::now() >= dl {
-                let _ = t.send(b"@ERROR: timeout waiting for daemon connection");
-                return Err(io::Error::new(
-                    io::ErrorKind::TimedOut,
-                    "timeout waiting for daemon connection",
-                ));
-            }
-        }
-        Ok(())
-    };
-
-    check_deadline(transport)?;
-    let mut buf = [0u8; 4];
-    let n = match transport.receive(&mut buf) {
-        Ok(n) => n,
-        Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {
-            let _ = transport.send(b"@ERROR: timeout waiting for daemon connection");
-            return Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "timeout waiting for daemon connection",
-            ));
-        }
-        Err(e) => return Err(e),
-    };
-    if n == 0 {
-        return Ok(());
-    }
-    let peer_ver = u32::from_be_bytes(buf);
-    let latest = SUPPORTED_PROTOCOLS[0];
-    transport.send(&latest.to_be_bytes())?;
-    negotiate_version(latest, peer_ver).map_err(|e| io::Error::other(e.to_string()))?;
-    let (token, global_allowed, no_motd) = authenticate(transport, secrets, password)?;
-    if !no_motd {
-        if let Some(mpath) = motd {
-            if let Ok(content) = fs::read_to_string(mpath) {
-                for line in content.lines() {
-                    let msg = format!("@RSYNCD: {line}\n");
-                    transport.send(msg.as_bytes())?;
-                }
-            }
-        }
-    }
-    check_deadline(transport)?;
-    transport.send(b"@RSYNCD: OK\n")?;
-    let mut name_buf = [0u8; 256];
-    check_deadline(transport)?;
-    let n = match transport.receive(&mut name_buf) {
-        Ok(n) => n,
-        Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {
-            let _ = transport.send(b"@ERROR: timeout waiting for daemon connection");
-            return Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "timeout waiting for daemon connection",
-            ));
-        }
-        Err(e) => return Err(e),
-    };
-    let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
-    if name.is_empty() {
-        if list {
-            for m in modules.values().filter(|m| m.list) {
-                let line = format!("{}\n", m.name);
-                transport.send(line.as_bytes())?;
-            }
-        }
-        transport.send(b"\n")?;
-        return Ok(());
-    }
-    if let Some(module) = modules.get(&name) {
-        if let Ok(ip) = peer.parse::<IpAddr>() {
-            if !host_allowed(&ip, &module.hosts_allow, &module.hosts_deny) {
-                return Err(io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "host denied",
-                ));
-            }
-        }
-        let allowed = if let Some(path) = module.secrets_file.as_deref() {
-            match token.as_deref() {
-                Some(tok) => authenticate_token(tok, path)?,
-                None => {
-                    let _ = transport.send(b"@ERROR: access denied");
-                    return Err(io::Error::new(
-                        io::ErrorKind::PermissionDenied,
-                        "missing token",
-                    ));
-                }
-            }
-        } else {
-            global_allowed.clone()
-        };
-        if !allowed.is_empty() && !allowed.iter().any(|m| m == &name) {
-            let _ = transport.send(b"@ERROR: access denied");
-            return Err(io::Error::new(
-                io::ErrorKind::PermissionDenied,
-                "unauthorized module",
-            ));
-        }
-        if !module.auth_users.is_empty() {
-            match token.as_deref() {
-                Some(tok) if module.auth_users.iter().any(|u| u == tok) => {}
-                _ => {
-                    let _ = transport.send(b"@ERROR: access denied");
-                    return Err(io::Error::new(
-                        io::ErrorKind::PermissionDenied,
-                        "unauthorized user",
-                    ));
-                }
-            }
-        }
-        if let Some(max) = module.max_connections {
-            if module.connections.load(Ordering::SeqCst) >= max as usize {
-                let _ = transport.send(b"@ERROR: max connections reached");
-                return Err(io::Error::other("max connections reached"));
-            }
-            module.connections.fetch_add(1, Ordering::SeqCst);
-        }
-        transport.send(b"@RSYNCD: OK\n")?;
-        let mut opt_buf = [0u8; 256];
-        let mut is_sender = false;
-        let mut saw_server = false;
-        let mut opts = Vec::new();
-        loop {
-            check_deadline(transport)?;
-            let n = match transport.receive(&mut opt_buf) {
-                Ok(n) => n,
-                Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {
-                    let _ = transport.send(b"@ERROR: timeout waiting for daemon connection");
+    let mut log: Option<File> = None;
+    let res: io::Result<()> = (|| {
+        let check_deadline = |t: &mut T| -> io::Result<()> {
+            if let Some(dl) = deadline {
+                if Instant::now() >= dl {
+                    let _ = t.send(b"@ERROR: timeout waiting for daemon connection");
                     return Err(io::Error::new(
                         io::ErrorKind::TimedOut,
                         "timeout waiting for daemon connection",
                     ));
                 }
-                Err(e) => return Err(e),
-            };
-            let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
-            if opt.is_empty() {
-                break;
             }
-            if opt == "--sender" {
-                is_sender = true;
-            }
-            if opt == "--server" {
-                saw_server = true;
-            }
-            let mut consumed = false;
-            if let Some(v) = opt.strip_prefix("--log-file=") {
-                log_file = Some(PathBuf::from(v));
-                consumed = true;
-            } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
-                log_format = Some(v.to_string());
-                consumed = true;
-            }
-            if (opt == "--numeric-ids" && !module.numeric_ids)
-                || (opt == "--no-numeric-ids" && module.numeric_ids)
-                || refuse.iter().any(|r| opt.contains(r))
-                || module.refuse_options.iter().any(|r| opt.contains(r))
-            {
-                let _ = transport.send(b"@ERROR: option refused");
-                return Err(io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "option refused",
-                ));
-            }
-            if !consumed {
-                opts.push(opt);
-            }
-        }
-        if module.read_only && saw_server && !is_sender {
-            let _ = transport.send(b"@ERROR: read only");
-            if module.max_connections.is_some() {
-                module.connections.fetch_sub(1, Ordering::SeqCst);
-            }
-            return Err(io::Error::new(io::ErrorKind::PermissionDenied, "read only"));
-        }
-        if module.write_only && saw_server && is_sender {
-            let _ = transport.send(b"@ERROR: write only");
-            if module.max_connections.is_some() {
-                module.connections.fetch_sub(1, Ordering::SeqCst);
-            }
-            return Err(io::Error::new(
-                io::ErrorKind::PermissionDenied,
-                "write only",
-            ));
-        }
-        if let Some(dur) = module.timeout {
-            transport.set_read_timeout(Some(dur))?;
-            transport.set_write_timeout(Some(dur))?;
-        }
-        let m_uid = module.uid.unwrap_or(uid);
-        let m_gid = module.gid.unwrap_or(gid);
-        let (mut log, _guard) = serve_module(
-            transport,
-            module,
-            peer,
-            log_file.as_deref(),
-            log_format.as_deref(),
-            m_uid,
-            m_gid,
-        )?;
-        if module.max_connections.is_some() {
-            module.connections.fetch_sub(1, Ordering::SeqCst);
-        }
-        let res = handler(transport, &opts);
-        let exit_res = transport.send(b"@RSYNCD: EXIT\n");
-        let flush_res = transport.send(&[]);
-        let log_flush_res = if let Some(f) = log.as_mut() {
-            f.flush()
-        } else {
             Ok(())
         };
-        let close_res = transport.close();
-        res.and(exit_res)
-            .and(flush_res)
-            .and(log_flush_res)
-            .and(close_res)
+
+        check_deadline(transport)?;
+        let mut buf = [0u8; 4];
+        let n = match transport.receive(&mut buf) {
+            Ok(n) => n,
+            Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {
+                let _ = transport.send(b"@ERROR: timeout waiting for daemon connection");
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "timeout waiting for daemon connection",
+                ));
+            }
+            Err(e) => return Err(e),
+        };
+        if n == 0 {
+            return Ok(());
+        }
+        let peer_ver = u32::from_be_bytes(buf);
+        let latest = SUPPORTED_PROTOCOLS[0];
+        transport.send(&latest.to_be_bytes())?;
+        negotiate_version(latest, peer_ver).map_err(|e| io::Error::other(e.to_string()))?;
+        let (token, global_allowed, no_motd) = authenticate(transport, secrets, password)?;
+        if !no_motd {
+            if let Some(mpath) = motd {
+                if let Ok(content) = fs::read_to_string(mpath) {
+                    for line in content.lines() {
+                        let msg = format!("@RSYNCD: {line}\n");
+                        transport.send(msg.as_bytes())?;
+                    }
+                }
+            }
+        }
+        check_deadline(transport)?;
+        transport.send(b"@RSYNCD: OK\n")?;
+        let mut name_buf = [0u8; 256];
+        check_deadline(transport)?;
+        let n = match transport.receive(&mut name_buf) {
+            Ok(n) => n,
+            Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {
+                let _ = transport.send(b"@ERROR: timeout waiting for daemon connection");
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "timeout waiting for daemon connection",
+                ));
+            }
+            Err(e) => return Err(e),
+        };
+        let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
+        if name.is_empty() {
+            if list {
+                for m in modules.values().filter(|m| m.list) {
+                    let line = format!("{}\n", m.name);
+                    transport.send(line.as_bytes())?;
+                }
+            }
+            transport.send(b"\n")?;
+            return Ok(());
+        }
+        if let Some(module) = modules.get(&name) {
+            if let Ok(ip) = peer.parse::<IpAddr>() {
+                if !host_allowed(&ip, &module.hosts_allow, &module.hosts_deny) {
+                    return Err(io::Error::new(
+                        io::ErrorKind::PermissionDenied,
+                        "host denied",
+                    ));
+                }
+            }
+            let allowed = if let Some(path) = module.secrets_file.as_deref() {
+                match token.as_deref() {
+                    Some(tok) => authenticate_token(tok, path)?,
+                    None => {
+                        let _ = transport.send(b"@ERROR: access denied");
+                        return Err(io::Error::new(
+                            io::ErrorKind::PermissionDenied,
+                            "missing token",
+                        ));
+                    }
+                }
+            } else {
+                global_allowed.clone()
+            };
+            if !allowed.is_empty() && !allowed.iter().any(|m| m == &name) {
+                let _ = transport.send(b"@ERROR: access denied");
+                return Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "unauthorized module",
+                ));
+            }
+            if !module.auth_users.is_empty() {
+                match token.as_deref() {
+                    Some(tok) if module.auth_users.iter().any(|u| u == tok) => {}
+                    _ => {
+                        let _ = transport.send(b"@ERROR: access denied");
+                        return Err(io::Error::new(
+                            io::ErrorKind::PermissionDenied,
+                            "unauthorized user",
+                        ));
+                    }
+                }
+            }
+            if let Some(max) = module.max_connections {
+                if module.connections.load(Ordering::SeqCst) >= max as usize {
+                    let _ = transport.send(b"@ERROR: max connections reached");
+                    return Err(io::Error::other("max connections reached"));
+                }
+                module.connections.fetch_add(1, Ordering::SeqCst);
+            }
+            transport.send(b"@RSYNCD: OK\n")?;
+            let mut opt_buf = [0u8; 256];
+            let mut is_sender = false;
+            let mut saw_server = false;
+            let mut opts = Vec::new();
+            loop {
+                check_deadline(transport)?;
+                let n = match transport.receive(&mut opt_buf) {
+                    Ok(n) => n,
+                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {
+                        let _ = transport.send(b"@ERROR: timeout waiting for daemon connection");
+                        return Err(io::Error::new(
+                            io::ErrorKind::TimedOut,
+                            "timeout waiting for daemon connection",
+                        ));
+                    }
+                    Err(e) => return Err(e),
+                };
+                let opt = String::from_utf8_lossy(&opt_buf[..n]).trim().to_string();
+                if opt.is_empty() {
+                    break;
+                }
+                if opt == "--sender" {
+                    is_sender = true;
+                }
+                if opt == "--server" {
+                    saw_server = true;
+                }
+                let mut consumed = false;
+                if let Some(v) = opt.strip_prefix("--log-file=") {
+                    log_file = Some(PathBuf::from(v));
+                    consumed = true;
+                } else if let Some(v) = opt.strip_prefix("--log-file-format=") {
+                    log_format = Some(v.to_string());
+                    consumed = true;
+                }
+                if (opt == "--numeric-ids" && !module.numeric_ids)
+                    || (opt == "--no-numeric-ids" && module.numeric_ids)
+                    || refuse.iter().any(|r| opt.contains(r))
+                    || module.refuse_options.iter().any(|r| opt.contains(r))
+                {
+                    let _ = transport.send(b"@ERROR: option refused");
+                    return Err(io::Error::new(
+                        io::ErrorKind::PermissionDenied,
+                        "option refused",
+                    ));
+                }
+                if !consumed {
+                    opts.push(opt);
+                }
+            }
+            if module.read_only && saw_server && !is_sender {
+                let _ = transport.send(b"@ERROR: read only");
+                if module.max_connections.is_some() {
+                    module.connections.fetch_sub(1, Ordering::SeqCst);
+                }
+                return Err(io::Error::new(io::ErrorKind::PermissionDenied, "read only"));
+            }
+            if module.write_only && saw_server && is_sender {
+                let _ = transport.send(b"@ERROR: write only");
+                if module.max_connections.is_some() {
+                    module.connections.fetch_sub(1, Ordering::SeqCst);
+                }
+                return Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "write only",
+                ));
+            }
+            if let Some(dur) = module.timeout {
+                transport.set_read_timeout(Some(dur))?;
+                transport.set_write_timeout(Some(dur))?;
+            }
+            let m_uid = module.uid.unwrap_or(uid);
+            let m_gid = module.gid.unwrap_or(gid);
+            let (log_opt, _guard) = serve_module(
+                transport,
+                module,
+                peer,
+                log_file.as_deref(),
+                log_format.as_deref(),
+                m_uid,
+                m_gid,
+            )?;
+            log = log_opt;
+            if module.max_connections.is_some() {
+                module.connections.fetch_sub(1, Ordering::SeqCst);
+            }
+            handler(transport, &opts)
+        } else {
+            let _ = transport.send(b"@ERROR: unknown module");
+            Err(io::Error::new(io::ErrorKind::NotFound, "unknown module"))
+        }
+    })();
+    let exit_res = transport.send(b"@RSYNCD: EXIT\n");
+    let flush_res = transport.send(&[]);
+    let log_flush_res = if let Some(f) = log.as_mut() {
+        f.flush()
     } else {
-        let _ = transport.send(b"@ERROR: unknown module");
-        Err(io::Error::new(io::ErrorKind::NotFound, "unknown module"))
-    }
+        Ok(())
+    };
+    let close_res = transport.close();
+    res.and(exit_res)
+        .and(flush_res)
+        .and(log_flush_res)
+        .and(close_res)
 }
 
 #[allow(clippy::too_many_arguments)]
