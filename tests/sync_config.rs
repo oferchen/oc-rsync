@@ -2,8 +2,17 @@
 
 use filetime::{FileTime, set_file_times};
 use oc_rsync::{SyncConfig, synchronize, synchronize_with_config};
-use std::{fs, path::Path};
+use serial_test::serial;
+use std::{ffi::OsStr, fs, path::Path};
 use tempfile::{TempDir, tempdir};
+
+fn set_env_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, val: V) {
+    unsafe { std::env::set_var(key, val) }
+}
+
+fn remove_env_var<K: AsRef<OsStr>>(key: K) {
+    unsafe { std::env::remove_var(key) }
+}
 
 fn setup_dirs() -> (TempDir, std::path::PathBuf, std::path::PathBuf) {
     let dir = tempdir().unwrap();
@@ -287,6 +296,7 @@ fn custom_log_file_and_quiet_settings() {
 
 #[cfg(unix)]
 #[test]
+#[serial]
 fn custom_syslog_and_journald_settings() {
     use std::fs;
     use std::os::unix::net::UnixDatagram;
@@ -296,11 +306,11 @@ fn custom_syslog_and_journald_settings() {
 
     let syslog_path = dir.path().join("syslog.sock");
     let syslog_server = UnixDatagram::bind(&syslog_path).unwrap();
-    unsafe { std::env::set_var("OC_RSYNC_SYSLOG_PATH", &syslog_path) };
+    set_env_var("OC_RSYNC_SYSLOG_PATH", &syslog_path);
 
     let journald_path = dir.path().join("journald.sock");
     let journald_server = UnixDatagram::bind(&journald_path).unwrap();
-    unsafe { std::env::set_var("OC_RSYNC_JOURNALD_PATH", &journald_path) };
+    set_env_var("OC_RSYNC_JOURNALD_PATH", &journald_path);
 
     let cfg = SyncConfig::builder()
         .verbose(1)
@@ -318,6 +328,6 @@ fn custom_syslog_and_journald_settings() {
     let jour_msg = std::str::from_utf8(&buf[..n]).unwrap();
     assert!(jour_msg.contains("MESSAGE"));
 
-    unsafe { std::env::remove_var("OC_RSYNC_SYSLOG_PATH") };
-    unsafe { std::env::remove_var("OC_RSYNC_JOURNALD_PATH") };
+    remove_env_var("OC_RSYNC_SYSLOG_PATH");
+    remove_env_var("OC_RSYNC_JOURNALD_PATH");
 }
