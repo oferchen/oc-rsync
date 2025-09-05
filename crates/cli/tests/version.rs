@@ -30,25 +30,9 @@ fn banner_is_static() {
     ];
     let year = option_env!("CURRENT_YEAR").unwrap_or("2025");
     expected.push(format!("Copyright (C) 2024-{year} oc-rsync contributors."));
-    let tail = if cfg!(feature = "lz4") {
-        include_str!("fixtures/oc-rsync-version-tail-lz4.txt")
-    } else {
-        include_str!("fixtures/oc-rsync-version-tail.txt")
-    };
+    let tail = include_str!("fixtures/oc-rsync-version-tail.txt");
     expected.extend(tail.lines().map(|l| l.to_string()));
     assert_eq!(version::render_version_lines(), expected);
-}
-
-#[cfg(feature = "lz4")]
-#[test]
-fn banner_matches_rsync() {
-    let upstream: Vec<_> = include_str!("fixtures/rsync-version.txt")
-        .lines()
-        .skip(3)
-        .take_while(|l| !l.is_empty())
-        .collect();
-    let ours = version::render_version_lines();
-    assert_eq!(&ours[5..5 + upstream.len()], upstream);
 }
 
 #[test]

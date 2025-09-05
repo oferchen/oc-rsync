@@ -35,5 +35,4 @@ serial_test = "2"
 
 [features]
 default = []
-lz4 = ["engine/lz4", "compress/lz4"]
 

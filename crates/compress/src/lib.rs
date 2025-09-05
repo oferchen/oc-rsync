@@ -9,15 +9,14 @@ use std::io::Write;
 
 use std::path::Path;
 
-#[cfg(feature = "lz4")]
+#[cfg(feature = "experimental-lz4")]
 mod lz4;
-#[cfg(feature = "lz4")]
+#[cfg(feature = "experimental-lz4")]
 pub use lz4::Lz4;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Codec {
     Zlib,
     Zlibx,
-    Lz4,
     Zstd,
 }
 
@@ -26,7 +25,6 @@ impl Codec {
         match self {
             Codec::Zlib => 1,
             Codec::Zlibx => 2,
-            Codec::Lz4 => 3,
             Codec::Zstd => 4,
         }
     }
@@ -35,7 +33,6 @@ impl Codec {
         match b {
             1 => Ok(Codec::Zlib),
             2 => Ok(Codec::Zlibx),
-            3 => Ok(Codec::Lz4),
             4 => Ok(Codec::Zstd),
             other => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -49,8 +46,6 @@ pub fn available_codecs() -> Vec<Codec> {
     let codecs = [
         #[cfg(feature = "zstd")]
         Codec::Zstd,
-        #[cfg(feature = "lz4")]
-        Codec::Lz4,
         #[cfg(feature = "zlib")]
         Codec::Zlibx,
         #[cfg(feature = "zlib")]
@@ -354,37 +349,28 @@ mod tests {
         }
     }
 
-    #[cfg(all(feature = "zlib", feature = "zstd", feature = "lz4"))]
+    #[cfg(all(feature = "zlib", feature = "zstd"))]
     #[test]
     fn available_codecs_returns_all_codecs() {
-        assert_eq!(
-            available_codecs(),
-            vec![Codec::Zstd, Codec::Lz4, Codec::Zlibx, Codec::Zlib]
-        );
-    }
-
-    #[cfg(all(feature = "zlib", feature = "zstd", not(feature = "lz4")))]
-    #[test]
-    fn available_codecs_without_lz4() {
         assert_eq!(
             available_codecs(),
             vec![Codec::Zstd, Codec::Zlibx, Codec::Zlib]
         );
     }
 
-    #[cfg(all(not(feature = "zlib"), feature = "zstd", not(feature = "lz4")))]
+    #[cfg(all(not(feature = "zlib"), feature = "zstd"))]
     #[test]
     fn available_codecs_returns_only_zstd() {
         assert_eq!(available_codecs(), vec![Codec::Zstd]);
     }
 
-    #[cfg(all(feature = "zlib", not(feature = "zstd"), not(feature = "lz4")))]
+    #[cfg(all(feature = "zlib", not(feature = "zstd")))]
     #[test]
     fn available_codecs_returns_only_zlib() {
         assert_eq!(available_codecs(), vec![Codec::Zlibx, Codec::Zlib]);
     }
 
-    #[cfg(all(not(feature = "zlib"), not(feature = "zstd"), not(feature = "lz4")))]
+    #[cfg(all(not(feature = "zlib"), not(feature = "zstd")))]
     #[test]
     fn available_codecs_returns_empty() {
         assert!(available_codecs().is_empty());

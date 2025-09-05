@@ -17,8 +17,6 @@ use transport::{pipe, Transport};
 
 pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
-#[cfg(feature = "lz4")]
-use compress::Lz4;
 use compress::{should_compress, Codec, Compressor, Decompressor, Zlib, ZlibX, Zstd};
 use filters::Matcher;
 use logging::{escape_path, progress_formatter, rate_formatter, InfoFlag};
@@ -1243,10 +1241,6 @@ impl Sender {
                             let lvl = self.opts.compress_level.unwrap_or(6);
                             Zlib::new(lvl).compress(d).map_err(EngineError::from)?
                         }
-                        #[cfg(feature = "lz4")]
-                        Codec::Lz4 => Lz4::new().compress(d).map_err(EngineError::from)?,
-                        #[cfg(not(feature = "lz4"))]
-                        Codec::Lz4 => unreachable!("lz4 feature disabled"),
                         Codec::Zstd => {
                             let lvl = self.opts.compress_level.unwrap_or(0);
                             Zstd::new(lvl).compress(d).map_err(EngineError::from)?
@@ -1512,10 +1506,6 @@ impl Receiver {
                         Codec::Zlib | Codec::Zlibx => {
                             ZlibX::default().decompress(d).map_err(EngineError::from)?
                         }
-                        #[cfg(feature = "lz4")]
-                        Codec::Lz4 => Lz4::new().decompress(d).map_err(EngineError::from)?,
-                        #[cfg(not(feature = "lz4"))]
-                        Codec::Lz4 => unreachable!("lz4 feature disabled"),
                         Codec::Zstd => Zstd::default().decompress(d).map_err(EngineError::from)?,
                     };
                 }
@@ -2052,8 +2042,6 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     }
     let choices: Vec<Codec> = opts.compress_choice.clone().unwrap_or_else(|| {
         let mut v = vec![Codec::Zstd];
-        #[cfg(feature = "lz4")]
-        v.push(Codec::Lz4);
         v.push(Codec::Zlibx);
         v.push(Codec::Zlib);
         v
