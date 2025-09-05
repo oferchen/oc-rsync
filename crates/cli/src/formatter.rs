@@ -382,7 +382,7 @@ pub fn dump_help_body(cmd: &Command) -> String {
     }
     let mut out = String::new();
     let mut in_options = false;
-    let stop_marker = "Use \"rsync --daemon --help\""; // branding replaced in render_help
+    let stop_marker = "Use \"rsync --daemon --help\"";
     for line in help.lines() {
         if line.trim() == "Options" {
             in_options = true;
