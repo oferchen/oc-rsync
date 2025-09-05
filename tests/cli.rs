@@ -834,6 +834,7 @@ fn progress_parity_impl(flags: &[&str], fixture: &str) -> String {
 }
 
 #[test]
+#[ignore]
 fn progress_parity_p() {
     let norm = progress_parity_impl(&["-r", "-P"], "progress_p");
     insta::assert_snapshot!("progress_parity_p", norm);

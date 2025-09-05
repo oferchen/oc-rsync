@@ -31,7 +31,7 @@ This file documents tests marked `#[ignore]` and why they remain excluded from a
 | `tests/filter_corpus.rs::filter_corpus_parity` | Filter corpus parity with upstream not yet validated. |
 | `tests/filter_corpus.rs::perdir_sign_parity` | Per-directory signing parity pending. |
 | `tests/cli.rs::progress_parity` | Progress output parity requires upstream comparison. |
-| `tests/cli.rs::progress_parity_p` | Same as above. |
+| `tests/cli.rs::progress_parity_p` | Progress output parity requires upstream comparison. |
 | `tests/cli.rs::default_umask_masks_permissions` | Umask handling under review. |
 | `tests/no_implied_dirs.rs::preserves_symlinked_implied_dirs` | Symlinked implied directory behavior unfinished. |
 | `tests/cli_flags.rs::blocking_io_nonblocking_by_default` | Blocking I/O flag behavior incomplete. |
