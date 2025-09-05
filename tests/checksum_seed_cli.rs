@@ -26,7 +26,6 @@ fn checksum_seed_flag_transfers_files() {
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, vec![0u8; 2048]);
 
-    // destination is an explicit file path
     let dst_file = dir.path().join("a.txt");
     Command::cargo_bin("oc-rsync")
         .unwrap()
