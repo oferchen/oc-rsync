@@ -1,6 +1,7 @@
 // crates/engine/src/lib.rs
 #[cfg(unix)]
 use nix::unistd::{chown, Gid, Uid};
+use rand::{distributions::Alphanumeric, Rng};
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File, OpenOptions};
@@ -428,6 +429,20 @@ fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
             }
         }
     }
+}
+
+fn tmp_file_path(dir: &Path, dest: &Path) -> PathBuf {
+    use std::ffi::OsStr;
+    let name = dest.file_name().unwrap_or_else(|| OsStr::new("tmp"));
+    let rand: String = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(6)
+        .map(char::from)
+        .collect();
+    let mut file = name.to_os_string();
+    file.push(".");
+    file.push(&rand);
+    dir.join(file)
 }
 
 fn remove_dir_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
@@ -1475,7 +1490,7 @@ impl Receiver {
                 .map_err(|e| io_context(tmp_parent, e))?;
             #[allow(deprecated)]
             let dir_path = dir.into_path();
-            dir_path
+            tmp_file_path(&dir_path, &dest)
         } else if (self.opts.partial || self.opts.append || self.opts.append_verify)
             && existing_partial.is_some()
         {
@@ -1498,7 +1513,7 @@ impl Receiver {
                 .tempdir_in(dest_parent)
                 .map_err(|e| io_context(dest_parent, e))?
                 .into_path();
-            tmp_dest = dir_path.join("tmp");
+            tmp_dest = tmp_file_path(&dir_path, &dest);
         }
         let mut needs_rename = !self.opts.inplace
             && ((self.opts.partial || self.opts.append || self.opts.append_verify)
@@ -1514,7 +1529,7 @@ impl Receiver {
                     .tempdir_in(dest_parent)
                     .map_err(|e| io_context(dest_parent, e))?
                     .into_path();
-                tmp_dest = dir_path.join("tmp");
+                tmp_dest = tmp_file_path(&dir_path, &dest);
             }
             needs_rename = true;
         }
