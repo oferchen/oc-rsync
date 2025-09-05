@@ -354,8 +354,8 @@ impl SshStdioTransport {
         let program = rsh.first().map(|s| s.as_str()).unwrap_or("ssh");
         if program == "ssh" {
             let mut cmd = Command::new(program);
-            cmd.args(&rsh[1..]);
             cmd.envs(rsh_env.iter().cloned());
+            cmd.args(&rsh[1..]);
             let known_hosts_path = known_hosts.map(Path::to_path_buf).or_else(|| {
                 std::env::var("HOME")
                     .ok()
@@ -417,8 +417,8 @@ impl SshStdioTransport {
             args.extend_from_slice(remote_opts);
             args.push(path.to_string_lossy().into_owned());
             let mut cmd = Command::new(program);
-            cmd.args(args);
             cmd.envs(rsh_env.iter().cloned());
+            cmd.args(args);
             Self::spawn_from_command(cmd, blocking_io)
         }
     }

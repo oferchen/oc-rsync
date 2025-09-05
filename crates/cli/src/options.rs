@@ -6,7 +6,8 @@ use std::{ffi::OsString, path::PathBuf};
 pub use crate::daemon::DaemonOpts;
 use crate::formatter;
 use crate::utils::{
-    parse_duration, parse_minutes, parse_nonzero_duration, parse_size, parse_stop_at,
+    parse_duration, parse_minutes, parse_nonzero_duration, parse_rsh, parse_size, parse_stop_at,
+    RshCommand,
 };
 use clap::{Arg, ArgAction, Args, CommandFactory, Parser, ValueEnum};
 use logging::{DebugFlag, InfoFlag, StderrMode};
@@ -14,6 +15,10 @@ use protocol::SUPPORTED_PROTOCOLS;
 
 fn parse_lowercase(value: &str) -> Result<String, String> {
     Ok(value.to_ascii_lowercase())
+}
+
+fn parse_rsh_arg(value: &str) -> Result<RshCommand, String> {
+    parse_rsh(Some(value.to_string())).map_err(|e| e.to_string())
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -611,8 +616,8 @@ pub(crate) struct ClientOpts {
     pub password_file: Option<PathBuf>,
     #[arg(long = "early-input", value_name = "FILE")]
     pub early_input: Option<PathBuf>,
-    #[arg(short = 'e', long, value_name = "COMMAND")]
-    pub rsh: Option<String>,
+    #[arg(short = 'e', long, value_name = "COMMAND", value_parser = parse_rsh_arg)]
+    pub rsh: Option<RshCommand>,
     #[arg(
         short = 'M',
         long = "remote-option",
