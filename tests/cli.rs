@@ -1109,6 +1109,14 @@ fn temp_files_created_in_temp_dir() {
     let _ = child.kill();
     let _ = child.wait();
     assert!(found, "temp file not created in temp dir during transfer");
+    assert!(
+        fs::read_dir(&tmp_dir).unwrap().all(|e| !e
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with(".oc-rsync-tmp.")),
+        "intermediate temp dir created",
+    );
 }
 
 #[test]
@@ -1177,6 +1185,14 @@ fn temp_dir_cross_filesystem_temp_file_in_dest() {
         found,
         "temp file not created in destination during transfer"
     );
+    assert!(
+        fs::read_dir(&dst_dir).unwrap().all(|e| !e
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with(".oc-rsync-tmp.")),
+        "intermediate temp dir created",
+    );
 
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out.len(), data.len());
@@ -1234,6 +1250,14 @@ fn destination_is_replaced_atomically() {
     child.wait().unwrap();
     let tmp_file = tmp_file.unwrap();
     assert!(!tmp_file.exists(), "temp file not removed after transfer",);
+    assert!(
+        fs::read_dir(&dst_dir).unwrap().all(|e| !e
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with(".oc-rsync-tmp.")),
+        "intermediate temp dir created",
+    );
     let out = std::fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out.len(), 50_000);
 }
@@ -1271,6 +1295,15 @@ fn temp_dir_cross_filesystem_rename() {
         ])
         .assert()
         .success();
+    assert!(fs::read_dir(tmp_dir.path()).unwrap().next().is_none());
+    assert!(
+        fs::read_dir(&dst_dir).unwrap().all(|e| !e
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with(".oc-rsync-tmp.")),
+        "intermediate temp dir created",
+    );
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, b"x");
 }
@@ -1309,6 +1342,15 @@ fn delay_updates_cross_filesystem_rename() {
         ])
         .assert()
         .success();
+    assert!(fs::read_dir(tmp_dir.path()).unwrap().next().is_none());
+    assert!(
+        fs::read_dir(&dst_dir).unwrap().all(|e| !e
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with(".oc-rsync-tmp.")),
+        "intermediate temp dir created",
+    );
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, b"y");
 }
