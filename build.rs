@@ -1,6 +1,6 @@
 // build.rs
 
-use std::{env, fs, path::Path};
+use std::{env, fs, path::Path, path::PathBuf, process::Command};
 
 use time::OffsetDateTime;
 
@@ -21,8 +21,59 @@ fn main() {
 
     if env::var_os("CARGO_FEATURE_ACL").is_some() && pkg_config::Config::new().probe("acl").is_err()
     {
-        println!("cargo:warning=libacl not found; ACL support will be disabled");
-        println!("cargo:rustc-cfg=libacl_missing");
+        let mut lib_dir: Option<PathBuf> = None;
+
+        if let Ok(output) = Command::new("ldconfig").arg("-p").output() {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    if line.contains("libacl.so") {
+                        if let Some(path) = line.split("=>").nth(1) {
+                            let path = path.trim();
+                            if let Some(dir) = Path::new(path).parent() {
+                                lib_dir = Some(dir.to_path_buf());
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if lib_dir.is_none() {
+            if let Ok(output) = Command::new("find")
+                .args([
+                    "/usr/lib",
+                    "/usr/lib64",
+                    "/usr/local/lib",
+                    "/usr/local/lib64",
+                    "/lib",
+                    "/lib64",
+                ])
+                .arg("-name")
+                .arg("libacl.so")
+                .arg("-print")
+                .arg("-quit")
+                .output()
+            {
+                if output.status.success() {
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    if let Some(path) = stdout.lines().next() {
+                        if let Some(dir) = Path::new(path.trim()).parent() {
+                            lib_dir = Some(dir.to_path_buf());
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(dir) = lib_dir {
+            println!("cargo:rustc-link-lib=acl");
+            println!("cargo:rustc-link-search=native={}", dir.display());
+        } else {
+            println!("cargo:warning=libacl not found; ACL support will be disabled");
+            println!("cargo:rustc-cfg=libacl_missing");
+        }
     }
 
     let protocols = UPSTREAM_PROTOCOLS
