@@ -1,7 +1,7 @@
 // crates/daemon/src/lib.rs
 use std::collections::HashMap;
 use std::env;
-use std::fs::{self, OpenOptions};
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
@@ -793,19 +793,21 @@ pub fn serve_module<T: Transport>(
     log_format: Option<&str>,
     uid: u32,
     gid: u32,
-) -> io::Result<()> {
-    if let Some(path) = log_file {
+) -> io::Result<Option<File>> {
+    let log = if let Some(path) = log_file {
         let fmt = log_format.unwrap_or("%h %m");
         let line = fmt.replace("%h", peer).replace("%m", &module.name);
         let mut f = OpenOptions::new().create(true).append(true).open(path)?;
         writeln!(f, "{}", line)?;
-        f.flush()?;
-    }
+        Some(f)
+    } else {
+        None
+    };
     #[cfg(unix)]
     {
         chroot_and_drop_privileges(&module.path, uid, gid, module.use_chroot)?;
     }
-    Ok(())
+    Ok(log)
 }
 
 #[cfg(unix)]
@@ -978,14 +980,19 @@ pub fn handle_connection<T: Transport>(
         }
     }
     transport.send(b"@RSYNCD: OK\n")?;
-    let name = if global_allowed.is_empty() && secrets.is_none() {
-        token
-            .take()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::PermissionDenied, "auth token missing"))?
-    } else {
-        let mut name_buf = [0u8; 256];
-        let n = transport.receive(&mut name_buf)?;
-        String::from_utf8_lossy(&name_buf[..n]).trim().to_string()
+    let name = match token.take() {
+        Some(tok) => tok,
+        None => {
+            if secrets.is_some() || !global_allowed.is_empty() {
+                return Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "auth token missing",
+                ));
+            }
+            let mut name_buf = [0u8; 256];
+            let n = transport.receive(&mut name_buf)?;
+            String::from_utf8_lossy(&name_buf[..n]).trim().to_string()
+        }
     };
     if name.is_empty() {
         if list {
@@ -1102,7 +1109,7 @@ pub fn handle_connection<T: Transport>(
         }
         let m_uid = module.uid.unwrap_or(uid);
         let m_gid = module.gid.unwrap_or(gid);
-        let res = serve_module(
+        let mut log = serve_module(
             transport,
             module,
             peer,
@@ -1110,12 +1117,18 @@ pub fn handle_connection<T: Transport>(
             log_format.as_deref(),
             m_uid,
             m_gid,
-        );
+        )?;
         if module.max_connections.is_some() {
             module.connections.fetch_sub(1, Ordering::SeqCst);
         }
-        res?;
-        handler(transport)
+        let res = handler(transport);
+        let flush_res = if let Some(f) = log.as_mut() {
+            f.flush()
+        } else {
+            Ok(())
+        };
+        let close_res = transport.close();
+        res.and(flush_res).and(close_res)
     } else {
         let _ = transport.send(b"@ERROR: unknown module");
         Err(io::Error::new(io::ErrorKind::NotFound, "unknown module"))

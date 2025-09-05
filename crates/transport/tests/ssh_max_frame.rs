@@ -40,6 +40,10 @@ impl Transport for ChunkedTransport {
         }
         Ok(n)
     }
+
+    fn close(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 #[test]

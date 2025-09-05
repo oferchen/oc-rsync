@@ -21,6 +21,10 @@ impl Transport for MockTransport {
         buf[..data.len()].copy_from_slice(data);
         Ok(data.len())
     }
+
+    fn close(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 #[test]

@@ -79,28 +79,51 @@ pub fn handle_clap_error(cmd: &clap::Command, e: clap::Error) -> ! {
     if kind == ErrorKind::DisplayHelp {
         println!("{}", render_help(cmd));
     } else {
-        let first = e.to_string();
-        let first = first.lines().next().unwrap_or("");
-        let msg = if matches!(kind, ErrorKind::ValueValidation | ErrorKind::InvalidValue)
-            && first.contains("--block-size")
-        {
-            let val = first.split('\'').nth(1).unwrap_or("");
-            format!("--block-size={val} is invalid")
+        let mut msg = e.to_string();
+        if matches!(kind, ErrorKind::ValueValidation | ErrorKind::InvalidValue) {
+            let first = msg.lines().next().unwrap_or("");
+            if first.contains("--block-size") {
+                let val = first.split('\'').nth(1).unwrap_or("");
+                msg = format!("--block-size={val} is invalid");
+            } else if let Some(rest) = first.strip_prefix("error: invalid value '") {
+                if let Some((val, rest)) = rest.split_once('\'') {
+                    if let Some(rest) = rest.strip_prefix(" for '") {
+                        if let Some((opt, _)) = rest.split_once('\'') {
+                            let opt_name = opt.split_whitespace().next().unwrap_or("");
+                            let kind = if first.contains("invalid digit") {
+                                "invalid numeric value"
+                            } else {
+                                "invalid value"
+                            };
+                            msg = format!("{opt_name}={val}: {kind}");
+                        }
+                    }
+                }
+            }
         } else if kind == ErrorKind::UnknownArgument {
+            let first = msg.lines().next().unwrap_or("");
             let arg = first.split('\'').nth(1).unwrap_or("");
-            format!("{arg}: unknown option")
-        } else {
-            first.strip_prefix("error: ").unwrap_or(first).to_string()
-        };
+            msg = format!("{arg}: unknown option");
+        } else if let Some(stripped) = msg.strip_prefix("error: ") {
+            msg = stripped.to_string();
+        }
+        msg = msg.trim_end().to_string();
         let desc = match code {
             ExitCode::Unsupported => "requested action not supported",
             _ => "syntax or usage error",
         };
         let code_num = u8::from(code);
         let prog = branding::program_name();
-
-        eprintln!("{prog}: {msg}");
-        eprintln!("{prog} error: {desc} (code {code_num})");
+        let mut lines = msg.lines();
+        if let Some(first) = lines.next() {
+            eprintln!("{prog}: {first}");
+            for line in lines {
+                eprintln!("{line}");
+            }
+        }
+        let version = option_env!("UPSTREAM_VERSION").unwrap_or("3.4.1");
+        let line_no = option_env!("MAIN_C_SYNTAX_LINE").unwrap_or("1836");
+        eprintln!("{prog} error: {desc} (code {code_num}) at main.c({line_no}) [client={version}]",);
     }
     std::process::exit(u8::from(code) as i32);
 }
@@ -231,6 +254,47 @@ fn print_stats(stats: &Stats, opts: &ClientOpts) {
     );
 }
 
+#[cfg(unix)]
+fn is_effective_root() -> bool {
+    #[cfg(test)]
+    if let Some(v) = MOCK_IS_ROOT.with(|m| m.borrow_mut().take()) {
+        return v;
+    }
+    nix::unistd::Uid::effective().is_root()
+}
+
+#[cfg(all(test, unix))]
+thread_local! {
+    static MOCK_IS_ROOT: std::cell::RefCell<Option<bool>> = std::cell::RefCell::new(None);
+}
+
+#[cfg(all(test, unix))]
+fn mock_effective_root(val: bool) {
+    MOCK_IS_ROOT.with(|m| *m.borrow_mut() = Some(val));
+}
+
+#[cfg(target_os = "linux")]
+fn has_cap_chown() -> std::result::Result<bool, caps::errors::CapsError> {
+    #[cfg(test)]
+    if let Some(res) = MOCK_CAPS.with(|m| m.borrow_mut().take()) {
+        return res;
+    }
+    use caps::{CapSet, Capability};
+    caps::has_cap(None, CapSet::Effective, Capability::CAP_CHOWN)
+}
+
+#[cfg(all(test, target_os = "linux"))]
+thread_local! {
+    static MOCK_CAPS: std::cell::RefCell<
+        Option<std::result::Result<bool, caps::errors::CapsError>>,
+    > = std::cell::RefCell::new(None);
+}
+
+#[cfg(all(test, target_os = "linux"))]
+fn mock_caps_has_cap(res: std::result::Result<bool, caps::errors::CapsError>) {
+    MOCK_CAPS.with(|m| *m.borrow_mut() = Some(res));
+}
+
 fn run_single(
     mut opts: ClientOpts,
     matches: &ArgMatches,
@@ -285,47 +349,48 @@ fn run_single(
             && opts.chown.is_none()
             && opts.usermap.is_empty()
             && opts.groupmap.is_empty();
-        if needs_privs && !numeric_fallback {
-            use nix::unistd::Uid;
-            if !Uid::effective().is_root() {
-                #[cfg(target_os = "linux")]
-                let has_privs = {
-                    use caps::{CapSet, Capability};
-                    caps::has_cap(None, CapSet::Effective, Capability::CAP_CHOWN).unwrap_or(false)
-                };
-                #[cfg(not(target_os = "linux"))]
-                let has_privs = false;
+        if needs_privs && !numeric_fallback && !is_effective_root() {
+            #[cfg(target_os = "linux")]
+            let has_privs = match has_cap_chown() {
+                Ok(v) => v,
+                Err(e) => {
+                    return Err(EngineError::Other(format!(
+                        "failed to detect CAP_CHOWN capability: {e}"
+                    )))
+                }
+            };
+            #[cfg(not(target_os = "linux"))]
+            let has_privs = false;
 
-                let priv_msg = if cfg!(target_os = "linux") {
-                    "changing ownership requires root or CAP_CHOWN"
+            let priv_msg = if cfg!(target_os = "linux") {
+                "changing ownership requires root or CAP_CHOWN"
+            } else {
+                "changing ownership requires root"
+            };
+
+            if !has_privs {
+                if maps_requested {
+                    return Err(EngineError::Exit(ExitCode::StartClient, priv_msg.into()));
+                }
+                let owner_explicit =
+                    matches.value_source("owner") == Some(ValueSource::CommandLine);
+                let group_explicit =
+                    matches.value_source("group") == Some(ValueSource::CommandLine);
+                let mut downgraded = false;
+                if need_owner && !owner_explicit {
+                    opts.owner = false;
+                    opts.no_owner = true;
+                    downgraded = true;
+                }
+                if need_group && !group_explicit {
+                    opts.group = false;
+                    opts.no_group = true;
+                    downgraded = true;
+                }
+                if downgraded {
+                    tracing::warn!("{priv_msg}: disabling owner/group");
                 } else {
-                    "changing ownership requires root"
-                };
-
-                if !has_privs {
-                    if maps_requested {
-                        return Err(EngineError::Exit(ExitCode::StartClient, priv_msg.into()));
-                    }
-                    let owner_explicit =
-                        matches.value_source("owner") == Some(ValueSource::CommandLine);
-                    let group_explicit =
-                        matches.value_source("group") == Some(ValueSource::CommandLine);
-                    let mut downgraded = false;
-                    if need_owner && !owner_explicit {
-                        opts.owner = false;
-                        opts.no_owner = true;
-                        downgraded = true;
-                    }
-                    if need_group && !group_explicit {
-                        opts.group = false;
-                        opts.no_group = true;
-                        downgraded = true;
-                    }
-                    if downgraded {
-                        tracing::warn!("{priv_msg}: disabling owner/group");
-                    } else {
-                        return Err(EngineError::Exit(ExitCode::StartClient, priv_msg.into()));
-                    }
+                    return Err(EngineError::Exit(ExitCode::StartClient, priv_msg.into()));
                 }
             }
         }
@@ -1726,5 +1791,27 @@ mod tests {
     fn exit_code_handles_unknown_error_kind() {
         let kind: clap::error::ErrorKind = unsafe { std::mem::transmute(u8::MAX) };
         assert_eq!(exit_code_from_error_kind(kind), ExitCode::SyntaxOrUsage);
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn capability_detection_failure_is_error() {
+        use caps::errors::CapsError;
+
+        mock_effective_root(false);
+        mock_caps_has_cap(Err(CapsError::from("boom")));
+
+        let matches = cli_command()
+            .try_get_matches_from(["prog", "--owner", "src", "dst"])
+            .unwrap();
+        let opts = ClientOpts::from_arg_matches(&matches).unwrap();
+
+        let err = run_single(opts, &matches, "src", "dst").unwrap_err();
+        match err {
+            EngineError::Other(msg) => {
+                assert!(msg.contains("failed to detect CAP_CHOWN capability"));
+            }
+            e => panic!("unexpected error: {e:?}"),
+        }
     }
 }
