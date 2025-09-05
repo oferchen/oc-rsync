@@ -746,41 +746,17 @@ fn progress_flag_shows_output() {
 #[test]
 #[ignore]
 fn progress_parity() {
-    if let Some(norm) = progress_parity_impl(&["-r", "--progress"]) {
-        insta::assert_snapshot!("progress_parity", norm);
-    }
+    let norm = progress_parity_impl(&["-r", "--progress"], "progress");
+    insta::assert_snapshot!("progress_parity", norm);
 }
 
-fn progress_parity_impl(flags: &[&str]) -> Option<String> {
-    let rsync = StdCommand::new(cargo_bin("oc-rsync"))
-        .arg("--version")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .ok();
-    if let Some(status) = rsync {
-        assert!(status.success());
-    } else {
-        eprintln!("skipping test: rsync not installed");
-        return None;
-    }
-
+fn progress_parity_impl(flags: &[&str], fixture: &str) -> String {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
-    let dst_up = dir.path().join("dst_up");
     let dst_ours = dir.path().join("dst_ours");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::create_dir_all(&dst_up).unwrap();
-    std::fs::create_dir_all(&dst_ours).unwrap();
-    std::fs::write(src.join("a.txt"), b"hello").unwrap();
-
-    let mut up_cmd = StdCommand::new(cargo_bin("oc-rsync"));
-    up_cmd.env("LC_ALL", "C").env("COLUMNS", "80");
-    up_cmd.args(flags);
-    up_cmd.arg(format!("{}/", src.display()));
-    up_cmd.arg(&dst_up);
-    let up = up_cmd.output().unwrap();
-    assert!(up.status.success());
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst_ours).unwrap();
+    fs::write(src.join("a.txt"), b"hello").unwrap();
 
     let mut our_cmd = Command::cargo_bin("oc-rsync").unwrap();
     our_cmd.env("LC_ALL", "C").env("COLUMNS", "80");
@@ -789,7 +765,18 @@ fn progress_parity_impl(flags: &[&str]) -> Option<String> {
     our_cmd.arg(dst_ours.to_str().unwrap());
     let ours = our_cmd.output().unwrap();
 
-    assert_eq!(up.status.code(), ours.status.code());
+    let golden = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/golden/progress")
+        .join(fixture);
+    let up_stdout = fs::read(golden.with_extension("stdout")).unwrap();
+    let up_stderr = fs::read(golden.with_extension("stderr")).unwrap();
+    let up_status: i32 = fs::read_to_string(golden.with_extension("exit"))
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+
+    assert_eq!(Some(up_status), ours.status.code());
 
     let extract = |stdout: &[u8], stderr: &[u8]| {
         let stdout_txt = String::from_utf8_lossy(stdout).replace('\r', "\n");
@@ -809,8 +796,9 @@ fn progress_parity_impl(flags: &[&str]) -> Option<String> {
         }
     };
 
-    let (up_line, up_stdout, up_stderr, up_stream) = extract(&up.stdout, &up.stderr);
-    let (our_line, our_stdout, our_stderr, our_stream) = extract(&ours.stdout, &ours.stderr);
+    let (up_line, up_stdout_txt, up_stderr_txt, up_stream) = extract(&up_stdout, &up_stderr);
+    let (our_line, our_stdout_txt, our_stderr_txt, our_stream) =
+        extract(&ours.stdout, &ours.stderr);
 
     assert_eq!(up_stream, our_stream, "progress output stream mismatch");
 
@@ -820,8 +808,14 @@ fn progress_parity_impl(flags: &[&str]) -> Option<String> {
             .collect::<Vec<_>>()
             .join("\n")
     }
-    assert_eq!(strip_progress(&up_stdout), strip_progress(&our_stdout));
-    assert_eq!(strip_progress(&up_stderr), strip_progress(&our_stderr));
+    assert_eq!(
+        strip_progress(&up_stdout_txt),
+        strip_progress(&our_stdout_txt)
+    );
+    assert_eq!(
+        strip_progress(&up_stderr_txt),
+        strip_progress(&our_stderr_txt)
+    );
 
     let normalize = |line: &str| {
         let mut parts: Vec<_> = line.split_whitespace().collect();
@@ -836,15 +830,13 @@ fn progress_parity_impl(flags: &[&str]) -> Option<String> {
 
     let normalized = normalize(&our_line);
     assert_eq!(normalize(&up_line), normalized);
-    Some(normalized)
+    normalized
 }
 
 #[test]
-#[ignore]
 fn progress_parity_p() {
-    if let Some(norm) = progress_parity_impl(&["-r", "-P"]) {
-        insta::assert_snapshot!("progress_parity_p", norm);
-    }
+    let norm = progress_parity_impl(&["-r", "-P"], "progress_p");
+    insta::assert_snapshot!("progress_parity_p", norm);
 }
 
 #[test]
