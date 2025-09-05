@@ -3,6 +3,7 @@ use assert_cmd::Command;
 #[cfg(unix)]
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use oc_rsync_cli::cli_command;
+use predicates::str::contains;
 use std::fs;
 use std::net::TcpListener;
 #[cfg(unix)]
@@ -84,6 +85,18 @@ fn outbuf_flag_accepts_modes() {
             .assert()
             .success();
     }
+}
+
+#[test]
+fn outbuf_flag_applies_to_stderr() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--outbuf=N", "nosuch"])
+        .assert()
+        .failure()
+        .stderr(contains(
+            "2 values required by '[SRC] [SRC]...'; only 1 was provided",
+        ));
 }
 
 #[test]

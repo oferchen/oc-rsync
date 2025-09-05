@@ -4,13 +4,13 @@ mod stdio;
 
 use oc_rsync_cli::options::OutBuf;
 use std::ptr;
-use stdio::{set_stdout_buffering, set_stream_buffer};
+use stdio::{set_std_buffering, set_stream_buffer};
 
 #[test]
 fn mode_changes_ok() {
-    set_stdout_buffering(OutBuf::N).unwrap();
-    set_stdout_buffering(OutBuf::L).unwrap();
-    set_stdout_buffering(OutBuf::B).unwrap();
+    set_std_buffering(OutBuf::N).unwrap();
+    set_std_buffering(OutBuf::L).unwrap();
+    set_std_buffering(OutBuf::B).unwrap();
 }
 
 #[test]
