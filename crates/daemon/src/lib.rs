@@ -9,6 +9,10 @@ use std::sync::{atomic::AtomicUsize, atomic::Ordering, Arc};
 use std::time::Duration;
 
 #[cfg(unix)]
+use nix::errno::Errno;
+#[cfg(unix)]
+use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
+#[cfg(unix)]
 use nix::unistd::{fork, setsid, ForkResult};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -1249,6 +1253,18 @@ pub fn run_daemon(
     });
     let active = Arc::new(AtomicUsize::new(0));
     loop {
+        #[cfg(unix)]
+        loop {
+            match waitpid(None, Some(WaitPidFlag::WNOHANG)) {
+                Ok(WaitStatus::StillAlive) | Err(Errno::ECHILD) => break,
+                Ok(_) => {
+                    if max_connections.is_some() {
+                        active.fetch_sub(1, Ordering::SeqCst);
+                    }
+                }
+                Err(_) => break,
+            }
+        }
         let (stream, addr) = TcpTransport::accept(&listener, &hosts_allow, &hosts_deny)?;
         if let Some(max) = max_connections {
             if active.load(Ordering::SeqCst) >= max {
@@ -1266,6 +1282,68 @@ pub fn run_daemon(
         let handler = handler.clone();
         let refuse = refuse_options.clone();
         let active_conn = active.clone();
+        #[cfg(unix)]
+        match unsafe { fork() } {
+            Ok(ForkResult::Parent { .. }) => {
+                drop(stream);
+            }
+            Ok(ForkResult::Child) => {
+                let transport = TcpTransport::from_stream(stream);
+                let res = (|| -> io::Result<()> {
+                    let t = TimeoutTransport::new(transport, timeout)?;
+                    if let Some(limit) = bwlimit {
+                        let mut t = RateLimitedTransport::new(t, limit);
+                        handle_connection(
+                            &mut t,
+                            &modules,
+                            secrets.as_deref(),
+                            password.as_deref(),
+                            log_file.as_deref(),
+                            log_format.as_deref(),
+                            motd.as_deref(),
+                            list,
+                            &refuse,
+                            &peer,
+                            uid,
+                            gid,
+                            &handler,
+                        )
+                    } else {
+                        let mut t = t;
+                        handle_connection(
+                            &mut t,
+                            &modules,
+                            secrets.as_deref(),
+                            password.as_deref(),
+                            log_file.as_deref(),
+                            log_format.as_deref(),
+                            motd.as_deref(),
+                            list,
+                            &refuse,
+                            &peer,
+                            uid,
+                            gid,
+                            &handler,
+                        )
+                    }
+                })();
+                if let Err(e) = res {
+                    if !quiet {
+                        eprintln!("connection error: {}", e);
+                    }
+                }
+                std::process::exit(0);
+            }
+            Err(e) => {
+                if max_connections.is_some() {
+                    active_conn.fetch_sub(1, Ordering::SeqCst);
+                }
+                if !quiet {
+                    eprintln!("fork failed: {}", e);
+                }
+            }
+        }
+        #[cfg(not(unix))]
         std::thread::spawn(move || {
             let transport = TcpTransport::from_stream(stream);
             let res = (|| -> io::Result<()> {
