@@ -1,141 +1,141 @@
---verbose	increaseverbosity
---info=FLAGS	fine-grainedinformationalverbosity
---debug=FLAGS	fine-graineddebugverbosity
---stderr=e|a|c	changestderroutputmode(default:errors)
---quiet	suppressnon-errormessages
---no-motd	suppressdaemon-modeMOTD
---checksum	skipbasedonchecksum,notmod-time&size
---archive	archivemodeis-rlptgoD(no-A,-X,-U,-N,-H)
---no-OPTION	turnoffanimpliedOPTION(e.g.--no-D)
---recursive	recurseintodirectories
---relative	userelativepathnames
---no-implied-dirs	don'tsendimplieddirswith--relative
---backup	makebackups(see--suffix&--backup-dir)
---backup-dir=DIR	makebackupsintohierarchybasedinDIR
---suffix=SUFFIX	backupsuffix(default~w/o--backup-dir)
---update	skipfilesthatareneweronthereceiver
---inplace	updatedestinationfilesin-place
---append	appenddataontoshorterfiles
---append-verify	--appendw/olddatainfilechecksum
---dirs	transferdirectorieswithoutrecursing
---old-dirs	workslike--dirswhentalkingtooldrsync
---mkpath	createdestination'smissingpathcomponents
---links	copysymlinksassymlinks
---copy-links	transformsymlinkintoreferentfile/dir
---copy-unsafe-links	only"unsafe"symlinksaretransformed
---safe-links	ignoresymlinksthatpointoutsidethetree
---munge-links	mungesymlinkstomakethemsafe&unusable
---copy-dirlinks	transformsymlinktodirintoreferentdir
---keep-dirlinks	treatsymlinkeddironreceiverasdir
---hard-links	preservehardlinks
---perms	preservepermissions
---executability	preserveexecutability
---chmod=CHMOD	affectfileand/ordirectorypermissions
---acls	preserveACLs(implies--perms)
---xattrs,-X	preserveextendedattributes
---owner	preserveowner(super-useronly)
---group	preservegroup
---devices	preservedevicefiles(super-useronly)
---copy-devices	copydevicecontentsasaregularfile
---write-devices	writetodevicesasfiles(implies--inplace)
---specials	preservespecialfiles
---times	preservemodificationtimes
---atimes	preserveaccess(use)times
---open-noatime	avoidchangingtheatimeonopenedfiles
---crtimes	preservecreatetimes(newness)
---omit-dir-times	omitdirectoriesfrom--times
---omit-link-times	omitsymlinksfrom--times
---super	receiverattemptssuper-useractivities
---fake-super	store/recoverprivilegedattrsusingxattrs
---sparse	turnsequencesofnullsintosparseblocks
---preallocate	allocatedestfilesbeforewritingthem
---dry-run	performatrialrunwithnochangesmade
---whole-file	copyfileswhole(w/odelta-xferalgorithm)
---checksum-choice=STR	choosethechecksumalgorithm(aka--cc)
---one-file-system	don'tcrossfilesystemboundaries
---block-size=SIZE	forceafixedchecksumblock-size
---rsh=COMMAND	specifytheremoteshelltouse
---rsync-path=PROGRAM	specifythersynctorunonremotemachine
---existing	skipcreatingnewfilesonreceiver
---ignore-existing	skipupdatingfilesthatexistonreceiver
---remove-source-files	senderremovessynchronizedfiles(non-dir)
---del	analiasfor--delete-during
---delete	deleteextraneousfilesfromdestdirs
---delete-before	receiverdeletesbeforexfer,notduring
---delete-during	receiverdeletesduringthetransfer
---delete-delay	finddeletionsduring,deleteafter
---delete-after	receiverdeletesaftertransfer,notduring
---delete-excluded	alsodeleteexcludedfilesfromdestdirs
---ignore-missing-args	ignoremissingsourceargswithouterror
---delete-missing-args	deletemissingsourceargsfromdestination
---ignore-errors	deleteevenifthereareI/Oerrors
---force	forcedeletionofdirsevenifnotempty
---max-delete=NUM	don'tdeletemorethanNUMfiles
---max-size=SIZE	don'ttransferanyfilelargerthanSIZE
---min-size=SIZE	don'ttransferanyfilesmallerthanSIZE
---max-alloc=SIZE	changealimitrelatingtomemoryalloc
---partial	keeppartiallytransferredfiles
---partial-dir=DIR	putapartiallytransferredfileintoDIR
---delay-updates	putallupdatedfilesintoplaceatend
---prune-empty-dirs	pruneemptydirectorychainsfromfile-list
---numeric-ids	don'tmapuid/gidvaluesbyuser/groupname
---usermap=STRING	customusernamemapping
---groupmap=STRING	customgroupnamemapping
---chown=USER:GROUP	simpleusername/groupnamemapping
---timeout=SECONDS	setI/Otimeoutinseconds
---contimeout=SECONDS	setdaemonconnectiontimeoutinseconds
---ignore-times	don'tskipfilesthatmatchsizeandtime
---size-only	skipfilesthatmatchinsize
---modify-window=NUM	settheaccuracyformod-timecomparisons
---temp-dir=DIR	createtemporaryfilesindirectoryDIR
---fuzzy	findsimilarfileforbasisifnodestfile
---compare-dest=DIR	alsocomparedestinationfilesrelativetoDIR
---copy-dest=DIR	...andincludecopiesofunchangedfiles
---link-dest=DIR	hardlinktofilesinDIRwhenunchanged
---compress	compressfiledataduringthetransfer
---compress-choice=STR	choosethecompressionalgorithm(aka--zc)
---compress-level=NUM	explicitlysetcompressionlevel(aka--zl)
---skip-compress=LIST	skipcompressingfileswithsuffixinLIST
---cvs-exclude	auto-ignorefilesinthesamewayCVSdoes
---filter=RULE	addafile-filteringRULE
---exclude=PATTERN	excludefilesmatchingPATTERN
---exclude-from=FILE	readexcludepatternsfromFILE
---include=PATTERN	don'texcludefilesmatchingPATTERN
---include-from=FILE	readincludepatternsfromFILE
---files-from=FILE	readlistofsource-filenamesfromFILE
---from0	all*-from/filterfilesaredelimitedby0s
---old-args	disablethemodernarg-protectionidiom
---secluded-args	usetheprotocoltosafelysendtheargs
---trust-sender	trusttheremotesender'sfilelist
---copy-as=USER[:GROUP]	specifyuser&optionalgroupforthecopy
---address=ADDRESS	bindaddressforoutgoingsockettodaemon
---port=PORT	specifydouble-colonalternateportnumber
---sockopts=OPTIONS	specifycustomTCPoptions
---blocking-io	useblockingI/Ofortheremoteshell
---outbuf=N|L|B	setoutbufferingtoNone,Line,orBlock
---stats	givesomefile-transferstats
---8-bit-output	leavehigh-bitcharsunescapedinoutput
---human-readable	outputnumbersinahuman-readableformat
---progress	showprogressduringtransfer
---itemize-changes	outputachange-summaryforallupdates
---remote-option=OPT	sendOPTIONtotheremotesideonly
---out-format=FORMAT	outputupdatesusingthespecifiedFORMAT
---log-file=FILE	logwhatwe'redoingtothespecifiedFILE
---log-file-format=FMT	logupdatesusingthespecifiedFMT
---password-file=FILE	readdaemon-accesspasswordfromFILE
---early-input=FILE	useFILEfordaemon'searlyexecinput
---list-only	listthefilesinsteadofcopyingthem
---bwlimit=RATE	limitsocketI/Obandwidth
---stop-after=MINS	StoprsyncafterMINSminuteshaveelapsed
---stop-at=y-m-dTh:m	Stoprsyncatthespecifiedpointintime
---fsync	fsynceverywrittenfile
---write-batch=FILE	writeabatchedupdatetoFILE
---only-write-batch=FILE	like--write-batchbutw/oupdatingdest
---read-batch=FILE	readabatchedupdatefromFILE
---protocol=NUM	forceanolderprotocolversiontobeused
---iconv=CONVERT_SPEC	requestcharsetconversionoffilenames
---checksum-seed=NUM	setblock/filechecksumseed(advanced)
---ipv4	preferIPv4
---ipv6	preferIPv6
---version	printtheversion+otherinfoandexit
---help	showthishelp(*-hishelponlyonitsown)
+--verbose	increase verbosity
+--info=FLAGS	fine-grained informational
+--debug=FLAGS	fine-grained debug verbosity
+--stderr=e|a|c	change stderr output mode (default:
+--quiet	suppress non-error messages
+--no-motd	suppress daemon-mode MOTD
+--checksum	skip based on checksum, not mod-
+--archive	archive mode is -rlptgoD (no
+--no-OPTION	turn off an implied OPTION (e.g.
+--recursive	recurse into directories
+--relative	use relative path names
+--no-implied-dirs	don't send implied dirs with
+--backup	make backups (see --suffix &
+--backup-dir=DIR	make backups into hierarchy based
+--suffix=SUFFIX	backup suffix (default ~ w/o
+--update	skip files that are newer on the
+--inplace	update destination files in-place
+--append	append data onto shorter files
+--append-verify	--append w/old data in file
+--dirs	transfer directories without
+--old-dirs	works like --dirs when talking to
+--mkpath	create destination's missing path
+--links	copy symlinks as symlinks
+--copy-links	transform symlink into referent
+--copy-unsafe-links	only "unsafe" symlinks are
+--safe-links	ignore symlinks that point outside
+--munge-links	munge symlinks to make them safe
+--copy-dirlinks	transform symlink to dir into
+--keep-dirlinks	treat symlinked dir on receiver
+--hard-links	preserve hard links
+--perms	preserve permissions
+--executability	preserve executability
+--chmod=CHMOD	affect file and/or directory
+--acls	preserve ACLs (implies --perms)
+--xattrs	preserve extended attributes
+--owner	preserve owner (super-user only)
+--group	preserve group
+--devices	preserve device files (super-user
+--copy-devices	copy device contents as a regular
+--write-devices	write to devices as files (implies
+--specials	preserve special files
+--times	preserve modification times
+--atimes	preserve access (use) times
+--open-noatime	avoid changing the atime on opened
+--crtimes	preserve create times (newness)
+--omit-dir-times	omit directories from --times
+--omit-link-times	omit symlinks from --times
+--super	receiver attempts super-user
+--fake-super	store/recover privileged attrs
+--sparse	turn sequences of nulls into sparse
+--preallocate	allocate dest files before writing
+--dry-run	perform a trial run with no changes
+--whole-file	copy files whole (w/o delta-xfer
+--checksum-choice=STR	choose the checksum algorithm (aka
+--one-file-system	don't cross filesystem boundaries
+--block-size=SIZE	force a fixed checksum block-size
+--rsh=COMMAND	specify the remote shell to use
+--rsync-path=PROGRAM	specify the rsync to run on remote
+--existing	skip creating new files on receiver
+--ignore-existing	skip updating files that exist
+--remove-source-files	sender removes synchronized files
+--del	an alias for --delete-during
+--delete	delete extraneous files from dest
+--delete-before	receiver deletes before xfer, not
+--delete-during	receiver deletes during the
+--delete-delay	find deletions during, delete after
+--delete-after	receiver deletes after transfer,
+--delete-excluded	also delete excluded files from
+--ignore-missing-args	ignore missing source args without
+--delete-missing-args	delete missing source args from
+--ignore-errors	delete even if there are I/O errors
+--force	force deletion of dirs even if
+--max-delete=NUM	don't delete more than NUM files
+--max-size=SIZE	don't transfer any file larger
+--min-size=SIZE	don't transfer any file smaller
+--max-alloc=SIZE	change a limit relating to memory
+--partial	keep partially transferred files
+--partial-dir=DIR	put a partially transferred file
+--delay-updates	put all updated files into place
+--prune-empty-dirs	prune empty directory chains from
+--numeric-ids	don't map uid/gid values by user/
+--usermap=STRING	custom username mapping
+--groupmap=STRING	custom groupname mapping
+--chown=USER:GROUP	simple username/groupname mapping
+--timeout=SECONDS	set I/O timeout in seconds
+--contimeout=SECONDS	set daemon connection timeout in
+--ignore-times	don't skip files that match size
+--size-only	skip files that match in size
+--modify-window=NUM	set the accuracy for mod-time
+--temp-dir=DIR	create temporary files in directory
+--fuzzy	find similar file for basis if no
+--compare-dest=DIR	also compare destination files
+--copy-dest=DIR	... and include copies of unchanged
+--link-dest=DIR	hardlink to files in DIR when
+--compress	compress file data during the
+--compress-choice=STR	choose the compression algorithm
+--compress-level=NUM	explicitly set compression level
+--skip-compress=LIST	skip compressing files with suffix
+--cvs-exclude	auto-ignore files in the same way
+--filter=RULE	add a file-filtering RULE
+--exclude=PATTERN	exclude files matching PATTERN
+--exclude-from=FILE	read exclude patterns from FILE
+--include=PATTERN	don't exclude files matching
+--include-from=FILE	read include patterns from FILE
+--files-from=FILE	read list of source-file names
+--from0	all *-from/filter files are
+--old-args	disable the modern arg-protection
+--secluded-args	use the protocol to safely send
+--trust-sender	trust the remote sender's file list
+--copy-as=USER[:GROUP]	specify user & optional group for
+--address=ADDRESS	bind address for outgoing socket
+--port=PORT	specify double-colon alternate
+--sockopts=OPTIONS	specify custom TCP options
+--blocking-io	use blocking I/O for the remote
+--outbuf=N|L|B	set out buffering to None, Line,
+--stats	give some file-transfer stats
+--8-bit-output	leave high-bit chars unescaped
+--human-readable	output numbers in a human-readable
+--progress	show progress during transfer
+--itemize-changes	output a change-summary for all
+--remote-option=OPT	send OPTION to the remote side only
+--out-format=FORMAT	output updates using the specified
+--log-file=FILE	log what we're doing to the
+--log-file-format=FMT	log updates using the specified FMT
+--password-file=FILE	read daemon-access password from
+--early-input=FILE	use FILE for daemon's early exec
+--list-only	list the files instead of copying
+--bwlimit=RATE	limit socket I/O bandwidth
+--stop-after=MINS	Stop rsync after MINS minutes have
+--stop-at=y-m-dTh:m	Stop rsync at the specified point
+--fsync	fsync every written file
+--write-batch=FILE	write a batched update to FILE
+--only-write-batch=FILE	like --write-batch but w/o updating
+--read-batch=FILE	read a batched update from FILE
+--protocol=NUM	force an older protocol version to
+--iconv=CONVERT_SPEC	request charset conversion of
+--checksum-seed=NUM	set block/file checksum seed
+--ipv4	prefer IPv4
+--ipv6	prefer IPv6
+--version	print the version + other info
+--help	show this help (* -h is help only
