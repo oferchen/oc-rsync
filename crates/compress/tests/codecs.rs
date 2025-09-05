@@ -3,7 +3,7 @@ use compress::{
     available_codecs, decode_codecs, encode_codecs, negotiate_codec, should_compress, Codec,
 };
 
-#[cfg(any(feature = "zlib", feature = "zstd", feature = "lz4"))]
+#[cfg(any(feature = "zlib", feature = "zstd", feature = "experimental-lz4"))]
 use compress::{Compressor, Decompressor};
 
 #[cfg(feature = "zlib")]
@@ -12,13 +12,13 @@ use compress::{Zlib, ZlibX};
 #[cfg(feature = "zstd")]
 use compress::Zstd;
 
-#[cfg(feature = "lz4")]
+#[cfg(feature = "experimental-lz4")]
 use compress::Lz4;
 
 use std::io;
 use std::path::Path;
 
-#[cfg(any(feature = "zlib", feature = "zstd", feature = "lz4"))]
+#[cfg(any(feature = "zlib", feature = "zstd", feature = "experimental-lz4"))]
 const DATA: &[u8] = b"The quick brown fox jumps over the lazy dog";
 
 #[cfg(feature = "zlib")]
@@ -48,7 +48,7 @@ fn zstd_roundtrip() {
     assert_eq!(DATA, decompressed.as_slice());
 }
 
-#[cfg(feature = "lz4")]
+#[cfg(feature = "experimental-lz4")]
 #[test]
 fn lz4_roundtrip() {
     let codec = Lz4::new();
@@ -59,11 +59,11 @@ fn lz4_roundtrip() {
 
 #[test]
 fn negotiation_helper_picks_common_codec() {
-    let local = [Codec::Zstd, Codec::Lz4, Codec::Zlib];
-    let remote = [Codec::Lz4, Codec::Zlib];
-    assert_eq!(negotiate_codec(&local, &remote), Some(Codec::Lz4));
+    let local = [Codec::Zstd, Codec::Zlib];
+    let remote = [Codec::Zlib];
+    assert_eq!(negotiate_codec(&local, &remote), Some(Codec::Zlib));
     let remote2 = [Codec::Zstd];
-    assert_eq!(negotiate_codec(&[Codec::Lz4], &remote2), None);
+    assert_eq!(negotiate_codec(&[Codec::Zlib], &remote2), None);
 }
 
 #[test]
@@ -82,11 +82,6 @@ fn encode_decode_roundtrip_and_error() {
         bytes.push(1);
         codecs.push(Codec::Zlibx);
         bytes.push(2);
-    }
-    #[cfg(feature = "lz4")]
-    {
-        codecs.push(Codec::Lz4);
-        bytes.push(3);
     }
     #[cfg(feature = "zstd")]
     {
@@ -121,8 +116,6 @@ fn available_codecs_matches_features() {
     let mut expected = Vec::new();
     #[cfg(feature = "zstd")]
     expected.push(Codec::Zstd);
-    #[cfg(feature = "lz4")]
-    expected.push(Codec::Lz4);
     #[cfg(feature = "zlib")]
     {
         expected.push(Codec::Zlibx);

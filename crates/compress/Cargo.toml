@@ -12,6 +12,7 @@ lz4_flex = { version = "0.11", optional = true }
 default = ["zlib", "zstd"]
 zlib = ["dep:flate2"]
 zstd = ["dep:zstd"]
-lz4 = ["dep:lz4_flex"]
+# Experimental LZ4 support
+experimental-lz4 = ["dep:lz4_flex"]
 # AVX-512 implementations (requires nightly Rust)
 nightly = []

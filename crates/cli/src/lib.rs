@@ -534,7 +534,6 @@ fn run_single(
                 let codec = match name {
                     "zlib" => Codec::Zlib,
                     "zlibx" => Codec::Zlibx,
-                    "lz4" => Codec::Lz4,
                     "zstd" => Codec::Zstd,
                     other => {
                         return Err(EngineError::Other(format!("unknown codec {other}")));
