@@ -4,7 +4,6 @@ use std::{fs, process::Command as StdCommand};
 use tempfile::tempdir;
 
 #[test]
-#[ignore]
 fn out_format_file_matches_rsync() {
     let tmp = tempdir().unwrap();
     let src_dir = tmp.path().join("src");
@@ -30,11 +29,7 @@ fn out_format_file_matches_rsync() {
         .assert()
         .success();
     let ours = fs::read_to_string(&log).unwrap();
-    let ours_line = ours
-        .lines()
-        .find(|l| l.contains("info::name") && l.contains("send:a"))
-        .unwrap();
-    let ours_msg = ours_line.split("info::name: ").nth(1).unwrap().trim();
+    let ours_msg = ours.lines().find(|l| l.trim() == "send:a").unwrap().trim();
 
     let output = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
@@ -58,7 +53,6 @@ fn out_format_file_matches_rsync() {
 
 #[cfg(unix)]
 #[test]
-#[ignore]
 fn out_format_symlink_matches_rsync() {
     let tmp = tempdir().unwrap();
     let src_dir = tmp.path().join("src");
@@ -86,11 +80,7 @@ fn out_format_symlink_matches_rsync() {
         .assert()
         .success();
     let ours = fs::read_to_string(&log).unwrap();
-    let ours_line = ours
-        .lines()
-        .find(|l| l.contains("info::name") && l.contains("link"))
-        .unwrap();
-    let ours_msg = ours_line.split("info::name: ").nth(1).unwrap().trim();
+    let ours_msg = ours.lines().find(|l| l.contains("link")).unwrap().trim();
 
     let output = StdCommand::new(cargo_bin("oc-rsync"))
         .args([
