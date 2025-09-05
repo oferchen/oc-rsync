@@ -375,12 +375,18 @@ pub fn render_help(cmd: &Command) -> String {
 
 pub fn dump_help_body(cmd: &Command) -> String {
     let prev = std::env::var("COLUMNS").ok();
-    std::env::set_var("COLUMNS", "80");
+    unsafe {
+        std::env::set_var("COLUMNS", "80");
+    }
     let help = render_help(cmd);
     if let Some(v) = prev {
-        std::env::set_var("COLUMNS", v);
+        unsafe {
+            std::env::set_var("COLUMNS", v);
+        }
     } else {
-        std::env::remove_var("COLUMNS");
+        unsafe {
+            std::env::remove_var("COLUMNS");
+        }
     }
     let mut out = String::new();
     let mut in_options = false;
