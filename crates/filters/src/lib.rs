@@ -541,7 +541,7 @@ impl Matcher {
             Err(_) => return Ok((Vec::new(), Vec::new())),
         };
 
-        let adjusted = if cvs || path.file_name().is_some_and(|f| f == ".cvsignore") {
+        let adjusted = if cvs {
             let rel_str = rel.map(|p| p.to_string_lossy().to_string());
             let mut buf = String::new();
             let iter: Box<dyn Iterator<Item = &str>> = if self.from0 {
@@ -557,7 +557,7 @@ impl Matcher {
                     if token.starts_with('/') {
                         format!("/{}/{}", rel_str, token.trim_start_matches('/'))
                     } else {
-                        format!("{}/{}", rel_str, token)
+                        format!("/{}/{}", rel_str, token)
                     }
                 } else if token.starts_with('/') {
                     token.to_string()
