@@ -37,3 +37,31 @@ if ! diff "$ROOT/tests/golden/partial_dir_transfer_resume/a.txt" "$TMP/oc_rsync_
   diff "$ROOT/tests/golden/partial_dir_transfer_resume/a.txt" "$TMP/oc_rsync_dst/a.txt" >&2 || true
   exit 1
 fi
+
+# Test daemon mode with nested directories
+mkdir -p "$TMP/src/sub" "$TMP/daemon_dst/partial/sub"
+printf 'daemon hello' > "$TMP/src/sub/a.txt"
+head -c 6 "$TMP/src/sub/a.txt" > "$TMP/daemon_dst/partial/sub/a.txt"
+daemon_log="$TMP/daemon.log"
+"$OC_RSYNC" --daemon --no-detach --module "data=$TMP/daemon_dst" --port 0 >"$daemon_log" 2>/dev/null &
+daemon_pid=$!
+for i in {1..50}; do
+  if [ -s "$daemon_log" ]; then
+    DAEMON_PORT=$(cat "$daemon_log")
+    break
+  fi
+  sleep 0.1
+done
+if [ -z "${DAEMON_PORT:-}" ]; then
+  echo "failed to get daemon port" >&2
+  kill "$daemon_pid"
+  exit 1
+fi
+"$OC_RSYNC" --partial --partial-dir partial "$TMP/src/" "rsync://127.0.0.1:$DAEMON_PORT/data/" >/dev/null 2>&1
+kill "$daemon_pid"
+wait "$daemon_pid" 2>/dev/null || true
+if ! diff "$TMP/src/sub/a.txt" "$TMP/daemon_dst/sub/a.txt" >/dev/null; then
+  echo "Daemon files differ" >&2
+  diff "$TMP/src/sub/a.txt" "$TMP/daemon_dst/sub/a.txt" >&2 || true
+  exit 1
+fi

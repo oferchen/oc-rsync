@@ -37,3 +37,14 @@ if ! diff "$ROOT/tests/golden/partial_transfer_resume/a.txt" "$TMP/oc_rsync_dst/
   diff "$ROOT/tests/golden/partial_transfer_resume/a.txt" "$TMP/oc_rsync_dst/a.txt" >&2 || true
   exit 1
 fi
+
+# Test nested directory resume
+mkdir -p "$TMP/src/sub" "$TMP/oc_rsync_dst/sub"
+printf 'nested hello' > "$TMP/src/sub/a.txt"
+head -c 6 "$TMP/src/sub/a.txt" > "$TMP/oc_rsync_dst/sub/a.partial"
+"$OC_RSYNC" --partial "$TMP/src/" "$TMP/oc_rsync_dst/" >/dev/null
+if ! diff "$TMP/src/sub/a.txt" "$TMP/oc_rsync_dst/sub/a.txt" >/dev/null; then
+  echo "Nested files differ" >&2
+  diff "$TMP/src/sub/a.txt" "$TMP/oc_rsync_dst/sub/a.txt" >&2 || true
+  exit 1
+fi

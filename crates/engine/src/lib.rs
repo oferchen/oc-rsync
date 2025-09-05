@@ -1163,25 +1163,20 @@ impl Sender {
         } else {
             None
         };
-        let basis_path = if self.opts.partial && existing_partial.is_some() {
+        let basis_path = if (self.opts.partial || self.opts.append || self.opts.append_verify)
+            && existing_partial.is_some()
+        {
             existing_partial.clone().unwrap()
         } else if self.opts.fuzzy && !dest.exists() {
             fuzzy_match(&dest).unwrap_or_else(|| dest.clone())
         } else {
             dest.clone()
         };
-        let mut resume = if self.opts.partial {
-            if let Some(ref p) = existing_partial {
-                last_good_block(&self.cfg, path, p, block_size, &self.opts)?
+        let mut resume = if self.opts.partial || self.opts.append || self.opts.append_verify {
+            if self.opts.append && !self.opts.append_verify {
+                fs::metadata(&basis_path).map(|m| m.len()).unwrap_or(0)
             } else {
-                0
-            }
-        } else if self.opts.append || self.opts.append_verify {
-            if self.opts.append_verify {
-                last_good_block(&self.cfg, path, &dest, block_size, &self.opts)?
-            } else {
-                let dest_meta = fs::metadata(&dest).map_err(|e| io_context(&dest, e))?;
-                dest_meta.len()
+                last_good_block(&self.cfg, path, &basis_path, block_size, &self.opts)?
             }
         } else {
             0
@@ -1413,7 +1408,9 @@ impl Receiver {
         };
         let basis_path = if self.opts.inplace {
             dest.clone()
-        } else if self.opts.partial && existing_partial.is_some() {
+        } else if (self.opts.partial || self.opts.append || self.opts.append_verify)
+            && existing_partial.is_some()
+        {
             existing_partial.clone().unwrap()
         } else {
             dest.clone()
@@ -1448,13 +1445,16 @@ impl Receiver {
                 .into_temp_path()
                 .keep()
                 .map_err(|e| io_context(tmp_parent, e.error))?
+        } else if (self.opts.partial || self.opts.append || self.opts.append_verify)
+            && existing_partial.is_some()
+        {
+            existing_partial.clone().unwrap()
         } else if self.opts.partial {
             partial.clone()
         } else {
             dest.clone()
         };
-        if !self.opts.inplace
-            && !self.opts.partial
+        if !(self.opts.inplace || self.opts.partial || self.opts.append || self.opts.append_verify)
             && self.opts.temp_dir.is_none()
             && basis_path == dest
             && !self.opts.write_devices
@@ -1466,8 +1466,11 @@ impl Receiver {
             let name = format!("{}.tmp", stem.to_string_lossy());
             tmp_dest = dest_parent.join(name);
         }
-        let mut needs_rename =
-            !self.opts.inplace && (self.opts.partial || self.opts.temp_dir.is_some() || auto_tmp);
+        let mut needs_rename = !self.opts.inplace
+            && ((self.opts.partial || self.opts.append || self.opts.append_verify)
+                && existing_partial.is_some()
+                || self.opts.temp_dir.is_some()
+                || auto_tmp);
         if self.opts.delay_updates && !self.opts.inplace && !self.opts.write_devices {
             if tmp_dest == dest {
                 let stem = dest
@@ -1491,7 +1494,7 @@ impl Receiver {
         let resume_basis = existing_partial.as_ref().unwrap_or(&tmp_dest);
         let mut resume = if self.opts.partial || self.opts.append || self.opts.append_verify {
             if self.opts.append && !self.opts.append_verify {
-                fs::metadata(&tmp_dest).map(|m| m.len()).unwrap_or(0)
+                fs::metadata(resume_basis).map(|m| m.len()).unwrap_or(0)
             } else {
                 last_good_block(&cfg, src, resume_basis, block_size, &self.opts)?
             }
@@ -2661,7 +2664,7 @@ pub fn sync(
                             }
                         }
                     }
-                    let partial_exists = if opts.partial {
+                    let partial_exists = if opts.partial || opts.append || opts.append_verify {
                         let (partial_path, basename_partial) =
                             partial_paths(&dest_path, opts.partial_dir.as_deref());
                         partial_path.exists()
