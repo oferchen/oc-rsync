@@ -10,7 +10,6 @@ This file documents tests marked `#[ignore]` and why they remain excluded from a
 | `tests/log_file.rs::out_format_writes_custom_message` | Custom `--out-format` handling not finalized. |
 | `tests/log_file.rs::out_format_supports_all_escapes` | Escape sequence processing incomplete. |
 | `tests/log_file.rs::out_format_escapes_match_rsync` | Requires parity with upstream `rsync` binary. |
-| `tests/checksum_seed_cli.rs::checksum_seed_flag_transfers_files` | `--checksum-seed` option not yet implemented. |
 | `tests/fuzzy.rs::fuzzy_transfers_file` | Fuzzy matching feature pending implementation. |
 | `tests/daemon_config.rs::daemon_config_rsync_client` | Daemon configuration interop not complete. |
 | `tests/daemon_config.rs::daemon_config_authentication` | Authentication against daemon not implemented. |

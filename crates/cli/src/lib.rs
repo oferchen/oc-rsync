@@ -759,7 +759,7 @@ fn run_single(
         acls,
         sparse: opts.sparse,
         strong,
-        checksum_seed: opts.checksum_seed.unwrap_or(0),
+        checksum_seed: opts.checksum_seed.unwrap_or_default(),
         compress_level: opts.compress_level,
         compress_choice,
         whole_file: if opts.no_whole_file {

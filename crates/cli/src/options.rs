@@ -239,7 +239,8 @@ pub(crate) struct ClientOpts {
         value_name = "NUM",
         value_parser = clap::value_parser!(u32),
         help_heading = "Attributes",
-        help = "set block/file checksum seed (advanced)"
+        help = "set block/file checksum seed (advanced)",
+        id = "checksum_seed"
     )]
     pub checksum_seed: Option<u32>,
     #[arg(
