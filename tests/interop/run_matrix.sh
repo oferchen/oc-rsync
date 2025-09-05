@@ -13,37 +13,42 @@ CLIENT_VERSIONS=(${CLIENT_VERSIONS:-"3.1.3 3.2.7 3.3.0 3.4.1 oc-rsync"})
 SERVER_VERSIONS=(${SERVER_VERSIONS:-"3.1.3 3.2.7 3.3.0 3.4.1 oc-rsync"})
 TRANSPORTS=(${TRANSPORTS:-"ssh rsync"})
 
-# Additional scenarios to exercise. Each entry is "name extra_flags" where
-# extra_flags are optional.
-SCENARIOS=(
-  "base"
-  "delete --delete"
-  "delete_before --delete-before"
-  "delete_during --delete-during"
-  "delete_after --delete-after"
-  "compress --compress"
-  "hard_links --hard-links"
-  "rsh"
-  "drop_connection"
-  "vanished"
-  "remote_remote"
-  "append --append"
-  "append_verify --append-verify"
-  "partial --partial"
-  "inplace --inplace"
-)
+if [[ -n "${SCENARIOS:-}" ]]; then
+  SCENARIOS_STR="$SCENARIOS"
+  IFS=' ' read -r -a SCENARIOS <<< "$SCENARIOS_STR"
+else
+  # Additional scenarios to exercise. Each entry is "name extra_flags" where
+  # extra_flags are optional.
+  SCENARIOS=(
+    "base"
+    "delete --delete"
+    "delete_before --delete-before"
+    "delete_during --delete-during"
+    "delete_after --delete-after"
+    "compress --compress"
+    "hard_links --hard-links"
+    "rsh"
+    "drop_connection"
+    "vanished"
+    "remote_remote"
+    "append --append"
+    "append_verify --append-verify"
+    "partial --partial"
+    "inplace --inplace"
+  )
 
-# Base resume scenario and progress/resume combinations.
-SCENARIOS+=("resume --partial")
-# Generate progress scenarios and their resume counterparts.
-for flag in --progress --info=progress2; do
-  case "$flag" in
-    --progress) name="progress" ;;
-    --info=progress2) name="progress2" ;;
-  esac
-  SCENARIOS+=("$name $flag")
-  SCENARIOS+=("resume_${name} --partial $flag")
-done
+  # Base resume scenario and progress/resume combinations.
+  SCENARIOS+=("resume --partial")
+  # Generate progress scenarios and their resume counterparts.
+  for flag in --progress --info=progress2; do
+    case "$flag" in
+      --progress) name="progress" ;;
+      --info=progress2) name="progress2" ;;
+    esac
+    SCENARIOS+=("$name $flag")
+    SCENARIOS+=("resume_${name} --partial $flag")
+  done
+fi
 
 if [[ "${LIST_SCENARIOS:-0}" == "1" ]]; then
   for entry in "${SCENARIOS[@]}"; do
@@ -55,9 +60,15 @@ fi
 
 # Options used for all transfers. -a implies -rtgoD, we add -A and -X for ACLs
 # and xattrs.
-COMMON_FLAGS=(${COMMON_FLAGS:-"--archive --acls --xattrs"})
+COMMON_FLAGS=(${COMMON_FLAGS:-"--archive" "--acls" "--xattrs"})
 
 mkdir -p "$GOLDEN"
+
+# Remove protocol banners or other non-deterministic lines from command
+# output so that goldens remain stable across runs.
+sanitize_banners() {
+  sed '/^@RSYNCD:/d'
+}
 
 fetch_rsync() {
   local ver="$1"
@@ -94,9 +105,13 @@ PermitRootLogin yes
 PermitUserEnvironment yes
 CFG
   /usr/sbin/sshd -f "$tmp/sshd_config"
-  trap 'kill $(cat "$tmp/sshd.pid") >/dev/null 2>&1 || true; rm -rf "$tmp"' RETURN
+  for _ in {1..50}; do
+    [[ -s "$tmp/sshd.pid" ]] && break
+    sleep 0.1
+  done
+  local pid=$(cat "$tmp/sshd.pid")
   local ssh="ssh -p $port -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i $clientkey"
-  echo "$ssh" "${tmp}"
+  printf '%s\t%s\t%s\n' "$ssh" "$tmp" "$pid"
 }
 
 setup_daemon() {
@@ -117,8 +132,7 @@ CFG
   mkdir -p "$tmp/root"
   "$server_bin" --daemon --no-detach --port "$port" --config "$tmp/rsyncd.conf" &
   local pid=$!
-  trap 'kill $pid >/dev/null 2>&1 || true; rm -rf "$tmp"' RETURN
-  echo "$port" "$tmp/root"
+  printf '%s\t%s\t%s\n' "$port" "$tmp/root" "$pid"
 }
 
 setup_daemon_rr() {
@@ -142,8 +156,7 @@ CFG
   mkdir -p "$tmp/src" "$tmp/dst"
   "$server_bin" --daemon --no-detach --port "$port" --config "$tmp/rsyncd.conf" &
   local pid=$!
-  trap 'kill $pid >/dev/null 2>&1 || true; rm -rf "$tmp"' RETURN
-  echo "$port" "$tmp"
+  printf '%s\t%s\t%s\n' "$port" "$tmp" "$pid"
 }
 
 make_source() {
@@ -232,7 +245,7 @@ for c in "${CLIENT_VERSIONS[@]}"; do
         make_source "$src"
         case "$t" in
           ssh)
-            read -r ssh tmpdir < <(setup_ssh "$server_bin")
+            IFS=$'\t' read -r ssh tmpdir sshpid < <(setup_ssh "$server_bin")
             if [[ "$name" == delete* ]]; then
               touch "$tmpdir/stale.txt"
             fi
@@ -252,10 +265,16 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             elif [[ "$name" == remote_remote ]]; then
               mkdir -p "$tmpdir/src" "$tmpdir/dst"
               cp -a "$src/." "$tmpdir/src"
-              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsync-path "$server_bin" --rsh "$ssh" "root@localhost:$tmpdir/src/" "root@localhost:$tmpdir/dst" >/dev/null
+              set +e
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsync-path "$server_bin" --rsh "$ssh" "root@localhost:$tmpdir/src/" "root@localhost:$tmpdir/dst" >"$tmp/stdout" 2>"$tmp/stderr"
+              status=$?
+              set -e
               result="$tmpdir/dst"
             else
-              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsync-path "$server_bin" -e "$ssh" "$src/" "root@localhost:$tmpdir" >/dev/null
+              set +e
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" --rsync-path "$server_bin" -e "$ssh" "$src/" "root@localhost:$tmpdir" >"$tmp/stdout" 2>"$tmp/stderr"
+              status=$?
+              set -e
             fi
             base="${c}_${s}_ssh"
             gold="$GOLDEN/$base"
@@ -265,20 +284,37 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             gold_tar="$gold/tree.tar"
             if [[ "${UPDATE:-0}" == "1" ]]; then
               mkdir -p "$gold"
+              sanitize_banners <"$tmp/stdout" >"$gold/stdout"
+              sanitize_banners <"$tmp/stderr" >"$gold/stderr"
+              echo "$status" >"$gold/exit"
               snapshot_tar "$result" "$gold_tar"
             else
+              sanitize_banners <"$tmp/stdout" >"$tmp/stdout.san"
+              sanitize_banners <"$tmp/stderr" >"$tmp/stderr.san"
+              diff -u "$gold/stdout" "$tmp/stdout.san"
+              diff -u "$gold/stderr" "$tmp/stderr.san"
+              if [[ "$status" != "$(cat "$gold/exit")" ]]; then
+                echo "Exit status mismatch" >&2
+                exit 1
+              fi
               compare_tree "$gold_tar" "$result"
             fi
+            kill "$sshpid" >/dev/null 2>&1 || true
+            rm -rf "$tmpdir"
             ;;
           rsync)
             result=""
             if [[ "$name" == remote_remote ]]; then
-              read -r port tmpdir < <(setup_daemon_rr "$server_bin")
+              IFS=$'\t' read -r port tmpdir daemonpid < <(setup_daemon_rr "$server_bin")
               cp -a "$src/." "$tmpdir/src"
-              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "rsync://localhost:$port/src/" "rsync://localhost:$port/dst" >/dev/null
+              set +e
+              "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "rsync://localhost:$port/src/" "rsync://localhost:$port/dst" >"$tmp/stdout" 2>"$tmp/stderr"
+              status=$?
+              set -e
               result="$tmpdir/dst"
+              cleanup_dir="$tmpdir"
             else
-              read -r port rootdir < <(setup_daemon "$server_bin")
+              IFS=$'\t' read -r port rootdir daemonpid < <(setup_daemon "$server_bin")
               if [[ "$name" == delete* ]]; then
                 touch "$rootdir/stale.txt"
               fi
@@ -288,14 +324,24 @@ for c in "${CLIENT_VERSIONS[@]}"; do
               elif [[ "$name" == resume* ]]; then
                 dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null 2>&1
                 timeout 1 "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
-                "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null
+                set +e
+                "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >"$tmp/stdout" 2>"$tmp/stderr"
+                status=$?
+                set -e
               elif [[ "$name" == vanished ]]; then
                 (sleep 0.1 && rm -f "$src/file.txt") &
-                "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
+                set +e
+                "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >"$tmp/stdout" 2>"$tmp/stderr"
+                status=$?
+                set -e
               else
-                "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null
+                set +e
+                "$client_bin" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >"$tmp/stdout" 2>"$tmp/stderr"
+                status=$?
+                set -e
               fi
               result="$rootdir"
+              cleanup_dir="$(dirname "$rootdir")"
             fi
             base="${c}_${s}_rsync"
             gold="$GOLDEN/$base"
@@ -305,10 +351,23 @@ for c in "${CLIENT_VERSIONS[@]}"; do
             gold_tar="$gold/tree.tar"
             if [[ "${UPDATE:-0}" == "1" ]]; then
               mkdir -p "$gold"
+              sanitize_banners <"$tmp/stdout" >"$gold/stdout"
+              sanitize_banners <"$tmp/stderr" >"$gold/stderr"
+              echo "$status" >"$gold/exit"
               snapshot_tar "$result" "$gold_tar"
             else
+              sanitize_banners <"$tmp/stdout" >"$tmp/stdout.san"
+              sanitize_banners <"$tmp/stderr" >"$tmp/stderr.san"
+              diff -u "$gold/stdout" "$tmp/stdout.san"
+              diff -u "$gold/stderr" "$tmp/stderr.san"
+              if [[ "$status" != "$(cat "$gold/exit")" ]]; then
+                echo "Exit status mismatch" >&2
+                exit 1
+              fi
               compare_tree "$gold_tar" "$result"
             fi
+            kill "$daemonpid" >/dev/null 2>&1 || true
+            rm -rf "$cleanup_dir"
             ;;
         esac
         rm -rf "$tmp"

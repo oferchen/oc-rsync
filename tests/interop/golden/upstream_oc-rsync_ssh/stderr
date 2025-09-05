@@ -1,0 +1,4 @@
+Warning: Permanently added '[localhost]:2222' (RSA) to the list of known hosts.
+root@localhost: Permission denied (publickey,keyboard-interactive).
+rsync: connection unexpectedly closed (0 bytes received so far) [sender]
+rsync error: unexplained error (code 255) at io.c(232) [sender=3.2.7]
