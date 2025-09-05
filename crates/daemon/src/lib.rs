@@ -25,6 +25,36 @@ use transport::{AddressFamily, RateLimitedTransport, TcpTransport, TimeoutTransp
 pub use meta::MetaOpts;
 pub const META_OPTS: MetaOpts = meta::META_OPTS;
 
+#[cfg(unix)]
+pub struct PrivilegeContext {
+    root: File,
+    cwd: File,
+    uid: u32,
+    gid: u32,
+    use_chroot: bool,
+}
+
+#[cfg(unix)]
+impl Drop for PrivilegeContext {
+    fn drop(&mut self) {
+        use nix::unistd::{chroot, fchdir, setegid, seteuid, Gid, Uid};
+        let _ = setegid(Gid::from_raw(self.gid));
+        let _ = seteuid(Uid::from_raw(self.uid));
+        if self.use_chroot {
+            let _ = fchdir(&self.root);
+            let _ = chroot(".");
+        }
+        let _ = fchdir(&self.cwd);
+    }
+}
+
+#[cfg(not(unix))]
+pub struct PrivilegeContext;
+
+#[cfg(not(unix))]
+impl Drop for PrivilegeContext {
+    fn drop(&mut self) {}
+}
 fn parse_list(val: &str) -> Vec<String> {
     val.split([' ', ','])
         .filter(|s| !s.is_empty())
@@ -794,7 +824,7 @@ pub fn serve_module<T: Transport>(
     log_format: Option<&str>,
     uid: u32,
     gid: u32,
-) -> io::Result<Option<File>> {
+) -> io::Result<(Option<File>, PrivilegeContext)> {
     let log = if let Some(path) = log_file {
         let fmt = log_format.unwrap_or("%h %m");
         let line = fmt.replace("%h", peer).replace("%m", &module.name);
@@ -804,11 +834,8 @@ pub fn serve_module<T: Transport>(
     } else {
         None
     };
-    #[cfg(unix)]
-    {
-        chroot_and_drop_privileges(&module.path, uid, gid, module.use_chroot)?;
-    }
-    Ok(log)
+    let ctx = chroot_and_drop_privileges(&module.path, uid, gid, module.use_chroot)?;
+    Ok((log, ctx))
 }
 
 #[cfg(unix)]
@@ -817,8 +844,10 @@ pub fn chroot_and_drop_privileges(
     uid: u32,
     gid: u32,
     use_chroot: bool,
-) -> io::Result<()> {
+) -> io::Result<PrivilegeContext> {
     use nix::unistd::{chdir, chroot, getegid, geteuid};
+    let root_fd = File::open("/")?;
+    let cwd_fd = File::open(".")?;
     let canon = fs::canonicalize(path).map_err(|e| {
         if e.kind() == io::ErrorKind::NotFound {
             io::Error::new(
@@ -866,7 +895,13 @@ pub fn chroot_and_drop_privileges(
             .map_err(|e| io::Error::other(format!("chdir to {} failed: {e}", canon.display())))?;
     }
     drop_privileges(uid, gid)?;
-    Ok(())
+    Ok(PrivilegeContext {
+        root: root_fd,
+        cwd: cwd_fd,
+        uid: euid,
+        gid: egid,
+        use_chroot,
+    })
 }
 
 #[cfg(not(unix))]
@@ -875,8 +910,8 @@ pub fn chroot_and_drop_privileges(
     _uid: u32,
     _gid: u32,
     _use_chroot: bool,
-) -> io::Result<()> {
-    Ok(())
+) -> io::Result<PrivilegeContext> {
+    Ok(PrivilegeContext)
 }
 
 #[cfg(unix)]
@@ -888,7 +923,7 @@ pub fn drop_privileges(uid: u32, gid: u32) -> io::Result<()> {
         target_os = "haiku",
     )))]
     use nix::unistd::setgroups;
-    use nix::unistd::{getegid, geteuid, setgid, setuid, Gid, Uid};
+    use nix::unistd::{getegid, geteuid, setegid, seteuid, Gid, Uid};
     let cur_uid = geteuid().as_raw();
     let cur_gid = getegid().as_raw();
     if (uid != cur_uid || gid != cur_gid) && cur_uid != 0 {
@@ -907,10 +942,10 @@ pub fn drop_privileges(uid: u32, gid: u32) -> io::Result<()> {
         {
             setgroups(&[Gid::from_raw(gid)]).map_err(io::Error::other)?;
         }
-        setgid(Gid::from_raw(gid)).map_err(io::Error::other)?;
+        setegid(Gid::from_raw(gid)).map_err(io::Error::other)?;
     }
     if uid != cur_uid {
-        setuid(Uid::from_raw(uid)).map_err(io::Error::other)?;
+        seteuid(Uid::from_raw(uid)).map_err(io::Error::other)?;
     }
     Ok(())
 }
@@ -1156,7 +1191,7 @@ pub fn handle_connection<T: Transport>(
         }
         let m_uid = module.uid.unwrap_or(uid);
         let m_gid = module.gid.unwrap_or(gid);
-        let mut log = serve_module(
+        let (mut log, _guard) = serve_module(
             transport,
             module,
             peer,

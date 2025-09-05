@@ -155,7 +155,7 @@ fn chroot_drops_privileges() {
             assert!(matches!(status, nix::sys::wait::WaitStatus::Exited(_, 0)));
         }
         Ok(ForkResult::Child) => {
-            chroot_and_drop_privileges(dir.path(), 1, 1, true).unwrap();
+            let _ctx = chroot_and_drop_privileges(dir.path(), 1, 1, true).unwrap();
             assert_eq!(std::env::current_dir().unwrap(), PathBuf::from("/"));
             assert_eq!(geteuid().as_raw(), 1);
             assert_eq!(getegid().as_raw(), 1);
@@ -184,7 +184,9 @@ fn chroot_requires_root() {
         }
         Ok(ForkResult::Child) => {
             drop_privileges(1, 1).unwrap();
-            let err = chroot_and_drop_privileges(dir.path(), 1, 1, true).unwrap_err();
+            let err = chroot_and_drop_privileges(dir.path(), 1, 1, true)
+                .err()
+                .unwrap();
             assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
             std::process::exit(0);
         }
@@ -197,7 +199,9 @@ fn chroot_requires_root() {
 #[serial]
 fn chroot_and_drop_privileges_rejects_missing_dir() {
     let missing = Path::new("/does/not/exist");
-    let err = chroot_and_drop_privileges(missing, 0, 0, true).unwrap_err();
+    let err = chroot_and_drop_privileges(missing, 0, 0, true)
+        .err()
+        .unwrap();
     assert_eq!(err.kind(), io::ErrorKind::NotFound);
 }
 
