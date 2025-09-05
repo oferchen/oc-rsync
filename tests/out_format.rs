@@ -1,5 +1,5 @@
 // tests/out_format.rs
-use assert_cmd::{Command as TestCommand, cargo::cargo_bin};
+use assert_cmd::Command as TestCommand;
 use std::{fs, process::Command as StdCommand};
 use tempfile::tempdir;
 
@@ -31,7 +31,7 @@ fn out_format_file_matches_rsync() {
     let ours = fs::read_to_string(&log).unwrap();
     let ours_msg = ours.lines().find(|l| l.trim() == "send:a").unwrap().trim();
 
-    let output = StdCommand::new(cargo_bin("oc-rsync"))
+    let theirs_msg = match StdCommand::new("rsync")
         .args([
             "-r",
             "--out-format=%o:%n",
@@ -39,14 +39,28 @@ fn out_format_file_matches_rsync() {
             dst_rsync.to_str().unwrap(),
         ])
         .output()
-        .unwrap();
-    assert!(output.status.success());
-    let binding = String::from_utf8_lossy(&output.stdout);
-    let theirs_msg = binding
-        .lines()
-        .find(|l| l.trim() == "send:a")
-        .unwrap()
-        .trim();
+    {
+        Ok(output) if output.status.success() => {
+            let binding = String::from_utf8_lossy(&output.stdout);
+            binding
+                .lines()
+                .find(|l| l.trim() == "send:a")
+                .unwrap()
+                .trim()
+                .to_string()
+        }
+        _ => {
+            let binding =
+                fs::read_to_string("tests/golden/out_format/out_format_file_matches_rsync.stdout")
+                    .unwrap();
+            binding
+                .lines()
+                .find(|l| l.trim() == "send:a")
+                .unwrap()
+                .trim()
+                .to_string()
+        }
+    };
 
     assert_eq!(ours_msg, theirs_msg);
 }
@@ -82,7 +96,7 @@ fn out_format_symlink_matches_rsync() {
     let ours = fs::read_to_string(&log).unwrap();
     let ours_msg = ours.lines().find(|l| l.contains("link")).unwrap().trim();
 
-    let output = StdCommand::new(cargo_bin("oc-rsync"))
+    let theirs_msg = match StdCommand::new("rsync")
         .args([
             "-r",
             "-l",
@@ -91,10 +105,29 @@ fn out_format_symlink_matches_rsync() {
             dst_rsync.to_str().unwrap(),
         ])
         .output()
-        .unwrap();
-    assert!(output.status.success());
-    let binding = String::from_utf8_lossy(&output.stdout);
-    let theirs_msg = binding.lines().find(|l| l.contains("link")).unwrap().trim();
+    {
+        Ok(output) if output.status.success() => {
+            let binding = String::from_utf8_lossy(&output.stdout);
+            binding
+                .lines()
+                .find(|l| l.contains("link"))
+                .unwrap()
+                .trim()
+                .to_string()
+        }
+        _ => {
+            let binding = fs::read_to_string(
+                "tests/golden/out_format/out_format_symlink_matches_rsync.stdout",
+            )
+            .unwrap();
+            binding
+                .lines()
+                .find(|l| l.contains("link"))
+                .unwrap()
+                .trim()
+                .to_string()
+        }
+    };
 
     assert_eq!(ours_msg, theirs_msg);
 }

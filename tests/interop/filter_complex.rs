@@ -1,6 +1,6 @@
 // tests/interop/filter_complex.rs
 
-use assert_cmd::{cargo::cargo_bin, Command};
+use assert_cmd::Command;
 use std::fs;
 use std::process::Command as StdCommand;
 use tempfile::tempdir;
@@ -35,15 +35,24 @@ fn complex_filter_cases_match_rsync() {
         "--filter=:- .rsync-filter",
     ];
 
-    let mut rsync_cmd = StdCommand::new(assert_cmd::cargo::cargo_bin("oc-rsync"));
-    rsync_cmd.args(["-r", "--quiet"]);
-    rsync_cmd.args(&rules);
-    rsync_cmd.arg(&src_arg);
-    rsync_cmd.arg(&rsync_dst);
-    let rsync_out = rsync_cmd.output().unwrap();
-    assert!(rsync_out.status.success());
-    let rsync_output = String::from_utf8_lossy(&rsync_out.stdout).to_string()
-        + &String::from_utf8_lossy(&rsync_out.stderr);
+    let mut rsync_ok = false;
+    let rsync_output = match StdCommand::new("rsync")
+        .args(["-r", "--quiet"])
+        .args(&rules)
+        .arg(&src_arg)
+        .arg(&rsync_dst)
+        .output()
+    {
+        Ok(out) if out.status.success() => {
+            rsync_ok = true;
+            String::from_utf8_lossy(&out.stdout).to_string()
+                + &String::from_utf8_lossy(&out.stderr)
+        }
+        _ => fs::read_to_string(
+            "tests/golden/filter_complex/complex_filter_cases_match_rsync.stdout",
+        )
+        .unwrap(),
+    };
 
     let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
     ours_cmd.args(["--recursive"]);
@@ -57,9 +66,14 @@ fn complex_filter_cases_match_rsync() {
     ours_output = ours_output.replace("recursive mode enabled\n", "");
     assert_eq!(rsync_output, ours_output);
 
+    let diff_target: &std::path::Path = if rsync_ok {
+        rsync_dst.as_path()
+    } else {
+        std::path::Path::new("tests/golden/filter_complex/expected")
+    };
     let diff = StdCommand::new("diff")
         .arg("-r")
-        .arg(&rsync_dst)
+        .arg(diff_target)
         .arg(&ours_dst)
         .output()
         .unwrap();

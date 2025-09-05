@@ -383,6 +383,7 @@ fn remove_basename_partial(dest: &Path) {
     }
 }
 
+#[allow(dead_code)]
 fn temp_file_path(parent: &Path, base: &OsStr) -> Result<PathBuf> {
     #[allow(deprecated)]
     let tmp = Builder::new()
