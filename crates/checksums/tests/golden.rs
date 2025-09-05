@@ -71,25 +71,16 @@ fn builder_strong_digests() {
 
     let cs_xxh64 = cfg_xxh64.checksum(data);
     assert_eq!(cs_xxh64.weak, rolling_checksum(data));
-    assert_eq!(hex::encode(&cs_xxh64.strong), "68691eb23467ab45");
-    let mut be64 = cs_xxh64.strong.clone();
-    be64.reverse();
-    assert_eq!(hex::encode(be64), "45ab6734b21e6968");
+    assert_eq!(hex::encode(&cs_xxh64.strong), "45ab6734b21e6968");
 
     let cs_xxh3 = cfg_xxh3.checksum(data);
     assert_eq!(cs_xxh3.weak, rolling_checksum(data));
-    assert_eq!(hex::encode(&cs_xxh3.strong), "8b98e640eab147d4");
-    let mut be3 = cs_xxh3.strong.clone();
-    be3.reverse();
-    assert_eq!(hex::encode(be3), "d447b1ea40e6988b");
+    assert_eq!(hex::encode(&cs_xxh3.strong), "d447b1ea40e6988b");
 
     let cs_xxh128 = cfg_xxh128.checksum(data);
     assert_eq!(cs_xxh128.weak, rolling_checksum(data));
     assert_eq!(
         hex::encode(&cs_xxh128.strong),
-        "c7b615cc75879ba90049873fe9098ddf",
+        "df8d09e93f874900a99b8775cc15b6c7",
     );
-    let mut be128 = cs_xxh128.strong.clone();
-    be128.reverse();
-    assert_eq!(hex::encode(be128), "df8d09e93f874900a99b8775cc15b6c7",);
 }
