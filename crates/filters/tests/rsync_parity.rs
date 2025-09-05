@@ -20,7 +20,7 @@ fn parity_with_stock_rsync() {
     let rules = parse(": /.rsync-filter\n- .rsync-filter\n", &mut v, 0).unwrap();
     let matcher = Matcher::new(rules).with_root(&root);
 
-    let rsync_included = vec!["keep.log".to_string(), "sub/keep.tmp".to_string()];
+    let rsync_included = ["keep.log".to_string(), "sub/keep.tmp".to_string()];
 
     let files = [
         "a.tmp",
