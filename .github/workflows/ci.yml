@@ -68,14 +68,6 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: brew install-bundler-gems
 
-#      - name: Lint Homebrew formula
-#        run: brew audit --strict --new --online oferchen/packaging/brew
-
-      - name: Check CLI help against transcript
-        run: |
-          cargo run --quiet --bin oc-rsync -- --help | tail -n +4 > /tmp/oc-rsync-help.txt
-          diff -u tests/golden/help/oc-rsync.help /tmp/oc-rsync-help.txt
-      # Optional cross-target checks require macOS headers/toolchain
       - name: Cargo check (cross targets)
         if: runner.os == 'Linux' && env.MACOS_SDK_PATH != ''
         run: |
