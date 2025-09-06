@@ -23,7 +23,7 @@ fn daemon_syslog_emits_message() {
     let path = dir.path().join("sock");
     let server = UnixDatagram::bind(&path).unwrap();
     set_env_var("OC_RSYNC_SYSLOG_PATH", &path);
-    init_logging(None, None, true, false, false);
+    init_logging(None, None, true, false, false).unwrap();
     warn!(target: "test", "daemon syslog");
     let mut buf = [0u8; 256];
     let (n, _) = server.recv_from(&mut buf).unwrap();

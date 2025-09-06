@@ -23,7 +23,7 @@ fn daemon_journald_emits_message() {
     let path = dir.path().join("sock");
     let server = UnixDatagram::bind(&path).unwrap();
     set_env_var("OC_RSYNC_JOURNALD_PATH", &path);
-    init_logging(None, None, false, true, false);
+    init_logging(None, None, false, true, false).unwrap();
     warn!(target: "test", "daemon journald");
     let mut buf = [0u8; 256];
     let (n, _) = server.recv_from(&mut buf).unwrap();

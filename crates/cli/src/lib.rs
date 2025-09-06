@@ -142,7 +142,7 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
         return run_daemon(opts.daemon, matches);
     }
     let log_file_fmt = opts.log_file_format.clone().map(|s| parse_escapes(&s));
-    init_logging(matches, log_file_fmt);
+    init_logging(matches, log_file_fmt)?;
     let probe_opts =
         ProbeOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
     if matches.contains_id("probe") {
