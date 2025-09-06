@@ -1500,12 +1500,43 @@ pub fn parse_with_options(
         } else if dir_only {
             base = base.trim_end_matches('/').to_string();
         }
-        let bases: Vec<String> =
-            if !anchored && !base.starts_with("**/") && base != "**" && !base.contains('/') {
-                vec![base.clone(), format!("**/{}", base)]
-            } else {
-                vec![base]
-            };
+        let base_for_ancestors = base.clone();
+        let bases: Vec<String> = if !anchored && !base.starts_with("**/") && base != "**" {
+            vec![base.clone(), format!("**/{}", base)]
+        } else {
+            vec![base.clone()]
+        };
+
+        if matches!(kind, RuleKind::Include) {
+            if base_for_ancestors.contains('/')
+                && !base_for_ancestors.contains('*')
+                && !base_for_ancestors.contains('?')
+                && !base_for_ancestors.contains('[')
+                && !base_for_ancestors.contains('{')
+            {
+                let parts: Vec<&str> = base_for_ancestors.split('/').collect();
+                for i in 1..parts.len() {
+                    let ancestor = parts[..i].join("/");
+                    let ancestor_bases: Vec<String> = if !anchored && ancestor != "**" {
+                        vec![ancestor.clone(), format!("**/{}", ancestor)]
+                    } else {
+                        vec![ancestor]
+                    };
+                    for pat in ancestor_bases {
+                        let matcher = compile_glob(&pat)?;
+                        let data = RuleData {
+                            matcher,
+                            invert: mods.contains('!'),
+                            flags: flags.clone(),
+                            source: source.clone(),
+                            dir_only: true,
+                        };
+                        rules.push(Rule::Include(data));
+                    }
+                }
+            }
+        }
+
         let mut pats: Vec<(String, bool)> = Vec::new();
         for b in bases {
             if dir_all {
