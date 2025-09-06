@@ -4491,9 +4491,51 @@ fn complex_glob_matches() {
     assert!(dst.join("dirA/keep1.txt").is_file());
     assert!(dst.join("dirB/sub/keep2.txt").is_file());
     assert!(dst.join("dirC/deep/deeper/keep3.txt").is_file());
+    assert!(dst.join("dirA").is_dir());
+    assert!(dst.join("dirB/sub").is_dir());
+    assert!(dst.join("dirC/deep/deeper").is_dir());
     assert!(!dst.join("dirA/skip.log").exists());
     assert!(!dst.join("dirB/sub/other.txt").exists());
     assert!(!dst.join("otherdir/keep4.txt").exists());
+    assert!(!dst.join("otherdir").exists());
+}
+
+#[test]
+fn double_star_glob_matches() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("a/inner")).unwrap();
+    fs::create_dir_all(src.join("b/deeper/more")).unwrap();
+    fs::write(src.join("a/keep1.txt"), "1").unwrap();
+    fs::write(src.join("a/inner/keep2.txt"), "2").unwrap();
+    fs::write(src.join("b/deeper/more/keep3.txt"), "3").unwrap();
+    fs::write(src.join("a/omit.log"), "x").unwrap();
+    fs::write(src.join("a/inner/omit.log"), "x").unwrap();
+    fs::write(src.join("b/deeper/more/omit.log"), "x").unwrap();
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "-r",
+            "--include",
+            "**/keep?.txt",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert!(dst.join("a/keep1.txt").is_file());
+    assert!(dst.join("a/inner/keep2.txt").is_file());
+    assert!(dst.join("b/deeper/more/keep3.txt").is_file());
+    assert!(dst.join("a").is_dir());
+    assert!(dst.join("a/inner").is_dir());
+    assert!(dst.join("b/deeper/more").is_dir());
+    assert!(!dst.join("a/omit.log").exists());
+    assert!(!dst.join("a/inner/omit.log").exists());
+    assert!(!dst.join("b/deeper/more/omit.log").exists());
 }
 
 #[test]
