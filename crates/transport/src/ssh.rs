@@ -478,7 +478,14 @@ impl SshStdioTransport {
                             msg.push('\n');
                         }
                         msg.push_str("connection unexpectedly closed");
-                        e = io::Error::new(io::ErrorKind::UnexpectedEof, msg);
+                        let kind = if msg.contains("Permission denied") {
+                            io::ErrorKind::PermissionDenied
+                        } else if msg.contains("Connection refused") {
+                            io::ErrorKind::ConnectionRefused
+                        } else {
+                            io::ErrorKind::UnexpectedEof
+                        };
+                        e = io::Error::new(kind, msg);
                     }
                     return Err(e);
                 }
