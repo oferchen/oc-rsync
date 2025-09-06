@@ -9,16 +9,18 @@ use std::io::ErrorKind;
 fn exit_code_from_engine_error(e: &EngineError) -> ExitCode {
     match e {
         EngineError::Io(err) => match err.kind() {
-            ErrorKind::TimedOut | ErrorKind::WouldBlock => ExitCode::ConnTimeout,
-            ErrorKind::ConnectionRefused
+            ErrorKind::TimedOut
+            | ErrorKind::WouldBlock
+            | ErrorKind::ConnectionRefused
             | ErrorKind::AddrNotAvailable
             | ErrorKind::NetworkUnreachable
             | ErrorKind::ConnectionAborted
             | ErrorKind::ConnectionReset
             | ErrorKind::NotConnected
             | ErrorKind::HostUnreachable
-            | ErrorKind::NetworkDown => ExitCode::SocketIo,
-            _ => ExitCode::Protocol,
+            | ErrorKind::NetworkDown => ExitCode::ConnTimeout,
+            ErrorKind::UnexpectedEof | ErrorKind::InvalidData => ExitCode::Protocol,
+            _ => ExitCode::SocketIo,
         },
         EngineError::MaxAlloc => ExitCode::Malloc,
         EngineError::Exit(code, _) => *code,
