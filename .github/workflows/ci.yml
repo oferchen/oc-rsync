@@ -88,14 +88,14 @@ jobs:
       - name: Run tests
         run: cargo nextest run --workspace --no-fail-fast
       - name: Test with coverage (95% lines & functions)
-        run: cargo llvm-cov nextest --workspace --fail-under-lines 95 --fail-under-functions 95 --html -- --no-fail-fast
+        run: cargo llvm-cov nextest --workspace --lcov --output-path coverage.lcov --fail-under-lines 95 --fail-under-functions 95 -- --no-fail-fast
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           name: coverage-report
-          path: target/llvm-cov/html
+          files: coverage.lcov
 
   interop:
     needs: test-linux
