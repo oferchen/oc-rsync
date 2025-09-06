@@ -1079,13 +1079,13 @@ impl Matcher {
         let mut rules = Vec::new();
         let mut merges = Vec::new();
 
-        fn is_excluded(rules: &[(usize, Rule)], path: &Path) -> bool {
+        fn is_excluded(rules: &[(usize, Rule)], path: &Path, is_dir: bool) -> bool {
             let mut state: Option<bool> = None;
             for (_, r) in rules {
                 match r {
                     Rule::Clear => state = None,
                     Rule::Include(d) | Rule::Protect(d) => {
-                        if d.dir_only && !path.is_dir() {
+                        if d.dir_only && !is_dir {
                             continue;
                         }
                         let matched = d.matcher.is_match(path);
@@ -1094,7 +1094,7 @@ impl Matcher {
                         }
                     }
                     Rule::Exclude(d) => {
-                        if d.dir_only && !path.is_dir() {
+                        if d.dir_only && !is_dir {
                             continue;
                         }
                         let matched = d.matcher.is_match(path);
@@ -1133,7 +1133,7 @@ impl Matcher {
                         dir.join(&pd.file)
                     };
                     let dir_for_rule = nested.parent().unwrap_or(&nested).to_path_buf();
-                    if is_excluded(&rules, &dir_for_rule) {
+                    if is_excluded(&rules, &dir_for_rule, true) {
                         continue;
                     }
                     merges.push((index, pd.clone()));
@@ -1213,28 +1213,16 @@ fn decode_line(raw: &str) -> Option<String> {
     let chars = raw.trim_end_matches('\r').chars();
     let mut escaped = false;
     let mut started = false;
-    let mut has_data = false;
-    let mut prev_space = false;
     let mut last_non_space = 0;
     for c in chars {
         if escaped {
             if c.is_whitespace() || c == '#' || c == '\\' {
                 out.push(c);
-                if !c.is_whitespace() {
-                    has_data = true;
-                    last_non_space = out.len();
-                    prev_space = false;
-                } else {
-                    last_non_space = out.len();
-                    prev_space = true;
-                }
             } else {
                 out.push('\\');
                 out.push(c);
-                has_data = true;
-                last_non_space = out.len();
-                prev_space = false;
             }
+            last_non_space = out.len();
             escaped = false;
             started = true;
             continue;
@@ -1253,24 +1241,14 @@ fn decode_line(raw: &str) -> Option<String> {
             started = true;
             out.push(c);
             if !c.is_whitespace() {
-                has_data = true;
                 last_non_space = out.len();
-                prev_space = false;
-            } else {
-                prev_space = true;
             }
         } else if c == '\\' {
             escaped = true;
-        } else if c == '#' && prev_space && has_data {
-            break;
         } else {
             out.push(c);
             if !c.is_whitespace() {
-                has_data = true;
                 last_non_space = out.len();
-                prev_space = false;
-            } else {
-                prev_space = true;
             }
         }
     }
@@ -1900,13 +1878,20 @@ pub const CVS_DEFAULTS: &[&str] = &[
 ];
 
 pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
-    let mut buf = String::new();
-    for pat in CVS_DEFAULTS {
-        buf.push_str("-p ");
-        buf.push_str(pat);
-        buf.push('\n');
+    let joined = CVS_DEFAULTS.join("\0");
+    let mut rules =
+        parse_rule_list_from_bytes(joined.as_bytes(), true, '-', &mut HashSet::new(), 0, None)?;
+    for rule in &mut rules {
+        match rule {
+            Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => {
+                d.flags.perishable = true;
+            }
+            Rule::DirMerge(pd) => {
+                pd.flags.perishable = true;
+            }
+            _ => {}
+        }
     }
-    let mut rules = parse(&buf, &mut HashSet::new(), 0)?;
 
     if let Ok(home) = env::var("HOME") {
         let path = Path::new(&home).join(".cvsignore");

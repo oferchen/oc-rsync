@@ -8,6 +8,7 @@ md4 = "0.10"
 md-5 = "0.10"
 sha1 = "0.10"
 xxhash-rust = { version = "0.8", features = ["xxh64"] }
+rustversion = "1"
 
 [features]
 default = []
@@ -18,6 +19,9 @@ nightly = []
 hex = "0.4"
 criterion = { version = "0.5", default-features = false }
 tempfile = "3"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(rustversion, values("nightly"))'] }
 
 [[bench]]
 name = "rolling"

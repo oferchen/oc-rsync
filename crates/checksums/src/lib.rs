@@ -186,7 +186,7 @@ pub fn rolling_checksum(data: &[u8]) -> u32 {
 pub fn rolling_checksum_seeded(data: &[u8], seed: u32) -> u32 {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        #[cfg(feature = "nightly")]
+        #[cfg(all(feature = "nightly", rustversion = "nightly"))]
         if std::arch::is_x86_feature_detected!("avx512f") {
             return unsafe { rolling_checksum_avx512(data, seed) };
         }
@@ -342,7 +342,11 @@ pub unsafe fn rolling_checksum_avx2(data: &[u8], seed: u32) -> u32 {
     (s1 & 0xffff) | (s2 << 16)
 }
 
-#[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(all(
+    feature = "nightly",
+    rustversion = "nightly",
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 #[target_feature(enable = "avx512f,avx512bw")]
 #[doc(hidden)]
 #[allow(unused_unsafe)]
@@ -494,7 +498,7 @@ mod tests {
         unsafe {
             assert_eq!(rolling_checksum_sse42(data, 0), scalar);
             assert_eq!(rolling_checksum_avx2(data, 0), scalar);
-            #[cfg(feature = "nightly")]
+            #[cfg(all(feature = "nightly", rustversion = "nightly"))]
             assert_eq!(rolling_checksum_avx512(data, 0), scalar);
         }
     }
@@ -511,7 +515,7 @@ mod tests {
             unsafe {
                 assert_eq!(rolling_checksum_sse42(slice, 1), scalar);
                 assert_eq!(rolling_checksum_avx2(slice, 1), scalar);
-                #[cfg(feature = "nightly")]
+                #[cfg(all(feature = "nightly", rustversion = "nightly"))]
                 assert_eq!(rolling_checksum_avx512(slice, 1), scalar);
             }
         }

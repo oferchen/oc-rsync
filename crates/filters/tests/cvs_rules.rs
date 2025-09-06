@@ -69,3 +69,23 @@ fn git_directory_is_ignored_by_default_rules() {
     let matcher = Matcher::new(rules).with_root(root);
     assert!(!matcher.is_included(".git").unwrap());
 }
+
+#[test]
+fn default_rules_ignore_hash_prefixed_files() {
+    let rules = p("-C\n");
+    let matcher = Matcher::new(rules);
+    assert!(!matcher.is_included("#temp").unwrap());
+}
+
+#[test]
+fn env_hash_patterns_are_respected() {
+    unsafe {
+        env::set_var("CVSIGNORE", "#envpat");
+    }
+    let rules = p("-C\n");
+    let matcher = Matcher::new(rules);
+    assert!(!matcher.is_included("#envpat").unwrap());
+    unsafe {
+        env::remove_var("CVSIGNORE");
+    }
+}
