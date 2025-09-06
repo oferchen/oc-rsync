@@ -1368,7 +1368,7 @@ impl Sender {
             if let Some(codec) = file_codec {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
-                        Codec::Zlib | Codec::Zlibx => {
+                        Codec::Zlib | Codec::ZlibX => {
                             let lvl = self.opts.compress_level.unwrap_or(6);
                             let mut out = Vec::new();
                             let mut cursor = d.as_slice();
@@ -1674,7 +1674,7 @@ impl Receiver {
             if let Some(codec) = file_codec {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
-                        Codec::Zlib | Codec::Zlibx => {
+                        Codec::Zlib | Codec::ZlibX => {
                             let mut out = Vec::new();
                             let mut cursor = d.as_slice();
                             ZlibX::default()
@@ -2265,7 +2265,7 @@ pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
     }
     let choices: Vec<Codec> = opts.compress_choice.clone().unwrap_or_else(|| {
         let mut v = vec![Codec::Zstd];
-        v.push(Codec::Zlibx);
+        v.push(Codec::ZlibX);
         v.push(Codec::Zlib);
         v
     });

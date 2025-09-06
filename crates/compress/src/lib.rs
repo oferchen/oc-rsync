@@ -6,7 +6,7 @@ use std::path::Path;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Codec {
     Zlib,
-    Zlibx,
+    ZlibX,
     Zstd,
 }
 
@@ -14,7 +14,7 @@ impl Codec {
     pub fn to_byte(self) -> u8 {
         match self {
             Codec::Zlib => 1,
-            Codec::Zlibx => 2,
+            Codec::ZlibX => 2,
             Codec::Zstd => 4,
         }
     }
@@ -22,7 +22,7 @@ impl Codec {
     pub fn from_byte(b: u8) -> io::Result<Self> {
         match b {
             1 => Ok(Codec::Zlib),
-            2 => Ok(Codec::Zlibx),
+            2 => Ok(Codec::ZlibX),
             4 => Ok(Codec::Zstd),
             other => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -37,7 +37,7 @@ pub fn available_codecs() -> Vec<Codec> {
         #[cfg(feature = "zstd")]
         Codec::Zstd,
         #[cfg(feature = "zlib")]
-        Codec::Zlibx,
+        Codec::ZlibX,
         #[cfg(feature = "zlib")]
         Codec::Zlib,
     ];
@@ -477,7 +477,7 @@ mod tests {
     fn available_codecs_returns_all_codecs() {
         assert_eq!(
             available_codecs(),
-            vec![Codec::Zstd, Codec::Zlibx, Codec::Zlib]
+            vec![Codec::Zstd, Codec::ZlibX, Codec::Zlib]
         );
     }
 
@@ -490,7 +490,7 @@ mod tests {
     #[cfg(all(feature = "zlib", not(feature = "zstd")))]
     #[test]
     fn available_codecs_returns_only_zlib() {
-        assert_eq!(available_codecs(), vec![Codec::Zlibx, Codec::Zlib]);
+        assert_eq!(available_codecs(), vec![Codec::ZlibX, Codec::Zlib]);
     }
 
     #[cfg(all(not(feature = "zlib"), not(feature = "zstd")))]

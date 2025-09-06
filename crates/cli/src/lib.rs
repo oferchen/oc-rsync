@@ -517,7 +517,7 @@ fn run_single(
             for name in s.split(',') {
                 let codec = match name {
                     "zlib" => Codec::Zlib,
-                    "zlibx" => Codec::Zlibx,
+                    "zlibx" => Codec::ZlibX,
                     "zstd" => Codec::Zstd,
                     other => {
                         return Err(EngineError::Other(format!("unknown codec {other}")));

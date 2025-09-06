@@ -38,7 +38,7 @@ fn zlibx_roundtrip() {
         &src,
         &dst,
         &Matcher::default(),
-        &[Codec::Zlibx],
+        &[Codec::ZlibX],
         &SyncOptions {
             compress: true,
             ..Default::default()
@@ -76,19 +76,19 @@ fn codec_selection_respects_options() {
         ..Default::default()
     };
     assert_eq!(
-        select_codec(&[Codec::Zlib, Codec::Zlibx, Codec::Zstd], &opts,),
+        select_codec(&[Codec::Zlib, Codec::ZlibX, Codec::Zstd], &opts,),
         Some(Codec::Zstd)
     );
-    assert_eq!(select_codec(&[Codec::Zlibx], &opts), Some(Codec::Zlibx));
+    assert_eq!(select_codec(&[Codec::ZlibX], &opts), Some(Codec::ZlibX));
 
     let opts = SyncOptions {
         compress: true,
-        compress_choice: Some(vec![Codec::Zlibx, Codec::Zlib]),
+        compress_choice: Some(vec![Codec::ZlibX, Codec::Zlib]),
         ..Default::default()
     };
     assert_eq!(
-        select_codec(&[Codec::Zlibx, Codec::Zstd], &opts),
-        Some(Codec::Zlibx)
+        select_codec(&[Codec::ZlibX, Codec::Zstd], &opts),
+        Some(Codec::ZlibX)
     );
 
     let opts = SyncOptions {
