@@ -62,7 +62,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | --- | --- | --- | --- |
 | zstd and zlib codecs | Implemented | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/lib.rs](../crates/compress/src/lib.rs) |
 | `--skip-compress` suffix handling | Implemented | [tests/skip_compress.rs](../tests/skip_compress.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| LZ4 codec | Removed pending parity ([#1183](https://github.com/oferchen/oc-rsync/pull/1183)); planned post-parity ([#873](https://github.com/oferchen/oc-rsync/pull/873)) | — | — |
+| LZ4 codec | Planned post-parity ([#873](https://github.com/oferchen/oc-rsync/pull/873)); `liblz4-dev` no longer required for interop builds | — | — |
 
 ## Filters
 | Feature | Status | Tests | Source |
