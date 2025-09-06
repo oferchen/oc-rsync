@@ -2,9 +2,9 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
-use meta::{normalize_mode, parse_chmod, Metadata, Options};
+use meta::{Metadata, Options, normalize_mode, parse_chmod};
 use nix::fcntl::AT_FDCWD;
-use nix::sys::stat::{fchmodat, FchmodatFlags, Mode};
+use nix::sys::stat::{FchmodatFlags, Mode, fchmodat};
 use tempfile::tempdir;
 
 #[test]

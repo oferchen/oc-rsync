@@ -5,7 +5,7 @@ use std::fs;
 use std::os::unix::fs::MetadataExt;
 
 use compress::available_codecs;
-use engine::{sync, SyncOptions};
+use engine::{SyncOptions, sync};
 use filters::Matcher;
 use tempfile::tempdir;
 

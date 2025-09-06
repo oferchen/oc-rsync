@@ -2,10 +2,10 @@
 use crate::parse_escapes;
 use std::collections::HashMap;
 use std::fmt;
-use time::{macros::format_description, OffsetDateTime};
+use time::{OffsetDateTime, macros::format_description};
 use tracing::field::{Field, Visit};
 use tracing::{Event, Subscriber};
-use tracing_subscriber::fmt::{format::Writer, FmtContext, FormatEvent, FormatFields};
+use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields, format::Writer};
 use tracing_subscriber::registry::LookupSpan;
 
 pub struct RsyncFormatter {

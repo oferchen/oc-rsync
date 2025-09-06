@@ -3,7 +3,7 @@ use clap::Command;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::env;
-use textwrap::{wrap, Options as WrapOptions};
+use textwrap::{Options as WrapOptions, wrap};
 
 use crate::branding;
 

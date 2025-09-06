@@ -1,5 +1,5 @@
 // crates/filters/tests/include_from.rs
-use filters::{parse_rule_list_from_bytes, Matcher};
+use filters::{Matcher, parse_rule_list_from_bytes};
 use proptest::prelude::*;
 use std::collections::HashSet;
 

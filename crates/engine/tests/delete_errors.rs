@@ -7,9 +7,9 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use compress::available_codecs;
-use engine::{sync, DeleteMode, SyncOptions};
+use engine::{DeleteMode, SyncOptions, sync};
 use filters::Matcher;
-use nix::unistd::{chown, Gid, Uid};
+use nix::unistd::{Gid, Uid, chown};
 use tempfile::tempdir;
 
 #[test]

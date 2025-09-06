@@ -5,9 +5,9 @@ use std::fs;
 use std::os::unix::fs::FileTypeExt;
 
 use compress::available_codecs;
-use engine::{sync, SyncOptions};
+use engine::{SyncOptions, sync};
 use filters::Matcher;
-use nix::sys::stat::{mknod, Mode, SFlag};
+use nix::sys::stat::{Mode, SFlag, mknod};
 use tempfile::tempdir;
 
 #[test]

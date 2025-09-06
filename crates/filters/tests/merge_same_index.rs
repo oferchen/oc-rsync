@@ -1,5 +1,5 @@
 // crates/filters/tests/merge_same_index.rs
-use filters::{parse, Matcher};
+use filters::{Matcher, parse};
 use std::collections::HashSet;
 use std::fs;
 use tempfile::tempdir;

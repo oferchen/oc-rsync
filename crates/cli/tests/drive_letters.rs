@@ -1,7 +1,7 @@
 // crates/cli/tests/drive_letters.rs
 #![cfg(windows)]
 
-use oc_rsync_cli::{parse_remote_spec, RemoteSpec};
+use oc_rsync_cli::{RemoteSpec, parse_remote_spec};
 use std::ffi::OsStr;
 
 #[test]

@@ -1,5 +1,5 @@
 // crates/daemon/tests/sequential_connections.rs
-use daemon::{handle_connection, Handler, Module};
+use daemon::{Handler, Module, handle_connection};
 #[cfg(unix)]
 use nix::unistd::geteuid;
 use protocol::SUPPORTED_PROTOCOLS;

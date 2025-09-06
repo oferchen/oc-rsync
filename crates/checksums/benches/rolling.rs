@@ -2,7 +2,7 @@
 #[cfg(feature = "nightly")]
 use checksums::rolling_checksum_avx512;
 use checksums::{rolling_checksum_avx2, rolling_checksum_scalar, rolling_checksum_sse42};
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 fn bench_rolling(c: &mut Criterion) {
     let data = vec![0u8; 1024 * 1024];

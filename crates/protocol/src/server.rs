@@ -2,14 +2,14 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
-use checksums::{strong_digest, StrongHash};
+use checksums::{StrongHash, strong_digest};
 use subtle::ConstantTimeEq;
 
 use crate::{
-    negotiate_caps, negotiate_version, Demux, ExitCode, Frame, Message, Mux, UnknownExit,
-    CAP_CODECS, CAP_ZSTD, V30,
+    CAP_CODECS, CAP_ZSTD, Demux, ExitCode, Frame, Message, Mux, UnknownExit, V30, negotiate_caps,
+    negotiate_version,
 };
-use compress::{decode_codecs, encode_codecs, negotiate_codec, Codec};
+use compress::{Codec, decode_codecs, encode_codecs, negotiate_codec};
 
 pub struct Server<R: Read, W: Write> {
     reader: R,

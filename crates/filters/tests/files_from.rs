@@ -1,5 +1,5 @@
 // crates/filters/tests/files_from.rs
-use filters::{parse, parse_with_options, Matcher};
+use filters::{Matcher, parse, parse_with_options};
 use std::collections::HashSet;
 use std::fs;
 use tempfile::tempdir;

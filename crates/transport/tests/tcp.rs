@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::thread;
 
-use transport::{tcp::TcpTransport, Transport};
+use transport::{Transport, tcp::TcpTransport};
 
 #[test]
 fn send_receive_over_tcp() {

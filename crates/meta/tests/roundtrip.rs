@@ -6,7 +6,7 @@ use std::os::unix::fs::PermissionsExt;
 use filetime::FileTime;
 use meta::{Metadata, Options};
 use nix::fcntl::AT_FDCWD;
-use nix::unistd::{chown, geteuid, Gid, Uid};
+use nix::unistd::{Gid, Uid, chown, geteuid};
 use std::time::SystemTime;
 use tempfile::tempdir;
 

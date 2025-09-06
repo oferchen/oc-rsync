@@ -1,7 +1,7 @@
 // crates/logging/tests/levels.rs
-use logging::{subscriber, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
-use tracing::subscriber::with_default;
+use logging::{DebugFlag, InfoFlag, LogFormat, SubscriberConfig, subscriber};
 use tracing::Level;
+use tracing::subscriber::with_default;
 
 #[test]
 fn info_not_emitted_by_default() {

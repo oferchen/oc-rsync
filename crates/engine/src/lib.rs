@@ -1,8 +1,8 @@
 // crates/engine/src/lib.rs
 #![allow(clippy::collapsible_if)]
 #[cfg(unix)]
-use nix::unistd::{chown, Gid, Uid};
-use rand::{distributions::Alphanumeric, Rng};
+use nix::unistd::{Gid, Uid, chown};
+use rand::{Rng, distributions::Alphanumeric};
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::ffi::{OsStr, OsString};
@@ -19,13 +19,13 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 use tempfile::Builder;
-use transport::{pipe, Transport};
+use transport::{Transport, pipe};
 
 pub use checksums::StrongHash;
 use checksums::{ChecksumConfig, ChecksumConfigBuilder};
-use compress::{should_compress, Codec, Compressor, Decompressor, Zlib, ZlibX, Zstd};
+use compress::{Codec, Compressor, Decompressor, Zlib, ZlibX, Zstd, should_compress};
 use filters::Matcher;
-use logging::{escape_path, progress_formatter, rate_formatter, InfoFlag};
+use logging::{InfoFlag, escape_path, progress_formatter, rate_formatter};
 use md4::{Digest, Md4};
 use md5::Md5;
 use protocol::ExitCode;
@@ -174,7 +174,7 @@ fn check_time_limit(start: Instant, opts: &SyncOptions) -> Result<()> {
 pub fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     {
-        use nix::fcntl::{fallocate, FallocateFlags};
+        use nix::fcntl::{FallocateFlags, fallocate};
         fallocate(file, FallocateFlags::empty(), 0, len as i64).map_err(std::io::Error::from)
     }
 
@@ -431,11 +431,7 @@ fn remove_file_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
         Ok(_) => Ok(()),
         Err(e) => {
             let e = io_context(path, e);
-            if opts.ignore_errors {
-                Ok(())
-            } else {
-                Err(e)
-            }
+            if opts.ignore_errors { Ok(()) } else { Err(e) }
         }
     }
 }
@@ -467,11 +463,7 @@ fn remove_dir_opts(path: &Path, opts: &SyncOptions) -> Result<()> {
         Ok(_) => Ok(()),
         Err(e) => {
             let e = io_context(path, e);
-            if opts.ignore_errors {
-                Ok(())
-            } else {
-                Err(e)
-            }
+            if opts.ignore_errors { Ok(()) } else { Err(e) }
         }
     }
 }
@@ -775,7 +767,7 @@ fn write_sparse(file: &mut File, data: &[u8]) -> Result<()> {
             let len = i - start;
             #[cfg(all(unix, any(target_os = "linux", target_os = "android")))]
             {
-                use nix::fcntl::{fallocate, FallocateFlags};
+                use nix::fcntl::{FallocateFlags, fallocate};
 
                 let offset = file.stream_position()?;
                 let _ = fallocate(
@@ -1241,11 +1233,7 @@ impl Sender {
         let existing_partial = if partial_path.exists() {
             Some(partial_path.clone())
         } else if let Some(bp) = basename_partial.as_ref() {
-            if bp.exists() {
-                Some(bp.clone())
-            } else {
-                None
-            }
+            if bp.exists() { Some(bp.clone()) } else { None }
         } else {
             None
         };
@@ -1484,11 +1472,7 @@ impl Receiver {
         let existing_partial = if partial.exists() {
             Some(partial.clone())
         } else if let Some(bp) = basename_partial.as_ref() {
-            if bp.exists() {
-                Some(bp.clone())
-            } else {
-                None
-            }
+            if bp.exists() { Some(bp.clone()) } else { None }
         } else {
             None
         };
@@ -2529,11 +2513,7 @@ fn delete_extraneous(
         }
     }
     if let Some(e) = first_err {
-        if opts.ignore_errors {
-            Ok(())
-        } else {
-            Err(e)
-        }
+        if opts.ignore_errors { Ok(()) } else { Err(e) }
     } else {
         Ok(())
     }
@@ -3186,7 +3166,7 @@ mod tests {
     use filters::Matcher;
     use std::fs;
     use std::io::Write;
-    use tempfile::{tempdir, NamedTempFile};
+    use tempfile::{NamedTempFile, tempdir};
 
     #[test]
     fn delta_roundtrip() {

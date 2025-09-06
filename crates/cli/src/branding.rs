@@ -2,8 +2,7 @@
 use std::env;
 
 pub const DEFAULT_BRAND_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const DEFAULT_BRAND_CREDITS: &str =
-    "Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Rsync team at Samba.";
+pub const DEFAULT_BRAND_CREDITS: &str = "Automatic Rust re-implementation by Ofer Chen (2025). Not affiliated with Rsync team at Samba.";
 pub const DEFAULT_BRAND_URL: &str = "https://github.com/oferchen/oc-rsync";
 
 pub const DEFAULT_TAGLINE: &str = "Pure-Rust reimplementation of rsync (protocol v32).";

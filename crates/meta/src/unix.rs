@@ -8,7 +8,7 @@ use crate::normalize_mode;
 use caps::{CapSet, Capability};
 use filetime::{self, FileTime};
 use nix::errno::Errno;
-use nix::fcntl::{AtFlags, AT_FDCWD};
+use nix::fcntl::{AT_FDCWD, AtFlags};
 use nix::sys::stat::{self, FchmodatFlags, Mode, SFlag};
 use nix::unistd::{self, Gid, Uid};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -70,7 +70,7 @@ pub fn xattrs_supported() -> bool {
 
 #[cfg(feature = "acl")]
 pub fn acls_supported() -> bool {
-    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+    use posix_acl::{ACL_READ, PosixACL, Qualifier};
     *ACLS_SUPPORTED.get_or_init(|| {
         let path = std::env::temp_dir().join("oc_rsync_acl_check");
         if fs::write(&path, b"1").is_err() {
@@ -924,7 +924,7 @@ fn store_fake_super_acl(
 
 #[cfg(target_os = "linux")]
 fn get_file_crtime(path: &Path) -> io::Result<Option<FileTime>> {
-    use libc::{statx, AT_FDCWD, AT_STATX_SYNC_AS_STAT, STATX_BTIME};
+    use libc::{AT_FDCWD, AT_STATX_SYNC_AS_STAT, STATX_BTIME, statx};
     use std::ffi::CString;
     use std::mem::MaybeUninit;
     use std::os::unix::ffi::OsStrExt;
@@ -981,7 +981,7 @@ fn get_file_crtime(_path: &Path) -> io::Result<Option<FileTime>> {
 
 #[cfg(target_os = "macos")]
 fn set_file_crtime(path: &Path, crtime: FileTime) -> io::Result<()> {
-    use libc::{attrlist, setattrlist, timespec, ATTR_BIT_MAP_COUNT, ATTR_CMN_CRTIME};
+    use libc::{ATTR_BIT_MAP_COUNT, ATTR_CMN_CRTIME, attrlist, setattrlist, timespec};
     use std::ffi::CString;
     use std::mem;
 
@@ -1069,10 +1069,11 @@ mod tests {
                 ..Default::default()
             },
         )?;
-        assert!(meta
-            .xattrs
-            .iter()
-            .all(|(name, _)| name != "user.disappearing"));
+        assert!(
+            meta.xattrs
+                .iter()
+                .all(|(name, _)| name != "user.disappearing")
+        );
         Ok(())
     }
 }

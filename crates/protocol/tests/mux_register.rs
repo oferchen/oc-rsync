@@ -1,7 +1,7 @@
 // crates/protocol/tests/mux_register.rs
 use std::time::Duration;
 
-use protocol::{mux::ChannelError, Message, Mux};
+use protocol::{Message, Mux, mux::ChannelError};
 
 #[test]
 fn duplicate_channel_id_errors() {

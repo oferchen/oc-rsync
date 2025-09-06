@@ -1,5 +1,5 @@
 // crates/cli/tests/arg_order_help.rs
-use oc_rsync_cli::{cli_command, ARG_ORDER};
+use oc_rsync_cli::{ARG_ORDER, cli_command};
 use std::collections::{HashMap, HashSet};
 
 const HELP_TEXT: &str = include_str!("../resources/rsync-help-80.txt");
