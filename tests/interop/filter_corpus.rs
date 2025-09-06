@@ -1,4 +1,5 @@
 // tests/interop/filter_corpus.rs
+#![cfg(feature = "interop")]
 
 use assert_cmd::Command;
 use shell_words::split;

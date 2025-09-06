@@ -1,5 +1,5 @@
 // tests/interop/outstanding_flags.rs
-#![cfg(unix)]
+#![cfg(all(unix, feature = "interop"))]
 
 use assert_cmd::Command;
 use std::process::Command as StdCommand;
@@ -66,7 +66,9 @@ fn outstanding_flags_help_matches_upstream() {
             .expect("failed to run rsync");
         assert!(upstream.status.success(), "rsync failed for flag {flag}");
 
-        assert_eq!(ours.stdout, upstream.stdout, "help output mismatch for flag {flag}");
+        assert_eq!(
+            ours.stdout, upstream.stdout,
+            "help output mismatch for flag {flag}"
+        );
     }
 }
-

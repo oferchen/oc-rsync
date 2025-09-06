@@ -1,8 +1,9 @@
 // tests/interop/failure_cases.rs
-#![cfg(unix)]
 
-use assert_cmd::cargo::cargo_bin;
+#![cfg(all(unix, feature = "interop"))]
+
 use assert_cmd::Command;
+use assert_cmd::cargo::cargo_bin;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::process::{Command as StdCommand, Stdio};
@@ -20,6 +21,34 @@ fn read_port(child: &mut std::process::Child) -> u16 {
         buf.push(byte[0]);
     }
     String::from_utf8(buf).unwrap().trim().parse().unwrap()
+}
+
+#[test]
+fn ssh_connection_refused_matches_rsync() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    fs::create_dir(&src_dir).unwrap();
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir(&dst_dir).unwrap();
+
+    let src_spec = format!("localhost:{}/", src_dir.display());
+    let dst_spec = dst_dir.to_str().unwrap();
+
+    let ours = Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["-e", "ssh -p 1", &src_spec, dst_spec])
+        .output()
+        .unwrap();
+    let upstream = StdCommand::new("rsync")
+        .args(["-e", "ssh -p 1", &src_spec, dst_spec])
+        .output()
+        .unwrap();
+    assert_eq!(ours.status.code(), upstream.status.code());
+    let our_err = String::from_utf8_lossy(&ours.stderr);
+    let up_err = String::from_utf8_lossy(&upstream.stderr);
+    assert!(our_err.contains("Connection refused"), "our_err: {our_err}");
+    assert!(up_err.contains("Connection refused"), "up_err: {up_err}");
+    assert_eq!(ours.status.code(), Some(255));
 }
 
 #[test]
@@ -68,10 +97,21 @@ fn daemon_auth_failure_matches_rsync() {
     )
     .unwrap();
     fs::write(dir.path().join("secrets"), "test:correct").unwrap();
-    fs::set_permissions(dir.path().join("secrets"), fs::Permissions::from_mode(0o600)).unwrap();
+    fs::set_permissions(
+        dir.path().join("secrets"),
+        fs::Permissions::from_mode(0o600),
+    )
+    .unwrap();
 
     let mut child = StdCommand::new(cargo_bin("oc-rsync"))
-        .args(["--daemon", "--no-detach", "--port", "0", "--config", conf.to_str().unwrap()])
+        .args([
+            "--daemon",
+            "--no-detach",
+            "--port",
+            "0",
+            "--config",
+            conf.to_str().unwrap(),
+        ])
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
@@ -88,11 +128,19 @@ fn daemon_auth_failure_matches_rsync() {
 
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([&src_spec, &dst_spec, &format!("--password-file={}", pw.display())])
+        .args([
+            &src_spec,
+            &dst_spec,
+            &format!("--password-file={}", pw.display()),
+        ])
         .output()
         .unwrap();
     let upstream = StdCommand::new("rsync")
-        .args([&src_spec, &dst_spec, &format!("--password-file={}", pw.display())])
+        .args([
+            &src_spec,
+            &dst_spec,
+            &format!("--password-file={}", pw.display()),
+        ])
         .output()
         .unwrap();
     assert_eq!(ours.status.code(), upstream.status.code());

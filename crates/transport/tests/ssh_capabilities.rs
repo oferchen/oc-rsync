@@ -1,7 +1,13 @@
 // crates/transport/tests/ssh_capabilities.rs
+
 use compress::Codec;
 use protocol::{CAP_CODECS, LATEST_VERSION};
 use transport::{ssh::SshStdioTransport, Transport};
+
+const SERVER_HANDSHAKE_SUCCESS: &[u8] = &[
+    0x00, 0x00, 0x00, 0x1f, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x02,
+    0x00, 0x01,
+];
 
 struct ChunkedTransport {
     chunks: Vec<Vec<u8>>,
@@ -45,13 +51,15 @@ impl Transport for ChunkedTransport {
 
 #[test]
 fn handshake_reads_capabilities_in_multiple_chunks() {
-    let version_bytes = LATEST_VERSION.to_be_bytes().to_vec();
-    let mut transport = ChunkedTransport::new(vec![version_bytes, vec![0], vec![0, 0, 0]]);
+    let data = SERVER_HANDSHAKE_SUCCESS;
+    let chunks = vec![data[..4].to_vec(), data[4..5].to_vec(), data[5..].to_vec()];
+    let mut transport = ChunkedTransport::new(chunks);
 
-    let (codecs, _caps) =
+    let (codecs, caps) =
         SshStdioTransport::handshake(&mut transport, &[], &[], None, LATEST_VERSION, CAP_CODECS)
             .expect("handshake");
 
+    assert_eq!(caps, CAP_CODECS);
     assert_eq!(codecs, vec![Codec::Zlib]);
     assert!(transport.finished());
 }

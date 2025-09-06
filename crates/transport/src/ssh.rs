@@ -482,6 +482,14 @@ impl SshStdioTransport {
                             io::ErrorKind::PermissionDenied
                         } else if msg.contains("Connection refused") {
                             io::ErrorKind::ConnectionRefused
+                        } else if msg.contains("Connection timed out") {
+                            io::ErrorKind::TimedOut
+                        } else if msg.contains("No route to host") {
+                            io::ErrorKind::HostUnreachable
+                        } else if msg.contains("Name or service not known")
+                            || msg.contains("Temporary failure in name resolution")
+                        {
+                            io::ErrorKind::NotFound
                         } else {
                             io::ErrorKind::UnexpectedEof
                         };

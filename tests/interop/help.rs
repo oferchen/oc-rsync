@@ -1,5 +1,5 @@
 // tests/interop/help.rs
-#![cfg(unix)]
+#![cfg(all(unix, feature = "interop"))]
 
 use assert_cmd::Command;
 use std::process::Command as StdCommand;
@@ -35,4 +35,3 @@ fn help_output_matches_upstream() {
 
     assert_eq!(normalize(&ours.stdout), normalize(&upstream.stdout));
 }
-
