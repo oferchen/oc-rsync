@@ -37,7 +37,7 @@ fn sync_very_large_file_streaming() {
     let dst = tmp.path().join("dst");
     fs::create_dir_all(&src).unwrap();
 
-    let mut data = vec![0u8; 1 * 1024 * 1024];
+    let mut data = vec![0u8; 1024 * 1024];
     for (i, b) in data.iter_mut().enumerate() {
         *b = (i % 256) as u8;
     }
