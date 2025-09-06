@@ -118,7 +118,7 @@ interop = []
 
 [package.metadata.deb]
 maintainer = "Ofer Chen <skewers.irises.3b@icloud.com>"
-license-file = ["LICENSE-APACHE"]
+license-file = ["LICENSE"]
 section = "net"
 priority = "optional"
 depends = "zlib1g, libzstd1"
