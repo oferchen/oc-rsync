@@ -3081,6 +3081,41 @@ fn include_from_nested_path_allows_parent_dirs() {
 }
 
 #[test]
+fn include_from_list_transfers_nested_paths() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("a/b")).unwrap();
+    fs::create_dir_all(src.join("a/d/sub")).unwrap();
+    fs::write(src.join("a/b/file.txt"), b"f").unwrap();
+    fs::write(src.join("a/b/other.txt"), b"o").unwrap();
+    fs::write(src.join("a/d/sub/nested.txt"), b"n").unwrap();
+    fs::write(src.join("unlisted.txt"), b"u").unwrap();
+    let inc = dir.path().join("inc.lst");
+    fs::write(&inc, "a/b/file.txt\na/d/\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--include-from",
+            inc.to_str().unwrap(),
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("a/b/file.txt").exists());
+    assert!(dst.join("a/d/sub/nested.txt").exists());
+    assert!(!dst.join("a/b/other.txt").exists());
+    assert!(!dst.join("unlisted.txt").exists());
+}
+
+#[test]
 fn per_dir_merge_can_override_later_include() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
