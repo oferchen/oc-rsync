@@ -1253,26 +1253,31 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
     }
 
-    fn parent_dirs(pat: &str) -> Vec<String> {
-        let anchored = pat.starts_with('/');
+    fn root_and_parents(pat: &str) -> (String, Vec<String>) {
+        let rooted = if pat.starts_with('/') {
+            pat.to_string()
+        } else {
+            format!("/{pat}")
+        };
         let mut base = String::new();
         let mut dirs = Vec::new();
-        for part in pat.trim_start_matches('/').split('/') {
+        let mut finished = true;
+        let trimmed = rooted.trim_end_matches('/');
+        for part in trimmed.trim_start_matches('/').split('/') {
             if part.contains(['*', '?', '[', ']']) {
+                finished = false;
                 break;
             }
             if !base.is_empty() {
                 base.push('/');
             }
             base.push_str(part);
-            let dir = if anchored {
-                format!("/{}", base)
-            } else {
-                base.clone()
-            };
-            dirs.push(dir.clone());
+            dirs.push(format!("/{}", base));
         }
-        dirs
+        if finished {
+            dirs.pop();
+        }
+        (rooted, dirs)
     }
 
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
@@ -1322,17 +1327,17 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("include")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, pat) in idxs.into_iter().zip(values) {
+            let (rooted, parents) = root_and_parents(pat);
             add_rules(
                 idx + 1,
-                parse_filters(&format!("+ {}", pat), opts.from0)
+                parse_filters(&format!("+ {}", rooted), opts.from0)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
             );
-            for dir in parent_dirs(pat) {
-                let dir_pat = format!("{}/***", dir.trim_end_matches('/'));
+            for dir in parents {
                 let rule = if opts.from0 {
-                    format!("+{}", dir_pat)
+                    format!("+{}/", dir)
                 } else {
-                    format!("+ {}", dir_pat)
+                    format!("+ {}/", dir)
                 };
                 add_rules(
                     idx + 1,
@@ -1361,35 +1366,57 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         for (idx, file) in idxs.into_iter().zip(values) {
             for pat in load_patterns(file, opts.from0)? {
                 let trimmed = pat.trim();
-                let (line, parents) = if trimmed.starts_with(['+', '-', ':']) {
+                if trimmed.is_empty() {
+                    continue;
+                }
+                if trimmed.starts_with(['+', '-', ':']) {
                     let sign = trimmed.chars().next().unwrap();
                     let rest = trimmed[1..].trim_start();
-                    let mut parents = Vec::new();
                     if sign == '+' {
-                        parents = parent_dirs(rest);
-                    }
-                    (trimmed.to_string(), parents)
-                } else {
-                    let parents = parent_dirs(trimmed);
-                    (format!("+ {}", trimmed), parents)
-                };
-                add_rules(
-                    idx + 1,
-                    parse_filters(&line, opts.from0)
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                );
-                for dir in parents {
-                    let dir_pat = format!("{}/***", dir.trim_end_matches('/'));
-                    let rule = if opts.from0 {
-                        format!("+{}", dir_pat)
+                        let (rooted, parents) = root_and_parents(rest);
+                        add_rules(
+                            idx + 1,
+                            parse_filters(&format!("+ {}", rooted), opts.from0)
+                                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                        );
+                        for dir in parents {
+                            let rule = if opts.from0 {
+                                format!("+{}/", dir)
+                            } else {
+                                format!("+ {}/", dir)
+                            };
+                            add_rules(
+                                idx + 1,
+                                parse_filters(&rule, opts.from0)
+                                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                            );
+                        }
                     } else {
-                        format!("+ {}", dir_pat)
-                    };
+                        add_rules(
+                            idx + 1,
+                            parse_filters(trimmed, opts.from0)
+                                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                        );
+                    }
+                } else {
+                    let (rooted, parents) = root_and_parents(trimmed);
                     add_rules(
                         idx + 1,
-                        parse_filters(&rule, opts.from0)
+                        parse_filters(&format!("+ {}", rooted), opts.from0)
                             .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                     );
+                    for dir in parents {
+                        let rule = if opts.from0 {
+                            format!("+{}/", dir)
+                        } else {
+                            format!("+ {}/", dir)
+                        };
+                        add_rules(
+                            idx + 1,
+                            parse_filters(&rule, opts.from0)
+                                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                        );
+                    }
                 }
             }
         }
@@ -1555,8 +1582,8 @@ fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
 mod tests {
     use super::*;
     use crate::utils::{RemoteSpec, parse_bool, parse_remote_spec};
+    use ::daemon::authenticate;
     use clap::Parser;
-    use daemon::authenticate;
     use engine::SyncOptions;
     use std::ffi::OsStr;
     use std::path::PathBuf;

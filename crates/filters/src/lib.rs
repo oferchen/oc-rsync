@@ -1493,7 +1493,7 @@ pub fn parse_with_options(
         } else if dir_only {
             base = base.trim_end_matches('/').to_string();
         }
-        let bases: Vec<String> = if !anchored && !base.contains('/') {
+        let bases: Vec<String> = if !anchored && !base.starts_with("**/") {
             vec![base.clone(), format!("**/{}", base)]
         } else {
             vec![base]
@@ -1585,7 +1585,7 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
         } else if pat.ends_with('/') {
             base = base.trim_end_matches('/').to_string();
         }
-        let bases: Vec<String> = if !base.contains('/') {
+        let bases: Vec<String> = if !base.starts_with("**/") {
             vec![base.clone(), format!("**/{}", base)]
         } else {
             vec![base]
