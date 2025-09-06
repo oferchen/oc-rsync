@@ -470,7 +470,6 @@ fn daemon_xattrs_match_rsync_server() {
 #[cfg(unix)]
 #[test]
 #[serial]
-#[cfg_attr(not(target_os = "linux"), ignore = "requires Linux ACLs")]
 fn daemon_preserves_acls() {
     require_xattrs!();
     require_acls!();
@@ -516,7 +515,6 @@ fn daemon_preserves_acls() {
 #[cfg(unix)]
 #[test]
 #[serial]
-#[cfg_attr(not(target_os = "linux"), ignore = "requires Linux ACLs")]
 fn daemon_preserves_acls_rr_client() {
     require_acls!();
     let tmp = tempdir().unwrap();
@@ -561,7 +559,6 @@ fn daemon_preserves_acls_rr_client() {
 #[cfg(unix)]
 #[test]
 #[serial]
-#[cfg_attr(not(target_os = "linux"), ignore = "requires Linux ACLs")]
 fn daemon_removes_acls() {
     require_acls!();
     let tmp = tempdir().unwrap();
@@ -787,7 +784,6 @@ fn daemon_acls_match_rsync_server() {
 #[cfg(unix)]
 #[test]
 #[serial]
-#[cfg_attr(not(target_os = "linux"), ignore = "requires Linux ACLs")]
 fn daemon_acls_match_rsync_client() {
     require_xattrs!();
     require_acls!();
