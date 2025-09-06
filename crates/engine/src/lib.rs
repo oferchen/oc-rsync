@@ -2216,12 +2216,16 @@ pub struct Stats {
 }
 
 fn count_entries(src_root: &Path, matcher: &Matcher, opts: &SyncOptions) -> (usize, usize, u64) {
-    let walker = walk(src_root, 1024, opts.walk_links(), opts.one_file_system);
+    let mut walker = walk(src_root, 1024, opts.walk_links(), opts.one_file_system);
     let mut state = String::new();
     let mut files = 0usize;
     let mut dirs = 0usize;
     let mut size = 0u64;
-    for batch in walker.flatten() {
+    while let Some(batch) = walker.next() {
+        let batch = match batch {
+            Ok(b) => b,
+            Err(_) => continue,
+        };
         for entry in batch {
             let path = entry.apply(&mut state);
             if let Ok(rel) = path.strip_prefix(src_root) {
@@ -2234,6 +2238,8 @@ fn count_entries(src_root: &Path, matcher: &Matcher, opts: &SyncOptions) -> (usi
                     } else if entry.file_type.is_dir() {
                         dirs += 1;
                     }
+                } else if entry.file_type.is_dir() {
+                    walker.skip_current_dir();
                 }
             }
         }
