@@ -112,7 +112,7 @@ cli = []
 nightly = ["checksums/nightly", "compress/nightly"]
 
 [package.metadata.deb]
-maintainer = "Project Maintainers <maintainers@oc-rsync.project>"
+maintainer = "Ofer Chen <skewers.irises.3b@icloud.com>"
 license-file = "LICENSE"
 section = "net"
 priority = "optional"
