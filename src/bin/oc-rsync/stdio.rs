@@ -122,8 +122,6 @@ pub fn set_std_buffering(mode: OutBuf) -> Result<(), StdBufferError> {
         OutBuf::B => libc::_IOFBF,
     };
     let out = stdout_stream().map_err(StdBufferError::Stdout)?.as_ptr();
-    // Capture err stream after successfully setting stdout to allow restore on failure
-    // Errors from stdout will also be reported.
     let err = stderr_stream().map_err(StdBufferError::Stderr)?.as_ptr();
     set_std_buffering_raw(mode, out, err)
 }
