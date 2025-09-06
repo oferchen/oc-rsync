@@ -1477,69 +1477,64 @@ pub fn parse_with_options(
                             format!("/{}", pat)
                         };
                         let trimmed = anchored.trim_end_matches('/');
-                        let mut cur = Path::new(trimmed);
-                        let mut ancestors = Vec::new();
-                        while let Some(parent) = cur.parent() {
-                            if parent.as_os_str().is_empty() || parent == Path::new("/") {
-                                break;
+                        let list_parent = path.parent().unwrap_or_else(|| Path::new("."));
+                        let fs_path = if Path::new(&pat).is_absolute() {
+                            PathBuf::from(pat.trim_end_matches('/'))
+                        } else {
+                            list_parent.join(pat.trim_end_matches('/'))
+                        };
+                        let is_dir = pat.ends_with('/') || fs_path.is_dir();
+                        let parts: Vec<&str> =
+                            trimmed.split('/').filter(|s| !s.is_empty()).collect();
+                        let mut prefix = String::new();
+                        let mut ancestors: Vec<String> = Vec::new();
+                        for part in parts.iter() {
+                            prefix.push('/');
+                            prefix.push_str(part);
+                            ancestors.push(prefix.clone());
+                        }
+                        for anc in ancestors.iter().take(ancestors.len().saturating_sub(1)) {
+                            let line = if from0 {
+                                format!("+{anc}/\n")
+                            } else {
+                                format!("+ {anc}/\n")
+                            };
+                            rules.extend(parse_with_options(
+                                &line,
+                                from0,
+                                visited,
+                                depth + 1,
+                                Some(path.clone()),
+                            )?);
+                        }
+                        if let Some(last) = ancestors.last() {
+                            let line = if from0 {
+                                format!("+{last}\n")
+                            } else {
+                                format!("+ {last}\n")
+                            };
+                            rules.extend(parse_with_options(
+                                &line,
+                                from0,
+                                visited,
+                                depth + 1,
+                                Some(path.clone()),
+                            )?);
+                            if is_dir {
+                                let line = if from0 {
+                                    format!("+{}/***\n", last)
+                                } else {
+                                    format!("+ {}/***\n", last)
+                                };
+                                rules.extend(parse_with_options(
+                                    &line,
+                                    from0,
+                                    visited,
+                                    depth + 1,
+                                    Some(path.clone()),
+                                )?);
                             }
-                            ancestors.push(parent.to_path_buf());
-                            cur = parent;
                         }
-                        ancestors.reverse();
-                        for anc in ancestors {
-                            let anc_str = anc.to_string_lossy().to_string();
-                            let dir_pat = format!("{}/***", anc_str);
-                            let line1 = if from0 {
-                                format!("+{anc_str}\n")
-                            } else {
-                                format!("+ {anc_str}\n")
-                            };
-                            rules.extend(parse_with_options(
-                                &line1,
-                                from0,
-                                visited,
-                                depth + 1,
-                                Some(path.clone()),
-                            )?);
-                            let line2 = if from0 {
-                                format!("+{dir_pat}\n")
-                            } else {
-                                format!("+ {dir_pat}\n")
-                            };
-                            rules.extend(parse_with_options(
-                                &line2,
-                                from0,
-                                visited,
-                                depth + 1,
-                                Some(path.clone()),
-                            )?);
-                        }
-                        let dir_pat = format!("{}/***", trimmed);
-                        let line1 = if from0 {
-                            format!("+{anchored}\n")
-                        } else {
-                            format!("+ {anchored}\n")
-                        };
-                        rules.extend(parse_with_options(
-                            &line1,
-                            from0,
-                            visited,
-                            depth + 1,
-                            Some(path.clone()),
-                        )?);
-                        let line2 = if from0 {
-                            format!("+{dir_pat}\n")
-                        } else {
-                            format!("+ {dir_pat}\n")
-                        };
-                        rules.extend(parse_with_options(
-                            &line2,
-                            from0,
-                            visited,
-                            depth + 1,
-                            Some(path.clone()),
-                        )?);
                     }
                     rules.extend(parse_with_options(
                         "- *\n",

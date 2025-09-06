@@ -9,6 +9,10 @@ additional rule actions:
 - `hide PATTERN` – alias for `exclude`; hides matches from the transfer.
 - `show PATTERN` – alias for `include`; reveals matches hidden by earlier rules.
 
+Directory paths listed via `--files-from` are detected even without a trailing
+slash, ensuring their contents are visited and any nested `.rsync-filter` rules
+are merged during traversal.
+
 Per-directory merge files are evaluated in the same order as upstream rsync.
 Rules from deeper directories take precedence over ancestor directories and
 their relative order is preserved with global rules.

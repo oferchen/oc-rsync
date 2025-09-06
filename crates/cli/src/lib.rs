@@ -1483,16 +1483,25 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     parse_filters(&rule, opts.from0)
                         .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
-                let rule = if opts.from0 {
-                    format!("+{}/***", last)
+                let src_base = PathBuf::from(&opts.paths[0]);
+                let fs_path = if Path::new(&pat).is_absolute() {
+                    PathBuf::from(pat.trim_end_matches('/'))
                 } else {
-                    format!("+ {}/***", last)
+                    src_base.join(pat.trim_end_matches('/'))
                 };
-                add_rules(
-                    idx + 1,
-                    parse_filters(&rule, opts.from0)
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                );
+                let is_dir = pat.ends_with('/') || fs_path.is_dir();
+                if is_dir {
+                    let rule = if opts.from0 {
+                        format!("+{}/***", last)
+                    } else {
+                        format!("+ {}/***", last)
+                    };
+                    add_rules(
+                        idx + 1,
+                        parse_filters(&rule, opts.from0)
+                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    );
+                }
             }
         }
     }

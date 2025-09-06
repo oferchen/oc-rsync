@@ -87,3 +87,20 @@ fn files_from_mixed_file_dir_entries() {
     assert!(m.is_included("qux/inner").unwrap());
     assert!(!m.is_included("other").unwrap());
 }
+
+#[test]
+fn files_from_directory_merges_rsync_filter() {
+    let tmp = tempdir().unwrap();
+    fs::create_dir_all(tmp.path().join("dir")).unwrap();
+    fs::write(tmp.path().join("dir/.rsync-filter"), "- hidden\n").unwrap();
+    fs::write(tmp.path().join("dir/hidden"), "h").unwrap();
+    fs::write(tmp.path().join("dir/visible"), "v").unwrap();
+    let list = tmp.path().join("list");
+    fs::write(&list, "dir\n").unwrap();
+    let filter = format!("files-from {}\n", list.display());
+    let mut v = HashSet::new();
+    let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
+    let m = Matcher::new(rules).with_root(tmp.path());
+    assert!(m.is_included("dir/visible").unwrap());
+    assert!(!m.is_included("dir/hidden").unwrap());
+}
