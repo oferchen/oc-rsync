@@ -109,6 +109,7 @@ impl FilterStats {
 fn compile_glob(pat: &str) -> Result<GlobMatcher, ParseError> {
     Ok(GlobBuilder::new(pat)
         .literal_separator(true)
+        .backslash_escape(true)
         .build()?
         .compile_matcher())
 }
