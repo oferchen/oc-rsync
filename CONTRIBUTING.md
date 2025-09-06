@@ -15,10 +15,13 @@ The Makefile offers shortcuts for common CI checks:
 
 - `make verify-comments` – canonical check that runs `scripts/check-comments.sh` to enforce comment headers.
 - `make lint` – run `cargo fmt --all --check` for formatting.
-- `make test` – run `cargo nextest run --workspace --no-fail-fast --all-features`.
-- `make coverage` – execute `cargo llvm-cov nextest --workspace --all-features --doctests \
+- `make test` – run `cargo nextest run --workspace --no-fail-fast` followed by
+  `cargo nextest run --workspace --no-fail-fast --features "cli nightly"`.
+- `make coverage` – execute `cargo llvm-cov nextest --workspace --features "cli nightly" --doctests \
   --fail-under-lines 95 --fail-under-functions 95` to gather test coverage.
 - `make interop` – run the interoperability matrix with `tests/interop/run_matrix.sh`.
+  These tests are behind the `interop` feature and require upstream `rsync`
+  binaries.
 
 ## Continuous Integration
 
@@ -43,7 +46,12 @@ headers:
 
 ## Testing Requirements
 - Install `cargo-nextest` with `cargo install cargo-nextest --locked` if it's not already installed, or run `./scripts/install-nextest.sh` to verify or install it.
-- Ensure `cargo nextest run --workspace --no-fail-fast --all-features` passes locally.
+- Ensure `cargo nextest run --workspace --no-fail-fast` and
+  `cargo nextest run --workspace --no-fail-fast --features "cli nightly"`
+  pass locally. Interoperability tests in `tests/interop/` are gated behind the
+  `interop` feature and require an upstream `rsync` binary. Run them with
+  `cargo nextest run --workspace --no-fail-fast --features "interop" --run-ignored=only-tests`
+  or invoke `make interop`.
 - Add or update tests for any new code.
 - Prefer small, focused commits that each pass the test suite.
 
@@ -57,7 +65,8 @@ LC_ALL=C LANG=C COLUMNS=80 TZ=UTC make test
 ```
 
 The `make test` target exports these variables automatically and runs
-`cargo nextest run --workspace --no-fail-fast --all-features`.
+`cargo nextest run --workspace --no-fail-fast` followed by
+`cargo nextest run --workspace --no-fail-fast --features "cli nightly"`.
 
 ## Fetching upstream rsync
 Some interop tests require the official rsync sources. Use the helper

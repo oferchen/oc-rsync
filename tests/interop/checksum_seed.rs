@@ -1,4 +1,5 @@
 // tests/interop/checksum_seed.rs
+#![cfg(feature = "interop")]
 use assert_cmd::Command;
 use std::collections::BTreeMap;
 use std::fs;

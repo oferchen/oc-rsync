@@ -1,4 +1,5 @@
 // tests/interop/filter_complex.rs
+#![cfg(feature = "interop")]
 
 use assert_cmd::Command;
 use std::fs;
@@ -46,8 +47,7 @@ fn complex_filter_cases_match_rsync() {
     {
         Ok(out) if out.status.success() => {
             rsync_ok = true;
-            String::from_utf8_lossy(&out.stdout).to_string()
-                + &String::from_utf8_lossy(&out.stderr)
+            String::from_utf8_lossy(&out.stdout).to_string() + &String::from_utf8_lossy(&out.stderr)
         }
         _ => fs::read_to_string(
             "tests/golden/filter_complex/complex_filter_cases_match_rsync.stdout",

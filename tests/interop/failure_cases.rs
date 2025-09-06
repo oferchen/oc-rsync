@@ -1,9 +1,8 @@
 // tests/interop/failure_cases.rs
+#![cfg(all(unix, feature = "interop"))]
 
-#![cfg(unix)]
-
-use assert_cmd::cargo::cargo_bin;
 use assert_cmd::Command;
+use assert_cmd::cargo::cargo_bin;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::process::{Command as StdCommand, Stdio};
@@ -97,10 +96,21 @@ fn daemon_auth_failure_matches_rsync() {
     )
     .unwrap();
     fs::write(dir.path().join("secrets"), "test:correct").unwrap();
-    fs::set_permissions(dir.path().join("secrets"), fs::Permissions::from_mode(0o600)).unwrap();
+    fs::set_permissions(
+        dir.path().join("secrets"),
+        fs::Permissions::from_mode(0o600),
+    )
+    .unwrap();
 
     let mut child = StdCommand::new(cargo_bin("oc-rsync"))
-        .args(["--daemon", "--no-detach", "--port", "0", "--config", conf.to_str().unwrap()])
+        .args([
+            "--daemon",
+            "--no-detach",
+            "--port",
+            "0",
+            "--config",
+            conf.to_str().unwrap(),
+        ])
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
@@ -117,11 +127,19 @@ fn daemon_auth_failure_matches_rsync() {
 
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
-        .args([&src_spec, &dst_spec, &format!("--password-file={}", pw.display())])
+        .args([
+            &src_spec,
+            &dst_spec,
+            &format!("--password-file={}", pw.display()),
+        ])
         .output()
         .unwrap();
     let upstream = StdCommand::new("rsync")
-        .args([&src_spec, &dst_spec, &format!("--password-file={}", pw.display())])
+        .args([
+            &src_spec,
+            &dst_spec,
+            &format!("--password-file={}", pw.display()),
+        ])
         .output()
         .unwrap();
     assert_eq!(ours.status.code(), upstream.status.code());

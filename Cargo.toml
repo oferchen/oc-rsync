@@ -113,6 +113,7 @@ zstd = ["compress/zstd"]
 cli = []
 # Enables AVX-512 implementations requiring a nightly toolchain
 nightly = ["checksums/nightly", "compress/nightly"]
+interop = []
 
 [package.metadata.deb]
 maintainer = "Ofer Chen <skewers.irises.3b@icloud.com>"

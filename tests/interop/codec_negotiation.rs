@@ -1,6 +1,7 @@
 // tests/interop/codec_negotiation.rs
+#![cfg(feature = "interop")]
 
-use compress::{negotiate_codec, Codec};
+use compress::{Codec, negotiate_codec};
 
 #[test]
 fn negotiate_zlib_only() {
@@ -15,4 +16,3 @@ fn negotiate_zstd_only() {
     let remote = [Codec::Zstd];
     assert_eq!(negotiate_codec(&local, &remote), Some(Codec::Zstd));
 }
-

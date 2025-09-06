@@ -14,6 +14,8 @@ SCENARIOS=(
   "vanished"
 )
 
+RSYNC_VERSIONS=(3.2.7 3.3.0 3.4.1)
+
 if [[ "${LIST_SCENARIOS:-0}" == "1" ]]; then
   for entry in "${SCENARIOS[@]}"; do
     IFS=' ' read -r name _ <<< "$entry"
@@ -27,8 +29,16 @@ if [[ ! -x "$OC_RSYNC" ]]; then
   cargo build --quiet --bin oc-rsync --features="acl xattr"
 fi
 
-UPSTREAM="${UPSTREAM_RSYNC:-$(bash "$ROOT/tests/interop/build_upstream.sh")}" 
-COMMON_FLAGS=(--archive --acls --xattrs)
+download_rsync() {
+  local ver="$1"
+  local out="$ROOT/target/upstream/rsync-$ver"
+  if [[ ! -x "$out" ]]; then
+    mkdir -p "$(dirname "$out")"
+    curl -L "https://download.samba.org/pub/rsync/binaries/rsync-${ver}-1.x86_64-static" -o "$out"
+    chmod +x "$out"
+  fi
+  printf '%s' "$out"
+}
 
 create_tree() {
   local dir="$1"
@@ -70,31 +80,38 @@ verify_tree() {
   fi
 }
 
-for entry in "${SCENARIOS[@]}"; do
-  IFS=' ' read -r name extra <<< "$entry"
-  extra=($extra)
-  src="$(mktemp -d)"
-  create_tree "$src"
-  IFS=$'\t' read -r port rootdir pid < <(setup_daemon "$UPSTREAM")
-  case "$name" in
-    delete) touch "$rootdir/stale.txt" ;;
-    resume) dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null ;;
-    partial) dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null ;;
-    vanished) (sleep 0.1 && rm -f "$src/file.txt") & ;;
-  esac
-  if [[ "$name" == resume ]]; then
-    timeout 1 "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
-  fi
-  set +e
-  "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" > /tmp/stdout 2> /tmp/stderr
-  status=$?
-  set -e
-  if [[ "$name" == vanished ]]; then
-    [[ "$status" -ne 0 ]] || { echo "expected failure" >&2; exit 1; }
-  else
-    verify_tree "$src" "$rootdir"
-  fi
-  kill "$pid" >/dev/null 2>&1 || true
-  rm -rf "$src" "$rootdir"
-  echo "scenario $name ok"
+for ver in "${RSYNC_VERSIONS[@]}"; do
+  echo "Testing against rsync $ver"
+  UPSTREAM="$(download_rsync "$ver")"
+  COMMON_FLAGS=(--archive --acls --xattrs)
+
+  for entry in "${SCENARIOS[@]}"; do
+    IFS=' ' read -r name extra <<< "$entry"
+    extra=($extra)
+    src="$(mktemp -d)"
+    create_tree "$src"
+    IFS=$'\t' read -r port rootdir pid < <(setup_daemon "$UPSTREAM")
+    case "$name" in
+      delete) touch "$rootdir/stale.txt" ;;
+      resume) dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null ;;
+      partial) dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null ;;
+      vanished) (sleep 0.1 && rm -f "$src/file.txt") & ;;
+    esac
+    if [[ "$name" == resume ]]; then
+      timeout 1 "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
+    fi
+    set +e
+    "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" > /tmp/stdout 2> /tmp/stderr
+    status=$?
+    set -e
+    if [[ "$name" == vanished ]]; then
+      [[ "$status" -ne 0 ]] || { echo "expected failure" >&2; exit 1; }
+    else
+      verify_tree "$src" "$rootdir"
+    fi
+    kill "$pid" >/dev/null 2>&1 || true
+    rm -rf "$src" "$rootdir"
+    echo "scenario $name ok"
+  done
 done
+
