@@ -1,3 +1,5 @@
+// tests/checksum_seed_interop.rs
+
 use assert_cmd::Command;
 use std::collections::BTreeMap;
 use std::fs;

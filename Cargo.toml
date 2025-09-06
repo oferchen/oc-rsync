@@ -113,14 +113,14 @@ nightly = ["checksums/nightly", "compress/nightly"]
 
 [package.metadata.deb]
 maintainer = "Project Maintainers <maintainers@oc-rsync.project>"
-license-file = ["LICENSE-MIT", "0"]
+license-file = ["LICENSE-MIT", "0", "LICENSE-APACHE", "0"]
 section = "net"
 priority = "optional"
 depends = "zlib1g, libzstd1"
 assets = [
     ["target/release/oc-rsync", "/usr/bin/oc-rsync", "755"],
     ["packaging/systemd/oc-rsyncd.service", "/lib/systemd/system/oc-rsyncd.service", "644"],
-    ["packaging/examples/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf", "644"],
+    ["packaging/examples/oc-rsyncd.conf", "/etc/oc-rsyncd.conf", "644"],
     ["packaging/systemd/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf", "644"],
     ["man/oc-rsync.1", "/usr/share/man/man1/oc-rsync.1", "644"],
     ["man/oc-rsyncd.8", "/usr/share/man/man8/oc-rsyncd.8", "644"],
@@ -135,7 +135,7 @@ requires = ["zlib", "libzstd"]
 path = "/usr/bin/oc-rsync"
 
 [package.metadata.rpm.files."oc-rsyncd.conf"]
-path = "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf"
+path = "/etc/oc-rsyncd.conf"
 mode = "644"
 
 [package.metadata.rpm.files."oc-rsyncd.systemd.conf"]
