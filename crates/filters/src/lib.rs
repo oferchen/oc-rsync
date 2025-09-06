@@ -1079,13 +1079,13 @@ impl Matcher {
         let mut rules = Vec::new();
         let mut merges = Vec::new();
 
-        fn is_excluded(rules: &[(usize, Rule)], path: &Path) -> bool {
+        fn is_excluded(rules: &[(usize, Rule)], path: &Path, is_dir: bool) -> bool {
             let mut state: Option<bool> = None;
             for (_, r) in rules {
                 match r {
                     Rule::Clear => state = None,
                     Rule::Include(d) | Rule::Protect(d) => {
-                        if d.dir_only && !path.is_dir() {
+                        if d.dir_only && !is_dir {
                             continue;
                         }
                         let matched = d.matcher.is_match(path);
@@ -1094,7 +1094,7 @@ impl Matcher {
                         }
                     }
                     Rule::Exclude(d) => {
-                        if d.dir_only && !path.is_dir() {
+                        if d.dir_only && !is_dir {
                             continue;
                         }
                         let matched = d.matcher.is_match(path);
@@ -1133,7 +1133,7 @@ impl Matcher {
                         dir.join(&pd.file)
                     };
                     let dir_for_rule = nested.parent().unwrap_or(&nested).to_path_buf();
-                    if is_excluded(&rules, &dir_for_rule) {
+                    if is_excluded(&rules, &dir_for_rule, true) {
                         continue;
                     }
                     merges.push((index, pd.clone()));
