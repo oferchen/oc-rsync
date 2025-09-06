@@ -105,6 +105,7 @@ pub fn spawn_daemon_session(
 
     let mut line = Vec::new();
     let mut b = [0u8; 1];
+    let mut seen_ok = false;
     loop {
         let n = t.receive(&mut b).map_err(EngineError::from)?;
         if n == 0 {
@@ -113,6 +114,7 @@ pub fn spawn_daemon_session(
         line.push(b[0]);
         if b[0] == b'\n' {
             if line == b"@RSYNCD: OK\n" {
+                seen_ok = true;
                 break;
             }
             let s = if let Some(cv) = iconv {
@@ -137,6 +139,12 @@ pub fn spawn_daemon_session(
             }
             line.clear();
         }
+    }
+    if !seen_ok {
+        return Err(EngineError::Exit(
+            ExitCode::StartClient,
+            "did not see server greeting".into(),
+        ));
     }
     t.set_read_timeout(timeout).map_err(EngineError::from)?;
     t.set_write_timeout(timeout).map_err(EngineError::from)?;

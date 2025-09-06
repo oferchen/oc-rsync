@@ -8,23 +8,18 @@ use std::io::ErrorKind;
 
 fn exit_code_from_engine_error(e: &EngineError) -> ExitCode {
     match e {
-        EngineError::Io(err)
-            if matches!(
-                err.kind(),
-                ErrorKind::TimedOut
-                    | ErrorKind::ConnectionRefused
-                    | ErrorKind::AddrNotAvailable
-                    | ErrorKind::NetworkUnreachable
-                    | ErrorKind::WouldBlock
-                    | ErrorKind::ConnectionAborted
-                    | ErrorKind::ConnectionReset
-                    | ErrorKind::NotConnected
-                    | ErrorKind::HostUnreachable
-                    | ErrorKind::NetworkDown,
-            ) =>
-        {
-            ExitCode::ConnTimeout
-        }
+        EngineError::Io(err) => match err.kind() {
+            ErrorKind::TimedOut | ErrorKind::WouldBlock => ExitCode::ConnTimeout,
+            ErrorKind::ConnectionRefused
+            | ErrorKind::AddrNotAvailable
+            | ErrorKind::NetworkUnreachable
+            | ErrorKind::ConnectionAborted
+            | ErrorKind::ConnectionReset
+            | ErrorKind::NotConnected
+            | ErrorKind::HostUnreachable
+            | ErrorKind::NetworkDown => ExitCode::SocketIo,
+            _ => ExitCode::Protocol,
+        },
         EngineError::MaxAlloc => ExitCode::Malloc,
         EngineError::Exit(code, _) => *code,
         _ => ExitCode::Protocol,

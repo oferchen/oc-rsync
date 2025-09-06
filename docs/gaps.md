@@ -97,9 +97,6 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | TCP transport with bandwidth limiting | ✅ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) | [crates/transport/src/rate.rs](../crates/transport/src/rate.rs) |
 | Extended socket options | ✅ | [crates/transport/tests/sockopts.rs](../crates/transport/tests/sockopts.rs) | [crates/transport/src/tcp.rs](../crates/transport/src/tcp.rs) |
 
-### Outstanding gaps
-- Transport edge-case parity: error-handling in SSH and daemon transports diverges from classic `rsync`. **Owner**: TransportAgent maintainers. **Remediation**: broaden interoperability coverage of failure scenarios to align with upstream.
-
 ## Engine
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
