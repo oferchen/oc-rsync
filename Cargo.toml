@@ -101,16 +101,18 @@ path = "tools/strip_rs_comments.rs"
 # without requiring feature flags. Individual crates handle runtime
 # detection of platform support.
 [features]
-default = ["xattr", "acl"]
+default = ["xattr", "acl", "zlib", "zstd"]
 xattr = ["engine/xattr"]
 acl = ["engine/acl", "meta/acl", "posix-acl"]
+zlib = ["compress/zlib"]
+zstd = ["compress/zstd"]
 # Enables CLI-only tools
 cli = []
 # Enables AVX-512 implementations requiring a nightly toolchain
 nightly = ["checksums/nightly", "compress/nightly"]
 
 [package.metadata.deb]
-maintainer = "oc-rsync maintainers <maintainers@rsync.rs>"
+maintainer = "Project Maintainers <maintainers@oc-rsync.project>"
 license-file = ["LICENSE-MIT", "0"]
 section = "net"
 priority = "optional"
@@ -126,8 +128,8 @@ assets = [
 ]
 
 [package.metadata.rpm]
-maintainer = "oc-rsync maintainers <maintainers@rsync.rs>"
-requires = ["zlib1g", "libzstd1"]
+maintainer = "Project Maintainers <maintainers@oc-rsync.project>"
+requires = ["zlib", "libzstd"]
 
 [package.metadata.rpm.targets.oc-rsync]
 path = "/usr/bin/oc-rsync"
