@@ -59,6 +59,46 @@ fn cvs_exclude_parity() {
     assert_dirs_equal(Path::new("tests/golden/cvs_exclude/expected"), &ours_dst);
 }
 
+#[test]
+fn cvs_exclude_nested_override() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("keep.txt"), "keep\n").unwrap();
+    fs::write(src.join("core"), "core\n").unwrap();
+
+    let sub = src.join("sub");
+    fs::create_dir_all(&sub).unwrap();
+    fs::write(sub.join(".cvsignore"), "nested/\n").unwrap();
+
+    let nested = sub.join("nested");
+    fs::create_dir_all(&nested).unwrap();
+    fs::write(nested.join("keep.txt"), "keep\n").unwrap();
+    fs::write(nested.join("core"), "core\n").unwrap();
+
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&dst).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    cmd.args([
+        "--recursive",
+        "--cvs-exclude",
+        "--include=sub/nested/",
+        "--include=sub/nested/***",
+    ]);
+    cmd.arg(&src_arg);
+    cmd.arg(&dst);
+    let out = cmd.output().unwrap();
+    assert!(out.status.success());
+
+    assert!(dst.join("keep.txt").exists());
+    assert!(!dst.join("core").exists());
+    assert!(dst.join("sub/nested/keep.txt").exists());
+    assert!(dst.join("sub/nested/core").exists());
+}
+
 fn assert_dirs_equal(expected: &Path, actual: &Path) {
     fn collect(root: &Path) -> (HashSet<PathBuf>, HashSet<PathBuf>) {
         let mut files = HashSet::new();
