@@ -95,7 +95,14 @@ jobs:
         run: cargo nextest run --workspace --no-fail-fast --features "cli nightly"
       - name: Test with coverage (95% lines & functions)
         if: steps.install_nextest.outcome == 'success' && steps.install_llvm_cov.outcome == 'success'
-        run: cargo llvm-cov nextest --workspace --features "cli nightly" --fail-under-lines 95 --fail-under-functions 95 --html -- --no-fail-fast
+        run: |
+          cargo llvm-cov nextest --workspace --features "cli nightly" \
+            --fail-under-lines 95 --fail-under-functions 95 \
+            --lcov --output-path coverage.lcov -- --no-fail-fast
+
+      - name: Verify coverage file exists
+        if: steps.install_nextest.outcome == 'success' && steps.install_llvm_cov.outcome == 'success'
+        run: ls -l coverage.lcov
 
       - name: Upload coverage report
         if: steps.install_nextest.outcome == 'success' && steps.install_llvm_cov.outcome == 'success'
