@@ -2890,6 +2890,66 @@ fn files_from_list_transfers_nested_paths() {
 }
 
 #[test]
+fn files_from_list_nested_file_excludes_siblings() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("a/b")).unwrap();
+    fs::create_dir_all(src.join("a/c")).unwrap();
+    fs::write(src.join("a/b/file.txt"), b"f").unwrap();
+    fs::write(src.join("a/b/other.txt"), b"o").unwrap();
+    fs::write(src.join("a/c/unrelated.txt"), b"u").unwrap();
+    let list = dir.path().join("files.txt");
+    fs::write(&list, "a/b/file.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("a/b/file.txt").exists());
+    assert!(!dst.join("a/b/other.txt").exists());
+    assert!(!dst.join("a/c/unrelated.txt").exists());
+}
+
+#[test]
+fn files_from_list_directory_excludes_siblings() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("dir/sub")).unwrap();
+    fs::create_dir_all(src.join("other")).unwrap();
+    fs::write(src.join("dir/sub/file.txt"), b"k").unwrap();
+    fs::write(src.join("other/file.txt"), b"o").unwrap();
+    let list = dir.path().join("files.txt");
+    fs::write(&list, "dir/\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("dir/sub/file.txt").exists());
+    assert!(!dst.join("other/file.txt").exists());
+}
+
+#[test]
 fn include_pattern_allows_file() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
