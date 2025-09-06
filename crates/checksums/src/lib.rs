@@ -26,7 +26,7 @@ pub struct ChecksumConfigBuilder {
 impl Default for ChecksumConfigBuilder {
     fn default() -> Self {
         Self {
-            strong: StrongHash::Md5,
+            strong: StrongHash::Md4,
             seed: 0,
         }
     }
@@ -169,8 +169,8 @@ pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
 pub fn available_strong_hashes() -> Vec<StrongHash> {
     vec![
         StrongHash::XxHash,
-        StrongHash::Md5,
         StrongHash::Md4,
+        StrongHash::Md5,
         StrongHash::Sha1,
     ]
 }

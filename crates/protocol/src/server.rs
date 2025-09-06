@@ -6,7 +6,7 @@ use checksums::{StrongHash, strong_digest};
 use subtle::ConstantTimeEq;
 
 use crate::{
-    CAP_CODECS, CAP_ZSTD, Demux, ExitCode, Frame, Message, Mux, UnknownExit, V30, negotiate_caps,
+    CAP_CODECS, CAP_ZSTD, Demux, ExitCode, Frame, Message, Mux, UnknownExit, negotiate_caps,
     negotiate_version,
 };
 use compress::{Codec, decode_codecs, encode_codecs, negotiate_codec};
@@ -214,11 +214,7 @@ impl<R: Read, W: Write> Server<R, W> {
 
         let strong =
             if let Some((_, list)) = self.env.iter().find(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
-                let mut chosen = if self.version < V30 {
-                    StrongHash::Md4
-                } else {
-                    StrongHash::Md5
-                };
+                let mut chosen = StrongHash::Md4;
                 for name in list.split(',') {
                     match name {
                         "sha1" => {
@@ -237,10 +233,8 @@ impl<R: Read, W: Write> Server<R, W> {
                     }
                 }
                 chosen
-            } else if self.version < V30 {
-                StrongHash::Md4
             } else {
-                StrongHash::Md5
+                StrongHash::Md4
             };
         self.mux.strong_hash = strong;
         self.demux.strong_hash = strong;
