@@ -58,9 +58,7 @@ fn help_wrapping_matches_upstream() {
         ),
     ];
     for (cols, upstream) in cases {
-        unsafe {
-            env::set_var("COLUMNS", cols.to_string());
-        }
+        env::set_var("COLUMNS", cols.to_string());
         let ours = render_help(&cmd);
         assert_eq!(
             extract_options(&ours),
@@ -68,7 +66,18 @@ fn help_wrapping_matches_upstream() {
             "options mismatch at width {cols}"
         );
     }
-    unsafe {
-        env::remove_var("COLUMNS");
-    }
+    env::remove_var("COLUMNS");
+}
+
+#[test]
+#[serial]
+fn dump_help_body_matches_render_help() {
+    let cmd = cli_command();
+    let body = dump_help_body(&cmd);
+
+    env::set_var("COLUMNS", "80");
+    let full = render_help(&cmd);
+    env::remove_var("COLUMNS");
+
+    assert_eq!(body, extract_options(&full));
 }

@@ -1,11 +1,21 @@
 // crates/cli/src/formatter.rs
+
 use clap::Command;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use scopeguard::guard;
 use std::env;
 use textwrap::{Options as WrapOptions, wrap};
 
 use crate::branding;
+
+fn set_env_var(key: &str, value: &str) {
+    unsafe { env::set_var(key, value) }
+}
+
+fn remove_env_var(key: &str) {
+    unsafe { env::remove_var(key) }
+}
 
 const RSYNC_HELP: &str = include_str!("../resources/rsync-help-80.txt");
 
@@ -350,20 +360,16 @@ pub fn render_help(_cmd: &Command) -> String {
 }
 
 pub fn dump_help_body(cmd: &Command) -> String {
-    let prev = std::env::var("COLUMNS").ok();
-    unsafe {
-        std::env::set_var("COLUMNS", "80");
-    }
+    let prev = env::var("COLUMNS").ok();
+    set_env_var("COLUMNS", "80");
+    let _guard = guard(prev, |prev| {
+        if let Some(v) = prev {
+            set_env_var("COLUMNS", &v);
+        } else {
+            remove_env_var("COLUMNS");
+        }
+    });
     let help = render_help(cmd);
-    if let Some(v) = prev {
-        unsafe {
-            std::env::set_var("COLUMNS", v);
-        }
-    } else {
-        unsafe {
-            std::env::remove_var("COLUMNS");
-        }
-    }
 
     let mut out = String::new();
     let mut in_options = false;
