@@ -10,7 +10,7 @@ pub fn encode(entries: &[Entry], iconv: Option<&CharsetConv>) -> Vec<Vec<u8>> {
         .map(|e| {
             let mut e = e.clone();
             if let Some(cv) = iconv {
-                e.path = cv.to_remote(&e.path);
+                e.path = cv.to_remote(&e.path).into_owned();
             }
             enc.encode_entry(&e)
         })
@@ -27,7 +27,7 @@ pub fn decode(
         .map(|c| {
             let mut e = dec.decode_entry(c)?;
             if let Some(cv) = iconv {
-                e.path = cv.to_local(&e.path);
+                e.path = cv.to_local(&e.path).into_owned();
             }
             Ok(e)
         })
