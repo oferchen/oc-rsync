@@ -1636,7 +1636,7 @@ pub fn parse_list(input: &[u8], from0: bool) -> Vec<String> {
 fn read_path_or_stdin(path: &Path) -> io::Result<Vec<u8>> {
     if path == Path::new("-") {
         let mut buf = Vec::new();
-        std::io::stdin().read_to_end(&mut buf)?;
+        std::io::stdin().lock().read_to_end(&mut buf)?;
         Ok(buf)
     } else {
         fs::read(path)
@@ -1690,7 +1690,13 @@ pub fn parse_file(
     depth: usize,
 ) -> Result<Vec<Rule>, ParseError> {
     let data = read_path_or_stdin(path)?;
-    parse_from_bytes(&data, from0, visited, depth, Some(path.to_path_buf()))
+    let from0 = from0 || path == Path::new("-");
+    let source = if path == Path::new("-") {
+        None
+    } else {
+        Some(path.to_path_buf())
+    };
+    parse_from_bytes(&data, from0, visited, depth, source)
 }
 
 pub fn parse_rule_list_from_bytes(
