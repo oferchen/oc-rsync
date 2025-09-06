@@ -214,7 +214,7 @@ pub fn synchronize_with_config<P: AsRef<Path>>(src: P, dst: P, cfg: &SyncConfig)
         .colored(cfg.colored)
         .timestamps(cfg.timestamps)
         .build();
-    let sub = subscriber(sub_cfg);
+    let sub = subscriber(sub_cfg)?;
     with_default(sub, || -> Result<()> {
         let opts = SyncOptions {
             perms: cfg.perms,

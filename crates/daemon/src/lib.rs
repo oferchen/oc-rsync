@@ -129,7 +129,7 @@ pub fn init_logging(
     syslog: bool,
     journald: bool,
     quiet: bool,
-) {
+) -> io::Result<()> {
     let cfg = SubscriberConfig::builder()
         .format(LogFormat::Text)
         .verbose(0)
@@ -143,7 +143,7 @@ pub fn init_logging(
         .colored(false)
         .timestamps(true)
         .build();
-    logging::init(cfg);
+    logging::init(cfg)
 }
 
 #[derive(Debug)]
@@ -1311,7 +1311,7 @@ pub fn run_daemon(
         syslog,
         journald,
         quiet,
-    );
+    )?;
 
     if let Some(addr) = address {
         if let Some(AddressFamily::V4) = family {

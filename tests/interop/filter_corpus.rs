@@ -1,4 +1,4 @@
-// tests/filter_corpus.rs
+// tests/interop/filter_corpus.rs
 
 use assert_cmd::Command;
 use shell_words::split;
@@ -47,6 +47,7 @@ fn setup_edge(src: &Path) {
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn filter_corpus_parity() {
     let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/filter_corpus");
     for entry in fs::read_dir(&fixture_dir).unwrap() {
@@ -138,6 +139,7 @@ fn filter_corpus_parity() {
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn perdir_rules_excludes_filter_files() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -182,6 +184,7 @@ fn perdir_rules_excludes_filter_files() {
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn ignores_parent_rsync_filter_with_ff() {
     let tmp = tempdir().unwrap();
     let parent = tmp.path();
@@ -238,6 +241,7 @@ fn ignores_parent_rsync_filter_with_ff() {
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn perdir_sign_parity() {
     let cases = [
         (
@@ -314,6 +318,7 @@ fn perdir_sign_parity() {
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn perdir_stack_parity() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
