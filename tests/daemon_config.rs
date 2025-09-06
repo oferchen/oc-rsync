@@ -111,24 +111,6 @@ fn pipe_transport(token: &str, module: &str) -> LocalPipeTransport<MultiReader, 
     LocalPipeTransport::new(reader, Vec::new())
 }
 
-fn pipe_transport_no_motd(token: &str, module: &str) -> LocalPipeTransport<MultiReader, Vec<u8>> {
-    let mut first = Vec::new();
-    first.push(0);
-    first.extend_from_slice(token.as_bytes());
-    first.push(b'\n');
-    let parts = vec![
-        LATEST_VERSION.to_be_bytes().to_vec(),
-        first,
-        format!("{module}\n\n").into_bytes(),
-    ];
-    let reader = MultiReader {
-        parts,
-        idx: 0,
-        pos: 0,
-    };
-    LocalPipeTransport::new(reader, Vec::new())
-}
-
 #[test]
 fn daemon_config_rsync_client() {
     let dir = tempfile::tempdir().unwrap();
@@ -185,13 +167,13 @@ fn daemon_config_authentication() {
 }
 
 #[test]
-#[ignore]
 fn daemon_config_motd_suppression() {
     let dir = tempfile::tempdir().unwrap();
     let data = dir.path().join("data");
     fs::create_dir(&data).unwrap();
     let motd = dir.path().join("motd");
     fs::write(&motd, "Hello world\n").unwrap();
+
     let cfg = format!(
         "port = 0\nmotd file = {}\n[data]\n    path = {}\n",
         motd.display(),
@@ -223,7 +205,17 @@ fn daemon_config_motd_suppression() {
     let (_, writer) = t.into_inner();
     let resp = String::from_utf8(writer).unwrap();
     assert!(resp.contains("Hello world"));
-    let mut t = pipe_transport_no_motd("", "data");
+
+    let cfg = format!(
+        "port = 0\nmotd file =\n[data]\n    path = {}\n",
+        data.display()
+    );
+    let cfg = parse_config(&cfg).unwrap();
+    assert!(cfg.motd_file.is_none());
+    let module = cfg.modules[0].clone();
+    let mut modules = HashMap::new();
+    modules.insert(module.name.clone(), module);
+    let mut t = pipe_transport("", "data");
     handle_connection(
         &mut t,
         &modules,

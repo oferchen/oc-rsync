@@ -5,7 +5,6 @@ This file documents tests marked `#[ignore]` and why they remain excluded from a
 | Test | Reason |
 | ---- | ------ |
 | `tests/packaging.rs::service_unit_matches_spec` | Service unit packaging checks require systemd packaging context and are not essential for core sync behavior. |
-| `tests/daemon_config.rs::daemon_config_motd_suppression` | MOTD suppression support incomplete. |
 | `tests/daemon_sync_attrs.rs::daemon_preserves_xattrs` | Requires extended attribute support and `libacl` which is unavailable in this environment. |
 | `tests/daemon_sync_attrs.rs::daemon_preserves_xattrs_rr_daemon` | Same as above. |
 | `tests/daemon_sync_attrs.rs::daemon_excludes_filtered_xattrs` | Same as above. |

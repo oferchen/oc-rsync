@@ -503,7 +503,13 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
 
                 cfg.port = Some(port);
             }
-            (false, "motd file") => cfg.motd_file = Some(PathBuf::from(val)),
+            (false, "motd file") => {
+                cfg.motd_file = if val.is_empty() {
+                    None
+                } else {
+                    Some(PathBuf::from(val))
+                }
+            }
             (false, "log file") => cfg.log_file = Some(PathBuf::from(val)),
             (false, "pid file") => cfg.pid_file = Some(PathBuf::from(val)),
             (false, "lock file") => cfg.lock_file = Some(PathBuf::from(val)),
