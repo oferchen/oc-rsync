@@ -28,7 +28,8 @@ The Makefile offers shortcuts for common CI checks:
 The CI workflow runs with a consistent environment and enforces comment
 headers:
 
-- Environment variables: `CURRENT_YEAR` (set to the release year),
+- Environment variables: `CURRENT_YEAR` (defaults to the system year but
+  can be set for reproducible builds),
   `RUSTFLAGS="-Dwarnings"`, `LC_ALL=C`, `LANG=C`, `COLUMNS=80`, and `TZ=UTC`.
   - Repository access is read only (`permissions: { contents: read }`) and a
     concurrency group (`ci-${{ github.ref }}`) cancels in-progress runs for the same

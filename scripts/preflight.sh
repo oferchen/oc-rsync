@@ -4,8 +4,7 @@ set -euo pipefail
 missing=()
 
 if [[ -z "${CURRENT_YEAR:-}" ]]; then
-  echo "Error: CURRENT_YEAR environment variable is required for reproducible builds." >&2
-  exit 1
+  echo "Warning: CURRENT_YEAR environment variable not set; build.rs will use the system year." >&2
 fi
 
 if ! command -v ld >/dev/null 2>&1; then
