@@ -1,3 +1,4 @@
+// tests/interop/checksum_seed.rs
 use assert_cmd::Command;
 use std::collections::BTreeMap;
 use std::fs;
@@ -24,6 +25,7 @@ fn collect(dir: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn checksum_seed_matches_upstream() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");

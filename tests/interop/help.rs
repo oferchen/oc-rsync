@@ -14,6 +14,7 @@ fn normalize(bytes: &[u8]) -> &[u8] {
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn help_output_matches_upstream() {
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
