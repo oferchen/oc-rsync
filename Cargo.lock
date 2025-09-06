@@ -1028,6 +1028,7 @@ dependencies = [
  "once_cell",
  "protocol",
  "regex",
+ "scopeguard",
  "serial_test",
  "shell-words",
  "tempfile",
