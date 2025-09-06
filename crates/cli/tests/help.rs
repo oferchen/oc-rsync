@@ -6,7 +6,9 @@ use std::env;
 #[test]
 #[serial]
 fn help_columns_80() {
-    env::set_var("COLUMNS", "80");
+    unsafe {
+        env::set_var("COLUMNS", "80");
+    }
     let out = render_help(&cli_command());
     let mut lines = out.lines();
     assert_eq!(
@@ -17,13 +19,17 @@ fn help_columns_80() {
     assert!(lines.next().unwrap().is_empty());
     assert!(out.contains("Usage:"));
     assert!(out.contains("--verbose, -v"));
-    env::remove_var("COLUMNS");
+    unsafe {
+        env::remove_var("COLUMNS");
+    }
 }
 
 #[test]
 #[serial]
 fn help_columns_120() {
-    env::set_var("COLUMNS", "120");
+    unsafe {
+        env::set_var("COLUMNS", "120");
+    }
     let out = render_help(&cli_command());
     let mut lines = out.lines();
     assert_eq!(
@@ -33,13 +39,17 @@ fn help_columns_120() {
     assert_eq!(lines.next().unwrap(), branding::brand_tagline());
     assert!(lines.next().unwrap().is_empty());
     assert!(out.contains("--verbose, -v"));
-    env::remove_var("COLUMNS");
+    unsafe {
+        env::remove_var("COLUMNS");
+    }
 }
 
 #[test]
 #[serial]
 fn help_columns_small() {
-    env::set_var("COLUMNS", "25");
+    unsafe {
+        env::set_var("COLUMNS", "25");
+    }
     let out = render_help(&cli_command());
     assert!(!out.is_empty());
 }

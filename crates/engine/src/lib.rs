@@ -2223,13 +2223,19 @@ fn count_entries(src_root: &Path, matcher: &Matcher, opts: &SyncOptions) -> (usi
     let mut size = 0u64;
     while let Some(batch) = walker.next() {
         let Ok(batch) = batch else { continue };
+        let mut skip_dirs: Vec<PathBuf> = Vec::new();
         for entry in batch {
             let path = entry.apply(&mut state);
+            if skip_dirs.iter().any(|d| path.starts_with(d)) {
+                continue;
+            }
             if let Ok(rel) = path.strip_prefix(src_root) {
-                let included = matcher.is_included(rel).unwrap_or(true);
+                let (included, dir_only) =
+                    matcher.is_included_with_dir(rel).unwrap_or((true, false));
                 if !included {
-                    if entry.file_type.is_dir() {
+                    if dir_only || entry.file_type.is_dir() {
                         walker.skip_current_dir();
+                        skip_dirs.push(path.clone());
                     }
                     continue;
                 }
@@ -2377,13 +2383,17 @@ fn delete_extraneous(
     while let Some(batch) = walker.next() {
         check_time_limit(start, opts)?;
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
+        let mut skip_dirs: Vec<PathBuf> = Vec::new();
         for entry in batch {
             check_time_limit(start, opts)?;
             let path = entry.apply(&mut state);
+            if skip_dirs.iter().any(|d| path.starts_with(d)) {
+                continue;
+            }
             let file_type = entry.file_type;
             if let Ok(rel) = path.strip_prefix(dst) {
-                let included = matcher
-                    .is_included_for_delete(rel)
+                let (included, dir_only) = matcher
+                    .is_included_for_delete_with_dir(rel)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
                 let src_exists = src.join(rel).exists();
                 if file_type.is_dir() {
@@ -2438,6 +2448,7 @@ fn delete_extraneous(
                             remove_dir_opts(&path, opts).err()
                         };
                         walker.skip_current_dir();
+                        skip_dirs.push(path.clone());
                         match res {
                             None => {
                                 stats.files_deleted += 1;
@@ -2450,6 +2461,9 @@ fn delete_extraneous(
                         }
                     } else if !included {
                         walker.skip_current_dir();
+                        if dir_only || file_type.is_dir() {
+                            skip_dirs.push(path.clone());
+                        }
                     }
                 } else if (included && !src_exists) || (!included && opts.delete_excluded) {
                     if let Some(max) = opts.max_delete {
@@ -2622,15 +2636,20 @@ pub fn sync(
         let mut state = String::new();
         while let Some(batch) = walker.next() {
             let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
+            let mut skip_dirs: Vec<PathBuf> = Vec::new();
             for entry in batch {
                 let path = entry.apply(&mut state);
+                if skip_dirs.iter().any(|d| path.starts_with(d)) {
+                    continue;
+                }
                 if let Ok(rel) = path.strip_prefix(&src_root) {
-                    if !matcher
-                        .is_included(rel)
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?
-                    {
-                        if entry.file_type.is_dir() {
+                    let (included, dir_only) = matcher
+                        .is_included_with_dir(rel)
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+                    if !included {
+                        if dir_only || entry.file_type.is_dir() {
                             walker.skip_current_dir();
+                            skip_dirs.push(path.clone());
                         }
                         continue;
                     }
@@ -2755,17 +2774,22 @@ pub fn sync(
     while let Some(batch) = walker.next() {
         check_time_limit(start, opts)?;
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
+        let mut skip_dirs: Vec<PathBuf> = Vec::new();
         for entry in batch {
             check_time_limit(start, opts)?;
             let path = entry.apply(&mut state);
+            if skip_dirs.iter().any(|d| path.starts_with(d)) {
+                continue;
+            }
             let file_type = entry.file_type;
             if let Ok(rel) = path.strip_prefix(&src_root) {
-                if !matcher
-                    .is_included(rel)
-                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?
-                {
-                    if file_type.is_dir() {
+                let (included, dir_only) = matcher
+                    .is_included_with_dir(rel)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+                if !included {
+                    if dir_only || file_type.is_dir() {
                         walker.skip_current_dir();
+                        skip_dirs.push(path.clone());
                     }
                     continue;
                 }

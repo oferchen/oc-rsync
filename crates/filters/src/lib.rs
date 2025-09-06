@@ -167,20 +167,45 @@ impl Matcher {
 
     pub fn is_included<P: AsRef<Path>>(&self, path: P) -> Result<bool, ParseError> {
         self.check(path.as_ref(), false, false)
+            .map(|(included, _)| included)
+    }
+
+    pub fn is_included_with_dir<P: AsRef<Path>>(
+        &self,
+        path: P,
+    ) -> Result<(bool, bool), ParseError> {
+        self.check(path.as_ref(), false, false)
     }
 
     pub fn is_included_for_delete<P: AsRef<Path>>(&self, path: P) -> Result<bool, ParseError> {
+        self.check(path.as_ref(), true, false)
+            .map(|(included, _)| included)
+    }
+
+    pub fn is_included_for_delete_with_dir<P: AsRef<Path>>(
+        &self,
+        path: P,
+    ) -> Result<(bool, bool), ParseError> {
         self.check(path.as_ref(), true, false)
     }
 
     pub fn is_xattr_included<P: AsRef<Path>>(&self, name: P) -> Result<bool, ParseError> {
         self.check(name.as_ref(), false, true)
+            .map(|(included, _)| included)
     }
 
     pub fn is_xattr_included_for_delete<P: AsRef<Path>>(
         &self,
         name: P,
     ) -> Result<bool, ParseError> {
+        self.check(name.as_ref(), true, true)
+            .map(|(included, _)| included)
+    }
+
+    pub fn is_xattr_included_for_delete_with_dir<P: AsRef<Path>>(
+        &self,
+        name: P,
+    ) -> Result<(bool, bool), ParseError> {
         self.check(name.as_ref(), true, true)
     }
 
@@ -189,11 +214,16 @@ impl Matcher {
         Ok(())
     }
 
-    fn check(&self, path: &Path, for_delete: bool, xattr: bool) -> Result<bool, ParseError> {
+    fn check(
+        &self,
+        path: &Path,
+        for_delete: bool,
+        xattr: bool,
+    ) -> Result<(bool, bool), ParseError> {
         if self.existing {
             if let Some(root) = &self.root {
                 if !root.join(path).exists() {
-                    return Ok(false);
+                    return Ok((false, false));
                 }
             }
         }
@@ -260,6 +290,7 @@ impl Matcher {
         let mut decision: Option<bool> = None;
         let mut matched = false;
         let mut matched_source: Option<PathBuf> = None;
+        let mut dir_only_match = false;
         for rule in ordered.iter() {
             match rule {
                 Rule::Protect(data) => {
@@ -346,6 +377,7 @@ impl Matcher {
                         decision = Some(false);
                         matched = true;
                         matched_source = data.source.clone();
+                        dir_only_match = data.dir_only;
                         break;
                     }
                 }
@@ -366,7 +398,7 @@ impl Matcher {
                     for entry in fs::read_dir(&full)? {
                         let entry = entry?;
                         let rel = path.join(entry.file_name());
-                        if self.check(&rel, for_delete, xattr)? {
+                        if self.check(&rel, for_delete, xattr)?.0 {
                             has_child = true;
                             break;
                         }
@@ -391,7 +423,7 @@ impl Matcher {
             source = %source_str,
             rules = ordered.len(),
         );
-        Ok(included)
+        Ok((included, matched && dir_only_match && !included))
     }
 
     pub fn merge(&mut self, more: Vec<Rule>) {
@@ -1145,10 +1177,7 @@ pub fn parse_with_options(
             };
             if m.contains('s') || m.contains('r') || m.contains('p') || m.contains('x') {
                 for rule in &mut sub {
-                    if let Rule::Include(d)
-                    | Rule::Exclude(d)
-                    | Rule::Protect(d) = rule
-                    {
+                    if let Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) = rule {
                         if m.contains('s') {
                             d.flags.sender = true;
                         }
