@@ -188,6 +188,7 @@ pub fn rolling_checksum_scalar(data: &[u8], seed: u32) -> u32 {
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "sse4.2")]
 #[doc(hidden)]
+#[allow(unused_unsafe)]
 pub unsafe fn rolling_checksum_sse42(data: &[u8], seed: u32) -> u32 {
     use std::arch::x86_64::*;
 
@@ -199,28 +200,30 @@ pub unsafe fn rolling_checksum_sse42(data: &[u8], seed: u32) -> u32 {
     let mut sum_indices: u64 = 0;
     let mut offset: u64 = 0;
 
-    let zero = _mm_setzero_si128();
-    let idx_lo = _mm_loadu_si128(IDX_LO.as_ptr() as *const __m128i);
-    let idx_hi = _mm_loadu_si128(IDX_HI.as_ptr() as *const __m128i);
+    let zero = unsafe { _mm_setzero_si128() };
+    let idx_lo = unsafe { _mm_loadu_si128(IDX_LO.as_ptr() as *const __m128i) };
+    let idx_hi = unsafe { _mm_loadu_si128(IDX_HI.as_ptr() as *const __m128i) };
 
     let mut i = 0;
     while i + 16 <= n {
-        let chunk = _mm_loadu_si128(data.as_ptr().add(i) as *const __m128i);
+        let ptr = unsafe { data.as_ptr().add(i) };
+        let chunk = unsafe { _mm_loadu_si128(ptr as *const __m128i) };
 
-        let sad = _mm_sad_epu8(chunk, zero);
+        let sad = unsafe { _mm_sad_epu8(chunk, zero) };
         let mut tmp_sum = [0u64; 2];
-        _mm_storeu_si128(tmp_sum.as_mut_ptr() as *mut __m128i, sad);
+        unsafe { _mm_storeu_si128(tmp_sum.as_mut_ptr() as *mut __m128i, sad) };
         let chunk_sum = tmp_sum[0] + tmp_sum[1];
         sum_bytes += chunk_sum;
 
-        let lo = _mm_cvtepu8_epi16(chunk);
-        let hi = _mm_cvtepu8_epi16(_mm_srli_si128(chunk, 8));
-        let prod_lo = _mm_madd_epi16(lo, idx_lo);
-        let prod_hi = _mm_madd_epi16(hi, idx_hi);
+        let lo = unsafe { _mm_cvtepu8_epi16(chunk) };
+        let shifted = unsafe { _mm_srli_si128(chunk, 8) };
+        let hi = unsafe { _mm_cvtepu8_epi16(shifted) };
+        let prod_lo = unsafe { _mm_madd_epi16(lo, idx_lo) };
+        let prod_hi = unsafe { _mm_madd_epi16(hi, idx_hi) };
         let mut tmp = [0i32; 4];
-        _mm_storeu_si128(tmp.as_mut_ptr() as *mut __m128i, prod_lo);
+        unsafe { _mm_storeu_si128(tmp.as_mut_ptr() as *mut __m128i, prod_lo) };
         let sum_lo: i64 = tmp.iter().map(|&v| v as i64).sum();
-        _mm_storeu_si128(tmp.as_mut_ptr() as *mut __m128i, prod_hi);
+        unsafe { _mm_storeu_si128(tmp.as_mut_ptr() as *mut __m128i, prod_hi) };
         let sum_hi: i64 = tmp.iter().map(|&v| v as i64).sum();
         let chunk_idx_sum = sum_lo + sum_hi;
 
@@ -247,6 +250,7 @@ pub unsafe fn rolling_checksum_sse42(data: &[u8], seed: u32) -> u32 {
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2")]
 #[doc(hidden)]
+#[allow(unused_unsafe)]
 pub unsafe fn rolling_checksum_avx2(data: &[u8], seed: u32) -> u32 {
     use std::arch::x86_64::*;
 
@@ -260,30 +264,31 @@ pub unsafe fn rolling_checksum_avx2(data: &[u8], seed: u32) -> u32 {
     let mut sum_indices: u64 = 0;
     let mut offset: u64 = 0;
 
-    let zero = _mm256_setzero_si256();
-    let idx_lo = _mm256_loadu_si256(IDX_LO.as_ptr() as *const __m256i);
-    let idx_hi = _mm256_loadu_si256(IDX_HI.as_ptr() as *const __m256i);
+    let zero = unsafe { _mm256_setzero_si256() };
+    let idx_lo = unsafe { _mm256_loadu_si256(IDX_LO.as_ptr() as *const __m256i) };
+    let idx_hi = unsafe { _mm256_loadu_si256(IDX_HI.as_ptr() as *const __m256i) };
 
     let mut i = 0;
     while i + 32 <= n {
-        let chunk = _mm256_loadu_si256(data.as_ptr().add(i) as *const __m256i);
+        let ptr = unsafe { data.as_ptr().add(i) };
+        let chunk = unsafe { _mm256_loadu_si256(ptr as *const __m256i) };
 
-        let sad = _mm256_sad_epu8(chunk, zero);
+        let sad = unsafe { _mm256_sad_epu8(chunk, zero) };
         let mut tmp_sum = [0u64; 4];
-        _mm256_storeu_si256(tmp_sum.as_mut_ptr() as *mut __m256i, sad);
+        unsafe { _mm256_storeu_si256(tmp_sum.as_mut_ptr() as *mut __m256i, sad) };
         let chunk_sum = tmp_sum.iter().sum::<u64>();
         sum_bytes += chunk_sum;
 
-        let lower = _mm256_castsi256_si128(chunk);
-        let upper = _mm256_extracti128_si256(chunk, 1);
-        let lo = _mm256_cvtepu8_epi16(lower);
-        let hi = _mm256_cvtepu8_epi16(upper);
-        let prod_lo = _mm256_madd_epi16(lo, idx_lo);
-        let prod_hi = _mm256_madd_epi16(hi, idx_hi);
+        let lower = unsafe { _mm256_castsi256_si128(chunk) };
+        let upper = unsafe { _mm256_extracti128_si256(chunk, 1) };
+        let lo = unsafe { _mm256_cvtepu8_epi16(lower) };
+        let hi = unsafe { _mm256_cvtepu8_epi16(upper) };
+        let prod_lo = unsafe { _mm256_madd_epi16(lo, idx_lo) };
+        let prod_hi = unsafe { _mm256_madd_epi16(hi, idx_hi) };
         let mut tmp = [0i32; 8];
-        _mm256_storeu_si256(tmp.as_mut_ptr() as *mut __m256i, prod_lo);
+        unsafe { _mm256_storeu_si256(tmp.as_mut_ptr() as *mut __m256i, prod_lo) };
         let sum_lo: i64 = tmp.iter().map(|&v| v as i64).sum();
-        _mm256_storeu_si256(tmp.as_mut_ptr() as *mut __m256i, prod_hi);
+        unsafe { _mm256_storeu_si256(tmp.as_mut_ptr() as *mut __m256i, prod_hi) };
         let sum_hi: i64 = tmp.iter().map(|&v| v as i64).sum();
         let chunk_idx_sum = sum_lo + sum_hi;
 
@@ -310,6 +315,7 @@ pub unsafe fn rolling_checksum_avx2(data: &[u8], seed: u32) -> u32 {
 #[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
 #[target_feature(enable = "avx512f,avx512bw")]
 #[doc(hidden)]
+#[allow(unused_unsafe)]
 pub unsafe fn rolling_checksum_avx512(data: &[u8], seed: u32) -> u32 {
     use std::arch::x86_64::*;
 
@@ -327,30 +333,31 @@ pub unsafe fn rolling_checksum_avx512(data: &[u8], seed: u32) -> u32 {
     let mut sum_indices: u64 = 0;
     let mut offset: u64 = 0;
 
-    let zero = _mm512_setzero_si512();
-    let idx_lo = _mm512_loadu_si512(IDX_LO.as_ptr() as *const __m512i);
-    let idx_hi = _mm512_loadu_si512(IDX_HI.as_ptr() as *const __m512i);
+    let zero = unsafe { _mm512_setzero_si512() };
+    let idx_lo = unsafe { _mm512_loadu_si512(IDX_LO.as_ptr() as *const __m512i) };
+    let idx_hi = unsafe { _mm512_loadu_si512(IDX_HI.as_ptr() as *const __m512i) };
 
     let mut i = 0;
     while i + 64 <= n {
-        let chunk = _mm512_loadu_si512(data.as_ptr().add(i) as *const __m512i);
+        let ptr = unsafe { data.as_ptr().add(i) };
+        let chunk = unsafe { _mm512_loadu_si512(ptr as *const __m512i) };
 
-        let sad = _mm512_sad_epu8(chunk, zero);
+        let sad = unsafe { _mm512_sad_epu8(chunk, zero) };
         let mut tmp_sum = [0u64; 8];
-        _mm512_storeu_si512(tmp_sum.as_mut_ptr() as *mut __m512i, sad);
+        unsafe { _mm512_storeu_si512(tmp_sum.as_mut_ptr() as *mut __m512i, sad) };
         let chunk_sum = tmp_sum.iter().sum::<u64>();
         sum_bytes += chunk_sum;
 
-        let lower = _mm512_castsi512_si256(chunk);
-        let upper = _mm512_extracti64x4_epi64(chunk, 1);
-        let lo = _mm512_cvtepu8_epi16(lower);
-        let hi = _mm512_cvtepu8_epi16(upper);
-        let prod_lo = _mm512_madd_epi16(lo, idx_lo);
-        let prod_hi = _mm512_madd_epi16(hi, idx_hi);
+        let lower = unsafe { _mm512_castsi512_si256(chunk) };
+        let upper = unsafe { _mm512_extracti64x4_epi64(chunk, 1) };
+        let lo = unsafe { _mm512_cvtepu8_epi16(lower) };
+        let hi = unsafe { _mm512_cvtepu8_epi16(upper) };
+        let prod_lo = unsafe { _mm512_madd_epi16(lo, idx_lo) };
+        let prod_hi = unsafe { _mm512_madd_epi16(hi, idx_hi) };
         let mut tmp = [0i32; 16];
-        _mm512_storeu_si512(tmp.as_mut_ptr() as *mut __m512i, prod_lo);
+        unsafe { _mm512_storeu_si512(tmp.as_mut_ptr() as *mut __m512i, prod_lo) };
         let sum_lo: i64 = tmp.iter().map(|&v| v as i64).sum();
-        _mm512_storeu_si512(tmp.as_mut_ptr() as *mut __m512i, prod_hi);
+        unsafe { _mm512_storeu_si512(tmp.as_mut_ptr() as *mut __m512i, prod_hi) };
         let sum_hi: i64 = tmp.iter().map(|&v| v as i64).sum();
         let chunk_idx_sum = sum_lo + sum_hi;
 
