@@ -466,7 +466,8 @@ pub(crate) struct ClientOpts {
         long = "compress-level",
         value_name = "NUM",
         help_heading = "Compression",
-        visible_alias = "zl"
+        visible_alias = "zl",
+        value_parser = clap::value_parser!(i32).range(0..=9)
     )]
     pub compress_level: Option<i32>,
     #[arg(
