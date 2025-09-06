@@ -1,7 +1,7 @@
 // crates/logging/src/lib.rs
 #![allow(clippy::too_many_arguments)]
 use std::fmt;
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io;
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt;
@@ -493,7 +493,37 @@ impl<'a> MakeWriter<'a> for LogWriter {
     }
 }
 
-pub fn subscriber(cfg: SubscriberConfig) -> Box<dyn tracing::Subscriber + Send + Sync> {
+struct FileWriter {
+    file: File,
+}
+
+struct FileWriterHandle(io::Result<File>);
+
+impl io::Write for FileWriterHandle {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match &mut self.0 {
+            Ok(f) => f.write(buf),
+            Err(e) => Err(io::Error::new(e.kind(), e.to_string())),
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match &mut self.0 {
+            Ok(f) => f.flush(),
+            Err(e) => Err(io::Error::new(e.kind(), e.to_string())),
+        }
+    }
+}
+
+impl<'a> MakeWriter<'a> for FileWriter {
+    type Writer = FileWriterHandle;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        FileWriterHandle(self.file.try_clone())
+    }
+}
+
+pub fn subscriber(cfg: SubscriberConfig) -> io::Result<Box<dyn tracing::Subscriber + Send + Sync>> {
     let SubscriberConfig {
         format,
         verbose,
@@ -597,29 +627,31 @@ pub fn subscriber(cfg: SubscriberConfig) -> Box<dyn tracing::Subscriber + Send +
         tracing_subscriber::registry().with(filter).with(fmt_layer)
     };
 
-    let file_layer = log_file.map(|(path, fmt)| {
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)
-            .expect("failed to open log file");
+    let file_layer = if let Some((path, fmt)) = log_file {
+        let file = OpenOptions::new().create(true).append(true).open(path)?;
+        // Attempt to clone once to surface any errors during initialization.
+        file.try_clone()?;
         let base = tracing_fmt::layer()
-            .with_writer(move || file.try_clone().unwrap())
+            .with_writer(FileWriter { file })
             .with_ansi(false);
-        match fmt.as_deref() {
+        let layer = match fmt.as_deref() {
             Some("json") => base.json().boxed(),
             Some(spec) => base
                 .event_format(RsyncFormatter::new(Some(spec.to_string())))
                 .boxed(),
             None => base.event_format(RsyncFormatter::new(None)).boxed(),
-        }
-    });
+        };
+        Some(layer)
+    } else {
+        None
+    };
     let registry = registry.with(file_layer);
-    Box::new(registry)
+    Ok(Box::new(registry))
 }
 
-pub fn init(cfg: SubscriberConfig) {
-    subscriber(cfg).init();
+pub fn init(cfg: SubscriberConfig) -> io::Result<()> {
+    subscriber(cfg)?.init();
+    Ok(())
 }
 
 pub fn human_bytes(bytes: u64) -> String {

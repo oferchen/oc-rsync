@@ -17,7 +17,7 @@ fn info_not_emitted_by_default() {
         .colored(true)
         .timestamps(false)
         .build();
-    let sub = subscriber(cfg);
+    let sub = subscriber(cfg).unwrap();
     with_default(sub, || {
         assert!(!tracing::enabled!(Level::INFO));
     });
@@ -37,7 +37,7 @@ fn verbose_enables_info() {
         .colored(true)
         .timestamps(false)
         .build();
-    let sub = subscriber(cfg);
+    let sub = subscriber(cfg).unwrap();
     with_default(sub, || {
         assert!(tracing::enabled!(Level::INFO));
     });
@@ -57,7 +57,7 @@ fn debug_enables_debug() {
         .colored(true)
         .timestamps(false)
         .build();
-    let sub = subscriber(cfg);
+    let sub = subscriber(cfg).unwrap();
     with_default(sub, || {
         assert!(tracing::enabled!(Level::DEBUG));
     });
@@ -77,7 +77,7 @@ fn debug_with_two_v() {
         .colored(true)
         .timestamps(false)
         .build();
-    let sub = subscriber(cfg);
+    let sub = subscriber(cfg).unwrap();
     with_default(sub, || {
         assert!(tracing::enabled!(Level::DEBUG));
     });
@@ -97,7 +97,7 @@ fn info_flag_enables_info() {
         .colored(true)
         .timestamps(false)
         .build();
-    let sub = subscriber(cfg);
+    let sub = subscriber(cfg).unwrap();
     with_default(sub, || {
         assert!(tracing::enabled!(Level::INFO));
     });
@@ -117,7 +117,7 @@ fn json_verbose_enables_info() {
         .colored(true)
         .timestamps(false)
         .build();
-    let sub = subscriber(cfg);
+    let sub = subscriber(cfg).unwrap();
     with_default(sub, || {
         assert!(tracing::enabled!(Level::INFO));
     });
