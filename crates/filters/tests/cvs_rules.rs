@@ -1,5 +1,5 @@
 // crates/filters/tests/cvs_rules.rs
-use filters::{parse, Matcher};
+use filters::{default_cvs_rules, parse, Matcher};
 use std::collections::HashSet;
 use std::env;
 use std::fs;
@@ -41,8 +41,10 @@ fn cvsignore_is_scoped_per_directory() {
 fn home_and_env_patterns_are_global() {
     let home = tempdir().unwrap();
     fs::write(home.path().join(".cvsignore"), "home_ignored\n").unwrap();
-    env::set_var("HOME", home.path());
-    env::set_var("CVSIGNORE", "env_ignored");
+    unsafe {
+        env::set_var("HOME", home.path());
+        env::set_var("CVSIGNORE", "env_ignored");
+    }
 
     let rules = p("-C\n");
     let matcher = Matcher::new(rules);
@@ -52,6 +54,18 @@ fn home_and_env_patterns_are_global() {
     assert!(!matcher.is_included("env_ignored").unwrap());
     assert!(!matcher.is_included("sub/env_ignored").unwrap());
 
-    env::remove_var("HOME");
-    env::remove_var("CVSIGNORE");
+    unsafe {
+        env::remove_var("HOME");
+        env::remove_var("CVSIGNORE");
+    }
+}
+
+#[test]
+fn git_directory_is_ignored_by_default_rules() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path();
+    fs::create_dir(root.join(".git")).unwrap();
+    let rules = default_cvs_rules().unwrap();
+    let matcher = Matcher::new(rules).with_root(root);
+    assert!(!matcher.is_included(".git").unwrap());
 }
