@@ -56,3 +56,31 @@ fn per_dir_merge_precedence() {
     assert!(!matcher.is_included("debug.log").unwrap());
     assert!(matcher.is_included("sub/debug.log").unwrap());
 }
+
+#[test]
+fn sender_hide_excludes() {
+    let mut v = HashSet::new();
+    let rules = parse("H secret.log\n+ *.log\n- *\n", &mut v, 0).unwrap();
+    let matcher = Matcher::new(rules);
+    assert!(!matcher.is_included("secret.log").unwrap());
+    assert!(matcher.is_included("public.log").unwrap());
+    assert!(matcher.is_included_for_delete("secret.log").unwrap());
+}
+
+#[test]
+fn receiver_protect_prevents_delete() {
+    let mut v = HashSet::new();
+    let rules = parse("P secret.log\n- *.log\n", &mut v, 0).unwrap();
+    let matcher = Matcher::new(rules);
+    assert!(!matcher.is_included("secret.log").unwrap());
+    assert!(matcher.is_included_for_delete("secret.log").unwrap());
+}
+
+#[test]
+fn evaluate_rule_sender_only() {
+    let mut v = HashSet::new();
+    let rules = parse("E- secret.log\n+ *\n- *\n", &mut v, 0).unwrap();
+    let matcher = Matcher::new(rules);
+    assert!(!matcher.is_included("secret.log").unwrap());
+    assert!(matcher.is_included_for_delete("secret.log").unwrap());
+}
