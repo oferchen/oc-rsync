@@ -52,10 +52,11 @@ sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
 Run `scripts/preflight.sh` to verify these dependencies before building. Then
 install from crates.io or build from a local checkout:
 
-If `libacl1-dev` isn't available, disable ACL support with
+If `libacl1-dev` isn't available, disable ACL support with the `no-acl`
+feature set:
 
 ```bash
-cargo build --no-default-features --features xattr
+cargo build --no-default-features --features no-acl
 ```
 
 ```bash
@@ -88,6 +89,9 @@ An overview of crate boundaries, data flow, and algorithms is in [docs/architect
 ## Testing & CI
 
 `make test` runs the full test suite with `cargo nextest run --workspace --no-fail-fast` followed by `cargo nextest run --workspace --no-fail-fast --features "cli nightly"`. CI workflows live under [.github/workflows](.github/workflows). Fuzzing and interoperability grids are described in [docs/fuzzing.md](docs/fuzzing.md) and [docs/interop-grid.md](docs/interop-grid.md).
+
+Systems without `libacl` can execute the suite via `make test-noacl`,
+which runs the tests with the `no-acl` feature set.
 
 ## Security
 

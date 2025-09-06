@@ -111,6 +111,8 @@ xattr = ["engine/xattr"]
 acl = ["engine/acl", "meta/acl", "posix-acl"]
 zlib = ["compress/zlib"]
 zstd = ["compress/zstd"]
+# Convenience feature set that mirrors the defaults but without ACL support.
+no-acl = ["xattr", "zlib", "zstd"]
 # Enables CLI-only tools
 cli = []
 # Enables AVX-512 implementations requiring a nightly toolchain
