@@ -246,13 +246,8 @@ impl Matcher {
             }
         }
 
-        if let Some(root) = &self.root {
-            let abs = root.join(path);
-            if abs.is_dir() {
-                let _ = self.dir_rules_at(&abs, false, false)?;
-            }
-        } else if path.is_dir() {
-            let _ = self.dir_rules_at(path, false, false)?;
+        if path.as_os_str().is_empty() {
+            return Ok((true, false));
         }
 
         let mut seq = 0usize;
