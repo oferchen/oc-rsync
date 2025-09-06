@@ -113,6 +113,20 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev acl attr openssh-server rsync
 
+      - name: Build oc-rsync (release)
+        run: |
+          cargo build --release --bin oc-rsync --features="acl xattr"
+          mkdir -p target/debug
+          cp target/release/oc-rsync target/debug/oc-rsync
+
+      - name: Build upstream rsync 3.4.1
+        run: echo "UPSTREAM_RSYNC=$(tests/interop/build_upstream.sh)" >> $GITHUB_ENV
+
+      - name: Run interop matrix
+        env:
+          UPSTREAM_RSYNC: ${{ env.UPSTREAM_RSYNC }}
+        run: tests/interop/run_matrix.sh
+
       - name: Install cargo-nextest
         run: cargo install cargo-nextest --locked
 
