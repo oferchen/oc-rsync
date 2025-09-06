@@ -12,7 +12,9 @@ filesystem trees for interoperability tests.
 - `run_matrix.sh` replays a matrix of rsync client/server combinations over both
   SSH and rsync:// transports using the pre-generated fixtures in `golden/`.
   Set `UPDATE=1` to regenerate tarball goldens from a locally built upstream
-  `rsync`.
+  `rsync`. Daemon ports are assigned deterministically starting from
+  `INTEROP_PORT_BASE` (default `43000`), incrementing for each daemon to ensure
+  unique, stable ports across runs.
 
 The committed goldens were recorded in a controlled environment using upstream
 `rsync 3.4.1` and the local `oc-rsync` build. To record fresh goldens, point

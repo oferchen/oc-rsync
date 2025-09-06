@@ -16,6 +16,12 @@ SCENARIOS=(
 
 RSYNC_VERSIONS=(3.2.7 3.3.0 3.4.1)
 
+# Base port for rsync daemons. Override with INTEROP_PORT_BASE to avoid
+# collisions when running tests in parallel environments. Ports are
+# assigned sequentially for determinism across runs.
+PORT_BASE=${INTEROP_PORT_BASE:-43000}
+NEXT_PORT=$PORT_BASE
+
 if [[ "${LIST_SCENARIOS:-0}" == "1" ]]; then
   for entry in "${SCENARIOS[@]}"; do
     IFS=' ' read -r name _ <<< "$entry"
@@ -55,7 +61,8 @@ create_tree() {
 setup_daemon() {
   local server_bin="$1"
   local tmp="$(mktemp -d)"
-  local port=$(shuf -i 40000-49999 -n 1)
+  local port=$NEXT_PORT
+  NEXT_PORT=$((NEXT_PORT + 1))
   cat <<CFG > "$tmp/rsyncd.conf"
 uid = root
 gid = root
