@@ -40,7 +40,9 @@ use protocol::{
     negotiate_version, CharsetConv, ExitCode, CAP_ACLS, CAP_CODECS, CAP_XATTRS, LATEST_VERSION,
     SUPPORTED_PROTOCOLS, V30,
 };
-use transport::{parse_sockopts, AddressFamily, RateLimitedTransport, SshStdioTransport};
+use transport::{
+    daemon_remote_opts, parse_sockopts, AddressFamily, RateLimitedTransport, SshStdioTransport,
+};
 #[cfg(unix)]
 use users::get_user_by_uid;
 
@@ -1071,6 +1073,9 @@ fn run_single(
                         }
                     }
                     (Some(sm), Some(dm)) => {
+                        let mut dst_opts = sync_opts.clone();
+                        dst_opts.remote_options =
+                            daemon_remote_opts(&sync_opts.remote_options, &dst_path.path);
                         let mut dst_session = spawn_daemon_session(
                             &dst_host,
                             &dm,
@@ -1081,11 +1086,14 @@ fn run_single(
                             opts.connect_timeout,
                             addr_family,
                             &opts.sockopts,
-                            &sync_opts,
+                            &dst_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
                         )?;
+                        let mut src_opts = sync_opts.clone();
+                        src_opts.remote_options =
+                            daemon_remote_opts(&sync_opts.remote_options, &src_path.path);
                         let mut src_session = spawn_daemon_session(
                             &src_host,
                             &sm,
@@ -1096,7 +1104,7 @@ fn run_single(
                             opts.connect_timeout,
                             addr_family,
                             &opts.sockopts,
-                            &sync_opts,
+                            &src_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
@@ -1125,6 +1133,9 @@ fn run_single(
                             sync_opts.blocking_io,
                         )
                         .map_err(EngineError::from)?;
+                        let mut src_opts = sync_opts.clone();
+                        src_opts.remote_options =
+                            daemon_remote_opts(&sync_opts.remote_options, &src_path.path);
                         let mut src_session = spawn_daemon_session(
                             &src_host,
                             &sm,
@@ -1135,7 +1146,7 @@ fn run_single(
                             opts.connect_timeout,
                             addr_family,
                             &opts.sockopts,
-                            &sync_opts,
+                            &src_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
                             iconv.as_ref(),
@@ -1153,6 +1164,9 @@ fn run_single(
                         }
                     }
                     (None, Some(dm)) => {
+                        let mut dst_opts = sync_opts.clone();
+                        dst_opts.remote_options =
+                            daemon_remote_opts(&sync_opts.remote_options, &dst_path.path);
                         let mut dst_session = spawn_daemon_session(
                             &dst_host,
                             &dm,
@@ -1163,7 +1177,7 @@ fn run_single(
                             opts.connect_timeout,
                             addr_family,
                             &opts.sockopts,
-                            &sync_opts,
+                            &dst_opts,
                             opts.protocol.unwrap_or(31),
                             opts.early_input.as_deref(),
                             iconv.as_ref(),

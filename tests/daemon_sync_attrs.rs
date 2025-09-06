@@ -13,7 +13,26 @@ use std::thread::sleep;
 use std::time::Duration;
 use tempfile::tempdir;
 
+use meta::{acls_supported, xattrs_supported};
 use posix_acl::{ACL_READ, ACL_WRITE, PosixACL, Qualifier};
+
+macro_rules! require_xattrs {
+    () => {
+        if !xattrs_supported() {
+            eprintln!("skipping: xattrs unsupported");
+            return;
+        }
+    };
+}
+
+macro_rules! require_acls {
+    () => {
+        if !acls_supported() {
+            eprintln!("skipping: ACLs unsupported");
+            return;
+        }
+    };
+}
 
 #[cfg(unix)]
 fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
@@ -117,9 +136,10 @@ fn spawn_rsync_daemon_xattr(root: &std::path::Path) -> (Child, u16) {
 
 #[cfg(unix)]
 #[test]
-#[ignore]
 #[serial]
 fn daemon_preserves_xattrs() {
+    require_xattrs!();
+    require_acls!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
@@ -168,6 +188,7 @@ fn daemon_preserves_xattrs() {
 #[test]
 #[serial]
 fn daemon_preserves_symlink_xattrs_rr_client() {
+    require_xattrs!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
@@ -203,6 +224,7 @@ fn daemon_preserves_symlink_xattrs_rr_client() {
 #[test]
 #[serial]
 fn daemon_preserves_xattrs_rr_client() {
+    require_xattrs!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
@@ -253,9 +275,9 @@ fn daemon_preserves_xattrs_rr_client() {
 
 #[cfg(unix)]
 #[test]
-#[ignore]
 #[serial]
 fn daemon_preserves_xattrs_rr_daemon() {
+    require_xattrs!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
@@ -306,9 +328,10 @@ fn daemon_preserves_xattrs_rr_daemon() {
 
 #[cfg(unix)]
 #[test]
-#[ignore]
 #[serial]
 fn daemon_excludes_filtered_xattrs() {
+    require_xattrs!();
+    require_acls!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
@@ -353,9 +376,9 @@ fn daemon_excludes_filtered_xattrs() {
 
 #[cfg(unix)]
 #[test]
-#[ignore]
 #[serial]
 fn daemon_excludes_filtered_xattrs_rr_client() {
+    require_xattrs!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
@@ -402,6 +425,7 @@ fn daemon_excludes_filtered_xattrs_rr_client() {
 #[test]
 #[serial]
 fn daemon_xattrs_match_rsync_server() {
+    require_xattrs!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv_oc = tmp.path().join("srv_oc");
@@ -448,6 +472,8 @@ fn daemon_xattrs_match_rsync_server() {
 #[serial]
 #[cfg_attr(not(target_os = "linux"), ignore = "requires Linux ACLs")]
 fn daemon_preserves_acls() {
+    require_xattrs!();
+    require_acls!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
@@ -492,6 +518,7 @@ fn daemon_preserves_acls() {
 #[serial]
 #[cfg_attr(not(target_os = "linux"), ignore = "requires Linux ACLs")]
 fn daemon_preserves_acls_rr_client() {
+    require_acls!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
@@ -536,6 +563,7 @@ fn daemon_preserves_acls_rr_client() {
 #[serial]
 #[cfg_attr(not(target_os = "linux"), ignore = "requires Linux ACLs")]
 fn daemon_removes_acls() {
+    require_acls!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
@@ -577,6 +605,7 @@ fn daemon_removes_acls() {
 #[test]
 #[serial]
 fn daemon_ignores_acls_without_flag() {
+    require_acls!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
@@ -610,6 +639,8 @@ fn daemon_ignores_acls_without_flag() {
 #[test]
 #[serial]
 fn daemon_inherits_default_acls() {
+    require_xattrs!();
+    require_acls!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
@@ -655,6 +686,7 @@ fn daemon_inherits_default_acls() {
 #[test]
 #[serial]
 fn daemon_inherits_default_acls_rr_client() {
+    require_acls!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv = tmp.path().join("srv");
@@ -700,6 +732,8 @@ fn daemon_inherits_default_acls_rr_client() {
 #[test]
 #[serial]
 fn daemon_acls_match_rsync_server() {
+    require_xattrs!();
+    require_acls!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv_oc = tmp.path().join("srv_oc");
@@ -755,6 +789,8 @@ fn daemon_acls_match_rsync_server() {
 #[serial]
 #[cfg_attr(not(target_os = "linux"), ignore = "requires Linux ACLs")]
 fn daemon_acls_match_rsync_client() {
+    require_xattrs!();
+    require_acls!();
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let srv_oc = tmp.path().join("srv_oc");

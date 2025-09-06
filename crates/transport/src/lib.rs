@@ -1,5 +1,6 @@
 // crates/transport/src/lib.rs
 use std::io::{self, Read, Write};
+use std::path::Path;
 use std::time::{Duration, Instant};
 
 mod rate;
@@ -162,6 +163,13 @@ impl SshTransport for SshStdioTransport {}
 
 pub fn rate_limited<T: Transport>(inner: T, bwlimit: u64) -> RateLimitedTransport<T> {
     RateLimitedTransport::new(inner, bwlimit)
+}
+
+#[doc = "Append a daemon path specification to a set of remote options."]
+pub fn daemon_remote_opts(base: &[String], path: &Path) -> Vec<String> {
+    let mut opts = base.to_vec();
+    opts.push(path.to_string_lossy().into_owned());
+    opts
 }
 
 pub fn pipe<S, D>(src: &mut S, dst: &mut D) -> io::Result<u64>

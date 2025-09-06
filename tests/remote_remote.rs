@@ -283,6 +283,51 @@ fn remote_remote_via_daemon_paths() {
 }
 
 #[test]
+fn remote_remote_via_daemon_subpaths() {
+    let dir = tempdir().unwrap();
+    let src_root = dir.path().join("src");
+    let dst_root = dir.path().join("dst");
+    fs::create_dir_all(src_root.join("subdir")).unwrap();
+    fs::write(src_root.join("subdir/file.txt"), b"via_daemon_sub").unwrap();
+    fs::create_dir_all(&dst_root).unwrap();
+
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let mut daemon = StdCommand::new(cargo_bin("oc-rsync"))
+        .args([
+            "--daemon",
+            "--module",
+            &format!("src={}", src_root.display()),
+            "--module",
+            &format!("dst={}", dst_root.display()),
+            "--port",
+            &port.to_string(),
+        ])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+
+    std::thread::sleep(Duration::from_millis(100));
+
+    let src_url = format!("rsync://127.0.0.1:{}/src/subdir/", port);
+    let dst_url = format!("rsync://127.0.0.1:{}/dst/nested/", port);
+
+    let status = StdCommand::new(cargo_bin("oc-rsync"))
+        .args(["--archive", &src_url, &dst_url])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    std::thread::sleep(Duration::from_millis(200));
+    assert_same_tree(&src_root.join("subdir"), &dst_root.join("nested"));
+
+    let _ = daemon.kill();
+    let _ = daemon.wait();
+}
+
+#[test]
 fn remote_to_remote_pipes_data() {
     let dir = tempdir().unwrap();
     let src_file = dir.path().join("src.txt");
