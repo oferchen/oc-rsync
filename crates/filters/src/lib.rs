@@ -21,37 +21,23 @@ pub struct RuleFlags {
     xattr: bool,
 }
 
-/// All filter modifiers supported by upstream rsync and their mapping to
-/// [`RuleFlags`]. The characters here correspond to the modifier letters used
-/// in filter rules (e.g. `-p`, `+s`, `:n`, etc.).
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum RuleModifier {
-    /// Applies the rule only on the sending side (`s`).
     Sender,
-    /// Applies the rule only on the receiving side (`r`).
     Receiver,
-    /// Marks the rule as perishable (`p`).
     Perishable,
-    /// Restricts the rule to xattr names (`x`).
     Xattr,
 }
 
-/// Modifiers that apply to merge/dir-merge rules.
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum MergeModifier {
-    /// '+'
     IncludeOnly,
-    /// '-'
     ExcludeOnly,
-    /// 'n'
     NoInherit,
-    /// 'w'
     WordSplit,
-    /// 'e'
     ExcludeSelf,
-    /// 'C'
     CvsMode,
 }
 
@@ -167,30 +153,16 @@ impl FilterStats {
 }
 
 fn compile_glob(pat: &str) -> Result<GlobMatcher, ParseError> {
-    // `globset` understands a superset of the standard shell glob syntax, but
-    // rsync allows a few extras that need some light pre-processing:
-    //   * `**` should match across path separators.
-    //   * character classes (`[abc]`, `[!abc]`, `[[:alnum:]]`, …) must remain
-    //     intact, including any escaped characters inside the brackets.
-    //   * a backslash escapes the following metacharacter and should be passed
-    //     through verbatim.
-    // The loop below rewrites the pattern ensuring the above invariants before
-    // handing it off to `GlobBuilder`.
-
     let mut translated = String::new();
     let mut chars = pat.chars().peekable();
     while let Some(ch) = chars.next() {
         match ch {
-            // Preserve escapes; `GlobBuilder` interprets a backslash as an
-            // escape when `backslash_escape(true)` is set.
             '\\' => {
                 translated.push('\\');
                 if let Some(next) = chars.next() {
                     translated.push(next);
                 }
             }
-            // Copy character classes verbatim until the closing bracket. Any
-            // escapes inside are also preserved.
             '[' => {
                 translated.push('[');
                 while let Some(c) = chars.next() {
@@ -206,7 +178,6 @@ fn compile_glob(pat: &str) -> Result<GlobMatcher, ParseError> {
                     }
                 }
             }
-            // Ensure `**` is kept as a single token that spans directories.
             '*' => {
                 if let Some('*') = chars.peek() {
                     chars.next();
@@ -1785,7 +1756,7 @@ pub fn parse_with_options(
             }
         };
 
-        if mods.contains('C') && rest.is_empty() {
+        if matches!(kind, Some(RuleKind::Exclude)) && mods.contains('C') && rest.is_empty() {
             rules.extend(default_cvs_rules()?);
             continue;
         }
@@ -1863,11 +1834,6 @@ pub fn parse_with_options(
         let mut pats: Vec<(String, bool)> = Vec::new();
         for b in bases {
             if dir_all || dir_only {
-                // Expand directory rules into a pair of patterns: the
-                // directory itself and a recursive pattern that matches any
-                // entry beneath it. These patterns are not marked as
-                // directory-only so that they apply even when the caller does
-                // not provide filesystem metadata.
                 pats.push((b.clone(), false));
                 pats.push((format!("{}/**", b), false));
             } else {
@@ -1946,71 +1912,82 @@ pub const CVS_DEFAULTS: &[&str] = &[
 ];
 
 pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
-    fn add_pat(out: &mut Vec<Rule>, pat: &str) -> Result<(), ParseError> {
-        let dir_all = pat.ends_with('/') || pat.ends_with("/***");
-        let mut base = pat.to_string();
-        if pat.ends_with("/***") {
-            base = base.trim_end_matches("/***").to_string();
-        } else if pat.ends_with('/') {
-            base = base.trim_end_matches('/').to_string();
-        }
-        let bases: Vec<String> = if !base.starts_with("**/") && base != "**" && !base.contains('/')
-        {
-            vec![base.clone(), format!("**/{}", base)]
-        } else {
-            vec![base]
-        };
-        let mut pats: Vec<(String, bool)> = Vec::new();
-        for b in bases {
-            if dir_all {
-                pats.push((b.clone(), true));
-                pats.push((format!("{}/**", b), false));
-            } else {
-                pats.push((b, false));
-            }
-        }
-        for (p, dir_only) in pats {
-            let matcher = compile_glob(&p)?;
-            let data = RuleData {
-                matcher,
-                invert: false,
-                flags: RuleFlags {
-                    perishable: true,
-                    ..Default::default()
-                },
-                source: None,
-                dir_only,
-            };
-            out.push(Rule::Exclude(data));
-        }
-        Ok(())
-    }
-
-    let mut out = Vec::new();
+    let mut buf = String::new();
     for pat in CVS_DEFAULTS {
-        add_pat(&mut out, pat)?;
+        buf.push_str("-p ");
+        buf.push_str(pat);
+        buf.push('\n');
     }
+    let mut rules = parse(&buf, &mut HashSet::new(), 0)?;
 
     if let Ok(home) = env::var("HOME") {
         let path = Path::new(&home).join(".cvsignore");
         if let Ok(content) = fs::read_to_string(path) {
-            for pat in content.split_whitespace() {
-                if !pat.is_empty() {
-                    add_pat(&mut out, pat)?;
+            let mut buf = String::new();
+            for tok in content.split_whitespace() {
+                if tok.is_empty() {
+                    continue;
+                }
+                if matches!(
+                    tok.chars().next(),
+                    Some('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R' | '!')
+                ) {
+                    buf.push_str(tok);
+                } else {
+                    buf.push_str("-p ");
+                    buf.push_str(tok);
+                }
+                buf.push('\n');
+            }
+            let mut v = parse(&buf, &mut HashSet::new(), 0)?;
+            for rule in &mut v {
+                match rule {
+                    Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => {
+                        d.flags.perishable = true;
+                    }
+                    Rule::DirMerge(pd) => {
+                        pd.flags.perishable = true;
+                    }
+                    _ => {}
                 }
             }
+            rules.append(&mut v);
         }
     }
 
     if let Ok(envpats) = env::var("CVSIGNORE") {
-        for pat in envpats.split_whitespace() {
-            if !pat.is_empty() {
-                add_pat(&mut out, pat)?;
+        let mut buf = String::new();
+        for tok in envpats.split_whitespace() {
+            if tok.is_empty() {
+                continue;
+            }
+            if matches!(
+                tok.chars().next(),
+                Some('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R' | '!')
+            ) {
+                buf.push_str(tok);
+            } else {
+                buf.push_str("-p ");
+                buf.push_str(tok);
+            }
+            buf.push('\n');
+        }
+        let mut v = parse(&buf, &mut HashSet::new(), 0)?;
+        for rule in &mut v {
+            match rule {
+                Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => {
+                    d.flags.perishable = true;
+                }
+                Rule::DirMerge(pd) => {
+                    pd.flags.perishable = true;
+                }
+                _ => {}
             }
         }
+        rules.append(&mut v);
     }
 
-    Ok(out)
+    Ok(rules)
 }
 
 fn trim_newlines(mut s: &[u8]) -> &[u8] {

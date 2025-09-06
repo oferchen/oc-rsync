@@ -50,7 +50,7 @@ Classic `rsync` protocol versions 30–32 are supported.
 | `--copy-links` | ✅ | Y | Y | Y | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--copy-unsafe-links` | ✅ | Y | Y | Y | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--crtimes` | ✅ | Y | Y | Y | [crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
-| `--cvs-exclude` | ⚠️ | N | Y | Y | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs)<br>[tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs) failing: CVS ignore semantics incomplete |
+| `--cvs-exclude` | ✅ | N | Y | Y | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs)<br>[tests/cli.rs](../tests/cli.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--daemon` | ✅ | Y | Y | Y | [tests/daemon.rs](../tests/daemon.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--debug` | ✅ | Y | Y | Y | [crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |  |
 | `--del` | ✅ | Y | Y | Y | [tests/golden/cli_parity/delete.sh](../tests/golden/cli_parity/delete.sh) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | alias for `--delete-during` |
@@ -196,7 +196,7 @@ Classic `rsync` protocol versions 30–32 are supported.
 | --- | --- | --- | --- | --- |
 | `.rsync-filter` merge semantics | Implemented | [crates/filters/tests/merge.rs](../crates/filters/tests/merge.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) | |
 | Complex glob patterns | Implemented | [crates/filters/tests/advanced_globs.rs](../crates/filters/tests/advanced_globs.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) | supports `**`, character classes, and escaping |
-| CVS ignore semantics (`--cvs-exclude`) | Partial | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) | parity with upstream rules incomplete |
+| CVS ignore semantics (`--cvs-exclude`) | ✅ | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |  |
 | Additional rule modifiers | Partial | — | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) | [#268](https://github.com/oferchen/oc-rsync/issues/268) |
 
 ## Metadata
