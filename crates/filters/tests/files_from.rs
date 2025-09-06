@@ -55,3 +55,35 @@ fn files_from_vs_exclude_ordering() {
     assert!(!m_rev.is_included("a").unwrap());
     assert!(m_rev.is_included("b").unwrap());
 }
+
+#[test]
+fn files_from_directory_entries_imply_parents() {
+    let tmp = tempdir().unwrap();
+    let list = tmp.path().join("list");
+    fs::write(&list, "a/b/\n").unwrap();
+    let filter = format!("files-from {}\n", list.display());
+    let mut v = HashSet::new();
+    let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
+    let m = Matcher::new(rules);
+    assert!(m.is_included("a").unwrap());
+    assert!(m.is_included("a/b").unwrap());
+    assert!(m.is_included("a/b/c").unwrap());
+    assert!(!m.is_included("c").unwrap());
+}
+
+#[test]
+fn files_from_mixed_file_dir_entries() {
+    let tmp = tempdir().unwrap();
+    let list = tmp.path().join("list");
+    fs::write(&list, "foo/bar/baz\nqux/\n").unwrap();
+    let filter = format!("files-from {}\n", list.display());
+    let mut v = HashSet::new();
+    let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
+    let m = Matcher::new(rules);
+    assert!(m.is_included("foo").unwrap());
+    assert!(m.is_included("foo/bar").unwrap());
+    assert!(m.is_included("foo/bar/baz").unwrap());
+    assert!(m.is_included("qux").unwrap());
+    assert!(m.is_included("qux/inner").unwrap());
+    assert!(!m.is_included("other").unwrap());
+}
