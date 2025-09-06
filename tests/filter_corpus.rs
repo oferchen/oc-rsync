@@ -47,7 +47,6 @@ fn setup_edge(src: &Path) {
 }
 
 #[test]
-#[ignore]
 fn filter_corpus_parity() {
     let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/filter_corpus");
     for entry in fs::read_dir(&fixture_dir).unwrap() {
@@ -83,7 +82,7 @@ fn filter_corpus_parity() {
         }
         let src_arg = format!("{}/", src.display());
 
-        let mut rsync_cmd = StdCommand::new(cargo_bin("oc-rsync"));
+        let mut rsync_cmd = StdCommand::new("rsync");
         rsync_cmd.args(["-r", "--quiet"]);
         rsync_cmd.args(&args);
         rsync_cmd.arg(&src_arg);
@@ -142,7 +141,7 @@ fn perdir_rules_excludes_filter_files() {
     let args = split(rules_line.trim()).unwrap();
     let src_arg = format!("{}/", src.display());
 
-    let mut rsync_cmd = StdCommand::new(cargo_bin("oc-rsync"));
+    let mut rsync_cmd = StdCommand::new("rsync");
     rsync_cmd.args(["-r", "--quiet"]);
     rsync_cmd.args(&args);
     rsync_cmd.arg(&src_arg);
@@ -187,7 +186,7 @@ fn ignores_parent_rsync_filter_with_ff() {
 
     let src_arg = format!("{}/", src.display());
 
-    let mut rsync_cmd = StdCommand::new(cargo_bin("oc-rsync"));
+    let mut rsync_cmd = StdCommand::new("rsync");
     rsync_cmd.args([
         "-r",
         "--quiet",
@@ -227,7 +226,6 @@ fn ignores_parent_rsync_filter_with_ff() {
 }
 
 #[test]
-#[ignore]
 fn perdir_sign_parity() {
     let cases = [
         vec!["--filter=:+ .rsync-filter", "--filter=- .rsync-filter"],
@@ -244,7 +242,7 @@ fn perdir_sign_parity() {
         setup_perdir(&src);
         let src_arg = format!("{}/", src.display());
 
-        let mut rsync_cmd = StdCommand::new(cargo_bin("oc-rsync"));
+        let mut rsync_cmd = StdCommand::new("rsync");
         rsync_cmd.args(["-r", "--quiet"]);
         rsync_cmd.args(&args);
         rsync_cmd.arg(&src_arg);
@@ -310,7 +308,7 @@ fn perdir_stack_parity() {
         "--filter=- .gitignore",
     ];
 
-    let mut rsync_cmd = StdCommand::new(cargo_bin("oc-rsync"));
+    let mut rsync_cmd = StdCommand::new("rsync");
     rsync_cmd.args(["-r", "--quiet"]);
     rsync_cmd.args(args);
     rsync_cmd.arg(&src_arg);

@@ -50,6 +50,7 @@ pub struct RuleData {
     invert: bool,
     flags: RuleFlags,
     source: Option<PathBuf>,
+    dir_only: bool,
 }
 
 #[derive(Clone)]
@@ -265,6 +266,15 @@ impl Matcher {
                     if !data.flags.applies(for_delete, xattr) {
                         continue;
                     }
+                    if data.dir_only {
+                        if let Some(root) = &self.root {
+                            if !root.join(path).is_dir() {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+                    }
                     if for_delete && data.flags.perishable {
                         continue;
                     }
@@ -285,6 +295,15 @@ impl Matcher {
                     if !data.flags.applies(for_delete, xattr) {
                         continue;
                     }
+                    if data.dir_only {
+                        if let Some(root) = &self.root {
+                            if !root.join(path).is_dir() {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+                    }
                     if for_delete && data.flags.perishable {
                         continue;
                     }
@@ -304,6 +323,15 @@ impl Matcher {
                 Rule::Exclude(data) => {
                     if !data.flags.applies(for_delete, xattr) {
                         continue;
+                    }
+                    if data.dir_only {
+                        if let Some(root) = &self.root {
+                            if !root.join(path).is_dir() {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
                     }
                     if for_delete && data.flags.perishable {
                         continue;
@@ -710,12 +738,18 @@ impl Matcher {
                 match r {
                     Rule::Clear => state = None,
                     Rule::Include(d) | Rule::Protect(d) => {
+                        if d.dir_only && !path.is_dir() {
+                            continue;
+                        }
                         let matched = d.matcher.is_match(path);
                         if (d.invert && !matched) || (!d.invert && matched) {
                             state = Some(true);
                         }
                     }
                     Rule::Exclude(d) => {
+                        if d.dir_only && !path.is_dir() {
+                            continue;
+                        }
                         let matched = d.matcher.is_match(path);
                         if (d.invert && !matched) || (!d.invert && matched) {
                             state = Some(false);
@@ -986,6 +1020,7 @@ pub fn parse_with_options(
                         invert: false,
                         flags: RuleFlags::default(),
                         source: source.clone(),
+                        dir_only: false,
                     };
                     rules.push(Rule::Exclude(data));
                 }
@@ -1138,6 +1173,7 @@ pub fn parse_with_options(
                     invert: false,
                     flags: RuleFlags::default(),
                     source: source.clone(),
+                    dir_only: false,
                 };
                 rules.push(Rule::Exclude(data));
             }
@@ -1221,6 +1257,7 @@ pub fn parse_with_options(
                     invert: false,
                     flags: RuleFlags::default(),
                     source: source.clone(),
+                    dir_only: false,
                 };
                 rules.push(Rule::Exclude(data));
             }
@@ -1379,28 +1416,38 @@ pub fn parse_with_options(
             pattern = format!("/{}", pattern);
         }
         let anchored = pattern.starts_with('/');
-        let dir_only = pattern.ends_with('/');
+        let dir_all = pattern.ends_with("/***");
+        let dir_only = !dir_all && pattern.ends_with('/');
         let mut base = pattern.trim_start_matches('/').to_string();
-        if dir_only {
+        if dir_all {
+            base = base.trim_end_matches("/***").to_string();
+        } else if dir_only {
             base = base.trim_end_matches('/').to_string();
         }
-        if !anchored && !base.contains('/') {
-            base = format!("**/{}", base);
-        }
-        let pats = if dir_only {
-            vec![base.clone(), format!("{}/**", base)]
+        let bases: Vec<String> = if !anchored && !base.contains('/') {
+            vec![base.clone(), format!("**/{}", base)]
         } else {
             vec![base]
         };
+        let mut pats: Vec<(String, bool)> = Vec::new();
+        for b in bases {
+            if dir_all {
+                pats.push((b.clone(), true));
+                pats.push((format!("{}/**", b), false));
+            } else {
+                pats.push((b, dir_only));
+            }
+        }
 
         let invert = mods.contains('!');
-        for pat in pats {
+        for (pat, dir_only) in pats {
             let matcher = Glob::new(&pat)?.compile_matcher();
             let data = RuleData {
                 matcher,
                 invert,
                 flags: flags.clone(),
                 source: source.clone(),
+                dir_only,
             };
             match kind {
                 RuleKind::Include => rules.push(Rule::Include(data)),
@@ -1462,17 +1509,29 @@ pub const CVS_DEFAULTS: &[&str] = &[
 
 pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
     fn add_pat(out: &mut Vec<Rule>, pat: &str) -> Result<(), ParseError> {
-        let dir_only = pat.ends_with('/');
-        let mut base = pat.trim_end_matches('/').to_string();
-        if !base.contains('/') {
-            base = format!("**/{}", base);
+        let dir_all = pat.ends_with("/***");
+        let dir_only = !dir_all && pat.ends_with('/');
+        let mut base = pat.to_string();
+        if dir_all {
+            base = base.trim_end_matches("/***").to_string();
+        } else if dir_only {
+            base = base.trim_end_matches('/').to_string();
         }
-        let pats = if dir_only {
-            vec![base.clone(), format!("{}/**", base)]
+        let bases: Vec<String> = if !base.contains('/') {
+            vec![base.clone(), format!("**/{}", base)]
         } else {
             vec![base]
         };
-        for p in pats {
+        let mut pats: Vec<(String, bool)> = Vec::new();
+        for b in bases {
+            if dir_all {
+                pats.push((b.clone(), true));
+                pats.push((format!("{}/**", b), false));
+            } else {
+                pats.push((b, dir_only));
+            }
+        }
+        for (p, dir_only) in pats {
             let matcher = Glob::new(&p)?.compile_matcher();
             let data = RuleData {
                 matcher,
@@ -1482,6 +1541,7 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
                     ..Default::default()
                 },
                 source: None,
+                dir_only,
             };
             out.push(Rule::Exclude(data));
         }
