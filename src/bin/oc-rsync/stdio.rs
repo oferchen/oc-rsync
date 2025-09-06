@@ -172,8 +172,10 @@ mod tests {
 
     #[test]
     fn stdout_failure() {
-        let out: *mut libc::FILE = std::ptr::dangling_mut();
-        let err: *mut libc::FILE = std::ptr::dangling_mut();
+        let mut out_stub = std::mem::MaybeUninit::<libc::FILE>::uninit();
+        let mut err_stub = std::mem::MaybeUninit::<libc::FILE>::uninit();
+        let out: *mut libc::FILE = out_stub.as_mut_ptr();
+        let err: *mut libc::FILE = err_stub.as_mut_ptr();
         let set_stream = |stream: *mut libc::FILE, _mode: libc::c_int| {
             if stream == out {
                 Err(io::Error::other("stdout failure"))
@@ -187,8 +189,10 @@ mod tests {
 
     #[test]
     fn stderr_failure() {
-        let out: *mut libc::FILE = std::ptr::dangling_mut();
-        let err: *mut libc::FILE = std::ptr::dangling_mut();
+        let mut out_stub = std::mem::MaybeUninit::<libc::FILE>::uninit();
+        let mut err_stub = std::mem::MaybeUninit::<libc::FILE>::uninit();
+        let out: *mut libc::FILE = out_stub.as_mut_ptr();
+        let err: *mut libc::FILE = err_stub.as_mut_ptr();
         let set_stream = |stream: *mut libc::FILE, _mode: libc::c_int| {
             if stream == err {
                 Err(io::Error::other("stderr failure"))
