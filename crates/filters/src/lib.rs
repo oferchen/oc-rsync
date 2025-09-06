@@ -1145,9 +1145,9 @@ pub fn parse_with_options(
             };
             if m.contains('s') || m.contains('r') || m.contains('p') || m.contains('x') {
                 for rule in &mut sub {
-                    if let Rule::Include(ref mut d)
-                    | Rule::Exclude(ref mut d)
-                    | Rule::Protect(ref mut d) = rule
+                    if let Rule::Include(d)
+                    | Rule::Exclude(d)
+                    | Rule::Protect(d) = rule
                     {
                         if m.contains('s') {
                             d.flags.sender = true;
