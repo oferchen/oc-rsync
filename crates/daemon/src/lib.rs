@@ -1,4 +1,5 @@
 // crates/daemon/src/lib.rs
+#![allow(clippy::collapsible_if)]
 use std::collections::HashMap;
 use std::env;
 use std::fs::{self, File, OpenOptions};

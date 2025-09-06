@@ -139,15 +139,15 @@ requires = ["zlib", "libzstd"]
 [package.metadata.rpm.targets.oc-rsync]
 path = "/usr/bin/oc-rsync"
 
-[package.metadata.rpm.files."oc-rsyncd.conf"]
+[package.metadata.rpm.files.".rpm/oc-rsyncd.conf"]
 path = "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf"
 mode = "644"
 
-[package.metadata.rpm.files."oc-rsyncd.systemd.conf"]
+[package.metadata.rpm.files.".rpm/oc-rsyncd.systemd.conf"]
 path = "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf"
 mode = "644"
 
-[package.metadata.rpm.files."oc-rsyncd.service"]
+[package.metadata.rpm.files.".rpm/oc-rsyncd.service"]
 path = "/usr/lib/systemd/system/oc-rsyncd.service"
 mode = "644"
 
