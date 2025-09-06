@@ -27,7 +27,7 @@ fn run_delete_filter(mode: DeleteMode) {
         &matcher,
         &available_codecs(),
         &SyncOptions {
-            delete: Some(mode),
+            delete: Some(mode.clone()),
             ..Default::default()
         },
     )
