@@ -364,17 +364,17 @@ pub unsafe fn rolling_checksum_avx512(data: &[u8], seed: u32) -> u32 {
     let mut offset: u64 = 0;
 
     let zero = unsafe { _mm512_setzero_si512() };
-    let idx_lo = unsafe { _mm512_loadu_si512(IDX_LO.as_ptr() as *const __m512i) };
-    let idx_hi = unsafe { _mm512_loadu_si512(IDX_HI.as_ptr() as *const __m512i) };
+    let idx_lo = unsafe { _mm512_loadu_si512(IDX_LO.as_ptr() as *const i32) };
+    let idx_hi = unsafe { _mm512_loadu_si512(IDX_HI.as_ptr() as *const i32) };
 
     let mut i = 0;
     while i + 64 <= n {
         let ptr = unsafe { data.as_ptr().add(i) };
-        let chunk = unsafe { _mm512_loadu_si512(ptr as *const __m512i) };
+        let chunk = unsafe { _mm512_loadu_si512(ptr as *const i32) };
 
         let sad = unsafe { _mm512_sad_epu8(chunk, zero) };
         let mut tmp_sum = [0u64; 8];
-        unsafe { _mm512_storeu_si512(tmp_sum.as_mut_ptr() as *mut __m512i, sad) };
+        unsafe { _mm512_storeu_si512(tmp_sum.as_mut_ptr() as *mut i32, sad) };
         let chunk_sum = tmp_sum.iter().sum::<u64>();
         sum_bytes += chunk_sum;
 
@@ -385,9 +385,9 @@ pub unsafe fn rolling_checksum_avx512(data: &[u8], seed: u32) -> u32 {
         let prod_lo = unsafe { _mm512_madd_epi16(lo, idx_lo) };
         let prod_hi = unsafe { _mm512_madd_epi16(hi, idx_hi) };
         let mut tmp = [0i32; 16];
-        unsafe { _mm512_storeu_si512(tmp.as_mut_ptr() as *mut __m512i, prod_lo) };
+        unsafe { _mm512_storeu_si512(tmp.as_mut_ptr() as *mut i32, prod_lo) };
         let sum_lo: i64 = tmp.iter().map(|&v| v as i64).sum();
-        unsafe { _mm512_storeu_si512(tmp.as_mut_ptr() as *mut __m512i, prod_hi) };
+        unsafe { _mm512_storeu_si512(tmp.as_mut_ptr() as *mut i32, prod_hi) };
         let sum_hi: i64 = tmp.iter().map(|&v| v as i64).sum();
         let chunk_idx_sum = sum_lo + sum_hi;
 
