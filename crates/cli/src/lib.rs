@@ -1811,10 +1811,8 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    #[allow(clippy::transmute)]
     fn exit_code_handles_unknown_error_kind() {
-        let kind: clap::error::ErrorKind = unsafe { std::mem::transmute(u8::MAX) };
+        let kind = clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand;
         assert_eq!(exit_code_from_error_kind(kind), ExitCode::SyntaxOrUsage);
     }
 
