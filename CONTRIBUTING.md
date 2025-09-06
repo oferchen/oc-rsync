@@ -15,7 +15,8 @@ The Makefile offers shortcuts for common CI checks:
 
 - `make verify-comments` – canonical check that runs `scripts/check-comments.sh` to enforce comment headers.
 - `make lint` – run `cargo fmt --all --check` for formatting.
-- `make coverage` – execute `cargo llvm-cov --workspace --doctests \
+- `make test` – run `cargo nextest run --workspace --no-fail-fast --all-features`.
+- `make coverage` – execute `cargo llvm-cov nextest --workspace --all-features --doctests \
   --fail-under-lines 95 --fail-under-functions 95` to gather test coverage.
 - `make interop` – run the interoperability matrix with `tests/interop/run_matrix.sh`.
 
@@ -42,7 +43,7 @@ headers:
 
 ## Testing Requirements
 - Install `cargo-nextest` with `cargo install cargo-nextest --locked` if it's not already installed, or run `./scripts/install-nextest.sh` to verify or install it.
-- Ensure `cargo nextest run --workspace --no-fail-fast` (and `--all-features`) passes locally.
+- Ensure `cargo nextest run --workspace --no-fail-fast --all-features` passes locally.
 - Add or update tests for any new code.
 - Prefer small, focused commits that each pass the test suite.
 
@@ -56,7 +57,7 @@ LC_ALL=C LANG=C COLUMNS=80 TZ=UTC make test
 ```
 
 The `make test` target exports these variables automatically and runs
-`cargo nextest run --workspace --no-fail-fast`.
+`cargo nextest run --workspace --no-fail-fast --all-features`.
 
 ## Fetching upstream rsync
 Some interop tests require the official rsync sources. Use the helper
