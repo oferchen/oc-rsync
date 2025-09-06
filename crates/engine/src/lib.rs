@@ -4,8 +4,15 @@
 use nix::unistd::{Gid, Uid, chown};
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, Write};
-#[cfg(unix)]
-#[allow(unused_imports)]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "freebsd",
+    target_os = "dragonfly",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "illumos",
+    target_os = "solaris",
+))]
 use std::os::fd::AsRawFd;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
