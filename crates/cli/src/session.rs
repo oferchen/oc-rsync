@@ -11,7 +11,7 @@ pub(crate) fn check_session_errors(
     let (err, _) = session.stderr();
     if !err.is_empty() {
         let msg = if let Some(cv) = iconv {
-            cv.decode_remote(&err)
+            cv.decode_remote(&err).into_owned()
         } else {
             String::from_utf8_lossy(&err).into_owned()
         };

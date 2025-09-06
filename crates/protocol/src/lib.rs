@@ -2,6 +2,7 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use encoding_rs::Encoding;
 use filelist::{Decoder as FlistDecoder, Encoder as FlistEncoder, Entry as FlistEntry};
+use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fmt;
 use std::io::{self, Read, Write};
@@ -13,26 +14,32 @@ pub struct CharsetConv {
 }
 
 impl CharsetConv {
-    pub fn encode_remote(&self, s: &str) -> Vec<u8> {
+    pub fn encode_remote<'a>(&self, s: &'a str) -> Cow<'a, [u8]> {
         let (res, _, _) = self.remote.encode(s);
-        res.into_owned()
+        res
     }
 
-    pub fn decode_remote(&self, b: &[u8]) -> String {
+    pub fn decode_remote<'a>(&self, b: &'a [u8]) -> Cow<'a, str> {
         let (res, _, _) = self.remote.decode(b);
-        res.into_owned()
+        res
     }
 
-    pub fn to_remote(&self, b: &[u8]) -> Vec<u8> {
-        let (s, _, _) = self.local.decode(b);
-        let (res, _, _) = self.remote.encode(&s);
-        res.into_owned()
+    pub fn to_remote<'a>(&self, b: &'a [u8]) -> Cow<'a, [u8]> {
+        if self.remote == self.local {
+            Cow::Borrowed(b)
+        } else {
+            let (s, _, _) = self.local.decode(b);
+            Cow::Owned(self.remote.encode(&s).0.into_owned())
+        }
     }
 
-    pub fn to_local(&self, b: &[u8]) -> Vec<u8> {
-        let (s, _, _) = self.remote.decode(b);
-        let (res, _, _) = self.local.encode(&s);
-        res.into_owned()
+    pub fn to_local<'a>(&self, b: &'a [u8]) -> Cow<'a, [u8]> {
+        if self.remote == self.local {
+            Cow::Borrowed(b)
+        } else {
+            let (s, _, _) = self.remote.decode(b);
+            Cow::Owned(self.local.encode(&s).0.into_owned())
+        }
     }
 
     pub fn new(remote: &'static Encoding, local: &'static Encoding) -> Self {
@@ -588,7 +595,7 @@ impl Message {
 
     fn encode_text(channel: u16, msg: Msg, text: String, iconv: Option<&CharsetConv>) -> Frame {
         let payload = if let Some(cv) = iconv {
-            cv.encode_remote(&text)
+            cv.encode_remote(&text).into_owned()
         } else {
             text.into_bytes()
         };
@@ -603,7 +610,7 @@ impl Message {
 
     fn decode_text(payload: Vec<u8>, iconv: Option<&CharsetConv>) -> io::Result<String> {
         if let Some(cv) = iconv {
-            Ok(cv.decode_remote(&payload))
+            Ok(cv.decode_remote(&payload).into_owned())
         } else {
             String::from_utf8(payload).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
         }
@@ -794,7 +801,7 @@ impl Message {
     ) -> Self {
         let mut e = entry.clone();
         if let Some(cv) = iconv {
-            e.path = cv.to_remote(&e.path);
+            e.path = cv.to_remote(&e.path).into_owned();
         }
         Message::FileListEntry(enc.encode_entry(&e))
     }
@@ -810,7 +817,7 @@ impl Message {
                     .decode_entry(bytes)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
                 if let Some(cv) = iconv {
-                    e.path = cv.to_local(&e.path);
+                    e.path = cv.to_local(&e.path).into_owned();
                 }
                 Ok(e)
             }

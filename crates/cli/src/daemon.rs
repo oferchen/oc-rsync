@@ -118,7 +118,7 @@ pub fn spawn_daemon_session(
                 break;
             }
             let s = if let Some(cv) = iconv {
-                cv.decode_remote(&line)
+                cv.decode_remote(&line).into_owned()
             } else {
                 String::from_utf8_lossy(&line).into_owned()
             };
@@ -150,11 +150,11 @@ pub fn spawn_daemon_session(
     t.set_write_timeout(timeout).map_err(EngineError::from)?;
 
     if let Some(cv) = iconv {
-        let mut line = cv.encode_remote(module);
+        let mut line = cv.encode_remote(module).into_owned();
         line.push(b'\n');
         t.send(&line).map_err(EngineError::from)?;
         for opt in &opts.remote_options {
-            let mut o = cv.encode_remote(opt);
+            let mut o = cv.encode_remote(opt).into_owned();
             o.push(b'\n');
             t.send(&o).map_err(EngineError::from)?;
         }

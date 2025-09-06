@@ -577,9 +577,9 @@ fn iconv_transcodes_filenames() {
     let spec = "utf8,latin1";
     let cv = parse_iconv(spec).unwrap();
     let remote = b"f\xF8o";
-    let local = cv.to_local(remote);
+    let local = cv.to_local(remote).into_owned();
     assert_eq!(local, b"f\xC3\xB8o");
-    let roundtrip = cv.to_remote(&local);
+    let roundtrip = cv.to_remote(&local).into_owned();
     assert_eq!(roundtrip, remote);
 }
 

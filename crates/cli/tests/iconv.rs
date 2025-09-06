@@ -36,7 +36,7 @@ fn invalid_iconv_spec_errors() {
 #[test]
 fn iconv_converts_encodings() {
     let cv = parse_iconv("utf-8,iso8859-1").unwrap();
-    assert_eq!(cv.encode_remote("é"), vec![0xe9]);
-    let local = cv.to_local(&[0xe9]);
+    assert_eq!(cv.encode_remote("é").into_owned(), vec![0xe9]);
+    let local = cv.to_local(&[0xe9]).into_owned();
     assert_eq!(String::from_utf8(local).unwrap(), "é");
 }
