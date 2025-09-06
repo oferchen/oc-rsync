@@ -1430,12 +1430,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     prefix.push_str(part);
                     ancestors.push(prefix.clone());
                 }
-                let ancestor_paths = if is_dir {
-                    ancestors.clone()
-                } else {
-                    ancestors[..ancestors.len() - 1].to_vec()
-                };
-                for anc in &ancestor_paths {
+                for anc in ancestors.iter().take(ancestors.len().saturating_sub(1)) {
                     let rule = if opts.from0 {
                         format!("+{}/", anc)
                     } else {
@@ -1446,24 +1441,35 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                         parse_filters(&rule, opts.from0)
                             .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                     );
+                }
+
+                let last = ancestors.last().unwrap();
+                if is_dir {
                     let rule = if opts.from0 {
-                        format!("+{}/***", anc)
+                        format!("+{}/", last)
                     } else {
-                        format!("+ {}/***", anc)
+                        format!("+ {}/", last)
                     };
                     add_rules(
                         idx + 1,
                         parse_filters(&rule, opts.from0)
                             .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                     );
-                }
-
-                if !is_dir {
-                    let file_rule = ancestors.last().unwrap();
                     let rule = if opts.from0 {
-                        format!("+{}", file_rule)
+                        format!("+{}/***", last)
                     } else {
-                        format!("+ {}", file_rule)
+                        format!("+ {}/***", last)
+                    };
+                    add_rules(
+                        idx + 1,
+                        parse_filters(&rule, opts.from0)
+                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    );
+                } else {
+                    let rule = if opts.from0 {
+                        format!("+{}", last)
+                    } else {
+                        format!("+ {}", last)
                     };
                     add_rules(
                         idx + 1,
@@ -1548,7 +1554,7 @@ fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::{parse_bool, parse_remote_spec, RemoteSpec};
+    use crate::utils::{RemoteSpec, parse_bool, parse_remote_spec};
     use clap::Parser;
     use daemon::authenticate;
     use engine::SyncOptions;
