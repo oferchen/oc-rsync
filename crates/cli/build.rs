@@ -1,3 +1,4 @@
+// crates/cli/build.rs
 use std::env;
 use time::OffsetDateTime;
 

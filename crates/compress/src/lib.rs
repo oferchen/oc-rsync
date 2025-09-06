@@ -96,6 +96,7 @@ pub struct Zlib {
 #[cfg(feature = "zlib")]
 impl Zlib {
     pub fn new(level: i32) -> Self {
+        let level = level.clamp(0, 9);
         Self { level }
     }
 }

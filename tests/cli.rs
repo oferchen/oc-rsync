@@ -2649,6 +2649,15 @@ fn invalid_compress_level_fails() {
 }
 
 #[test]
+fn out_of_range_compress_level_fails() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--compress-level", "10"])
+        .assert()
+        .failure();
+}
+
+#[test]
 fn help_flag_prints_usage() {
     Command::cargo_bin("oc-rsync")
         .unwrap()
