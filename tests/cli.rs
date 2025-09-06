@@ -2683,6 +2683,7 @@ fn include_pattern_allows_file() {
 
     assert!(dst.join("keep.txt").exists());
     assert!(!dst.join("skip.txt").exists());
+    assert_eq!(fs::read_dir(&dst).unwrap().count(), 1);
 }
 
 #[test]
