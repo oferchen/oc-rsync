@@ -1,6 +1,6 @@
 // build.rs
 
-use std::{env, fs, path::Path, path::PathBuf, process::Command};
+use std::{env, fs, path::Path, path::PathBuf};
 
 use time::OffsetDateTime;
 
@@ -18,49 +18,41 @@ fn main() {
     let official = env::var("OFFICIAL_BUILD").unwrap_or_else(|_| "unofficial".to_string());
 
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_ACL");
+    println!("cargo:rerun-if-env-changed=LIBACL_PATH");
+    println!("cargo:rerun-if-env-changed=LD_LIBRARY_PATH");
+    println!("cargo:rerun-if-env-changed=LIBRARY_PATH");
+
     if cfg!(unix) {
         if env::var_os("CARGO_FEATURE_ACL").is_some() {
-            match pkg_config::Config::new().probe("acl") {
+            match pkg_config::Config::new().probe("libacl") {
                 Ok(_) => {}
                 Err(_) => {
-                    let mut lib_dir: Option<PathBuf> = None;
+                    let mut search_dirs: Vec<PathBuf> = Vec::new();
 
-                    if let Ok(output) = Command::new("ldconfig").arg("-p").output()
-                        && output.status.success()
-                    {
-                        let stdout = String::from_utf8_lossy(&output.stdout);
-                        for line in stdout.lines() {
-                            if line.contains("libacl.so")
-                                && let Some(path) = line.split("=>").nth(1)
-                                && let Some(dir) = Path::new(path.trim()).parent()
-                            {
-                                lib_dir = Some(dir.to_path_buf());
-                                break;
-                            }
+                    if let Ok(val) = env::var("LIBACL_PATH") {
+                        search_dirs.extend(val.split(':').map(PathBuf::from));
+                    }
+                    for var in ["LD_LIBRARY_PATH", "LIBRARY_PATH"] {
+                        if let Ok(val) = env::var(var) {
+                            search_dirs.extend(val.split(':').map(PathBuf::from));
                         }
                     }
+                    search_dirs.extend(
+                        [
+                            "/usr/lib",
+                            "/usr/lib64",
+                            "/usr/local/lib",
+                            "/usr/local/lib64",
+                            "/lib",
+                            "/lib64",
+                        ]
+                        .into_iter()
+                        .map(PathBuf::from),
+                    );
 
-                    if lib_dir.is_none()
-                        && let Ok(output) = Command::new("find")
-                            .args([
-                                "/usr/lib",
-                                "/usr/lib64",
-                                "/usr/local/lib",
-                                "/usr/local/lib64",
-                                "/lib",
-                                "/lib64",
-                            ])
-                            .arg("-name")
-                            .arg("libacl.so")
-                            .arg("-print")
-                            .arg("-quit")
-                            .output()
-                        && output.status.success()
-                        && let Some(path) = String::from_utf8_lossy(&output.stdout).lines().next()
-                        && let Some(dir) = Path::new(path.trim()).parent()
-                    {
-                        lib_dir = Some(dir.to_path_buf());
-                    }
+                    let lib_dir = search_dirs.iter().find(|dir| {
+                        dir.join("libacl.so").exists() || dir.join("libacl.a").exists()
+                    });
 
                     if let Some(dir) = lib_dir {
                         println!("cargo:rustc-link-lib=acl");
