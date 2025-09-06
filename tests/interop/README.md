@@ -29,3 +29,7 @@ SCENARIOS=base UPDATE=1 \
 
 The CI workflow runs `run_matrix.sh` without network access and relies solely on
 the committed fixtures to verify interoperability.
+
+When adding new interoperability scenarios or fixtures, also update the
+["Interop matrix scenarios"](../../docs/gaps.md#interop-matrix-scenarios)
+section so documentation stays in sync.

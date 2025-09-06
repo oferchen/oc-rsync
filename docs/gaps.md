@@ -15,6 +15,15 @@ captured:
 
   - `base`: baseline transfer using [run_matrix.sh](../tests/interop/run_matrix.sh)
   - `delete`: `--delete` removes extraneous files
+  - `compression`: zlib/zstd negotiation using [codec_negotiation.rs](../tests/interop/codec_negotiation.rs)
+  - `filters`: include/exclude and `.rsync-filter` rules via [filter_complex.rs](../tests/interop/filter_complex.rs)
+  - `metadata`: ACL, xattr and permission preservation validated against [golden fixtures](../tests/interop/golden)
+  - `dry-run`: destination remains untouched with `--dry-run` in [dry_run.rs](../tests/interop/dry_run.rs)
+  - `remote-option`: forwarding `--remote-option` flags covered by [remote_option.rs](../tests/interop/remote_option.rs)
+  - `refused-option`: rejected remote options match upstream in [refused_option.rs](../tests/interop/refused_option.rs)
+  - `abrupt-disconnect`: early connection termination parity in [abrupt_disconnect.rs](../tests/interop/abrupt_disconnect.rs)
+  - `remote-remote`: remote-to-remote transfers exercised in [remote_remote_tests.rs](../tests/interop/remote_remote_tests.rs)
+  - `help`: `--help` output parity ensured by [help.rs](../tests/interop/help.rs)
 
 ## Parser Parity
 | Feature | Status | Tests | Source |
