@@ -74,7 +74,13 @@ fn stderr_failure_restores_stdout() {
         let size = mem::size_of::<libc::FILE>();
         let mut before = vec![0u8; size];
         ptr::copy_nonoverlapping(out as *const u8, before.as_mut_ptr(), size);
-        let res = set_std_buffering_for_test(libc::_IONBF, libc::_IOLBF, out, ptr::null_mut());
+        let res = set_std_buffering_for_test(
+            libc::_IONBF,
+            libc::_IOLBF,
+            out,
+            ptr::null_mut(),
+            set_stream_buffer,
+        );
         assert!(matches!(res, Err(StdBufferError::Stderr(_))));
         let mut after = vec![0u8; size];
         ptr::copy_nonoverlapping(out as *const u8, after.as_mut_ptr(), size);
@@ -86,7 +92,13 @@ fn stderr_failure_restores_stdout() {
 fn stdout_failure_reports_error() {
     unsafe {
         let err = stderr_ptr();
-        let res = set_std_buffering_for_test(libc::_IONBF, libc::_IOLBF, ptr::null_mut(), err);
+        let res = set_std_buffering_for_test(
+            libc::_IONBF,
+            libc::_IOLBF,
+            ptr::null_mut(),
+            err,
+            set_stream_buffer,
+        );
         assert!(matches!(res, Err(StdBufferError::Stdout(_))));
     }
 }
@@ -99,7 +111,7 @@ fn stdout_invalid_mode_restores_stdout() {
         let size = mem::size_of::<libc::FILE>();
         let mut before = vec![0u8; size];
         ptr::copy_nonoverlapping(out as *const u8, before.as_mut_ptr(), size);
-        let res = set_std_buffering_for_test(-1, libc::_IOLBF, out, err);
+        let res = set_std_buffering_for_test(-1, libc::_IOLBF, out, err, set_stream_buffer);
         assert!(matches!(res, Err(StdBufferError::Both { .. })));
         let mut after = vec![0u8; size];
         ptr::copy_nonoverlapping(out as *const u8, after.as_mut_ptr(), size);
@@ -109,15 +121,14 @@ fn stdout_invalid_mode_restores_stdout() {
 
 #[test]
 fn both_fail_reports_both() {
-    unsafe {
-        let res = set_std_buffering_for_test(
-            libc::_IONBF,
-            libc::_IOLBF,
-            ptr::null_mut(),
-            ptr::null_mut(),
-        );
-        assert!(matches!(res, Err(StdBufferError::Both { .. })));
-    }
+    let res = set_std_buffering_for_test(
+        libc::_IONBF,
+        libc::_IOLBF,
+        ptr::null_mut(),
+        ptr::null_mut(),
+        set_stream_buffer,
+    );
+    assert!(matches!(res, Err(StdBufferError::Both { .. })));
 }
 
 #[cfg(windows)]
