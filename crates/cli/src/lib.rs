@@ -1282,8 +1282,19 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("filter_file")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
-            let rs = filters::parse_file(file, opts.from0, &mut HashSet::new(), 0)
-                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+            let rs = if file == Path::new("-") {
+                if opts.from0 {
+                    filters::parse_file(Path::new("-"), true, &mut HashSet::new(), 0)
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?
+                } else {
+                    return Err(EngineError::Other(
+                        "filter file '-' requires --from0".into(),
+                    ));
+                }
+            } else {
+                filters::parse_file(file, opts.from0, &mut HashSet::new(), 0)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?
+            };
             add_rules(idx + 1, rs);
         }
     }
