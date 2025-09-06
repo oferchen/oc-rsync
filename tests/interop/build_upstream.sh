@@ -21,7 +21,7 @@ if ! command -v gcc >/dev/null; then
   apt-get install -y build-essential >/dev/null
 fi
 apt-get update
-apt-get install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev liblz4-dev >/dev/null
+apt-get install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev >/dev/null
 
 curl -L -O "https://download.samba.org/pub/rsync/src/rsync-$VER.tar.gz"
 tar xzf "rsync-$VER.tar.gz"

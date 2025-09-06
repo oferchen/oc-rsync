@@ -246,4 +246,4 @@ These features may be explored after achieving parity with upstream rsync.
 
 | Feature | Tracking issue |
 | --- | --- |
-| LZ4 codec | [#873](https://github.com/oferchen/oc-rsync/issues/873) |
+| LZ4 codec (no liblz4-dev prerequisite) | [#873](https://github.com/oferchen/oc-rsync/issues/873) |

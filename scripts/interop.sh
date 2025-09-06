@@ -23,7 +23,7 @@ ensure_build_deps() {
     apt-get install -y build-essential >/dev/null
   fi
   apt-get update >/dev/null
-  apt-get install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev liblz4-dev >/dev/null
+  apt-get install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev >/dev/null
 }
 
 # Build oc-rsync binary
