@@ -77,6 +77,7 @@ fn negotiation_helper_picks_common_codec() {
 fn codec_from_byte_rejects_unknown() {
     let err = Codec::from_byte(99).unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+    assert_eq!(err.to_string(), "unknown codec 99");
 }
 
 #[test]
