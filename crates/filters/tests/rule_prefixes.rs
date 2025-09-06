@@ -50,3 +50,11 @@ fn clear_resets_parent_rules() {
     assert!(!matcher.is_included("secret").unwrap());
     assert!(matcher.is_included("sub/secret").unwrap());
 }
+
+#[test]
+fn clear_alias_c() {
+    let mut v = HashSet::new();
+    let rules = parse("- secret\nc\n+ secret\n", &mut v, 0).unwrap();
+    let matcher = Matcher::new(rules);
+    assert!(matcher.is_included("secret").unwrap());
+}

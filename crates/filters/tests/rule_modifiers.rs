@@ -84,3 +84,41 @@ fn evaluate_rule_sender_only() {
     assert!(!matcher.is_included("secret.log").unwrap());
     assert!(matcher.is_included_for_delete("secret.log").unwrap());
 }
+
+#[test]
+fn lowercase_hide_excludes() {
+    let mut v = HashSet::new();
+    let rules = parse("h secret.log\n+ *.log\n- *\n", &mut v, 0).unwrap();
+    let matcher = Matcher::new(rules);
+    assert!(!matcher.is_included("secret.log").unwrap());
+    assert!(matcher.is_included("public.log").unwrap());
+    assert!(matcher.is_included_for_delete("secret.log").unwrap());
+}
+
+#[test]
+fn dir_merge_no_inherit() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path();
+    fs::write(root.join("rules"), "- *.log\n").unwrap();
+    fs::create_dir_all(root.join("sub")).unwrap();
+    fs::write(root.join("sub/file.log"), "").unwrap();
+    let spec = format!("d,n {}\n", root.join("rules").display());
+    let mut v = HashSet::new();
+    let rules = parse(&spec, &mut v, 0).unwrap();
+    let matcher = Matcher::new(rules).with_root(root);
+    assert!(!matcher.is_included("file.log").unwrap());
+    assert!(matcher.is_included("sub/file.log").unwrap());
+}
+
+#[test]
+fn dir_merge_word_split() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path();
+    fs::write(root.join("rules"), "-foo +bar").unwrap();
+    let spec = format!("d,w {}\n+ *\n- *\n", root.join("rules").display());
+    let mut v = HashSet::new();
+    let rules = parse(&spec, &mut v, 0).unwrap();
+    let matcher = Matcher::new(rules).with_root(root);
+    assert!(!matcher.is_included("foo").unwrap());
+    assert!(matcher.is_included("bar").unwrap());
+}
