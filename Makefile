@@ -28,6 +28,11 @@ test:
 	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo nextest run --workspace --no-fail-fast
 	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo nextest run --workspace --no-fail-fast --features "cli nightly"
 
+# Run the test suite without ACL support for environments lacking libacl.
+test-noacl:
+	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo nextest run --workspace --no-fail-fast --no-default-features --features "no-acl"
+	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo nextest run --workspace --no-fail-fast --no-default-features --features "cli nightly no-acl"
+
 coverage:
 	cargo llvm-cov nextest --workspace --features "cli nightly" --doctests \
 	--fail-under-lines 95 --fail-under-functions 95 -- --no-fail-fast
