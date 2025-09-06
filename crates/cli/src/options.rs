@@ -740,6 +740,7 @@ pub(crate) struct ProbeOpts {
 pub fn cli_command() -> clap::Command {
     let cmd = ProbeOpts::command();
     let cmd = ClientOpts::augment_args(cmd);
+    #[cfg(any(test, feature = "dump-help"))]
     let cmd = cmd.arg(
         Arg::new("dump-help-body")
             .long("dump-help-body")

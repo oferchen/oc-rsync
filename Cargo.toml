@@ -69,6 +69,7 @@ sha2 = "0.10"
 encoding_rs = "0.8"
 insta = { version = "1", features = ["json"] }
 hex = "0.4"
+oc-rsync-cli = { path = "crates/cli", features = ["dump-help"] }
 walkdir = "2"
 
 [target.'cfg(unix)'.dev-dependencies]
