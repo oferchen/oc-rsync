@@ -114,6 +114,94 @@ fn compile_glob(pat: &str) -> Result<GlobMatcher, ParseError> {
         .compile_matcher())
 }
 
+fn expand_braces(pat: &str) -> Vec<String> {
+    fn inner(pattern: &str) -> Vec<String> {
+        if let Some(start) = pattern.find('{') {
+            let mut depth = 0;
+            let mut end = start;
+            let chars: Vec<char> = pattern.chars().collect();
+            for (idx, ch) in chars.iter().enumerate().skip(start) {
+                match ch {
+                    '{' => depth += 1,
+                    '}' => {
+                        depth -= 1;
+                        if depth == 0 {
+                            end = idx;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if depth != 0 {
+                return vec![pattern.to_string()];
+            }
+            let prefix = &pattern[..start];
+            let suffix = &pattern[end + 1..];
+            let body = &pattern[start + 1..end];
+            let mut parts = Vec::new();
+            let mut part = String::new();
+            let mut d = 0;
+            for ch in body.chars() {
+                match ch {
+                    '{' => {
+                        d += 1;
+                        part.push(ch);
+                    }
+                    '}' => {
+                        d -= 1;
+                        part.push(ch);
+                    }
+                    ',' if d == 0 => {
+                        parts.push(part);
+                        part = String::new();
+                    }
+                    _ => part.push(ch),
+                }
+            }
+            parts.push(part);
+            let mut expanded_parts = Vec::new();
+            for p in parts {
+                if let Some(range) = expand_range(&p) {
+                    expanded_parts.extend(range);
+                } else {
+                    expanded_parts.push(p);
+                }
+            }
+            let mut results = Vec::new();
+            for part in expanded_parts {
+                for suf in inner(suffix) {
+                    results.push(format!("{}{}{}", prefix, part, suf));
+                }
+            }
+            results
+        } else {
+            vec![pattern.to_string()]
+        }
+    }
+
+    fn expand_range(part: &str) -> Option<Vec<String>> {
+        if let Some(idx) = part.find("..") {
+            let start = &part[..idx];
+            let end = &part[idx + 2..];
+            if let (Ok(a), Ok(b)) = (start.parse::<i64>(), end.parse::<i64>()) {
+                if a <= b {
+                    return Some((a..=b).map(|i| i.to_string()).collect());
+                }
+            } else if start.len() == 1 && end.len() == 1 {
+                let a = start.chars().next().unwrap();
+                let b = end.chars().next().unwrap();
+                if a <= b {
+                    return Some((a..=b).map(|c| c.to_string()).collect());
+                }
+            }
+        }
+        None
+    }
+
+    inner(pat)
+}
+
 #[derive(Clone, Default)]
 pub struct Matcher {
     root: Option<PathBuf>,
@@ -782,14 +870,24 @@ impl Matcher {
                         buf.push_str("!\n");
                         continue;
                     }
-                    let (kind, pat) = if let Some(rest) = line.strip_prefix('+') {
-                        ('+', rest.trim_start())
+                    let (kind, pat): (String, &str) = if let Some(rest) = line.strip_prefix('+') {
+                        ("+".to_string(), rest.trim_start())
                     } else if let Some(rest) = line.strip_prefix('-') {
-                        ('-', rest.trim_start())
+                        ("-".to_string(), rest.trim_start())
                     } else if let Some(rest) =
                         line.strip_prefix('P').or_else(|| line.strip_prefix('p'))
                     {
-                        ('P', rest.trim_start())
+                        ("P".to_string(), rest.trim_start())
+                    } else if let Some(rest) = line.strip_prefix('S') {
+                        ("S".to_string(), rest.trim_start())
+                    } else if let Some(rest) = line.strip_prefix('H') {
+                        ("H".to_string(), rest.trim_start())
+                    } else if let Some(rest) = line.strip_prefix('R') {
+                        ("R".to_string(), rest.trim_start())
+                    } else if let Some(rest) = line.strip_prefix("E+") {
+                        ("E+".to_string(), rest.trim_start())
+                    } else if let Some(rest) = line.strip_prefix("E-") {
+                        ("E-".to_string(), rest.trim_start())
                     } else {
                         buf.push_str(raw_line);
                         buf.push('\n');
@@ -800,7 +898,7 @@ impl Matcher {
                     } else {
                         format!("{}/{}", rel_str, pat)
                     };
-                    buf.push(kind);
+                    buf.push_str(&kind);
                     buf.push(' ');
                     buf.push_str(&new_pat);
                     buf.push('\n');
@@ -1561,15 +1659,17 @@ pub fn parse_with_options(
                         vec![ancestor]
                     };
                     for pat in ancestor_bases {
-                        let matcher = compile_glob(&pat)?;
-                        let data = RuleData {
-                            matcher,
-                            invert: mods.contains('!'),
-                            flags: flags.clone(),
-                            source: source.clone(),
-                            dir_only: true,
-                        };
-                        rules.push(Rule::Include(data));
+                        for exp in expand_braces(&pat) {
+                            let matcher = compile_glob(&exp)?;
+                            let data = RuleData {
+                                matcher,
+                                invert: mods.contains('!'),
+                                flags: flags.clone(),
+                                source: source.clone(),
+                                dir_only: true,
+                            };
+                            rules.push(Rule::Include(data));
+                        }
                     }
                 }
             }
@@ -1587,18 +1687,20 @@ pub fn parse_with_options(
 
         let invert = mods.contains('!');
         for (pat, dir_only) in pats {
-            let matcher = compile_glob(&pat)?;
-            let data = RuleData {
-                matcher,
-                invert,
-                flags: flags.clone(),
-                source: source.clone(),
-                dir_only,
-            };
-            match kind {
-                RuleKind::Include => rules.push(Rule::Include(data)),
-                RuleKind::Exclude => rules.push(Rule::Exclude(data)),
-                RuleKind::Protect => rules.push(Rule::Protect(data)),
+            for exp in expand_braces(&pat) {
+                let matcher = compile_glob(&exp)?;
+                let data = RuleData {
+                    matcher,
+                    invert,
+                    flags: flags.clone(),
+                    source: source.clone(),
+                    dir_only,
+                };
+                match kind {
+                    RuleKind::Include => rules.push(Rule::Include(data)),
+                    RuleKind::Exclude => rules.push(Rule::Exclude(data)),
+                    RuleKind::Protect => rules.push(Rule::Protect(data)),
+                }
             }
         }
     }
