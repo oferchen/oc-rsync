@@ -243,6 +243,105 @@ fn exclude_from_from0_matches_rsync() {
 }
 
 #[test]
+fn include_exclude_from_order_matches_rsync() {
+    use std::process::Command as StdCommand;
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let rsync_inc_first = tmp.path().join("rsync_inc_first");
+    let ours_inc_first = tmp.path().join("ours_inc_first");
+    let rsync_exc_first = tmp.path().join("rsync_exc_first");
+    let ours_exc_first = tmp.path().join("ours_exc_first");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&rsync_inc_first).unwrap();
+    fs::create_dir_all(&ours_inc_first).unwrap();
+    fs::create_dir_all(&rsync_exc_first).unwrap();
+    fs::create_dir_all(&ours_exc_first).unwrap();
+
+    fs::write(src.join("keep.txt"), "hi").unwrap();
+    fs::write(src.join("omit.txt"), "no").unwrap();
+
+    let inc = tmp.path().join("inc.lst");
+    fs::write(&inc, "keep.txt\n").unwrap();
+    let exc = tmp.path().join("exc.lst");
+    fs::write(&exc, "*\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+
+    let status = StdCommand::new("rsync")
+        .args([
+            "-r",
+            "--include-from",
+            inc.to_str().unwrap(),
+            "--exclude-from",
+            exc.to_str().unwrap(),
+            &src_arg,
+            rsync_inc_first.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--include-from",
+            inc.to_str().unwrap(),
+            "--exclude-from",
+            exc.to_str().unwrap(),
+            &src_arg,
+            ours_inc_first.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let diff = StdCommand::new("diff")
+        .arg("-r")
+        .arg(&rsync_inc_first)
+        .arg(&ours_inc_first)
+        .status()
+        .unwrap();
+    assert!(diff.success(), "include-then-exclude parity failed");
+
+    let status = StdCommand::new("rsync")
+        .args([
+            "-r",
+            "--exclude-from",
+            exc.to_str().unwrap(),
+            "--include-from",
+            inc.to_str().unwrap(),
+            &src_arg,
+            rsync_exc_first.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--exclude-from",
+            exc.to_str().unwrap(),
+            "--include-from",
+            inc.to_str().unwrap(),
+            &src_arg,
+            ours_exc_first.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let diff = StdCommand::new("diff")
+        .arg("-r")
+        .arg(&rsync_exc_first)
+        .arg(&ours_exc_first)
+        .status()
+        .unwrap();
+    assert!(diff.success(), "exclude-then-include parity failed");
+}
+
+#[test]
 fn filter_merge_from0_matches_filter_file() {
     use std::process::Command as StdCommand;
 
@@ -298,6 +397,65 @@ fn filter_merge_from0_matches_filter_file() {
 }
 
 #[test]
+fn filter_file_from0_stdin_matches_rsync() {
+    use std::process::Command as StdCommand;
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let rsync_dst = tmp.path().join("rsync");
+    let ours_dst = tmp.path().join("ours");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&rsync_dst).unwrap();
+    fs::create_dir_all(&ours_dst).unwrap();
+
+    fs::write(src.join("keep.txt"), "hi").unwrap();
+    fs::write(src.join("omit.txt"), "no").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    let mut child = StdCommand::new("rsync")
+        .args([
+            "-r",
+            "--from0",
+            "--filter-file=-",
+            &src_arg,
+            rsync_dst.to_str().unwrap(),
+        ])
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .as_mut()
+        .unwrap()
+        .write_all(b"+ /keep.txt\0- *\0")
+        .unwrap();
+    let status = child.wait().unwrap();
+    assert!(status.success());
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--from0",
+            "--filter-file",
+            "-",
+            &src_arg,
+            ours_dst.to_str().unwrap(),
+        ])
+        .write_stdin(b"+ /keep.txt\0- *\0" as &[u8])
+        .assert()
+        .success();
+
+    let diff = StdCommand::new("diff")
+        .arg("-r")
+        .arg(&rsync_dst)
+        .arg(&ours_dst)
+        .status()
+        .unwrap();
+    assert!(diff.success(), "directory trees differ");
+}
+
+#[test]
 fn per_dir_merge_matches_rsync() {
     use std::process::Command as StdCommand;
 
@@ -319,7 +477,52 @@ fn per_dir_merge_matches_rsync() {
     fs::write(src.join("sub").join(".rsync-filter"), b"- omit2.txt\n").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    let status = StdCommand::new(cargo_bin("oc-rsync"))
+    let status = StdCommand::new("rsync")
+        .args(["-r", "-F", "-F", &src_arg, rsync_dst.to_str().unwrap()])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "-F",
+            "-F",
+            &src_arg,
+            ours_dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let diff = StdCommand::new("diff")
+        .arg("-r")
+        .arg(&rsync_dst)
+        .arg(&ours_dst)
+        .status()
+        .unwrap();
+    assert!(diff.success(), "directory trees differ");
+}
+
+#[test]
+fn rsync_filter_ancestor_expansion_matches_rsync() {
+    use std::process::Command as StdCommand;
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let rsync_dst = tmp.path().join("rsync");
+    let ours_dst = tmp.path().join("ours");
+    fs::create_dir_all(src.join("a/b")).unwrap();
+    fs::create_dir_all(&rsync_dst).unwrap();
+    fs::create_dir_all(&ours_dst).unwrap();
+
+    fs::write(src.join("a/b/keep.txt"), "hi").unwrap();
+    fs::write(src.join("a/b/omit.txt"), "no").unwrap();
+    fs::write(src.join(".rsync-filter"), b"+ /a/b/keep.txt\n- *\n").unwrap();
+    fs::write(src.join("a/.rsync-filter"), b"- omit.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    let status = StdCommand::new("rsync")
         .args(["-r", "-F", "-F", &src_arg, rsync_dst.to_str().unwrap()])
         .status()
         .unwrap();
