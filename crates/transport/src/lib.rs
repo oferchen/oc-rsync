@@ -168,7 +168,9 @@ pub fn rate_limited<T: Transport>(inner: T, bwlimit: u64) -> RateLimitedTranspor
 #[doc = "Append a daemon path specification to a set of remote options."]
 pub fn daemon_remote_opts(base: &[String], path: &Path) -> Vec<String> {
     let mut opts = base.to_vec();
-    opts.push(path.to_string_lossy().into_owned());
+    if path != Path::new(".") {
+        opts.push(path.to_string_lossy().into_owned());
+    }
     opts
 }
 

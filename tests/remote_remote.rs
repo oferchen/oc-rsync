@@ -236,7 +236,6 @@ fn remote_remote_upstream_to_oc() {
 }
 
 #[test]
-#[ignore]
 fn remote_remote_via_daemon_paths() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");

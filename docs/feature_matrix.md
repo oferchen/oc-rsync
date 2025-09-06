@@ -11,7 +11,7 @@ Classic `rsync` protocol versions 30–32 are supported.
 | --- | --- | --- |
 | File list path-delta encoding with uid/gid tables | ✅ | Exercised via `filelist` tests |
 | Challenge-response token authentication | ✅ | Protocol handshake verifies tokens |
-| Remote-to-remote forwarding | ✅ | Bridges two remote endpoints via existing transports, including `rsync://` daemon paths |
+| Remote-to-remote forwarding | ✅ | Bridges two remote endpoints via existing transports, including `rsync://` daemon paths (root and subpaths) |
 
 ## CLI options
 
