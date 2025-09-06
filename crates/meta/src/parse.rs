@@ -1,5 +1,5 @@
 // crates/meta/src/parse.rs
-use crate::{normalize_mode, Chmod, ChmodOp, ChmodTarget};
+use crate::{Chmod, ChmodOp, ChmodTarget, normalize_mode};
 use std::result::Result as StdResult;
 use std::sync::Arc;
 

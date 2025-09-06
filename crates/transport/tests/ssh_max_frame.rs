@@ -1,9 +1,9 @@
 // crates/transport/tests/ssh_max_frame.rs
-use protocol::{Msg, Tag, CAP_CODECS, LATEST_VERSION};
+use protocol::{CAP_CODECS, LATEST_VERSION, Msg, Tag};
 use std::io;
 use transport::{
-    ssh::{SshStdioTransport, MAX_FRAME_LEN},
     Transport,
+    ssh::{MAX_FRAME_LEN, SshStdioTransport},
 };
 
 struct ChunkedTransport {

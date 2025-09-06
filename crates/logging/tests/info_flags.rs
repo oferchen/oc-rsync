@@ -7,9 +7,9 @@ use logging::InfoFlag;
 use tracing::level_filters::LevelFilter;
 use tracing::subscriber::with_default;
 use tracing_subscriber::{
+    EnvFilter,
     fmt::{self, writer::MakeWriter},
     layer::SubscriberExt,
-    EnvFilter,
 };
 
 #[derive(Clone, Default)]

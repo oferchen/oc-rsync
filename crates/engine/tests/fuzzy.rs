@@ -2,7 +2,7 @@
 use std::fs;
 
 use compress::available_codecs;
-use engine::{fuzzy_match, sync, SyncOptions};
+use engine::{SyncOptions, fuzzy_match, sync};
 use filters::Matcher;
 use tempfile::tempdir;
 

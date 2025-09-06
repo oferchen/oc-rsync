@@ -1,6 +1,6 @@
 // crates/logging/tests/log_file_error.rs
 
-use logging::{subscriber, SubscriberConfig};
+use logging::{SubscriberConfig, subscriber};
 use tempfile::tempdir;
 
 #[test]

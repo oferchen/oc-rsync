@@ -2,8 +2,8 @@
 use std::fs;
 
 use compress::available_codecs;
-use engine::{sync, SyncOptions};
-use filetime::{set_file_mtime, FileTime};
+use engine::{SyncOptions, sync};
+use filetime::{FileTime, set_file_mtime};
 use filters::Matcher;
 use tempfile::tempdir;
 

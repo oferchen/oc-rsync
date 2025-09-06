@@ -1,5 +1,5 @@
 // crates/filters/tests/anchored_wildcards.rs
-use filters::{parse, Matcher};
+use filters::{Matcher, parse};
 use std::collections::HashSet;
 
 fn p(input: &str) -> Vec<filters::Rule> {

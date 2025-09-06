@@ -25,7 +25,7 @@ mod stub;
 pub use stub::*;
 
 mod parse;
-pub use parse::{parse_chmod, parse_chmod_spec, parse_chown, parse_id_map, IdKind};
+pub use parse::{IdKind, parse_chmod, parse_chmod_spec, parse_chown, parse_id_map};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct MetaOpts {
@@ -84,7 +84,7 @@ impl Options {
 
 #[cfg(unix)]
 use filetime::set_symlink_file_times;
-use filetime::{set_file_times, FileTime};
+use filetime::{FileTime, set_file_times};
 use std::collections::HashMap;
 #[cfg(unix)]
 use std::collections::HashSet;
@@ -313,4 +313,4 @@ impl UidTable {
 }
 
 #[cfg(unix)]
-pub use posix_acl::{ACLEntry, PosixACL, Qualifier, ACL_EXECUTE, ACL_READ, ACL_RWX, ACL_WRITE};
+pub use posix_acl::{ACL_EXECUTE, ACL_READ, ACL_RWX, ACL_WRITE, ACLEntry, PosixACL, Qualifier};

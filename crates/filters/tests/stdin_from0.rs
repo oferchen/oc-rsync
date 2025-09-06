@@ -1,5 +1,5 @@
 // crates/filters/tests/stdin_from0.rs
-use filters::{parse_file, Matcher};
+use filters::{Matcher, parse_file};
 use std::collections::HashSet;
 use std::fs;
 use std::io::{Seek, SeekFrom, Write};

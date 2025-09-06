@@ -6,7 +6,7 @@ use std::net::{
 use std::os::fd::{AsRawFd, BorrowedFd, RawFd};
 use std::time::Duration;
 
-use nix::poll::{poll, PollFd, PollFlags, PollTimeout};
+use nix::poll::{PollFd, PollFlags, PollTimeout, poll};
 
 use ipnet::IpNet;
 use socket2::SockRef;

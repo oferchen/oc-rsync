@@ -1,7 +1,7 @@
 // crates/engine/tests/resume.rs
 use checksums::ChecksumConfigBuilder;
 use compress::available_codecs;
-use engine::{compute_delta, sync, Op, SyncOptions};
+use engine::{Op, SyncOptions, compute_delta, sync};
 use filters::Matcher;
 use std::fs::{self, File};
 use tempfile::tempdir;

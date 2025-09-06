@@ -1,5 +1,5 @@
 // crates/cli/tests/arg_order.rs
-use oc_rsync_cli::{cli_command, ARG_ORDER};
+use oc_rsync_cli::{ARG_ORDER, cli_command};
 
 const SKIP_ARGS: &[&str] = &[
     "config",

@@ -2,16 +2,16 @@
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 
-use filters::{parse_file, Matcher};
+use filters::{Matcher, parse_file};
 use logging::InfoFlag;
 use std::collections::HashSet;
 use tempfile::NamedTempFile;
 use tracing::level_filters::LevelFilter;
 use tracing::subscriber::with_default;
 use tracing_subscriber::{
+    EnvFilter,
     fmt::{self, writer::MakeWriter},
     layer::SubscriberExt,
-    EnvFilter,
 };
 
 #[derive(Clone, Default)]

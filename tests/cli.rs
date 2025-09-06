@@ -1,12 +1,12 @@
 // tests/cli.rs
 
 use assert_cmd::prelude::*;
-use assert_cmd::{cargo::cargo_bin, Command};
+use assert_cmd::{Command, cargo::cargo_bin};
 use engine::SyncOptions;
-use filetime::{set_file_mtime, FileTime};
+use filetime::{FileTime, set_file_mtime};
 use logging::progress_formatter;
 #[cfg(unix)]
-use nix::unistd::{chown, mkfifo, Gid, Uid};
+use nix::unistd::{Gid, Uid, chown, mkfifo};
 use oc_rsync_cli::{parse_iconv, spawn_daemon_session};
 use predicates::prelude::PredicateBooleanExt;
 use protocol::SUPPORTED_PROTOCOLS;
@@ -21,7 +21,7 @@ use std::path::PathBuf;
 use std::process::Command as StdCommand;
 use std::thread;
 use std::time::Duration;
-use tempfile::{tempdir, tempdir_in, TempDir};
+use tempfile::{TempDir, tempdir, tempdir_in};
 #[cfg(unix)]
 use users::{get_current_gid, get_current_uid, get_group_by_gid, get_user_by_uid};
 #[cfg(all(unix, feature = "xattr"))]
@@ -1764,7 +1764,7 @@ fn owner_group_and_mode_preserved() {
 #[cfg(all(unix, feature = "acl"))]
 #[test]
 fn owner_group_perms_acls_preserved() {
-    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+    use posix_acl::{ACL_READ, PosixACL, Qualifier};
     use std::os::unix::fs::PermissionsExt;
     if !Uid::effective().is_root() {
         eprintln!("skipping owner_group_perms_acls_preserved: requires root or CAP_CHOWN");
@@ -2127,7 +2127,7 @@ fn group_names_are_mapped() {
 #[cfg(unix)]
 #[test]
 fn parse_usermap_accepts_numeric_and_name() {
-    use meta::{parse_id_map, IdKind};
+    use meta::{IdKind, parse_id_map};
     use users::get_user_by_uid;
 
     let numeric = parse_id_map("0:1", IdKind::User).unwrap();
@@ -2146,7 +2146,7 @@ fn parse_usermap_accepts_numeric_and_name() {
 #[cfg(unix)]
 #[test]
 fn parse_groupmap_accepts_numeric_and_name() {
-    use meta::{parse_id_map, IdKind};
+    use meta::{IdKind, parse_id_map};
     use users::get_group_by_gid;
 
     let numeric = parse_id_map("0:1", IdKind::Group).unwrap();
@@ -2210,11 +2210,7 @@ fn user_name_to_numeric_id_is_mapped() {
             parts.next();
             let uid_str = parts.next()?;
             let uid_val: u32 = uid_str.parse().ok()?;
-            if uid_val != uid {
-                Some(uid_val)
-            } else {
-                None
-            }
+            if uid_val != uid { Some(uid_val) } else { None }
         })
         .expect("no alternate user id found");
 
@@ -2565,7 +2561,7 @@ fn force_removes_multiple_non_empty_dirs() {
 #[test]
 #[serial]
 fn perms_flag_preserves_permissions() {
-    use nix::sys::stat::{umask, Mode};
+    use nix::sys::stat::{Mode, umask};
     use std::fs;
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
@@ -2601,7 +2597,7 @@ fn perms_flag_preserves_permissions() {
 #[test]
 #[serial]
 fn default_umask_masks_permissions() {
-    use nix::sys::stat::{umask, Mode};
+    use nix::sys::stat::{Mode, umask};
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
     let dir = tempdir().unwrap();
@@ -2858,6 +2854,39 @@ fn files_from_list_transfers_only_listed_files() {
     assert!(dst.join("keep.txt").exists());
     assert!(dst.join("other file.txt").exists());
     assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
+fn files_from_list_transfers_nested_paths() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("a/b")).unwrap();
+    fs::create_dir_all(src.join("a/d/sub")).unwrap();
+    fs::write(src.join("a/b/file.txt"), b"f").unwrap();
+    fs::write(src.join("a/b/other.txt"), b"o").unwrap();
+    fs::write(src.join("a/d/sub/nested.txt"), b"n").unwrap();
+    fs::write(src.join("unlisted.txt"), b"u").unwrap();
+    let list = dir.path().join("files.txt");
+    fs::write(&list, "a/b/file.txt\na/d/\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("a/b/file.txt").exists());
+    assert!(dst.join("a/d/sub/nested.txt").exists());
+    assert!(!dst.join("a/b/other.txt").exists());
+    assert!(!dst.join("unlisted.txt").exists());
 }
 
 #[test]

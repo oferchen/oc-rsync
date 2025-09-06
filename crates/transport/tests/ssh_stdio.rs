@@ -1,5 +1,5 @@
 // crates/transport/tests/ssh_stdio.rs
-use transport::{ssh::SshStdioTransport, Transport};
+use transport::{Transport, ssh::SshStdioTransport};
 
 #[test]
 fn send_receive_via_ssh_stdio() {

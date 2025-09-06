@@ -1,5 +1,5 @@
 // crates/engine/tests/batch_encoding.rs
-use engine::{decode_batch, encode_batch, Batch};
+use engine::{Batch, decode_batch, encode_batch};
 
 #[test]
 fn golden_batch_roundtrip() {

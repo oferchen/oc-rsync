@@ -1,8 +1,8 @@
 // crates/meta/tests/acl_codec.rs
 #![cfg(feature = "acl")]
 
-use meta::{decode_acl, encode_acl, Metadata, Options};
-use posix_acl::{PosixACL, Qualifier, ACL_READ};
+use meta::{Metadata, Options, decode_acl, encode_acl};
+use posix_acl::{ACL_READ, PosixACL, Qualifier};
 use std::fs;
 use tempfile::tempdir;
 

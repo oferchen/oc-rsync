@@ -1,8 +1,8 @@
 // crates/protocol/tests/server.rs
-use compress::{available_codecs, encode_codecs, Codec};
+use compress::{Codec, available_codecs, encode_codecs};
 use protocol::{
-    ExitCode, Server, CAP_ACLS, CAP_CODECS, CAP_XATTRS, CAP_ZSTD, SUPPORTED_CAPS,
-    SUPPORTED_PROTOCOLS, V30,
+    CAP_ACLS, CAP_CODECS, CAP_XATTRS, CAP_ZSTD, ExitCode, SUPPORTED_CAPS, SUPPORTED_PROTOCOLS,
+    Server, V30,
 };
 use std::io::Cursor;
 use std::time::Duration;

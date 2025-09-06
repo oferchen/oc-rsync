@@ -1,7 +1,7 @@
 // crates/engine/tests/filter.rs
 use compress::available_codecs;
-use engine::{sync, SyncOptions};
-use filters::{parse, Matcher};
+use engine::{SyncOptions, sync};
+use filters::{Matcher, parse};
 use std::collections::HashSet;
 use std::fs;
 use tempfile::tempdir;

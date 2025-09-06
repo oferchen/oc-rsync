@@ -1,7 +1,7 @@
 // crates/engine/benches/preallocate.rs
 use compress::available_codecs;
-use criterion::{criterion_group, criterion_main, Criterion};
-use engine::{sync, SyncOptions};
+use criterion::{Criterion, criterion_group, criterion_main};
+use engine::{SyncOptions, sync};
 use filters::Matcher;
 use std::fs;
 use tempfile::tempdir;

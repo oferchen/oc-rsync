@@ -1,7 +1,7 @@
 // crates/logging/tests/journald.rs
 #![cfg(all(unix, feature = "journald"))]
 
-use logging::{init, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
+use logging::{DebugFlag, InfoFlag, LogFormat, SubscriberConfig, init};
 use std::os::unix::net::UnixDatagram;
 use tempfile::tempdir;
 use tracing::info;

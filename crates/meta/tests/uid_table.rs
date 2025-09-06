@@ -1,5 +1,5 @@
 // crates/meta/tests/uid_table.rs
-use meta::{parse_chown, parse_id_map, IdKind, UidTable};
+use meta::{IdKind, UidTable, parse_chown, parse_id_map};
 
 #[test]
 fn uid_table_deduplicates_and_indexes() {

@@ -2,8 +2,8 @@
 use encoding_rs::Encoding;
 use filelist::{Decoder as FDecoder, Encoder as FEncoder, Entry as FEntry};
 use protocol::{
-    negotiate_caps, negotiate_version, CharsetConv, Frame, Message, Msg, Tag, CAP_ACLS, CAP_CODECS,
-    CAP_XATTRS, CAP_ZSTD, MIN_VERSION, SUPPORTED_PROTOCOLS,
+    CAP_ACLS, CAP_CODECS, CAP_XATTRS, CAP_ZSTD, CharsetConv, Frame, MIN_VERSION, Message, Msg,
+    SUPPORTED_PROTOCOLS, Tag, negotiate_caps, negotiate_version,
 };
 
 #[test]

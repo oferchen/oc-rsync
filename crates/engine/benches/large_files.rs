@@ -1,7 +1,7 @@
 // crates/engine/benches/large_files.rs
 use checksums::ChecksumConfigBuilder;
-use criterion::{criterion_group, criterion_main, Criterion};
-use engine::{compute_delta, SyncOptions};
+use criterion::{Criterion, criterion_group, criterion_main};
+use engine::{SyncOptions, compute_delta};
 use std::io::{Cursor, Read, Seek, SeekFrom};
 
 fn bench_large_delta(c: &mut Criterion) {

@@ -1,5 +1,5 @@
 // crates/checksums/tests/golden.rs
-use checksums::{rolling_checksum, ChecksumConfigBuilder, Rolling, StrongHash};
+use checksums::{ChecksumConfigBuilder, Rolling, StrongHash, rolling_checksum};
 
 #[test]
 fn rolling_golden_windows() {

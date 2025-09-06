@@ -2,7 +2,7 @@
 
 use compress::Codec;
 use protocol::{CAP_CODECS, LATEST_VERSION};
-use transport::{ssh::SshStdioTransport, Transport};
+use transport::{Transport, ssh::SshStdioTransport};
 
 const SERVER_HANDSHAKE_SUCCESS: &[u8] = &[
     0x00, 0x00, 0x00, 0x1f, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x02,

@@ -1,7 +1,7 @@
 // crates/engine/tests/delete.rs
 use compress::available_codecs;
-use engine::{sync, DeleteMode, SyncOptions};
-use filters::{parse, Matcher};
+use engine::{DeleteMode, SyncOptions, sync};
+use filters::{Matcher, parse};
 use std::collections::HashSet;
 use std::fs;
 use tempfile::tempdir;

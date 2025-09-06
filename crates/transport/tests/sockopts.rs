@@ -4,7 +4,7 @@ use std::thread;
 use std::time::Duration;
 
 use socket2::SockRef;
-use transport::{parse_sockopts, tcp::TcpTransport, SockOpt};
+use transport::{SockOpt, parse_sockopts, tcp::TcpTransport};
 
 #[test]
 fn parse_ip_ttl() {
@@ -248,7 +248,9 @@ fn apply_sockopt_bind_device_unsupported() {
     let stream = TcpStream::connect(addr).unwrap();
     let transport = TcpTransport::from_stream(stream);
 
-    assert!(transport
-        .apply_sockopts(&[SockOpt::BindToDevice("eth0".into())])
-        .is_err());
+    assert!(
+        transport
+            .apply_sockopts(&[SockOpt::BindToDevice("eth0".into())])
+            .is_err()
+    );
 }

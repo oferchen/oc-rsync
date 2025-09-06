@@ -1,5 +1,5 @@
 // xtask/src/bin/comment_lint.rs
-use rustc_lexer::{tokenize, TokenKind};
+use rustc_lexer::{TokenKind, tokenize};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};

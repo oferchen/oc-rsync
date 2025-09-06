@@ -3,7 +3,7 @@ use std::net::{Ipv4Addr, Ipv6Addr, TcpStream};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use transport::{tcp::TcpTransport, AddressFamily};
+use transport::{AddressFamily, tcp::TcpTransport};
 
 #[test]
 fn rejects_sleep_prevents_spin() {

@@ -1,10 +1,10 @@
 // crates/transport/tests/blocking_io.rs
 #[cfg(unix)]
-use nix::fcntl::{fcntl, FcntlArg, OFlag};
+use nix::fcntl::{FcntlArg, OFlag, fcntl};
 use std::net::TcpListener;
 #[cfg(unix)]
 use std::thread;
-use transport::{ssh::SshStdioTransport, tcp::TcpTransport, Transport};
+use transport::{Transport, ssh::SshStdioTransport, tcp::TcpTransport};
 
 #[cfg(unix)]
 #[test]
