@@ -13,7 +13,7 @@ use nix::sys::stat::{self, FchmodatFlags, Mode, SFlag};
 use nix::unistd::{self, Gid, Uid};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use users::{get_group_by_gid, get_group_by_name, get_user_by_name, get_user_by_uid};
 
 #[cfg(target_os = "macos")]
@@ -44,6 +44,53 @@ mod xattr {
         }
         Ok(attrs)
     }
+}
+
+static XATTRS_SUPPORTED: OnceLock<bool> = OnceLock::new();
+#[cfg(feature = "acl")]
+static ACLS_SUPPORTED: OnceLock<bool> = OnceLock::new();
+
+pub fn xattrs_supported() -> bool {
+    *XATTRS_SUPPORTED.get_or_init(|| {
+        let path = std::env::temp_dir().join("oc_rsync_xattr_check");
+        if fs::write(&path, b"1").is_err() {
+            return false;
+        }
+        let res = xattr::set(&path, "user.oc-rsync.test", b"1");
+        let _ = fs::remove_file(&path);
+        match res {
+            Ok(_) => true,
+            Err(err) => !matches!(
+                err.raw_os_error(),
+                Some(code) if code == libc::ENOTSUP || code == libc::EOPNOTSUPP
+            ),
+        }
+    })
+}
+
+#[cfg(feature = "acl")]
+pub fn acls_supported() -> bool {
+    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+    *ACLS_SUPPORTED.get_or_init(|| {
+        let path = std::env::temp_dir().join("oc_rsync_acl_check");
+        if fs::write(&path, b"1").is_err() {
+            return false;
+        }
+        let mut acl = PosixACL::new(0o644);
+        acl.set(Qualifier::User(0), ACL_READ);
+        let res = acl.write_acl(&path);
+        let _ = fs::remove_file(&path);
+        match res {
+            Ok(_) => true,
+            Err(err) => {
+                let code = err.as_io_error().and_then(|e| e.raw_os_error());
+                !matches!(
+                    code,
+                    Some(c) if c == libc::ENOTSUP || c == libc::EOPNOTSUPP
+                )
+            }
+        }
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

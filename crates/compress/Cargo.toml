@@ -6,13 +6,10 @@ edition = "2021"
 [dependencies]
 flate2 = { version = "1", optional = true }
 zstd = { version = "0.13", optional = true }
-lz4_flex = { version = "0.11", optional = true }
 
 [features]
 default = ["zlib", "zstd"]
 zlib = ["dep:flate2"]
 zstd = ["dep:zstd"]
-# Experimental LZ4 support
-experimental-lz4 = ["dep:lz4_flex"]
 # AVX-512 implementations (requires nightly Rust)
 nightly = []
