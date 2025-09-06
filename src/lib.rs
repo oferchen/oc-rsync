@@ -4,7 +4,10 @@ use compress::available_codecs;
 use engine::{Result, SyncOptions};
 use filters::Matcher;
 use logging::{DebugFlag, InfoFlag, LogFormat, SubscriberConfig, subscriber};
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 use tracing::subscriber::with_default;
 
 pub use meta;
@@ -94,7 +97,12 @@ impl SyncConfigBuilder {
         I: IntoIterator,
         I::Item: Into<InfoFlag>,
     {
-        self.cfg.info = info.into_iter().map(Into::into).collect();
+        self.cfg.info = info
+            .into_iter()
+            .map(Into::into)
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
         self
     }
 
@@ -103,7 +111,12 @@ impl SyncConfigBuilder {
         I: IntoIterator,
         I::Item: Into<DebugFlag>,
     {
-        self.cfg.debug = debug.into_iter().map(Into::into).collect();
+        self.cfg.debug = debug
+            .into_iter()
+            .map(Into::into)
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
         self
     }
 
@@ -244,4 +257,27 @@ pub fn synchronize_with_config<S: AsRef<Path>, D: AsRef<Path>>(
 
 pub fn synchronize<S: AsRef<Path>, D: AsRef<Path>>(src: S, dst: D) -> Result<()> {
     synchronize_with_config(src, dst, &SyncConfig::default())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn info_dedupes_flags() {
+        let cfg = SyncConfig::builder()
+            .info([InfoFlag::Backup, InfoFlag::Backup])
+            .build();
+        assert_eq!(cfg.info.len(), 1);
+        assert!(cfg.info.contains(&InfoFlag::Backup));
+    }
+
+    #[test]
+    fn debug_dedupes_flags() {
+        let cfg = SyncConfig::builder()
+            .debug([DebugFlag::Backup, DebugFlag::Backup])
+            .build();
+        assert_eq!(cfg.debug.len(), 1);
+        assert!(cfg.debug.contains(&DebugFlag::Backup));
+    }
 }
