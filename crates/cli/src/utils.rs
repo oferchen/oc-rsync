@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::env;
 use std::ffi::OsString;
 use std::time::{Duration, SystemTime};
-use std::{ffi::OsStr, path::PathBuf};
+use std::{ffi::OsStr, io, path::PathBuf};
 
 use clap::ArgMatches;
 use encoding_rs::Encoding;
@@ -155,7 +155,7 @@ pub fn parse_logging_flags(matches: &ArgMatches) -> (Vec<InfoFlag>, Vec<DebugFla
     (info, debug)
 }
 
-pub(crate) fn init_logging(matches: &ArgMatches, log_file_fmt: Option<String>) {
+pub(crate) fn init_logging(matches: &ArgMatches, log_file_fmt: Option<String>) -> io::Result<()> {
     let verbose = matches.get_count("verbose");
     let quiet = matches.get_flag("quiet");
     let log_file = matches.get_one::<PathBuf>("client-log-file").cloned();
@@ -182,7 +182,7 @@ pub(crate) fn init_logging(matches: &ArgMatches, log_file_fmt: Option<String>) {
         .colored(true)
         .timestamps(false)
         .build();
-    logging::init(cfg);
+    logging::init(cfg)
 }
 
 pub(crate) fn locale_charset() -> Option<String> {

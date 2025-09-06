@@ -142,7 +142,7 @@ pub fn run(matches: &clap::ArgMatches) -> Result<()> {
         return run_daemon(opts.daemon, matches);
     }
     let log_file_fmt = opts.log_file_format.clone().map(|s| parse_escapes(&s));
-    init_logging(matches, log_file_fmt);
+    init_logging(matches, log_file_fmt)?;
     let probe_opts =
         ProbeOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
     if matches.contains_id("probe") {
@@ -1811,10 +1811,8 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    #[allow(clippy::transmute)]
     fn exit_code_handles_unknown_error_kind() {
-        let kind: clap::error::ErrorKind = unsafe { std::mem::transmute(u8::MAX) };
+        let kind = clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand;
         assert_eq!(exit_code_from_error_kind(kind), ExitCode::SyntaxOrUsage);
     }
 

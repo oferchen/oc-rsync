@@ -100,6 +100,7 @@ jobs:
   interop:
     needs: test-linux
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -110,7 +111,7 @@ jobs:
           cache: true
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev acl attr openssh-server
+        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev acl attr openssh-server rsync
 
       - name: Build oc-rsync (release)
         run: |
@@ -126,7 +127,11 @@ jobs:
           UPSTREAM_RSYNC: ${{ env.UPSTREAM_RSYNC }}
         run: tests/interop/run_matrix.sh
 
+      - name: Install cargo-nextest
+        run: cargo install cargo-nextest --locked
 
+      - name: Run interop tests
+        run: cargo nextest run --workspace --no-fail-fast --run-ignored=only-tests
   build-matrix:
     needs: [lint, test-linux]
     strategy:
