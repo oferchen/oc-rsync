@@ -25,11 +25,12 @@ doc:
 	cargo doc --no-deps --all-features
 
 test:
-	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo nextest run --workspace --no-fail-fast --all-features
+	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo nextest run --workspace --no-fail-fast
+	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo nextest run --workspace --no-fail-fast --features "cli nightly"
 
 coverage:
-	cargo llvm-cov nextest --workspace --all-features --doctests \
-	        --fail-under-lines 95 --fail-under-functions 95 -- --no-fail-fast
+	cargo llvm-cov nextest --workspace --features "cli nightly" --doctests \
+	--fail-under-lines 95 --fail-under-functions 95 -- --no-fail-fast
 
 interop:
 	@bash tests/interop/run_matrix.sh

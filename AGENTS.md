@@ -184,7 +184,10 @@ This agent architecture provides a **clean separation of responsibilities** and 
 
 ### Mandatory Checks
 - Install `cargo-nextest` with `cargo install cargo-nextest --locked` if it is not already available.
-- Run `cargo nextest run --workspace --no-fail-fast` (and `--all-features`) and ensure all tests pass.
+- Run `cargo nextest run --workspace --no-fail-fast` and
+  `cargo nextest run --workspace --no-fail-fast --features "cli nightly"`,
+  ensuring all tests pass. Interop tests behind the `interop` feature
+  require an upstream `rsync` binary and are run separately.
 - Execute `make verify-comments` to validate file header comments.
 - Use `make lint` to confirm formatting.
 

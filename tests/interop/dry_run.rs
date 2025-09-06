@@ -1,4 +1,5 @@
 // tests/interop/dry_run.rs
+#![cfg(feature = "interop")]
 
 use assert_cmd::Command;
 use std::fs;
@@ -38,4 +39,3 @@ fn dry_run_preserves_destination() {
     assert!(!dst.join("new.txt").exists());
     assert_eq!(fs::read_to_string(dst.join("old.txt")).unwrap(), "old");
 }
-

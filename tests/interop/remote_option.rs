@@ -1,9 +1,9 @@
 // tests/interop/remote_option.rs
-#![cfg(unix)]
+#![cfg(all(unix, feature = "interop"))]
 
+use assert_cmd::Command;
 use assert_cmd::cargo::cargo_bin;
 use assert_cmd::prelude::*;
-use assert_cmd::Command;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::process::Command as StdCommand;
@@ -34,11 +34,7 @@ fn ssh_remote_option_matches_rsync() {
     fs::create_dir(&dst_dir).unwrap();
 
     let rsh = dir.path().join("fake_rsh.sh");
-    fs::write(
-        &rsh,
-        b"#!/bin/sh\nshift\nexec /bin/sh -c \"$*\"\n",
-    )
-    .unwrap();
+    fs::write(&rsh, b"#!/bin/sh\nshift\nexec /bin/sh -c \"$*\"\n").unwrap();
     fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
 
     let src_spec = format!("{}/", src_dir.display());

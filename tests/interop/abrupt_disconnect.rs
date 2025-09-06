@@ -1,8 +1,8 @@
 // tests/interop/abrupt_disconnect.rs
-#![cfg(unix)]
+#![cfg(all(unix, feature = "interop"))]
 
-use assert_cmd::cargo::cargo_bin;
 use assert_cmd::Command;
+use assert_cmd::cargo::cargo_bin;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::process::Command as StdCommand;
