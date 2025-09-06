@@ -2983,6 +2983,35 @@ fn files_from_list_directory_excludes_siblings() {
 }
 
 #[test]
+fn files_from_list_directory_without_slash_excludes_siblings() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("dir/sub")).unwrap();
+    fs::create_dir_all(src.join("other")).unwrap();
+    fs::write(src.join("dir/sub/file.txt"), b"k").unwrap();
+    fs::write(src.join("other/file.txt"), b"o").unwrap();
+    let list = dir.path().join("files.txt");
+    fs::write(&list, "dir\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("dir/sub/file.txt").exists());
+    assert!(!dst.join("other/file.txt").exists());
+}
+
+#[test]
 fn include_pattern_allows_file() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
@@ -3722,6 +3751,36 @@ fn files_from_zero_separated_list_includes_directories() {
         .success();
 
     assert!(dst.join("dir/sub/file.txt").exists());
+}
+
+#[test]
+fn files_from_zero_separated_list_directory_without_slash_excludes_siblings() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("dir/sub")).unwrap();
+    fs::create_dir_all(src.join("other")).unwrap();
+    fs::write(src.join("dir/sub/file.txt"), b"k").unwrap();
+    fs::write(src.join("other/file.txt"), b"o").unwrap();
+    let list = dir.path().join("files.lst");
+    fs::write(&list, b"dir\0").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--from0",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("dir/sub/file.txt").exists());
+    assert!(!dst.join("other/file.txt").exists());
 }
 
 #[test]

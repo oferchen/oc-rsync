@@ -1444,7 +1444,6 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     format!("/{}", pat)
                 };
 
-                let is_dir = anchored.ends_with('/');
                 let trimmed = anchored.trim_end_matches('/');
                 if trimmed.is_empty() {
                     continue;
@@ -1471,39 +1470,26 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                 }
 
                 let last = ancestors.last().unwrap();
-                if is_dir {
-                    let rule = if opts.from0 {
-                        format!("+{}/", last)
-                    } else {
-                        format!("+ {}/", last)
-                    };
-                    add_rules(
-                        idx + 1,
-                        parse_filters(&rule, opts.from0)
-                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                    );
-                    let rule = if opts.from0 {
-                        format!("+{}/***", last)
-                    } else {
-                        format!("+ {}/***", last)
-                    };
-                    add_rules(
-                        idx + 1,
-                        parse_filters(&rule, opts.from0)
-                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                    );
+                let rule = if opts.from0 {
+                    format!("+{}", last)
                 } else {
-                    let rule = if opts.from0 {
-                        format!("+{}", last)
-                    } else {
-                        format!("+ {}", last)
-                    };
-                    add_rules(
-                        idx + 1,
-                        parse_filters(&rule, opts.from0)
-                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                    );
-                }
+                    format!("+ {}", last)
+                };
+                add_rules(
+                    idx + 1,
+                    parse_filters(&rule, opts.from0)
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                );
+                let rule = if opts.from0 {
+                    format!("+{}/***", last)
+                } else {
+                    format!("+ {}/***", last)
+                };
+                add_rules(
+                    idx + 1,
+                    parse_filters(&rule, opts.from0)
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                );
             }
         }
     }
