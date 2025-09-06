@@ -107,7 +107,59 @@ impl FilterStats {
 }
 
 fn compile_glob(pat: &str) -> Result<GlobMatcher, ParseError> {
-    let pat = expand_posix_classes(pat);
+    // `globset` understands a superset of the standard shell glob syntax, but
+    // rsync allows a few extras that need some light pre-processing:
+    //   * `**` should match across path separators.
+    //   * character classes (`[abc]`, `[!abc]`, `[[:alnum:]]`, …) must remain
+    //     intact, including any escaped characters inside the brackets.
+    //   * a backslash escapes the following metacharacter and should be passed
+    //     through verbatim.
+    // The loop below rewrites the pattern ensuring the above invariants before
+    // handing it off to `GlobBuilder`.
+
+    let mut translated = String::new();
+    let mut chars = pat.chars().peekable();
+    while let Some(ch) = chars.next() {
+        match ch {
+            // Preserve escapes; `GlobBuilder` interprets a backslash as an
+            // escape when `backslash_escape(true)` is set.
+            '\\' => {
+                translated.push('\\');
+                if let Some(next) = chars.next() {
+                    translated.push(next);
+                }
+            }
+            // Copy character classes verbatim until the closing bracket. Any
+            // escapes inside are also preserved.
+            '[' => {
+                translated.push('[');
+                while let Some(c) = chars.next() {
+                    translated.push(c);
+                    if c == '\\' {
+                        if let Some(esc) = chars.next() {
+                            translated.push(esc);
+                        }
+                        continue;
+                    }
+                    if c == ']' {
+                        break;
+                    }
+                }
+            }
+            // Ensure `**` is kept as a single token that spans directories.
+            '*' => {
+                if let Some('*') = chars.peek() {
+                    chars.next();
+                    translated.push_str("**");
+                } else {
+                    translated.push('*');
+                }
+            }
+            _ => translated.push(ch),
+        }
+    }
+
+    let pat = expand_posix_classes(&translated);
     Ok(GlobBuilder::new(&pat)
         .literal_separator(true)
         .backslash_escape(true)
@@ -1147,14 +1199,22 @@ fn decode_line(raw: &str) -> Option<String> {
     let mut last_non_space = 0;
     for c in chars {
         if escaped {
-            out.push(c);
-            if !c.is_whitespace() {
+            if c.is_whitespace() || c == '#' || c == '\\' {
+                out.push(c);
+                if !c.is_whitespace() {
+                    has_data = true;
+                    last_non_space = out.len();
+                    prev_space = false;
+                } else {
+                    last_non_space = out.len();
+                    prev_space = true;
+                }
+            } else {
+                out.push('\\');
+                out.push(c);
                 has_data = true;
                 last_non_space = out.len();
                 prev_space = false;
-            } else {
-                last_non_space = out.len();
-                prev_space = true;
             }
             escaped = false;
             started = true;
@@ -1768,11 +1828,16 @@ pub fn parse_with_options(
 
         let mut pats: Vec<(String, bool)> = Vec::new();
         for b in bases {
-            if dir_all {
-                pats.push((b.clone(), true));
+            if dir_all || dir_only {
+                // Expand directory rules into a pair of patterns: the
+                // directory itself and a recursive pattern that matches any
+                // entry beneath it. These patterns are not marked as
+                // directory-only so that they apply even when the caller does
+                // not provide filesystem metadata.
+                pats.push((b.clone(), false));
                 pats.push((format!("{}/**", b), false));
             } else {
-                pats.push((b, dir_only));
+                pats.push((b, false));
             }
         }
 

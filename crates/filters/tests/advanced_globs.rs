@@ -70,3 +70,17 @@ fn negated_character_class_matching() {
     assert!(m.is_included("filea.txt").unwrap());
     assert!(!m.is_included("file1.txt").unwrap());
 }
+
+#[test]
+fn escaped_wildcards() {
+    let m = p("+ file\\*name\\?\n- *\n");
+    assert!(m.is_included("file*name?").unwrap());
+    assert!(!m.is_included("fileXnameQ").unwrap());
+}
+
+#[test]
+fn escaped_brackets() {
+    let m = p("+ file\\[data\\].txt\n- *\n");
+    assert!(m.is_included("file[data].txt").unwrap());
+    assert!(!m.is_included("filea.txt").unwrap());
+}
