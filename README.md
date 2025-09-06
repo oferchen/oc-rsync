@@ -35,7 +35,7 @@ brew install --build-from-source ./packaging/brew/oc-rsync.rb
 
 #### Prerequisites
 
-The source build requires a C toolchain, compression libraries, and ACL headers:
+This project requires **Rust 1.87** or newer. The source build also needs a C toolchain, compression libraries, and ACL headers:
 
 - `build-essential` (provides `gcc`/`ld`)
 - `libzstd-dev`
