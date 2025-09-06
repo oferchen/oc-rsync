@@ -2069,18 +2069,33 @@ pub fn parse_rule_list_from_bytes(
     let pats = parse_list(input, from0);
     let mut rules = Vec::new();
     for pat in pats {
-        let line = if from0 {
-            format!("{sign}{pat}\n")
+        let is_dir = pat.ends_with('/');
+        let anchored = if pat.starts_with('/') {
+            pat.clone()
         } else {
-            format!("{sign} {pat}\n")
+            format!("/{}", pat)
         };
-        rules.extend(parse_with_options(
-            &line,
-            from0,
-            visited,
-            depth,
-            source.clone(),
-        )?);
+        let line = if from0 {
+            format!("{sign}{anchored}\n")
+        } else {
+            format!("{sign} {anchored}\n")
+        };
+        let mut sub = parse_with_options(&line, from0, visited, depth, source.clone())?;
+        if is_dir {
+            let trimmed = anchored.trim_start_matches('/').trim_end_matches('/');
+            if !trimmed.is_empty() {
+                let anc_count = trimmed.split('/').count().saturating_sub(1);
+                if let Some(rule) = sub.get_mut(anc_count) {
+                    match rule {
+                        Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => {
+                            d.dir_only = true;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        rules.extend(sub);
     }
     Ok(rules)
 }
