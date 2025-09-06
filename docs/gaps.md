@@ -10,20 +10,19 @@ when available. Do not exceed functionality of upstream at <https://rsync.samba.
 ## Interop matrix scenarios
 
 The interoperability matrix builds upstream `rsync 3.4.1` via
-[scripts/interop.sh](../scripts/interop.sh) and
-exercises real transfers. The following scenarios are currently captured:
+[scripts/interop/run.sh](../scripts/interop/run.sh) and exercises real
+transfers. [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh)
+drives the following scenarios:
 
-  - `base`: baseline transfer using [interop.sh](../scripts/interop.sh)
+  - `base`: baseline transfer using [run.sh](../scripts/interop/run.sh)
   - `delete`: `--delete` removes extraneous files
-  - `compression`: zlib/zstd negotiation using [codec_negotiation.rs](../tests/interop/codec_negotiation.rs)
+  - `compress_zlib`: zlib negotiation using [codec_negotiation.rs](../tests/interop/codec_negotiation.rs)
+  - `compress_zstd`: zstd negotiation using [codec_negotiation.rs](../tests/interop/codec_negotiation.rs)
   - `filters`: include/exclude and `.rsync-filter` rules via [filter_complex.rs](../tests/interop/filter_complex.rs)
   - `metadata`: ACL, xattr and permission preservation validated against [golden fixtures](../tests/interop/golden)
-  - `dry-run`: destination remains untouched with `--dry-run` in [dry_run.rs](../tests/interop/dry_run.rs)
-  - `remote-option`: forwarding `--remote-option` flags covered by [remote_option.rs](../tests/interop/remote_option.rs)
-  - `refused-option`: rejected remote options match upstream in [refused_option.rs](../tests/interop/refused_option.rs)
-  - `abrupt-disconnect`: early connection termination parity in [abrupt_disconnect.rs](../tests/interop/abrupt_disconnect.rs)
-  - `remote-remote`: remote-to-remote transfers exercised in [remote_remote_tests.rs](../tests/interop/remote_remote_tests.rs)
-  - `help`: `--help` output parity ensured by [help.rs](../tests/interop/help.rs)
+  - `partial`: `--partial` leaves resumable files in place as demonstrated in [resume.rs](../tests/resume.rs)
+  - `resume`: interrupted transfers resume from partial files in [resume.rs](../tests/resume.rs)
+  - `vanished`: vanished source files handled gracefully
 
 ## Parser Parity
 | Feature | Status | Tests | Source |
