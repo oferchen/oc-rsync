@@ -6,12 +6,22 @@ OC_RSYNC="$ROOT/target/debug/oc-rsync"
 INTEROP_DIR="$ROOT/tests/interop"
 WIRE_DIR="$INTEROP_DIR/wire"
 FILELIST_DIR="$INTEROP_DIR/filelists"
-VERSIONS=("3.1.3" "3.2.7" "3.4.1")
+VERSIONS=("3.0.9" "3.1.3" "3.4.1")
 FLAGS=(--recursive --times --perms)
 
 mkdir -p "$WIRE_DIR" "$FILELIST_DIR"
 
+ensure_build_deps() {
+  if ! command -v gcc >/dev/null 2>&1; then
+    apt-get update >/dev/null
+    apt-get install -y build-essential >/dev/null
+  fi
+  apt-get update >/dev/null
+  apt-get install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev liblz4-dev >/dev/null
+}
+
 # Build oc-rsync binary
+ensure_build_deps
 cargo build --quiet -p oc-rsync --bin oc-rsync
 
 # Ensure sshd exists
@@ -43,18 +53,29 @@ CFG
 trap 'kill $(cat "$TMP/sshd.pid") >/dev/null 2>&1 || true' EXIT
 SSH="ssh -p $PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i $CLIENTKEY"
 
-for ver in "${VERSIONS[@]}"; do
-  SRC_DIR="$ROOT/rsync-$ver"
-  BIN="$SRC_DIR/rsync"
-  if [ ! -x "$BIN" ]; then
-    echo "rsync $ver not found; attempting download" >&2
-    TARBALL="rsync-$ver.tar.gz"
-    URL="https://download.samba.org/pub/rsync/src/$TARBALL"
-    curl -L "$URL" -o "$TMP/$TARBALL"
-    tar -C "$ROOT" -xf "$TMP/$TARBALL"
-    (cd "$SRC_DIR" && ./configure >/dev/null && make rsync >/dev/null)
+download_rsync() {
+  local ver="$1"
+  local prefix="$ROOT/target/upstream/$ver"
+  local bin="$prefix/bin/rsync"
+  if [[ ! -x "$bin" ]]; then
+    ensure_build_deps
+    mkdir -p "$ROOT/target/upstream"
+    pushd "$ROOT/target/upstream" >/dev/null
+    tarball="rsync-$ver.tar.gz"
+    curl -L "https://download.samba.org/pub/rsync/src/$tarball" -o "$tarball"
+    tar xzf "$tarball"
+    pushd "rsync-$ver" >/dev/null
+    ./configure --prefix="$prefix" >/dev/null
+    make -j"$(nproc)" >/dev/null
+    make install >/dev/null
+    popd >/dev/null
+    popd >/dev/null
   fi
+  printf '%s' "$bin"
+}
 
+for ver in "${VERSIONS[@]}"; do
+  BIN="$(download_rsync "$ver")"
   SRC="$TMP/src-$ver"
   mkdir -p "$SRC"
   echo "data" > "$SRC/file.txt"

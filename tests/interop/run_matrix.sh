@@ -14,7 +14,7 @@ SCENARIOS=(
   "vanished"
 )
 
-RSYNC_VERSIONS=(3.2.7 3.3.0 3.4.1)
+RSYNC_VERSIONS=(3.0.9 3.1.3 3.4.1)
 
 if [[ "${LIST_SCENARIOS:-0}" == "1" ]]; then
   for entry in "${SCENARIOS[@]}"; do
@@ -25,19 +25,40 @@ if [[ "${LIST_SCENARIOS:-0}" == "1" ]]; then
 fi
 
 OC_RSYNC="$ROOT/target/debug/oc-rsync"
+
+ensure_build_deps() {
+  if ! command -v gcc >/dev/null 2>&1; then
+    apt-get update >/dev/null
+    apt-get install -y build-essential >/dev/null
+  fi
+  apt-get update >/dev/null
+  apt-get install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev liblz4-dev >/dev/null
+}
+
 if [[ ! -x "$OC_RSYNC" ]]; then
+  ensure_build_deps
   cargo build --quiet --bin oc-rsync --features="acl xattr"
 fi
 
 download_rsync() {
   local ver="$1"
-  local out="$ROOT/target/upstream/rsync-$ver"
-  if [[ ! -x "$out" ]]; then
-    mkdir -p "$(dirname "$out")"
-    curl -L "https://download.samba.org/pub/rsync/binaries/rsync-${ver}-1.x86_64-static" -o "$out"
-    chmod +x "$out"
+  local prefix="$ROOT/target/upstream/$ver"
+  local bin="$prefix/bin/rsync"
+  if [[ ! -x "$bin" ]]; then
+    ensure_build_deps
+    mkdir -p "$ROOT/target/upstream"
+    pushd "$ROOT/target/upstream" >/dev/null
+    tarball="rsync-$ver.tar.gz"
+    curl -L "https://download.samba.org/pub/rsync/src/$tarball" -o "$tarball"
+    tar xzf "$tarball"
+    pushd "rsync-$ver" >/dev/null
+    ./configure --prefix="$prefix" >/dev/null
+    make -j"$(nproc)" >/dev/null
+    make install >/dev/null
+    popd >/dev/null
+    popd >/dev/null
   fi
-  printf '%s' "$out"
+  printf '%s' "$bin"
 }
 
 create_tree() {
