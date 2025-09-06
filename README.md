@@ -105,7 +105,7 @@ Report vulnerabilities via [SECURITY.md](SECURITY.md). The daemon aims to match 
 
 ## License
 
-Licensed under the [Apache License, Version 2.0](LICENSE).
+Licensed under [Apache-2.0](LICENSE-APACHE).
 
 ## Acknowledgements
 

@@ -116,7 +116,7 @@ nightly = ["checksums/nightly", "compress/nightly"]
 
 [package.metadata.deb]
 maintainer = "Ofer Chen <skewers.irises.3b@icloud.com>"
-license-file = "LICENSE"
+license-file = ["LICENSE-APACHE"]
 section = "net"
 priority = "optional"
 depends = "zlib1g, libzstd1"
