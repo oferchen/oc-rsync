@@ -1,4 +1,5 @@
 // crates/logging/src/lib.rs
+
 #![allow(clippy::too_many_arguments)]
 use std::fmt;
 use std::fs::{File, OpenOptions};
@@ -629,7 +630,6 @@ pub fn subscriber(cfg: SubscriberConfig) -> io::Result<Box<dyn tracing::Subscrib
 
     let file_layer = if let Some((path, fmt)) = log_file {
         let file = OpenOptions::new().create(true).append(true).open(path)?;
-        // Attempt to clone once to surface any errors during initialization.
         file.try_clone()?;
         let base = tracing_fmt::layer()
             .with_writer(FileWriter { file })
