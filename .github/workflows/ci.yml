@@ -103,7 +103,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           name: coverage-report
-          path: target/llvm-cov/html
+          files: coverage.lcov
 
   interop:
     needs: test-linux
@@ -139,7 +139,7 @@ jobs:
         run: cargo install cargo-nextest --locked
 
       - name: Run interop tests
-        run: cargo nextest run --workspace --no-fail-fast --run-ignored=only-tests
+        run: cargo nextest run --workspace --no-fail-fast --all-features --run-ignored=only-tests
   build-matrix:
     needs: [lint, test-linux]
     strategy:
