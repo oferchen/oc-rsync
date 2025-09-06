@@ -15,8 +15,10 @@ resource and adjust `ARG_ORDER` so the test continues to pass.
 ## Usage
 
 ```sh
-oc-rsync [OPTIONS] "<SRC>" "<DEST>"
+oc-rsync [OPTIONS] "<SRC>..." "<DEST>"
 ```
+
+Multiple source paths may be specified; the last path is treated as the destination.
 
 ### Examples
 
@@ -24,6 +26,12 @@ oc-rsync [OPTIONS] "<SRC>" "<DEST>"
 
   ```sh
   oc-rsync "./src" "./backup"
+  ```
+
+- Multiple sources into one destination:
+
+  ```sh
+  oc-rsync "./src1" "./src2" "./backup"
   ```
 
 - Remote sync over SSH:
