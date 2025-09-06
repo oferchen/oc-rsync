@@ -86,9 +86,9 @@ jobs:
         run: cargo install cargo-nextest --locked
 
       - name: Run tests
-        run: cargo nextest run --workspace --no-fail-fast
+        run: cargo nextest run --workspace --no-fail-fast --all-features
       - name: Test with coverage (95% lines & functions)
-        run: cargo llvm-cov nextest --workspace --lcov --output-path coverage.lcov --fail-under-lines 95 --fail-under-functions 95 -- --no-fail-fast
+        run: cargo llvm-cov nextest --workspace --lcov --output-path coverage.lcov --all-features --fail-under-lines 95 --fail-under-functions 95 --html -- --no-fail-fast
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v5
@@ -131,7 +131,7 @@ jobs:
         run: cargo install cargo-nextest --locked
 
       - name: Run interop tests
-        run: cargo nextest run --workspace --no-fail-fast --run-ignored=only-tests
+        run: cargo nextest run --workspace --no-fail-fast --all-features --run-ignored=only-tests
   build-matrix:
     needs: [lint, test-linux]
     strategy:
