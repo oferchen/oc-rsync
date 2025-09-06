@@ -15,7 +15,7 @@
 | Local → Local            | ✅ Full support | Parity with classic rsync |
 | Local → Remote (SSH)     | ✅ Interoperates with classic rsync | Parity with classic rsync |
 | Local → Remote (daemon)  | ✅ Interoperates with classic rsync | Parity with classic rsync |
-| Remote → Remote          | ✅ Interoperates with classic rsync | Parity with classic rsync |
+| Remote → Remote          | ✅ Interoperates with classic rsync | Parity with classic rsync, including `rsync://` daemon paths |
 
 ## Remote Feature Coverage
 
