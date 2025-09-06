@@ -113,7 +113,9 @@ impl Receiver {
         } else if (self.opts.partial || self.opts.append || self.opts.append_verify)
             && existing_partial.is_some()
         {
-            existing_partial.clone().unwrap()
+            existing_partial
+                .clone()
+                .expect("existing partial path should exist when resuming transfers")
         } else {
             dest.clone()
         };
@@ -140,7 +142,9 @@ impl Receiver {
         } else if (self.opts.partial || self.opts.append || self.opts.append_verify)
             && existing_partial.is_some()
         {
-            existing_partial.clone().unwrap()
+            existing_partial
+                .clone()
+                .expect("existing partial path should exist when resuming transfers")
         } else if self.opts.partial {
             partial.clone()
         } else {
@@ -566,5 +570,55 @@ impl Receiver {
         #[cfg(unix)]
         self.link_map.finalize()?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::Path;
+    use tempfile::tempdir;
+
+    #[test]
+    fn apply_without_existing_partial() {
+        let tmp = tempdir().unwrap();
+        let src = tmp.path().join("src.txt");
+        let dest = tmp.path().join("dest.txt");
+        fs::write(&src, b"hello").unwrap();
+
+        let mut opts = SyncOptions::default();
+        opts.partial = true;
+        let mut recv = Receiver::new(None, opts);
+
+        let delta = vec![Ok(Op::Data(b"hello".to_vec()))];
+        recv.apply(&src, &dest, Path::new(""), delta).unwrap();
+
+        let output = fs::read(&dest).unwrap();
+        assert_eq!(output, b"hello");
+    }
+
+    #[test]
+    fn apply_with_existing_partial() {
+        let tmp = tempdir().unwrap();
+        let src = tmp.path().join("src.txt");
+        let dest = tmp.path().join("dest.txt");
+        fs::write(&src, b"old!").unwrap();
+        let (partial, _) = partial_paths(&dest, None);
+        fs::write(&partial, b"old").unwrap();
+
+        let mut opts = SyncOptions::default();
+        opts.partial = true;
+        let mut recv = Receiver::new(None, opts);
+
+        let delta = vec![
+            Ok(Op::Copy { offset: 0, len: 3 }),
+            Ok(Op::Data(b"!".to_vec())),
+        ];
+        recv.apply(&src, &dest, Path::new(""), delta).unwrap();
+
+        let output = fs::read(&dest).unwrap();
+        assert_eq!(output, b"old!");
+        assert!(!partial.exists());
     }
 }
