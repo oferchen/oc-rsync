@@ -18,8 +18,10 @@ use clap::{ArgMatches, FromArgMatches};
 
 pub mod branding;
 pub mod daemon;
+mod exec;
 mod formatter;
 pub mod options;
+mod session;
 mod utils;
 
 use crate::daemon::run_daemon;
@@ -33,18 +35,13 @@ pub use utils::{parse_iconv, parse_logging_flags, parse_rsh, print_version_if_re
 
 use compress::{Codec, available_codecs};
 pub use engine::EngineError;
-use engine::{DeleteMode, Result, Stats, StrongHash, SyncOptions, pipe_sessions, sync};
+use engine::{DeleteMode, Result, Stats, StrongHash, SyncOptions};
 use filters::{Matcher, Rule, default_cvs_rules};
 pub use formatter::{ARG_ORDER, dump_help_body, render_help};
 use logging::{InfoFlag, human_bytes, parse_escapes};
 use meta::{IdKind, parse_chmod, parse_chown};
-use protocol::{
-    CAP_ACLS, CAP_CODECS, CAP_XATTRS, CharsetConv, ExitCode, LATEST_VERSION, SUPPORTED_PROTOCOLS,
-    V30, negotiate_version,
-};
-use transport::{
-    AddressFamily, RateLimitedTransport, SshStdioTransport, daemon_remote_opts, parse_sockopts,
-};
+use protocol::{ExitCode, LATEST_VERSION, SUPPORTED_PROTOCOLS, V30, negotiate_version};
+use transport::{AddressFamily, parse_sockopts};
 #[cfg(unix)]
 use users::get_user_by_uid;
 
@@ -287,47 +284,6 @@ fn print_stats(stats: &Stats, opts: &ClientOpts) {
     );
 }
 
-#[cfg(unix)]
-fn is_effective_root() -> bool {
-    #[cfg(test)]
-    if let Some(v) = MOCK_IS_ROOT.with(|m| m.borrow_mut().take()) {
-        return v;
-    }
-    nix::unistd::Uid::effective().is_root()
-}
-
-#[cfg(all(test, unix))]
-thread_local! {
-    static MOCK_IS_ROOT: std::cell::RefCell<Option<bool>> = std::cell::RefCell::new(None);
-}
-
-#[cfg(all(test, unix))]
-fn mock_effective_root(val: bool) {
-    MOCK_IS_ROOT.with(|m| *m.borrow_mut() = Some(val));
-}
-
-#[cfg(target_os = "linux")]
-fn has_cap_chown() -> std::result::Result<bool, caps::errors::CapsError> {
-    #[cfg(test)]
-    if let Some(res) = MOCK_CAPS.with(|m| m.borrow_mut().take()) {
-        return res;
-    }
-    use caps::{CapSet, Capability};
-    caps::has_cap(None, CapSet::Effective, Capability::CAP_CHOWN)
-}
-
-#[cfg(all(test, target_os = "linux"))]
-thread_local! {
-    static MOCK_CAPS: std::cell::RefCell<
-        Option<std::result::Result<bool, caps::errors::CapsError>>,
-    > = std::cell::RefCell::new(None);
-}
-
-#[cfg(all(test, target_os = "linux"))]
-fn mock_caps_has_cap(res: std::result::Result<bool, caps::errors::CapsError>) {
-    MOCK_CAPS.with(|m| *m.borrow_mut() = Some(res));
-}
-
 fn run_single(
     mut opts: ClientOpts,
     matches: &ArgMatches,
@@ -363,71 +319,7 @@ fn run_single(
 
     let acls = opts.acls && !opts.no_acls;
 
-    #[cfg(unix)]
-    {
-        let need_owner = if opts.no_owner {
-            false
-        } else {
-            opts.owner || opts.archive
-        };
-        let need_group = if opts.no_group {
-            false
-        } else {
-            opts.group || opts.archive
-        };
-        let maps_requested =
-            opts.chown.is_some() || !opts.usermap.is_empty() || !opts.groupmap.is_empty();
-        let needs_privs = need_owner || need_group || maps_requested;
-        let numeric_fallback = opts.numeric_ids
-            && opts.chown.is_none()
-            && opts.usermap.is_empty()
-            && opts.groupmap.is_empty();
-        if needs_privs && !numeric_fallback && !is_effective_root() {
-            #[cfg(target_os = "linux")]
-            let has_privs = match has_cap_chown() {
-                Ok(v) => v,
-                Err(e) => {
-                    return Err(EngineError::Other(format!(
-                        "failed to detect CAP_CHOWN capability: {e}"
-                    )));
-                }
-            };
-            #[cfg(not(target_os = "linux"))]
-            let has_privs = false;
-
-            let priv_msg = if cfg!(target_os = "linux") {
-                "changing ownership requires root or CAP_CHOWN"
-            } else {
-                "changing ownership requires root"
-            };
-
-            if !has_privs {
-                if maps_requested {
-                    return Err(EngineError::Exit(ExitCode::StartClient, priv_msg.into()));
-                }
-                let owner_explicit =
-                    matches.value_source("owner") == Some(ValueSource::CommandLine);
-                let group_explicit =
-                    matches.value_source("group") == Some(ValueSource::CommandLine);
-                let mut downgraded = false;
-                if need_owner && !owner_explicit {
-                    opts.owner = false;
-                    opts.no_owner = true;
-                    downgraded = true;
-                }
-                if need_group && !group_explicit {
-                    opts.group = false;
-                    opts.no_group = true;
-                    downgraded = true;
-                }
-                if downgraded {
-                    tracing::warn!("{priv_msg}: disabling owner/group");
-                } else {
-                    return Err(EngineError::Exit(ExitCode::StartClient, priv_msg.into()));
-                }
-            }
-        }
-    }
+    exec::check_privileges(&mut opts, matches)?;
 
     let iconv = if let Some(spec) = &opts.iconv {
         Some(parse_iconv(spec).map_err(EngineError::Other)?)
@@ -844,410 +736,23 @@ fn run_single(
         fake_super: opts.fake_super && !opts.super_user,
         quiet: opts.quiet,
     };
-    sync_opts.prepare_remote();
-    let local = matches!(&src, RemoteSpec::Local(_)) && matches!(&dst, RemoteSpec::Local(_));
-    let stats = if local {
-        match (src, dst) {
-            (RemoteSpec::Local(src), RemoteSpec::Local(dst)) => sync(
-                &src.path,
-                &dst.path,
-                &matcher,
-                &available_codecs(),
-                &sync_opts,
-            )?,
-            _ => unreachable!(),
-        }
-    } else {
-        match (src, dst) {
-            (RemoteSpec::Local(_), RemoteSpec::Local(_)) => unreachable!(),
-            (
-                RemoteSpec::Remote {
-                    host,
-                    path: src,
-                    module: Some(module),
-                },
-                RemoteSpec::Local(dst),
-            ) => {
-                let mut _session = spawn_daemon_session(
-                    &host,
-                    &module,
-                    opts.port,
-                    opts.password_file.as_deref(),
-                    opts.no_motd,
-                    opts.timeout,
-                    opts.connect_timeout,
-                    addr_family,
-                    &opts.sockopts,
-                    &sync_opts,
-                    opts.protocol.unwrap_or(31),
-                    opts.early_input.as_deref(),
-                    iconv.as_ref(),
-                )?;
-                sync(
-                    &src.path,
-                    &dst.path,
-                    &matcher,
-                    &available_codecs(),
-                    &sync_opts,
-                )?
-            }
-            (
-                RemoteSpec::Remote {
-                    host,
-                    path: src,
-                    module: None,
-                },
-                RemoteSpec::Local(dst),
-            ) => {
-                let connect_timeout = opts.connect_timeout;
-                let caps_send = CAP_CODECS
-                    | if sync_opts.acls { CAP_ACLS } else { 0 }
-                    | if sync_opts.xattrs { CAP_XATTRS } else { 0 };
-                let (session, codecs, caps) = SshStdioTransport::connect_with_rsh(
-                    &host,
-                    &src.path,
-                    &rsh_cmd.cmd,
-                    &rsh_cmd.env,
-                    &rsync_env,
-                    remote_bin_vec.as_deref(),
-                    remote_env_vec.as_deref().unwrap_or(&[]),
-                    &sync_opts.remote_options,
-                    known_hosts.as_deref(),
-                    strict_host_key_checking,
-                    opts.port,
-                    connect_timeout,
-                    addr_family,
-                    sync_opts.blocking_io,
-                    opts.protocol.unwrap_or(31),
-                    caps_send,
-                    None,
-                )
-                .map_err(EngineError::from)?;
-                if sync_opts.xattrs && caps & CAP_XATTRS == 0 {
-                    sync_opts.xattrs = false;
-                }
-                if sync_opts.acls && caps & CAP_ACLS == 0 {
-                    sync_opts.acls = false;
-                }
-                let (err, _) = session.stderr();
-                if !err.is_empty() {
-                    let msg = if let Some(cv) = iconv.as_ref() {
-                        cv.decode_remote(&err)
-                    } else {
-                        String::from_utf8_lossy(&err).into_owned()
-                    };
-                    return Err(EngineError::Other(msg));
-                }
-                sync(&src.path, &dst.path, &matcher, &codecs, &sync_opts)?
-            }
-            (
-                RemoteSpec::Local(src),
-                RemoteSpec::Remote {
-                    host,
-                    path: dst,
-                    module: Some(module),
-                },
-            ) => {
-                let mut _session = spawn_daemon_session(
-                    &host,
-                    &module,
-                    opts.port,
-                    opts.password_file.as_deref(),
-                    opts.no_motd,
-                    opts.timeout,
-                    opts.connect_timeout,
-                    addr_family,
-                    &opts.sockopts,
-                    &sync_opts,
-                    opts.protocol.unwrap_or(31),
-                    opts.early_input.as_deref(),
-                    iconv.as_ref(),
-                )?;
-                sync(
-                    &src.path,
-                    &dst.path,
-                    &matcher,
-                    &available_codecs(),
-                    &sync_opts,
-                )?
-            }
-            (
-                RemoteSpec::Local(src),
-                RemoteSpec::Remote {
-                    host,
-                    path: dst,
-                    module: None,
-                },
-            ) => {
-                let connect_timeout = opts.connect_timeout;
-                let caps_send = CAP_CODECS
-                    | if sync_opts.acls { CAP_ACLS } else { 0 }
-                    | if sync_opts.xattrs { CAP_XATTRS } else { 0 };
-                let (session, codecs, caps) = SshStdioTransport::connect_with_rsh(
-                    &host,
-                    &dst.path,
-                    &rsh_cmd.cmd,
-                    &rsh_cmd.env,
-                    &rsync_env,
-                    remote_bin_vec.as_deref(),
-                    remote_env_vec.as_deref().unwrap_or(&[]),
-                    &sync_opts.remote_options,
-                    known_hosts.as_deref(),
-                    strict_host_key_checking,
-                    opts.port,
-                    connect_timeout,
-                    addr_family,
-                    sync_opts.blocking_io,
-                    opts.protocol.unwrap_or(31),
-                    caps_send,
-                    None,
-                )
-                .map_err(EngineError::from)?;
-                if sync_opts.xattrs && caps & CAP_XATTRS == 0 {
-                    sync_opts.xattrs = false;
-                }
-                if sync_opts.acls && caps & CAP_ACLS == 0 {
-                    sync_opts.acls = false;
-                }
-                let (err, _) = session.stderr();
-                if !err.is_empty() {
-                    let msg = if let Some(cv) = iconv.as_ref() {
-                        cv.decode_remote(&err)
-                    } else {
-                        String::from_utf8_lossy(&err).into_owned()
-                    };
-                    return Err(EngineError::Other(msg));
-                }
-                sync(&src.path, &dst.path, &matcher, &codecs, &sync_opts)?
-            }
-            (
-                RemoteSpec::Remote {
-                    host: src_host,
-                    path: src_path,
-                    module: src_mod,
-                },
-                RemoteSpec::Remote {
-                    host: dst_host,
-                    path: dst_path,
-                    module: dst_mod,
-                },
-            ) => {
-                if src_host.is_empty() || dst_host.is_empty() {
-                    return Err(EngineError::Other("remote host missing".to_string()));
-                }
-                if (src_mod.is_none() && src_path.path.as_os_str().is_empty())
-                    || (dst_mod.is_none() && dst_path.path.as_os_str().is_empty())
-                {
-                    return Err(EngineError::Other("remote path missing".to_string()));
-                }
-
-                match (src_mod, dst_mod) {
-                    (None, None) => {
-                        let connect_timeout = opts.connect_timeout;
-                        let mut dst_session = SshStdioTransport::spawn_with_rsh(
-                            &dst_host,
-                            &dst_path.path,
-                            &rsh_cmd.cmd,
-                            &rsh_cmd.env,
-                            remote_bin_vec.as_deref(),
-                            remote_env_vec.as_deref().unwrap_or(&[]),
-                            &sync_opts.remote_options,
-                            known_hosts.as_deref(),
-                            strict_host_key_checking,
-                            opts.port,
-                            connect_timeout,
-                            addr_family,
-                            sync_opts.blocking_io,
-                        )
-                        .map_err(EngineError::from)?;
-                        let mut src_session = SshStdioTransport::spawn_with_rsh(
-                            &src_host,
-                            &src_path.path,
-                            &rsh_cmd.cmd,
-                            &rsh_cmd.env,
-                            remote_bin_vec.as_deref(),
-                            remote_env_vec.as_deref().unwrap_or(&[]),
-                            &sync_opts.remote_options,
-                            known_hosts.as_deref(),
-                            strict_host_key_checking,
-                            opts.port,
-                            connect_timeout,
-                            addr_family,
-                            sync_opts.blocking_io,
-                        )
-                        .map_err(EngineError::from)?;
-
-                        if let Some(limit) = opts.bwlimit {
-                            let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            check_session_errors(&src_session, iconv.as_ref())?;
-                            let dst_session = dst_session.into_inner();
-                            check_session_errors(&dst_session, iconv.as_ref())?;
-                            stats
-                        } else {
-                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            check_session_errors(&src_session, iconv.as_ref())?;
-                            check_session_errors(&dst_session, iconv.as_ref())?;
-                            stats
-                        }
-                    }
-                    (Some(sm), Some(dm)) => {
-                        let mut dst_opts = sync_opts.clone();
-                        dst_opts.remote_options =
-                            daemon_remote_opts(&sync_opts.remote_options, &dst_path.path);
-                        let mut dst_session = spawn_daemon_session(
-                            &dst_host,
-                            &dm,
-                            opts.port,
-                            opts.password_file.as_deref(),
-                            opts.no_motd,
-                            opts.timeout,
-                            opts.connect_timeout,
-                            addr_family,
-                            &opts.sockopts,
-                            &dst_opts,
-                            opts.protocol.unwrap_or(31),
-                            opts.early_input.as_deref(),
-                            iconv.as_ref(),
-                        )?;
-                        let mut src_opts = sync_opts.clone();
-                        src_opts.remote_options =
-                            daemon_remote_opts(&sync_opts.remote_options, &src_path.path);
-                        let mut src_session = spawn_daemon_session(
-                            &src_host,
-                            &sm,
-                            opts.port,
-                            opts.password_file.as_deref(),
-                            opts.no_motd,
-                            opts.timeout,
-                            opts.connect_timeout,
-                            addr_family,
-                            &opts.sockopts,
-                            &src_opts,
-                            opts.protocol.unwrap_or(31),
-                            opts.early_input.as_deref(),
-                            iconv.as_ref(),
-                        )?;
-                        if let Some(limit) = opts.bwlimit {
-                            let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            pipe_sessions(&mut src_session, &mut dst_session)?
-                        } else {
-                            pipe_sessions(&mut src_session, &mut dst_session)?
-                        }
-                    }
-                    (Some(sm), None) => {
-                        let mut dst_session = SshStdioTransport::spawn_with_rsh(
-                            &dst_host,
-                            &dst_path.path,
-                            &rsh_cmd.cmd,
-                            &rsh_cmd.env,
-                            remote_bin_vec.as_deref(),
-                            remote_env_vec.as_deref().unwrap_or(&[]),
-                            &sync_opts.remote_options,
-                            known_hosts.as_deref(),
-                            strict_host_key_checking,
-                            opts.port,
-                            opts.connect_timeout,
-                            addr_family,
-                            sync_opts.blocking_io,
-                        )
-                        .map_err(EngineError::from)?;
-                        let mut src_opts = sync_opts.clone();
-                        src_opts.remote_options =
-                            daemon_remote_opts(&sync_opts.remote_options, &src_path.path);
-                        let mut src_session = spawn_daemon_session(
-                            &src_host,
-                            &sm,
-                            opts.port,
-                            opts.password_file.as_deref(),
-                            opts.no_motd,
-                            opts.timeout,
-                            opts.connect_timeout,
-                            addr_family,
-                            &opts.sockopts,
-                            &src_opts,
-                            opts.protocol.unwrap_or(31),
-                            opts.early_input.as_deref(),
-                            iconv.as_ref(),
-                        )?;
-                        if let Some(limit) = opts.bwlimit {
-                            let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            let dst_session = dst_session.into_inner();
-                            check_session_errors(&dst_session, iconv.as_ref())?;
-                            stats
-                        } else {
-                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            check_session_errors(&dst_session, iconv.as_ref())?;
-                            stats
-                        }
-                    }
-                    (None, Some(dm)) => {
-                        let mut dst_opts = sync_opts.clone();
-                        dst_opts.remote_options =
-                            daemon_remote_opts(&sync_opts.remote_options, &dst_path.path);
-                        let mut dst_session = spawn_daemon_session(
-                            &dst_host,
-                            &dm,
-                            opts.port,
-                            opts.password_file.as_deref(),
-                            opts.no_motd,
-                            opts.timeout,
-                            opts.connect_timeout,
-                            addr_family,
-                            &opts.sockopts,
-                            &dst_opts,
-                            opts.protocol.unwrap_or(31),
-                            opts.early_input.as_deref(),
-                            iconv.as_ref(),
-                        )?;
-                        let mut src_session = SshStdioTransport::spawn_with_rsh(
-                            &src_host,
-                            &src_path.path,
-                            &rsh_cmd.cmd,
-                            &rsh_cmd.env,
-                            remote_bin_vec.as_deref(),
-                            remote_env_vec.as_deref().unwrap_or(&[]),
-                            &sync_opts.remote_options,
-                            known_hosts.as_deref(),
-                            strict_host_key_checking,
-                            opts.port,
-                            opts.connect_timeout,
-                            addr_family,
-                            sync_opts.blocking_io,
-                        )
-                        .map_err(EngineError::from)?;
-                        if let Some(limit) = opts.bwlimit {
-                            let mut dst_session = RateLimitedTransport::new(dst_session, limit);
-                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            check_session_errors(&src_session, iconv.as_ref())?;
-                            stats
-                        } else {
-                            let stats = pipe_sessions(&mut src_session, &mut dst_session)?;
-                            check_session_errors(&src_session, iconv.as_ref())?;
-                            stats
-                        }
-                    }
-                }
-            }
-        }
-    };
+    let stats = exec::execute_transfer(
+        src,
+        dst,
+        &matcher,
+        &opts,
+        &rsh_cmd,
+        &rsync_env,
+        remote_bin_vec.as_deref(),
+        remote_env_vec.as_deref(),
+        known_hosts.as_deref(),
+        strict_host_key_checking,
+        addr_family,
+        iconv.as_ref(),
+        &mut sync_opts,
+    )?;
     Ok(stats)
 }
-
-fn check_session_errors(session: &SshStdioTransport, iconv: Option<&CharsetConv>) -> Result<()> {
-    let (err, _) = session.stderr();
-    if !err.is_empty() {
-        let msg = if let Some(cv) = iconv {
-            cv.decode_remote(&err)
-        } else {
-            String::from_utf8_lossy(&err).into_owned()
-        };
-        return Err(EngineError::Other(msg));
-    }
-    Ok(())
-}
-
 fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
         filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
@@ -2031,28 +1536,6 @@ mod tests {
                 ExitCode::ConnTimeout,
                 "{kind:?} did not map to ConnTimeout",
             );
-        }
-    }
-
-    #[test]
-    #[cfg(target_os = "linux")]
-    fn capability_detection_failure_is_error() {
-        use caps::errors::CapsError;
-
-        mock_effective_root(false);
-        mock_caps_has_cap(Err(CapsError::from("boom")));
-
-        let matches = cli_command()
-            .try_get_matches_from(["prog", "--owner", "src", "dst"])
-            .unwrap();
-        let opts = ClientOpts::from_arg_matches(&matches).unwrap();
-
-        let err = run_single(opts, &matches, OsStr::new("src"), OsStr::new("dst")).unwrap_err();
-        match err {
-            EngineError::Other(msg) => {
-                assert!(msg.contains("failed to detect CAP_CHOWN capability"));
-            }
-            e => panic!("unexpected error: {e:?}"),
         }
     }
 }
