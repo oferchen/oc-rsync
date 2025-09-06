@@ -630,7 +630,7 @@ pub fn subscriber(cfg: SubscriberConfig) -> io::Result<Box<dyn tracing::Subscrib
 
     let file_layer = if let Some((path, fmt)) = log_file {
         let file = OpenOptions::new().create(true).append(true).open(path)?;
-        file.try_clone()?;
+        let _clone_check = file.try_clone()?;
         let base = tracing_fmt::layer()
             .with_writer(FileWriter { file })
             .with_ansi(false);
