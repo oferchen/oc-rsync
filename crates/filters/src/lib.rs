@@ -655,14 +655,12 @@ impl Matcher {
         let adjusted = if cvs {
             let rel_str = rel.map(|p| p.to_string_lossy().to_string());
             let mut buf = String::new();
-            let iter: Box<dyn Iterator<Item = &str>> = if self.from0 {
-                Box::new(content.split('\0'))
-            } else {
-                Box::new(content.split_whitespace())
-            };
-            for token in iter {
+            for token in content.split_whitespace() {
                 if token.is_empty() || token.starts_with('#') {
                     continue;
+                }
+                if token.starts_with('!') {
+                    return Err(ParseError::InvalidRule(token.to_string()));
                 }
                 let pat = if let Some(rel_str) = &rel_str {
                     if token.starts_with('/') {
