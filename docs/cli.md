@@ -1,9 +1,9 @@
 # Command Line Interface
 
 The `oc-rsync` binary aims to mirror the familiar `rsync` experience. An
-overview of project goals and features is available in the
-[README](../README.md#in-scope-features), and a high-level summary of CLI goals
-lives in the [README's CLI section](../README.md#cli).
+overview of project goals is available in the
+[README's project statement](../README.md#project-statement), and a high-level
+summary of CLI usage lives in the [README's usage section](../README.md#usage).
 For a complete list of flags and their implementation status, see the [feature matrix](feature_matrix.md), which is the authoritative reference for contributors.
 The full `--help` output is captured in [cli-help.txt](cli-help.txt) and checked in CI to match the binary.
 The upstream `rsync --help` text wrapped to 80 columns is stored in
