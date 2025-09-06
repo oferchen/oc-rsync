@@ -1,5 +1,5 @@
 // crates/filters/tests/root_inclusion.rs
-use filters::{parse, Matcher};
+use filters::{Matcher, parse};
 use std::collections::HashSet;
 
 fn m(input: &str) -> Matcher {
