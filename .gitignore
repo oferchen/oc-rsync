@@ -30,6 +30,10 @@
 /rsync-*.tar.gz
 /rsync-*/
 
+# Test artifacts generated at runtime
+/tests/fixtures/*.bin
+/tests/interop/golden/**/*.tar
+
 # Created by https://www.toptal.com/developers/gitignore/api/rust,visualstudiocode,jetbrains,macos,linux
 # Edit at https://www.toptal.com/developers/gitignore?templates=rust,visualstudiocode,jetbrains,macos,linux
 
