@@ -23,6 +23,34 @@ fn read_port(child: &mut std::process::Child) -> u16 {
 }
 
 #[test]
+fn ssh_connection_refused_matches_rsync() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    fs::create_dir(&src_dir).unwrap();
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir(&dst_dir).unwrap();
+
+    let src_spec = format!("localhost:{}/", src_dir.display());
+    let dst_spec = dst_dir.to_str().unwrap();
+
+    let ours = Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["-e", "ssh -p 1", &src_spec, dst_spec])
+        .output()
+        .unwrap();
+    let upstream = StdCommand::new("rsync")
+        .args(["-e", "ssh -p 1", &src_spec, dst_spec])
+        .output()
+        .unwrap();
+    assert_eq!(ours.status.code(), upstream.status.code());
+    let our_err = String::from_utf8_lossy(&ours.stderr);
+    let up_err = String::from_utf8_lossy(&upstream.stderr);
+    assert!(our_err.contains("Connection refused"), "our_err: {our_err}");
+    assert!(up_err.contains("Connection refused"), "up_err: {up_err}");
+    assert_eq!(ours.status.code(), Some(255));
+}
+
+#[test]
 fn daemon_connection_refused_matches_rsync() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
