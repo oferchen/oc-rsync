@@ -196,6 +196,7 @@ Classic `rsync` protocol versions 30–32 are supported.
 | Feature | Status | Tests | Source | Notes |
 | --- | --- | --- | --- | --- |
 | `.rsync-filter` merge semantics | Implemented | [crates/filters/tests/merge.rs](../crates/filters/tests/merge.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) | |
+| CVS ignore semantics (`--cvs-exclude`) | Partial | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) | parity with upstream rules incomplete |
 | Additional rule modifiers | Partial | — | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) | [#268](https://github.com/oferchen/oc-rsync/issues/268) |
 
 ## Metadata
