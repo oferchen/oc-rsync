@@ -13,7 +13,12 @@ verify-comments:
 
 lint:
 	cargo fmt --all --check
-	cargo clippy --all-targets --all-features -- -D warnings
+	if rustc --version | grep -q nightly; then \
+	cargo clippy --all-targets --all-features -- -D warnings; \
+	else \
+	cargo clippy --all-targets -- -D warnings; \
+	echo "note: AVX-512 linting requires a nightly toolchain"; \
+	fi
 
 fmt:
 	cargo fmt --all
