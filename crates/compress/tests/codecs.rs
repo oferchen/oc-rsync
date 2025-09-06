@@ -12,6 +12,7 @@ use compress::{Zlib, ZlibX};
 #[cfg(feature = "zstd")]
 use compress::Zstd;
 
+use std::collections::HashSet;
 use std::io;
 use std::path::Path;
 
@@ -104,25 +105,32 @@ fn encode_decode_roundtrip_and_error() {
 
 #[test]
 fn should_compress_respects_default_list() {
-    assert!(should_compress(Path::new("file.txt"), &[]));
-    assert!(!should_compress(Path::new("archive.gz"), &[]));
-    assert!(!should_compress(Path::new("IMAGE.JpG"), &[]));
-    assert!(should_compress(Path::new("archivegz"), &[]));
+    let skip = HashSet::new();
+    assert!(should_compress(Path::new("file.txt"), &skip));
+    assert!(!should_compress(Path::new("archive.gz"), &skip));
+    assert!(!should_compress(Path::new("IMAGE.JpG"), &skip));
+    assert!(should_compress(Path::new("archivegz"), &skip));
 }
 
 #[test]
 fn should_compress_handles_mixed_case_patterns() {
-    assert!(!should_compress(
-        Path::new("file.TXT"),
-        &["txt".to_string()]
-    ));
+    let skip = ["tXt".to_ascii_lowercase()]
+        .into_iter()
+        .collect::<HashSet<_>>();
+    assert!(!should_compress(Path::new("file.TXT"), &skip));
 }
 
 #[test]
 fn should_compress_requires_dot_with_custom_patterns() {
-    let skip = vec!["gz".to_string()];
+    let skip = ["gz".to_string()].into_iter().collect::<HashSet<_>>();
     assert!(!should_compress(Path::new("archive.gz"), &skip));
     assert!(should_compress(Path::new("archivegz"), &skip));
+}
+
+#[test]
+fn should_compress_requires_lowercase_patterns() {
+    let skip = ["GZ".to_string()].into_iter().collect::<HashSet<_>>();
+    assert!(should_compress(Path::new("archive.gz"), &skip));
 }
 
 #[test]
