@@ -3,6 +3,11 @@ set -euo pipefail
 
 missing=()
 
+if [[ -z "${CURRENT_YEAR:-}" ]]; then
+  echo "Error: CURRENT_YEAR environment variable is required for reproducible builds." >&2
+  exit 1
+fi
+
 if ! command -v ld >/dev/null 2>&1; then
   missing+=("ld (linker from binutils)")
 fi

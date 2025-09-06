@@ -28,8 +28,8 @@ The Makefile offers shortcuts for common CI checks:
 The CI workflow runs with a consistent environment and enforces comment
 headers:
 
-- Environment variables: `RUSTFLAGS="-Dwarnings"`, `LC_ALL=C`, `LANG=C`,
-  `COLUMNS=80`, and `TZ=UTC`.
+- Environment variables: `CURRENT_YEAR` (set to the release year),
+  `RUSTFLAGS="-Dwarnings"`, `LC_ALL=C`, `LANG=C`, `COLUMNS=80`, and `TZ=UTC`.
   - Repository access is read only (`permissions: { contents: read }`) and a
     concurrency group (`ci-${{ github.ref }}`) cancels in-progress runs for the same
     ref.
@@ -57,10 +57,11 @@ headers:
 
 ## Standardized Test Environment
 
-For deterministic CLI help and usage output, run tests with a consistent
-environment:
+For deterministic CLI help and usage output, and to guarantee reproducible
+build metadata, run tests with a consistent environment:
 
 ```bash
+export CURRENT_YEAR=$(date +%Y)
 LC_ALL=C LANG=C COLUMNS=80 TZ=UTC make test
 ```
 

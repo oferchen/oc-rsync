@@ -28,7 +28,7 @@ fn banner_is_static() {
             option_env!("OFFICIAL_BUILD").unwrap_or("unofficial"),
         ),
     ];
-    let year = option_env!("CURRENT_YEAR").unwrap_or("2025");
+    let year = env!("CURRENT_YEAR");
     expected.push(format!("Copyright (C) 2024-{year} oc-rsync contributors."));
     let tail = include_str!("fixtures/oc-rsync-version-tail.txt");
     expected.extend(tail.lines().map(|l| l.to_string()));
