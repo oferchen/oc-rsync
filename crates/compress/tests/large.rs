@@ -1,4 +1,5 @@
 // crates/compress/tests/large.rs
+
 #[cfg(any(feature = "zlib", feature = "zstd"))]
 use compress::{Compressor, Decompressor};
 
@@ -8,7 +9,7 @@ use compress::Zlib;
 #[cfg(feature = "zstd")]
 use compress::Zstd;
 
-const LARGE_SIZE: usize = 10 * 1024 * 1024; // 10MB
+const LARGE_SIZE: usize = 10 * 1024 * 1024;
 
 #[cfg(feature = "zlib")]
 #[test]
