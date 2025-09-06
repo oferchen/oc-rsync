@@ -2216,24 +2216,30 @@ pub struct Stats {
 }
 
 fn count_entries(src_root: &Path, matcher: &Matcher, opts: &SyncOptions) -> (usize, usize, u64) {
-    let walker = walk(src_root, 1024, opts.walk_links(), opts.one_file_system);
+    let mut walker = walk(src_root, 1024, opts.walk_links(), opts.one_file_system);
     let mut state = String::new();
     let mut files = 0usize;
     let mut dirs = 0usize;
     let mut size = 0u64;
-    for batch in walker.flatten() {
+    while let Some(batch) = walker.next() {
+        let Ok(batch) = batch else { continue };
         for entry in batch {
             let path = entry.apply(&mut state);
             if let Ok(rel) = path.strip_prefix(src_root) {
-                if matcher.is_included(rel).unwrap_or(true) {
-                    if entry.file_type.is_file() {
-                        files += 1;
-                        if let Ok(meta) = fs::metadata(&path) {
-                            size += meta.len();
-                        }
-                    } else if entry.file_type.is_dir() {
-                        dirs += 1;
+                let included = matcher.is_included(rel).unwrap_or(true);
+                if !included {
+                    if entry.file_type.is_dir() {
+                        walker.skip_current_dir();
                     }
+                    continue;
+                }
+                if entry.file_type.is_file() {
+                    files += 1;
+                    if let Ok(meta) = fs::metadata(&path) {
+                        size += meta.len();
+                    }
+                } else if entry.file_type.is_dir() {
+                    dirs += 1;
                 }
             }
         }
@@ -2612,9 +2618,9 @@ pub fn sync(
     }
     if opts.list_only {
         let matcher = matcher.clone().with_root(src_root.clone());
-        let walker = walk(&src_root, 1024, opts.walk_links(), opts.one_file_system);
+        let mut walker = walk(&src_root, 1024, opts.walk_links(), opts.one_file_system);
         let mut state = String::new();
-        for batch in walker {
+        while let Some(batch) = walker.next() {
             let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
             for entry in batch {
                 let path = entry.apply(&mut state);
@@ -2623,6 +2629,9 @@ pub fn sync(
                         .is_included(rel)
                         .map_err(|e| EngineError::Other(format!("{:?}", e)))?
                     {
+                        if entry.file_type.is_dir() {
+                            walker.skip_current_dir();
+                        }
                         continue;
                     }
                     if entry.file_type.is_dir() {
@@ -2755,6 +2764,9 @@ pub fn sync(
                     .is_included(rel)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?
                 {
+                    if file_type.is_dir() {
+                        walker.skip_current_dir();
+                    }
                     continue;
                 }
                 let mut dest_path = dst.join(rel);
