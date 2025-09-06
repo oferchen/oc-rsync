@@ -288,7 +288,7 @@ impl Matcher {
             }
         }
 
-        let mut decision: Option<bool> = None;
+        let mut included = true;
         let mut matched = false;
         let mut matched_source: Option<PathBuf> = None;
         let mut dir_only_match = false;
@@ -317,7 +317,7 @@ impl Matcher {
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
                     if rule_match {
-                        decision = Some(true);
+                        included = true;
                         matched = true;
                         matched_source = data.source.clone();
                         break;
@@ -346,7 +346,7 @@ impl Matcher {
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
                     if rule_match {
-                        decision = Some(true);
+                        included = true;
                         matched = true;
                         matched_source = data.source.clone();
                         break;
@@ -375,7 +375,7 @@ impl Matcher {
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
                     if rule_match {
-                        decision = Some(false);
+                        included = false;
                         matched = true;
                         matched_source = data.source.clone();
                         dir_only_match = data.dir_only;
@@ -390,7 +390,6 @@ impl Matcher {
                 | Rule::NoPruneEmptyDirs => {}
             }
         }
-        let mut included = decision.unwrap_or(true);
         if included && self.prune_empty_dirs {
             if let Some(root) = &self.root {
                 let full = root.join(path);

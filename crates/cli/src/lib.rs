@@ -1333,7 +1333,10 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("files_from") {
-        for file in values {
+        let idxs: Vec<_> = matches
+            .indices_of("files_from")
+            .map_or_else(Vec::new, |v| v.collect());
+        for (idx, file) in idxs.into_iter().zip(values) {
             for pat in load_patterns(file, opts.from0)? {
                 let anchored = if pat.starts_with('/') {
                     pat.clone()
@@ -1347,7 +1350,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     format!("+ {}", anchored)
                 };
                 add_rules(
-                    usize::MAX - 1,
+                    idx + 1,
                     parse_filters(&rule1, opts.from0)
                         .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
@@ -1359,7 +1362,7 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     format!("+ {}", dir_pat)
                 };
                 add_rules(
-                    usize::MAX - 1,
+                    idx + 1,
                     parse_filters(&rule2, opts.from0)
                         .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                 );
@@ -1440,8 +1443,8 @@ fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
 mod tests {
     use super::*;
     use crate::utils::{parse_bool, parse_remote_spec, RemoteSpec};
-    use ::daemon::authenticate;
     use clap::Parser;
+    use daemon::authenticate;
     use engine::SyncOptions;
     use std::ffi::OsStr;
     use std::path::PathBuf;

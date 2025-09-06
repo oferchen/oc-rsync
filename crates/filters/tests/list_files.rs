@@ -41,11 +41,26 @@ fn include_from_newline_vs_null() {
 }
 
 #[test]
-fn include_exclude_precedence() {
+fn exclude_from_before_include() {
     let tmp = tempfile::tempdir().unwrap();
     let list = tmp.path().join("list");
     fs::write(&list, "a\nb\n").unwrap();
     let filter = format!("+ c\nexclude-from {}\n+ a\n- *\n", list.display());
+    let mut v = HashSet::new();
+    let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
+    let m = Matcher::new(rules);
+    assert!(m.is_included("c").unwrap());
+    assert!(!m.is_included("a").unwrap());
+    assert!(!m.is_included("b").unwrap());
+    assert!(!m.is_included("d").unwrap());
+}
+
+#[test]
+fn include_before_exclude_from() {
+    let tmp = tempfile::tempdir().unwrap();
+    let list = tmp.path().join("list");
+    fs::write(&list, "a\nb\n").unwrap();
+    let filter = format!("+ c\n+ a\nexclude-from {}\n- *\n", list.display());
     let mut v = HashSet::new();
     let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
     let m = Matcher::new(rules);
