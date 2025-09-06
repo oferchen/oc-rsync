@@ -1,7 +1,7 @@
 // crates/filters/src/lib.rs
 #![allow(clippy::collapsible_if)]
 
-use globset::{Glob, GlobMatcher};
+use globset::{GlobBuilder, GlobMatcher};
 use logging::InfoFlag;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -104,6 +104,13 @@ impl FilterStats {
             self.misses += 1;
         }
     }
+}
+
+fn compile_glob(pat: &str) -> Result<GlobMatcher, ParseError> {
+    Ok(GlobBuilder::new(pat)
+        .literal_separator(true)
+        .build()?
+        .compile_matcher())
 }
 
 #[derive(Clone, Default)]
@@ -1086,7 +1093,7 @@ pub fn parse_with_options(
                     flags: RuleFlags::default(),
                 }));
                 if count > 0 {
-                    let matcher = Glob::new("**/.rsync-filter")?.compile_matcher();
+                    let matcher = compile_glob("**/.rsync-filter")?;
                     let data = RuleData {
                         matcher,
                         invert: false,
@@ -1236,7 +1243,7 @@ pub fn parse_with_options(
             rules.extend(sub);
             if m.contains('e') {
                 let pat = format!("**/{}", file);
-                let matcher = Glob::new(&pat)?.compile_matcher();
+                let matcher = compile_glob(&pat)?;
                 let data = RuleData {
                     matcher,
                     invert: false,
@@ -1320,7 +1327,7 @@ pub fn parse_with_options(
             }));
             if m.contains('e') {
                 let pat = format!("**/{}", fname);
-                let matcher = Glob::new(&pat)?.compile_matcher();
+                let matcher = compile_glob(&pat)?;
                 let data = RuleData {
                     matcher,
                     invert: false,
@@ -1493,7 +1500,7 @@ pub fn parse_with_options(
         } else if dir_only {
             base = base.trim_end_matches('/').to_string();
         }
-        let bases: Vec<String> = if !anchored && !base.starts_with("**/") {
+        let bases: Vec<String> = if !anchored && !base.starts_with("**/") && base != "**" {
             vec![base.clone(), format!("**/{}", base)]
         } else {
             vec![base]
@@ -1510,7 +1517,7 @@ pub fn parse_with_options(
 
         let invert = mods.contains('!');
         for (pat, dir_only) in pats {
-            let matcher = Glob::new(&pat)?.compile_matcher();
+            let matcher = compile_glob(&pat)?;
             let data = RuleData {
                 matcher,
                 invert,
@@ -1585,7 +1592,7 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
         } else if pat.ends_with('/') {
             base = base.trim_end_matches('/').to_string();
         }
-        let bases: Vec<String> = if !base.starts_with("**/") {
+        let bases: Vec<String> = if !base.starts_with("**/") && base != "**" {
             vec![base.clone(), format!("**/{}", base)]
         } else {
             vec![base]
@@ -1600,7 +1607,7 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
             }
         }
         for (p, dir_only) in pats {
-            let matcher = Glob::new(&p)?.compile_matcher();
+            let matcher = compile_glob(&p)?;
             let data = RuleData {
                 matcher,
                 invert: false,

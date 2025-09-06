@@ -2837,6 +2837,35 @@ fn files_from_list_directory_excludes_siblings() {
 }
 
 #[test]
+fn files_from_list_directory_without_slash_excludes_siblings() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("dir/sub")).unwrap();
+    fs::create_dir_all(src.join("other")).unwrap();
+    fs::write(src.join("dir/sub/file.txt"), b"k").unwrap();
+    fs::write(src.join("other/file.txt"), b"o").unwrap();
+    let list = dir.path().join("files.txt");
+    fs::write(&list, "dir\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("dir/sub/file.txt").exists());
+    assert!(!dst.join("other/file.txt").exists());
+}
+
+#[test]
 fn include_pattern_allows_file() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
@@ -3579,6 +3608,36 @@ fn files_from_zero_separated_list_includes_directories() {
 }
 
 #[test]
+fn files_from_zero_separated_list_directory_without_slash_excludes_siblings() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("dir/sub")).unwrap();
+    fs::create_dir_all(src.join("other")).unwrap();
+    fs::write(src.join("dir/sub/file.txt"), b"k").unwrap();
+    fs::write(src.join("other/file.txt"), b"o").unwrap();
+    let list = dir.path().join("files.lst");
+    fs::write(&list, b"dir\0").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--from0",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("dir/sub/file.txt").exists());
+    assert!(!dst.join("other/file.txt").exists());
+}
+
+#[test]
 fn files_from_list_file() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
@@ -4286,7 +4345,101 @@ fn complex_glob_matches() {
     assert!(dst.join("dirA/keep1.txt").is_file());
     assert!(dst.join("dirB/sub/keep2.txt").is_file());
     assert!(dst.join("dirC/deep/deeper/keep3.txt").is_file());
+    assert!(dst.join("dirA").is_dir());
+    assert!(dst.join("dirB/sub").is_dir());
+    assert!(dst.join("dirC/deep/deeper").is_dir());
     assert!(!dst.join("dirA/skip.log").exists());
     assert!(!dst.join("dirB/sub/other.txt").exists());
     assert!(!dst.join("otherdir/keep4.txt").exists());
+    assert!(!dst.join("otherdir").exists());
+}
+
+#[test]
+fn double_star_glob_matches() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("a/inner")).unwrap();
+    fs::create_dir_all(src.join("b/deeper/more")).unwrap();
+    fs::write(src.join("a/keep1.txt"), "1").unwrap();
+    fs::write(src.join("a/inner/keep2.txt"), "2").unwrap();
+    fs::write(src.join("b/deeper/more/keep3.txt"), "3").unwrap();
+    fs::write(src.join("a/omit.log"), "x").unwrap();
+    fs::write(src.join("a/inner/omit.log"), "x").unwrap();
+    fs::write(src.join("b/deeper/more/omit.log"), "x").unwrap();
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "-r",
+            "--include",
+            "**/keep?.txt",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert!(dst.join("a/keep1.txt").is_file());
+    assert!(dst.join("a/inner/keep2.txt").is_file());
+    assert!(dst.join("b/deeper/more/keep3.txt").is_file());
+    assert!(dst.join("a").is_dir());
+    assert!(dst.join("a/inner").is_dir());
+    assert!(dst.join("b/deeper/more").is_dir());
+    assert!(!dst.join("a/omit.log").exists());
+    assert!(!dst.join("a/inner/omit.log").exists());
+    assert!(!dst.join("b/deeper/more/omit.log").exists());
+}
+
+#[test]
+fn single_star_does_not_cross_directories() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("a/b")).unwrap();
+    fs::write(src.join("a/file.txt"), b"1").unwrap();
+    fs::write(src.join("a/b/file.txt"), b"2").unwrap();
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "-r",
+            "--include",
+            "*/file.txt",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert!(dst.join("a/file.txt").exists());
+    assert!(!dst.join("a/b/file.txt").exists());
+}
+
+#[test]
+fn char_class_respects_directory_boundaries() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("1/2")).unwrap();
+    fs::write(src.join("1/keep.txt"), b"k").unwrap();
+    fs::write(src.join("1/2/keep.txt"), b"x").unwrap();
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "-r",
+            "--include",
+            "[0-9]/*",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert!(dst.join("1/keep.txt").exists());
+    assert!(!dst.join("1/2/keep.txt").exists());
 }
