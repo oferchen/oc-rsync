@@ -107,11 +107,66 @@ impl FilterStats {
 }
 
 fn compile_glob(pat: &str) -> Result<GlobMatcher, ParseError> {
-    Ok(GlobBuilder::new(pat)
+    let pat = expand_posix_classes(pat);
+    Ok(GlobBuilder::new(&pat)
         .literal_separator(true)
         .backslash_escape(true)
         .build()?
         .compile_matcher())
+}
+
+fn expand_posix_classes(pat: &str) -> String {
+    fn class(name: &str) -> Option<&'static str> {
+        match name {
+            "alnum" => Some("0-9A-Za-z"),
+            "alpha" => Some("A-Za-z"),
+            "digit" => Some("0-9"),
+            "lower" => Some("a-z"),
+            "upper" => Some("A-Z"),
+            "xdigit" => Some("0-9A-Fa-f"),
+            _ => None,
+        }
+    }
+
+    let chars: Vec<char> = pat.chars().collect();
+    let mut i = 0;
+    let mut out = String::new();
+    while i < chars.len() {
+        if chars[i] == '[' {
+            out.push('[');
+            i += 1;
+            while i < chars.len() && chars[i] != ']' {
+                if chars[i] == '[' && i + 1 < chars.len() && chars[i + 1] == ':' {
+                    let start = i + 2;
+                    let mut j = start;
+                    while j + 1 < chars.len() {
+                        if chars[j] == ':' && chars[j + 1] == ']' {
+                            break;
+                        }
+                        j += 1;
+                    }
+                    if j + 1 < chars.len() {
+                        let name: String = chars[start..j].iter().collect();
+                        if let Some(rep) = class(&name) {
+                            out.push_str(rep);
+                            i = j + 2;
+                            continue;
+                        }
+                    }
+                }
+                out.push(chars[i]);
+                i += 1;
+            }
+            if i < chars.len() {
+                out.push(']');
+                i += 1;
+            }
+        } else {
+            out.push(chars[i]);
+            i += 1;
+        }
+    }
+    out
 }
 
 fn expand_braces(pat: &str) -> Vec<String> {
@@ -181,19 +236,60 @@ fn expand_braces(pat: &str) -> Vec<String> {
     }
 
     fn expand_range(part: &str) -> Option<Vec<String>> {
-        if let Some(idx) = part.find("..") {
-            let start = &part[..idx];
-            let end = &part[idx + 2..];
-            if let (Ok(a), Ok(b)) = (start.parse::<i64>(), end.parse::<i64>()) {
-                if a <= b {
-                    return Some((a..=b).map(|i| i.to_string()).collect());
+        let parts: Vec<&str> = part.split("..").collect();
+        if parts.len() < 2 || parts.len() > 3 {
+            return None;
+        }
+        let start = parts[0];
+        let end = parts[1];
+        let step = parts.get(2).copied().unwrap_or("1");
+        if let (Ok(a), Ok(b), Ok(s)) = (
+            start.parse::<i64>(),
+            end.parse::<i64>(),
+            step.parse::<i64>(),
+        ) {
+            if s == 0 {
+                return None;
+            }
+            let width = start.len().max(end.len());
+            let mut out = Vec::new();
+            if (a <= b && s > 0) || (a >= b && s < 0) {
+                let mut i = a;
+                if s > 0 {
+                    while i <= b {
+                        if width > 1 {
+                            out.push(format!("{:0width$}", i, width = width));
+                        } else {
+                            out.push(i.to_string());
+                        }
+                        i += s;
+                    }
+                } else {
+                    while i >= b {
+                        if width > 1 {
+                            out.push(format!("{:0width$}", i, width = width));
+                        } else {
+                            out.push(i.to_string());
+                        }
+                        i += s;
+                    }
                 }
-            } else if start.len() == 1 && end.len() == 1 {
-                let a = start.chars().next().unwrap();
-                let b = end.chars().next().unwrap();
-                if a <= b {
-                    return Some((a..=b).map(|c| c.to_string()).collect());
-                }
+                return Some(out);
+            }
+        } else if start.len() == 1 && end.len() == 1 {
+            let a = start.chars().next().unwrap() as u32;
+            let b = end.chars().next().unwrap() as u32;
+            let s = parts
+                .get(2)
+                .and_then(|v| v.parse::<u32>().ok())
+                .unwrap_or(1);
+            if a <= b && s > 0 {
+                return Some(
+                    (a..=b)
+                        .step_by(s as usize)
+                        .map(|c| char::from_u32(c).unwrap().to_string())
+                        .collect(),
+                );
             }
         }
         None
