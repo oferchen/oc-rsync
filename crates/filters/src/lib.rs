@@ -21,23 +21,12 @@ pub struct RuleFlags {
     xattr: bool,
 }
 
-#[allow(dead_code)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum RuleModifier {
-    Sender,
-    Receiver,
-    Perishable,
-    Xattr,
-}
-
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum MergeModifier {
     IncludeOnly,
     ExcludeOnly,
     NoInherit,
     WordSplit,
-    ExcludeSelf,
     CvsMode,
 }
 
@@ -49,7 +38,6 @@ impl MergeModifier {
             MergeModifier::NoInherit => pd.inherit = false,
             MergeModifier::WordSplit => pd.word_split = true,
             MergeModifier::CvsMode => pd.cvs = true,
-            MergeModifier::ExcludeSelf => {}
         }
     }
 }

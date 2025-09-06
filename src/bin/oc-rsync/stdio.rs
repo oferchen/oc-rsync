@@ -134,7 +134,6 @@ pub fn set_std_buffering(mode: OutBuf) -> Result<(), StdBufferError> {
 }
 
 #[cfg(test)]
-#[allow(dead_code)]
 pub(crate) unsafe fn set_std_buffering_for_test(
     mode: libc::c_int,
     orig_mode: libc::c_int,
@@ -142,4 +141,21 @@ pub(crate) unsafe fn set_std_buffering_for_test(
     err: *mut libc::FILE,
 ) -> Result<(), StdBufferError> {
     set_std_buffering_raw(mode, orig_mode, out, err)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn smoke() {
+        unsafe {
+            let _ = set_std_buffering_for_test(
+                libc::_IONBF,
+                libc::_IOLBF,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            );
+        }
+    }
 }

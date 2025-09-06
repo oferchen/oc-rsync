@@ -388,19 +388,6 @@ fn remove_basename_partial(dest: &Path) {
     }
 }
 
-#[allow(dead_code)]
-fn temp_file_path(parent: &Path, base: &OsStr) -> Result<PathBuf> {
-    #[allow(deprecated)]
-    let tmp = Builder::new()
-        .prefix(&format!(".{}.", base.to_string_lossy()))
-        .rand_bytes(6)
-        .tempfile_in(parent)
-        .map_err(|e| io_context(parent, e))?;
-    let path = tmp.path().to_path_buf();
-    tmp.close().map_err(|e| io_context(&path, e))?;
-    Ok(path)
-}
-
 struct TempFileGuard {
     path: PathBuf,
 }
