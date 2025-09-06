@@ -9,9 +9,9 @@ when available. Do not exceed functionality of upstream at <https://rsync.samba.
 
 ## Interop matrix scenarios
 
-The interoperability matrix replays pre-generated fixtures and does not invoke
-the system `rsync` during tests. The following scenarios are currently
-captured:
+The interoperability matrix builds upstream `rsync 3.4.1` via
+[tests/interop/build_upstream.sh](../tests/interop/build_upstream.sh) and
+exercises real transfers. The following scenarios are currently captured:
 
   - `base`: baseline transfer using [run_matrix.sh](../tests/interop/run_matrix.sh)
   - `delete`: `--delete` removes extraneous files
