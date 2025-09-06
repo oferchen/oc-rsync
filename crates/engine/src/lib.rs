@@ -25,7 +25,10 @@ use checksums::{ChecksumConfig, ChecksumConfigBuilder};
 use compress::{should_compress, Codec, Compressor, Decompressor, Zlib, ZlibX, Zstd};
 use filters::Matcher;
 use logging::{escape_path, progress_formatter, rate_formatter, InfoFlag};
+use md4::{Digest, Md4};
+use md5::Md5;
 use protocol::ExitCode;
+use sha1::Sha1;
 use thiserror::Error;
 pub mod flist;
 
@@ -1110,15 +1113,42 @@ impl Sender {
         let file = File::open(path).map_err(|e| io_context(path, e))?;
         let mut reader = BufReader::new(file);
         let mut buf = [0u8; 8192];
-        let mut hasher = self.cfg.strong_hasher();
-        loop {
-            let n = reader.read(&mut buf).map_err(|e| io_context(path, e))?;
-            if n == 0 {
-                break;
+        match self.opts.strong {
+            StrongHash::Md4 => {
+                let mut hasher = Md4::new();
+                loop {
+                    let n = reader.read(&mut buf).map_err(|e| io_context(path, e))?;
+                    if n == 0 {
+                        break;
+                    }
+                    hasher.update(&buf[..n]);
+                }
+                hasher.update(self.opts.checksum_seed.to_le_bytes());
+                Ok(hasher.finalize().to_vec())
             }
-            hasher.update(&buf[..n]);
+            StrongHash::Md5 => {
+                let mut hasher = Md5::new();
+                loop {
+                    let n = reader.read(&mut buf).map_err(|e| io_context(path, e))?;
+                    if n == 0 {
+                        break;
+                    }
+                    hasher.update(&buf[..n]);
+                }
+                Ok(hasher.finalize().to_vec())
+            }
+            StrongHash::Sha1 => {
+                let mut hasher = Sha1::new();
+                loop {
+                    let n = reader.read(&mut buf).map_err(|e| io_context(path, e))?;
+                    if n == 0 {
+                        break;
+                    }
+                    hasher.update(&buf[..n]);
+                }
+                Ok(hasher.finalize().to_vec())
+            }
         }
-        Ok(hasher.finalize())
     }
 
     fn metadata_unchanged(&self, path: &Path, dest: &Path) -> bool {

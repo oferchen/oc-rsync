@@ -69,26 +69,34 @@ impl ChecksumConfig {
 
     pub fn strong_hasher(&self) -> StrongHasher {
         match self.strong {
-            StrongHash::Md4 => {
-                let mut h = Md4::new();
-                h.update(self.seed.to_le_bytes());
-                StrongHasher(StrongHasherInner::Md4(h))
-            }
+            StrongHash::Md4 => StrongHasher {
+                inner: StrongHasherInner::Md4(Md4::new()),
+                seed: self.seed,
+            },
             StrongHash::Md5 => {
                 let mut h = Md5::new();
                 h.update(self.seed.to_le_bytes());
-                StrongHasher(StrongHasherInner::Md5(h))
+                StrongHasher {
+                    inner: StrongHasherInner::Md5(h),
+                    seed: self.seed,
+                }
             }
             StrongHash::Sha1 => {
                 let mut h = Sha1::new();
                 h.update(self.seed.to_le_bytes());
-                StrongHasher(StrongHasherInner::Sha1(h))
+                StrongHasher {
+                    inner: StrongHasherInner::Sha1(h),
+                    seed: self.seed,
+                }
             }
         }
     }
 }
 
-pub struct StrongHasher(StrongHasherInner);
+pub struct StrongHasher {
+    inner: StrongHasherInner,
+    seed: u32,
+}
 
 enum StrongHasherInner {
     Md4(Md4),
@@ -98,7 +106,7 @@ enum StrongHasherInner {
 
 impl StrongHasher {
     pub fn update(&mut self, data: &[u8]) {
-        match &mut self.0 {
+        match &mut self.inner {
             StrongHasherInner::Md4(h) => h.update(data),
             StrongHasherInner::Md5(h) => h.update(data),
             StrongHasherInner::Sha1(h) => h.update(data),
@@ -106,8 +114,11 @@ impl StrongHasher {
     }
 
     pub fn finalize(self) -> Vec<u8> {
-        match self.0 {
-            StrongHasherInner::Md4(h) => h.finalize().to_vec(),
+        match self.inner {
+            StrongHasherInner::Md4(mut h) => {
+                h.update(self.seed.to_le_bytes());
+                h.finalize().to_vec()
+            }
             StrongHasherInner::Md5(h) => h.finalize().to_vec(),
             StrongHasherInner::Sha1(h) => h.finalize().to_vec(),
         }
@@ -116,23 +127,22 @@ impl StrongHasher {
 
 #[allow(clippy::needless_borrows_for_generic_args)]
 pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
-    let prefix = seed.to_le_bytes();
     match alg {
         StrongHash::Md4 => {
             let mut hasher = Md4::new();
-            hasher.update(&prefix);
             hasher.update(data);
+            hasher.update(seed.to_le_bytes());
             hasher.finalize().to_vec()
         }
         StrongHash::Md5 => {
             let mut hasher = Md5::new();
-            hasher.update(&prefix);
+            hasher.update(seed.to_le_bytes());
             hasher.update(data);
             hasher.finalize().to_vec()
         }
         StrongHash::Sha1 => {
             let mut hasher = Sha1::new();
-            hasher.update(&prefix);
+            hasher.update(seed.to_le_bytes());
             hasher.update(data);
             hasher.finalize().to_vec()
         }
@@ -428,7 +438,7 @@ mod tests {
     #[test]
     fn strong_digests() {
         let digest_md4 = strong_digest(b"hello world", StrongHash::Md4, 0);
-        assert_eq!(hex::encode(digest_md4), "ea91f391e02b5e19f432b43bd87a531d",);
+        assert_eq!(hex::encode(digest_md4), "7ced6b52c8203ba97580659d7dc33548",);
 
         let digest_md5 = strong_digest(b"hello world", StrongHash::Md5, 0);
         assert_eq!(hex::encode(digest_md5), "be4b47980f89d075f8f7e7a9fab84e29",);
