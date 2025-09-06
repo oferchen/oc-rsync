@@ -2,6 +2,8 @@
 
 use std::{env, fs, path::Path, path::PathBuf, process::Command};
 
+use time::OffsetDateTime;
+
 const UPSTREAM_VERSION: &str = "3.4.1";
 const SUPPORTED_PROTOCOLS: &[u32] = &[32, 31, 30];
 const BRANDING_VARS: &[&str] = &[
@@ -93,7 +95,8 @@ fn main() {
         println!("cargo:rerun-if-env-changed={key}");
     }
 
-    let year = env::var("CURRENT_YEAR").expect("CURRENT_YEAR must be set for reproducible builds");
+    let year =
+        env::var("CURRENT_YEAR").unwrap_or_else(|_| OffsetDateTime::now_utc().year().to_string());
     println!("cargo:rustc-env=CURRENT_YEAR={year}");
     println!("cargo:rerun-if-env-changed=CURRENT_YEAR");
 

@@ -52,6 +52,11 @@ sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
 Run `scripts/preflight.sh` to verify these dependencies before building. Then
 install from crates.io or build from a local checkout:
 
+The build script embeds the current year into the binary for copyright
+messages. If the `CURRENT_YEAR` environment variable is not set, the build
+defaults to the system year. Set this variable when you need reproducible
+builds across years.
+
 If `libacl1-dev` isn't available, disable ACL support with the `no-acl`
 feature set:
 
