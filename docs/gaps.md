@@ -73,6 +73,8 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | Rule logging and statistics | Implemented | [crates/filters/tests/rule_stats.rs](../crates/filters/tests/rule_stats.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | Additional rule modifiers | Partial | — | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs)<br>[#268](https://github.com/oferchen/oc-rsync/issues/268) |
 | CVS ignore semantics (`--cvs-exclude`) | Partial | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
+| Complex glob patterns | Missing | — | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
+| `--files-from` directory entries | Missing | — | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 
 ## File Selection
 | Feature | Status | Tests | Source |
