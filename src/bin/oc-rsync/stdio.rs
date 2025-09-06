@@ -88,19 +88,23 @@ impl fmt::Display for StdBufferError {
 
 impl std::error::Error for StdBufferError {}
 
-fn set_std_buffering_raw(
+fn set_std_buffering_raw_impl<F>(
     mode: libc::c_int,
     orig_mode: libc::c_int,
     out: *mut libc::FILE,
     err: *mut libc::FILE,
-) -> Result<(), StdBufferError> {
-    let out_res = set_stream_buffer(out, mode);
+    set_stream: F,
+) -> Result<(), StdBufferError>
+where
+    F: Fn(*mut libc::FILE, libc::c_int) -> io::Result<()>,
+{
+    let out_res = set_stream(out, mode);
     if out_res.is_err() && !out.is_null() {
-        let _ = set_stream_buffer(out, orig_mode);
+        let _ = set_stream(out, orig_mode);
     }
-    let err_res = set_stream_buffer(err, mode);
+    let err_res = set_stream(err, mode);
     if err_res.is_err() && out_res.is_ok() && !out.is_null() {
-        let _ = set_stream_buffer(out, orig_mode);
+        let _ = set_stream(out, orig_mode);
     }
     match (out_res, err_res) {
         (Ok(()), Ok(())) => Ok(()),
@@ -111,6 +115,15 @@ fn set_std_buffering_raw(
             stderr: e,
         }),
     }
+}
+
+fn set_std_buffering_raw(
+    mode: libc::c_int,
+    orig_mode: libc::c_int,
+    out: *mut libc::FILE,
+    err: *mut libc::FILE,
+) -> Result<(), StdBufferError> {
+    set_std_buffering_raw_impl(mode, orig_mode, out, err, set_stream_buffer)
 }
 
 static STDOUT_MODE: AtomicI32 = AtomicI32::new(libc::_IOLBF);
@@ -134,28 +147,66 @@ pub fn set_std_buffering(mode: OutBuf) -> Result<(), StdBufferError> {
 }
 
 #[cfg(test)]
-pub(crate) unsafe fn set_std_buffering_for_test(
+pub(crate) fn set_std_buffering_for_test<F>(
     mode: libc::c_int,
     orig_mode: libc::c_int,
     out: *mut libc::FILE,
     err: *mut libc::FILE,
-) -> Result<(), StdBufferError> {
-    set_std_buffering_raw(mode, orig_mode, out, err)
+    set_stream: F,
+) -> Result<(), StdBufferError>
+where
+    F: Fn(*mut libc::FILE, libc::c_int) -> io::Result<()>,
+{
+    set_std_buffering_raw_impl(mode, orig_mode, out, err, set_stream)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io;
 
     #[test]
-    fn smoke() {
-        unsafe {
-            let _ = set_std_buffering_for_test(
-                libc::_IONBF,
-                libc::_IOLBF,
-                std::ptr::null_mut(),
-                std::ptr::null_mut(),
-            );
-        }
+    fn ok_with_valid_streams() {
+        assert!(set_std_buffering(OutBuf::L).is_ok());
+    }
+
+    #[test]
+    fn stdout_failure() {
+        let out: *mut libc::FILE = std::ptr::dangling_mut();
+        let err: *mut libc::FILE = std::ptr::dangling_mut();
+        let set_stream = |stream: *mut libc::FILE, _mode: libc::c_int| {
+            if stream == out {
+                Err(io::Error::other("stdout failure"))
+            } else {
+                Ok(())
+            }
+        };
+        let res = set_std_buffering_for_test(libc::_IONBF, libc::_IOLBF, out, err, set_stream);
+        assert!(matches!(res, Err(StdBufferError::Stdout(_))));
+    }
+
+    #[test]
+    fn stderr_failure() {
+        let out: *mut libc::FILE = std::ptr::dangling_mut();
+        let err: *mut libc::FILE = std::ptr::dangling_mut();
+        let set_stream = |stream: *mut libc::FILE, _mode: libc::c_int| {
+            if stream == err {
+                Err(io::Error::other("stderr failure"))
+            } else {
+                Ok(())
+            }
+        };
+        let res = set_std_buffering_for_test(libc::_IONBF, libc::_IOLBF, out, err, set_stream);
+        assert!(matches!(res, Err(StdBufferError::Stderr(_))));
+    }
+
+    #[test]
+    fn both_failure() {
+        let out: *mut libc::FILE = std::ptr::dangling_mut();
+        let err: *mut libc::FILE = std::ptr::dangling_mut();
+        let set_stream =
+            |_stream: *mut libc::FILE, _mode: libc::c_int| Err(io::Error::other("fail"));
+        let res = set_std_buffering_for_test(libc::_IONBF, libc::_IOLBF, out, err, set_stream);
+        assert!(matches!(res, Err(StdBufferError::Both { .. })));
     }
 }
