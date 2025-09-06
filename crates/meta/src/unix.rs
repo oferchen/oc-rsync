@@ -683,7 +683,7 @@ fn remove_default_acl(path: &Path) -> io::Result<()> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
 
-    extern "C" {
+    unsafe extern "C" {
         fn acl_delete_def_file(path_p: *const libc::c_char) -> libc::c_int;
     }
 
