@@ -31,6 +31,7 @@ use md5::Md5;
 use protocol::ExitCode;
 use sha1::Sha1;
 use thiserror::Error;
+use xxhash_rust::xxh64::Xxh64;
 pub mod flist;
 
 pub use meta::MetaOpts;
@@ -1140,6 +1141,17 @@ impl Sender {
                     hasher.update(&buf[..n]);
                 }
                 Ok(hasher.finalize().to_vec())
+            }
+            StrongHash::XxHash => {
+                let mut hasher = Xxh64::new(self.opts.checksum_seed as u64);
+                loop {
+                    let n = reader.read(&mut buf).map_err(|e| io_context(path, e))?;
+                    if n == 0 {
+                        break;
+                    }
+                    hasher.update(&buf[..n]);
+                }
+                Ok(hasher.digest().to_le_bytes().to_vec())
             }
         }
     }

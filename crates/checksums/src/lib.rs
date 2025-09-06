@@ -2,11 +2,13 @@
 use md4::{Digest, Md4};
 use md5::Md5;
 use sha1::Sha1;
-#[derive(Clone, Copy, Debug)]
+use xxhash_rust::xxh64::{Xxh64, xxh64};
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StrongHash {
     Md4,
     Md5,
     Sha1,
+    XxHash,
 }
 
 #[derive(Clone, Debug)]
@@ -24,7 +26,7 @@ pub struct ChecksumConfigBuilder {
 impl Default for ChecksumConfigBuilder {
     fn default() -> Self {
         Self {
-            strong: StrongHash::Md4,
+            strong: StrongHash::Md5,
             seed: 0,
         }
     }
@@ -42,6 +44,13 @@ impl ChecksumConfigBuilder {
 
     pub fn seed(mut self, seed: u32) -> Self {
         self.seed = seed;
+        self
+    }
+
+    pub fn negotiate(mut self, remote: &[StrongHash]) -> Self {
+        if let Some(alg) = negotiate_strong_hash(&available_strong_hashes(), remote) {
+            self.strong = alg;
+        }
         self
     }
 
@@ -89,6 +98,10 @@ impl ChecksumConfig {
                     seed: self.seed,
                 }
             }
+            StrongHash::XxHash => StrongHasher {
+                inner: StrongHasherInner::XxHash(Xxh64::new(self.seed as u64)),
+                seed: self.seed,
+            },
         }
     }
 }
@@ -102,6 +115,7 @@ enum StrongHasherInner {
     Md4(Md4),
     Md5(Md5),
     Sha1(Sha1),
+    XxHash(Xxh64),
 }
 
 impl StrongHasher {
@@ -110,6 +124,7 @@ impl StrongHasher {
             StrongHasherInner::Md4(h) => h.update(data),
             StrongHasherInner::Md5(h) => h.update(data),
             StrongHasherInner::Sha1(h) => h.update(data),
+            StrongHasherInner::XxHash(h) => h.update(data),
         }
     }
 
@@ -121,6 +136,7 @@ impl StrongHasher {
             }
             StrongHasherInner::Md5(h) => h.finalize().to_vec(),
             StrongHasherInner::Sha1(h) => h.finalize().to_vec(),
+            StrongHasherInner::XxHash(h) => h.digest().to_le_bytes().to_vec(),
         }
     }
 }
@@ -146,7 +162,21 @@ pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
             hasher.update(data);
             hasher.finalize().to_vec()
         }
+        StrongHash::XxHash => xxh64(data, seed as u64).to_le_bytes().to_vec(),
     }
+}
+
+pub fn available_strong_hashes() -> Vec<StrongHash> {
+    vec![
+        StrongHash::XxHash,
+        StrongHash::Md5,
+        StrongHash::Md4,
+        StrongHash::Sha1,
+    ]
+}
+
+pub fn negotiate_strong_hash(local: &[StrongHash], remote: &[StrongHash]) -> Option<StrongHash> {
+    local.iter().copied().find(|h| remote.contains(h))
 }
 
 pub fn rolling_checksum(data: &[u8]) -> u32 {
