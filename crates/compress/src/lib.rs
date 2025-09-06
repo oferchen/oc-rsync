@@ -82,16 +82,16 @@ pub const DEFAULT_SKIP_COMPRESS: &[&str] = &[
 ];
 
 pub fn should_compress(path: &Path, skip: &[String]) -> bool {
-    let name = match path.file_name().and_then(|n| n.to_str()) {
-        Some(name) => name.to_ascii_lowercase(),
+    let ext = match path.extension().and_then(|e| e.to_str()) {
+        Some(ext) => ext.to_ascii_lowercase(),
         None => return true,
     };
 
     if skip.is_empty() {
-        return !DEFAULT_SKIP_COMPRESS.iter().any(|s| name.ends_with(s));
+        return !DEFAULT_SKIP_COMPRESS.iter().any(|s| ext == *s);
     }
 
-    !skip.iter().any(|s| name.ends_with(s))
+    !skip.iter().any(|s| ext == s.to_ascii_lowercase())
 }
 
 #[cfg(feature = "zlib")]

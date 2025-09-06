@@ -89,6 +89,7 @@ fn should_compress_respects_default_list() {
     assert!(should_compress(Path::new("file.txt"), &[]));
     assert!(!should_compress(Path::new("archive.gz"), &[]));
     assert!(!should_compress(Path::new("IMAGE.JpG"), &[]));
+    assert!(should_compress(Path::new("archivegz"), &[]));
 }
 
 #[test]
@@ -97,6 +98,13 @@ fn should_compress_handles_mixed_case_patterns() {
         Path::new("file.TXT"),
         &["txt".to_string()]
     ));
+}
+
+#[test]
+fn should_compress_requires_dot_with_custom_patterns() {
+    let skip = vec!["gz".to_string()];
+    assert!(!should_compress(Path::new("archive.gz"), &skip));
+    assert!(should_compress(Path::new("archivegz"), &skip));
 }
 
 #[test]
