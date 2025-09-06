@@ -99,6 +99,91 @@ fn cvs_exclude_nested_override() {
     assert!(dst.join("sub/nested/core").exists());
 }
 
+#[test]
+fn filter_c_equivalent_to_filters() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("core"), "core").unwrap();
+    fs::write(src.join("local_ignored"), "local").unwrap();
+    fs::write(src.join(".cvsignore"), "local_ignored\n").unwrap();
+
+    let home = tempdir().unwrap();
+    fs::write(home.path().join(".cvsignore"), "home_ignored\n").unwrap();
+    fs::write(src.join("home_ignored"), "home").unwrap();
+    fs::write(src.join("env_ignored"), "env").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+
+    let dst1 = tmp.path().join("dst1");
+    fs::create_dir_all(&dst1).unwrap();
+    let mut cmd1 = Command::cargo_bin("oc-rsync").unwrap();
+    cmd1.env("CVSIGNORE", "env_ignored");
+    cmd1.env("HOME", home.path());
+    cmd1.args(["--recursive", "--cvs-exclude"]);
+    cmd1.arg(&src_arg);
+    cmd1.arg(&dst1);
+    assert!(cmd1.output().unwrap().status.success());
+
+    let dst2 = tmp.path().join("dst2");
+    fs::create_dir_all(&dst2).unwrap();
+    let mut cmd2 = Command::cargo_bin("oc-rsync").unwrap();
+    cmd2.env("CVSIGNORE", "env_ignored");
+    cmd2.env("HOME", home.path());
+    cmd2.args(["--recursive", "--filter=-C", "--filter=:C"]);
+    cmd2.arg(&src_arg);
+    cmd2.arg(&dst2);
+    assert!(cmd2.output().unwrap().status.success());
+
+    assert_dirs_equal(&dst1, &dst2);
+}
+
+#[test]
+fn filter_minus_c_ignores_defaults_only() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("core"), "core").unwrap();
+    fs::write(src.join("foo"), "foo").unwrap();
+    fs::write(src.join(".cvsignore"), "foo\n").unwrap();
+
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&dst).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    cmd.args(["--recursive", "--filter=-C"]);
+    cmd.arg(&src_arg);
+    cmd.arg(&dst);
+    assert!(cmd.output().unwrap().status.success());
+
+    assert!(dst.join("foo").exists());
+    assert!(!dst.join("core").exists());
+}
+
+#[test]
+fn filter_colon_c_uses_local_cvsignore_only() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("core"), "core").unwrap();
+    fs::write(src.join("foo"), "foo").unwrap();
+    fs::write(src.join(".cvsignore"), "foo\n").unwrap();
+
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&dst).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    cmd.args(["--recursive", "--filter=:C"]);
+    cmd.arg(&src_arg);
+    cmd.arg(&dst);
+    assert!(cmd.output().unwrap().status.success());
+
+    assert!(!dst.join("foo").exists());
+    assert!(dst.join("core").exists());
+}
+
 fn assert_dirs_equal(expected: &Path, actual: &Path) {
     fn collect(root: &Path) -> (HashSet<PathBuf>, HashSet<PathBuf>) {
         let mut files = HashSet::new();
