@@ -71,7 +71,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | `.rsync-filter` merge semantics | Implemented | [crates/filters/tests/merge.rs](../crates/filters/tests/merge.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | Null-delimited filter lists and merges (`--from0`) | Implemented | [crates/filters/tests/include_from.rs](../crates/filters/tests/include_from.rs)<br>[crates/filters/tests/from0_merges.rs](../crates/filters/tests/from0_merges.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | Rule logging and statistics | Implemented | [crates/filters/tests/rule_stats.rs](../crates/filters/tests/rule_stats.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
-| Additional rule modifiers | Partial | — | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs)<br>[#268](https://github.com/oferchen/oc-rsync/issues/268) |
+| Additional rule modifiers | Implemented | [crates/filters/tests/rule_modifiers.rs](../crates/filters/tests/rule_modifiers.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | CVS ignore semantics (`--cvs-exclude`) | Partial | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | Complex glob patterns | Implemented | [crates/filters/tests/advanced_globs.rs](../crates/filters/tests/advanced_globs.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | `--files-from` directory entries | Implemented | [crates/filters/tests/files_from.rs](../crates/filters/tests/files_from.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |

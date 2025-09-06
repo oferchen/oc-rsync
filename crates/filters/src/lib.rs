@@ -21,7 +21,67 @@ pub struct RuleFlags {
     xattr: bool,
 }
 
+/// All filter modifiers supported by upstream rsync and their mapping to
+/// [`RuleFlags`]. The characters here correspond to the modifier letters used
+/// in filter rules (e.g. `-p`, `+s`, `:n`, etc.).
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RuleModifier {
+    /// Applies the rule only on the sending side (`s`).
+    Sender,
+    /// Applies the rule only on the receiving side (`r`).
+    Receiver,
+    /// Marks the rule as perishable (`p`).
+    Perishable,
+    /// Restricts the rule to xattr names (`x`).
+    Xattr,
+}
+
+/// Modifiers that apply to merge/dir-merge rules.
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum MergeModifier {
+    /// '+'
+    IncludeOnly,
+    /// '-'
+    ExcludeOnly,
+    /// 'n'
+    NoInherit,
+    /// 'w'
+    WordSplit,
+    /// 'e'
+    ExcludeSelf,
+    /// 'C'
+    CvsMode,
+}
+
+impl MergeModifier {
+    fn apply(self, pd: &mut PerDir) {
+        match self {
+            MergeModifier::IncludeOnly => pd.sign = Some('+'),
+            MergeModifier::ExcludeOnly => pd.sign = Some('-'),
+            MergeModifier::NoInherit => pd.inherit = false,
+            MergeModifier::WordSplit => pd.word_split = true,
+            MergeModifier::CvsMode => pd.cvs = true,
+            MergeModifier::ExcludeSelf => {}
+        }
+    }
+}
+
 impl RuleFlags {
+    fn from_mods(mods: &str) -> Self {
+        let mut flags = Self::default();
+        for ch in mods.chars() {
+            match ch {
+                's' => flags.sender = true,
+                'r' => flags.receiver = true,
+                'p' => flags.perishable = true,
+                'x' => flags.xattr = true,
+                _ => {}
+            }
+        }
+        flags
+    }
     fn applies(&self, for_delete: bool, xattr: bool) -> bool {
         if self.xattr != xattr {
             return false;
@@ -1311,7 +1371,7 @@ pub fn parse_with_options(
             None => continue,
         };
 
-        if line == "!" {
+        if line == "!" || line == "c" {
             rules.push(Rule::Clear);
             continue;
         }
@@ -1380,7 +1440,7 @@ pub fn parse_with_options(
                 mods.push('s');
             }
             (Some(RuleKind::Include), mods, rest)
-        } else if let Some(r) = line.strip_prefix('H') {
+        } else if let Some(r) = line.strip_prefix('H').or_else(|| line.strip_prefix('h')) {
             let (m, rest) = split_mods(r, "/!Csrpx");
             let mut mods = m.to_string();
             if !mods.contains('s') {
@@ -1476,20 +1536,10 @@ pub fn parse_with_options(
                 parse_with_options(&content, from0, visited, depth + 1, Some(path.clone()))?
             };
             if m.contains('s') || m.contains('r') || m.contains('p') || m.contains('x') {
+                let inherited = RuleFlags::from_mods(m);
                 for rule in &mut sub {
                     if let Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) = rule {
-                        if m.contains('s') {
-                            d.flags.sender = true;
-                        }
-                        if m.contains('r') {
-                            d.flags.receiver = true;
-                        }
-                        if m.contains('p') {
-                            d.flags.perishable = true;
-                        }
-                        if m.contains('x') {
-                            d.flags.xattr = true;
-                        }
+                        d.flags = d.flags.union(&inherited);
                     }
                 }
             }
@@ -1506,6 +1556,11 @@ pub fn parse_with_options(
                 };
                 rules.push(Rule::Exclude(data));
             }
+            continue;
+        } else if let Some(r) = line.strip_prefix('d') {
+            let rewritten = format!(":{}\n", r);
+            let sub = parse_with_options(&rewritten, from0, visited, depth + 1, source.clone())?;
+            rules.extend(sub);
             continue;
         } else if let Some(rest) = line.strip_prefix(":include-merge") {
             let file = rest.trim();
@@ -1546,39 +1601,30 @@ pub fn parse_with_options(
             } else {
                 file.to_string()
             };
-            let sign = if m.contains('+') {
-                Some('+')
-            } else if m.contains('-') {
-                Some('-')
-            } else {
-                None
-            };
-            rules.push(Rule::DirMerge(PerDir {
+            let mut pd = PerDir {
                 file: fname.clone(),
                 anchored,
                 root_only: anchored,
-                inherit: !m.contains('n'),
-                cvs: m.contains('C'),
-                word_split: m.contains('w'),
-                sign,
-                flags: {
-                    let mut f = RuleFlags::default();
-                    if m.contains('s') {
-                        f.sender = true;
-                    }
-                    if m.contains('r') {
-                        f.receiver = true;
-                    }
-                    if m.contains('p') {
-                        f.perishable = true;
-                    }
-                    if m.contains('x') {
-                        f.xattr = true;
-                    }
-                    f
-                },
-            }));
-            if m.contains('e') {
+                inherit: true,
+                cvs: false,
+                word_split: false,
+                sign: None,
+                flags: RuleFlags::from_mods(m),
+            };
+            let mut exclude_self = false;
+            for ch in m.chars() {
+                match ch {
+                    '+' => MergeModifier::IncludeOnly.apply(&mut pd),
+                    '-' => MergeModifier::ExcludeOnly.apply(&mut pd),
+                    'n' => MergeModifier::NoInherit.apply(&mut pd),
+                    'w' => MergeModifier::WordSplit.apply(&mut pd),
+                    'C' => MergeModifier::CvsMode.apply(&mut pd),
+                    'e' => exclude_self = true,
+                    _ => {}
+                }
+            }
+            rules.push(Rule::DirMerge(pd));
+            if exclude_self {
                 let pat = format!("**/{}", fname);
                 let matcher = compile_glob(&pat)?;
                 let data = RuleData {
@@ -1752,19 +1798,7 @@ pub fn parse_with_options(
             return Err(ParseError::InvalidRule(raw_line.to_string()));
         }
 
-        let mut flags = RuleFlags::default();
-        if mods.contains('s') {
-            flags.sender = true;
-        }
-        if mods.contains('r') {
-            flags.receiver = true;
-        }
-        if mods.contains('p') {
-            flags.perishable = true;
-        }
-        if mods.contains('x') {
-            flags.xattr = true;
-        }
+        let flags = RuleFlags::from_mods(&mods);
 
         let mut pattern = rest.to_string();
         let mut has_anchor = false;
