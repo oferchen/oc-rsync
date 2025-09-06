@@ -2,8 +2,8 @@
 use oc_rsync_cli::options::OutBuf;
 use std::fmt;
 use std::io::{self, ErrorKind};
-use std::mem::MaybeUninit;
 use std::ptr::{self, NonNull};
+use std::sync::atomic::{AtomicI32, Ordering};
 
 #[cfg(not(target_os = "windows"))]
 unsafe extern "C" {
@@ -90,30 +90,30 @@ impl std::error::Error for StdBufferError {}
 
 fn set_std_buffering_raw(
     mode: libc::c_int,
+    orig_mode: libc::c_int,
     out: *mut libc::FILE,
     err: *mut libc::FILE,
 ) -> Result<(), StdBufferError> {
-    unsafe {
-        let mut out_backup = MaybeUninit::<libc::FILE>::uninit();
-        if !out.is_null() {
-            ptr::copy_nonoverlapping(out, out_backup.as_mut_ptr(), 1);
-        }
-        let out_res = set_stream_buffer(out, mode);
-        let err_res = set_stream_buffer(err, mode);
-        if (out_res.is_err() || err_res.is_err()) && !out.is_null() {
-            ptr::copy_nonoverlapping(out_backup.as_ptr(), out, 1);
-        }
-        match (out_res, err_res) {
-            (Ok(()), Ok(())) => Ok(()),
-            (Err(o), Ok(())) => Err(StdBufferError::Stdout(o)),
-            (Ok(()), Err(e)) => Err(StdBufferError::Stderr(e)),
-            (Err(o), Err(e)) => Err(StdBufferError::Both {
-                stdout: o,
-                stderr: e,
-            }),
-        }
+    let out_res = set_stream_buffer(out, mode);
+    if out_res.is_err() && !out.is_null() {
+        let _ = set_stream_buffer(out, orig_mode);
+    }
+    let err_res = set_stream_buffer(err, mode);
+    if err_res.is_err() && out_res.is_ok() && !out.is_null() {
+        let _ = set_stream_buffer(out, orig_mode);
+    }
+    match (out_res, err_res) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(o), Ok(())) => Err(StdBufferError::Stdout(o)),
+        (Ok(()), Err(e)) => Err(StdBufferError::Stderr(e)),
+        (Err(o), Err(e)) => Err(StdBufferError::Both {
+            stdout: o,
+            stderr: e,
+        }),
     }
 }
+
+static STDOUT_MODE: AtomicI32 = AtomicI32::new(libc::_IOLBF);
 
 pub fn set_std_buffering(mode: OutBuf) -> Result<(), StdBufferError> {
     let mode = match mode {
@@ -123,15 +123,23 @@ pub fn set_std_buffering(mode: OutBuf) -> Result<(), StdBufferError> {
     };
     let out = stdout_stream().map_err(StdBufferError::Stdout)?.as_ptr();
     let err = stderr_stream().map_err(StdBufferError::Stderr)?.as_ptr();
-    set_std_buffering_raw(mode, out, err)
+    let orig = STDOUT_MODE.load(Ordering::SeqCst);
+    match set_std_buffering_raw(mode, orig, out, err) {
+        Ok(()) => {
+            STDOUT_MODE.store(mode, Ordering::SeqCst);
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
 }
 
 #[cfg(test)]
 #[allow(dead_code)]
 pub(crate) unsafe fn set_std_buffering_for_test(
     mode: libc::c_int,
+    orig_mode: libc::c_int,
     out: *mut libc::FILE,
     err: *mut libc::FILE,
 ) -> Result<(), StdBufferError> {
-    set_std_buffering_raw(mode, out, err)
+    set_std_buffering_raw(mode, orig_mode, out, err)
 }
