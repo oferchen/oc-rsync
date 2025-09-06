@@ -110,7 +110,7 @@ cli = []
 nightly = ["checksums/nightly", "compress/nightly"]
 
 [package.metadata.deb]
-maintainer = "oc-rsync maintainers <maintainers@rsync.rs>"
+maintainer = "Project Maintainers <maintainers@oc-rsync.project>"
 license-file = ["LICENSE-MIT", "0"]
 section = "net"
 priority = "optional"
@@ -126,8 +126,8 @@ assets = [
 ]
 
 [package.metadata.rpm]
-maintainer = "oc-rsync maintainers <maintainers@rsync.rs>"
-requires = ["zlib1g", "libzstd1"]
+maintainer = "Project Maintainers <maintainers@oc-rsync.project>"
+requires = ["zlib", "libzstd"]
 
 [package.metadata.rpm.targets.oc-rsync]
 path = "/usr/bin/oc-rsync"
