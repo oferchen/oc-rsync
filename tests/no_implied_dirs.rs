@@ -6,7 +6,6 @@ use std::os::unix::fs::symlink;
 use tempfile::tempdir;
 
 #[test]
-#[ignore]
 fn preserves_symlinked_implied_dirs() {
     let tmp = tempdir().unwrap();
     let src_root = tmp.path().join("src");
