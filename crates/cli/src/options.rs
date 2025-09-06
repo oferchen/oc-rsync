@@ -6,8 +6,8 @@ use std::{ffi::OsString, path::PathBuf};
 pub use crate::daemon::DaemonOpts;
 use crate::formatter;
 use crate::utils::{
-    parse_duration, parse_minutes, parse_nonzero_duration, parse_rsh, parse_size, parse_stop_at,
-    RshCommand,
+    RshCommand, parse_duration, parse_minutes, parse_nonzero_duration, parse_rsh, parse_size,
+    parse_stop_at,
 };
 use clap::{Arg, ArgAction, Args, CommandFactory, Parser, ValueEnum};
 use logging::{DebugFlag, InfoFlag, StderrMode};
@@ -740,6 +740,7 @@ pub(crate) struct ProbeOpts {
 pub fn cli_command() -> clap::Command {
     let cmd = ProbeOpts::command();
     let cmd = ClientOpts::augment_args(cmd);
+    #[cfg(any(test, feature = "dump-help"))]
     let cmd = cmd.arg(
         Arg::new("dump-help-body")
             .long("dump-help-body")

@@ -133,6 +133,7 @@ _Future contributors: update this section when adding or fixing message behavior
 | `--log-file-format` | ✅ | [tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | `--munge-links` option | ✅ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | `--dry-run` prevents destination changes | ✅ | [tests/interop/dry_run.rs](../tests/interop/dry_run.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| Test-only `--dump-help-body` flag for help text verification | Internal | [tests/help_output.rs](../tests/help_output.rs) | [crates/cli/src/options.rs](../crates/cli/src/options.rs) |
 ### Outstanding Options
 
 All CLI flags now have interop coverage verifying parser and message parity with upstream `rsync`. See [tests/interop/outstanding_flags.rs](../tests/interop/outstanding_flags.rs).

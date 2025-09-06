@@ -36,4 +36,5 @@ serial_test = "2"
 
 [features]
 default = []
+dump-help = []
 
