@@ -71,6 +71,34 @@ impl Tmpfs {
     }
 }
 
+fn rsync_supports_filter_file() -> bool {
+    StdCommand::new("rsync")
+        .arg("--version")
+        .output()
+        .ok()
+        .and_then(|out| {
+            if !out.status.success() {
+                return None;
+            }
+            std::str::from_utf8(&out.stdout).ok().and_then(|s| {
+                s.lines().next().and_then(|line| {
+                    let mut parts = line.split_whitespace();
+                    while let Some(part) = parts.next() {
+                        if part == "version" {
+                            let ver = parts.next()?;
+                            let mut nums = ver.split('.').filter_map(|n| n.parse::<u32>().ok());
+                            let major = nums.next().unwrap_or(0);
+                            let minor = nums.next().unwrap_or(0);
+                            return Some(major > 3 || (major == 3 && minor >= 4));
+                        }
+                    }
+                    None
+                })
+            })
+        })
+        .unwrap_or(false)
+}
+
 #[test]
 fn files_from_from0_matches_rsync() {
     use std::process::Command as StdCommand;
@@ -399,6 +427,11 @@ fn filter_merge_from0_matches_filter_file() {
 #[test]
 fn filter_file_from0_stdin_matches_rsync() {
     use std::process::Command as StdCommand;
+
+    if !rsync_supports_filter_file() {
+        eprintln!("skipping filter_file_from0_stdin_matches_rsync: rsync lacks --filter-file",);
+        return;
+    }
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -2887,6 +2920,66 @@ fn files_from_list_transfers_nested_paths() {
     assert!(dst.join("a/d/sub/nested.txt").exists());
     assert!(!dst.join("a/b/other.txt").exists());
     assert!(!dst.join("unlisted.txt").exists());
+}
+
+#[test]
+fn files_from_list_nested_file_excludes_siblings() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("a/b")).unwrap();
+    fs::create_dir_all(src.join("a/c")).unwrap();
+    fs::write(src.join("a/b/file.txt"), b"f").unwrap();
+    fs::write(src.join("a/b/other.txt"), b"o").unwrap();
+    fs::write(src.join("a/c/unrelated.txt"), b"u").unwrap();
+    let list = dir.path().join("files.txt");
+    fs::write(&list, "a/b/file.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("a/b/file.txt").exists());
+    assert!(!dst.join("a/b/other.txt").exists());
+    assert!(!dst.join("a/c/unrelated.txt").exists());
+}
+
+#[test]
+fn files_from_list_directory_excludes_siblings() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("dir/sub")).unwrap();
+    fs::create_dir_all(src.join("other")).unwrap();
+    fs::write(src.join("dir/sub/file.txt"), b"k").unwrap();
+    fs::write(src.join("other/file.txt"), b"o").unwrap();
+    let list = dir.path().join("files.txt");
+    fs::write(&list, "dir/\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("dir/sub/file.txt").exists());
+    assert!(!dst.join("other/file.txt").exists());
 }
 
 #[test]

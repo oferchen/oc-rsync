@@ -1,4 +1,5 @@
 // crates/compress/tests/large.rs
+
 #[cfg(any(feature = "zlib", feature = "zstd"))]
 use compress::{Compressor, Decompressor};
 
