@@ -210,8 +210,7 @@ Classic `rsync` protocol versions 30–32 are supported.
 
 | Feature | Status | Tests | Source | Notes |
 | --- | --- | --- | --- | --- |
-| zstd and zlib codecs | Implemented | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/lib.rs](../crates/compress/src/lib.rs) | |
-| LZ4 codec | Missing | — | — | [#873](https://github.com/oferchen/oc-rsync/issues/873) |
+| zlib and zstd codecs | Implemented | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/lib.rs](../crates/compress/src/lib.rs) | |
 
 ## Daemon
 
@@ -240,3 +239,11 @@ Classic `rsync` protocol versions 30–32 are supported.
 | --- | --- | --- | --- | --- |
 | Workspace coverage via `cargo llvm-cov` | Implemented | [reports/metrics.md](../reports/metrics.md) | [Makefile](../Makefile) | |
 | Windows CI coverage gating | Missing | — | [codecov.yml](../codecov.yml) | [#989](https://github.com/oferchen/oc-rsync/issues/989) |
+
+## Post-parity roadmap
+
+These features may be explored after achieving parity with upstream rsync.
+
+| Feature | Tracking issue |
+| --- | --- |
+| LZ4 codec | [#873](https://github.com/oferchen/oc-rsync/issues/873) |
