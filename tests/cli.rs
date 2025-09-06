@@ -4370,12 +4370,14 @@ fn double_star_glob_matches() {
     let dst = tmp.path().join("dst");
     fs::create_dir_all(src.join("a/inner")).unwrap();
     fs::create_dir_all(src.join("b/deeper/more")).unwrap();
+    fs::create_dir_all(src.join("c/other")).unwrap();
     fs::write(src.join("a/keep1.txt"), "1").unwrap();
     fs::write(src.join("a/inner/keep2.txt"), "2").unwrap();
     fs::write(src.join("b/deeper/more/keep3.txt"), "3").unwrap();
     fs::write(src.join("a/omit.log"), "x").unwrap();
     fs::write(src.join("a/inner/omit.log"), "x").unwrap();
     fs::write(src.join("b/deeper/more/omit.log"), "x").unwrap();
+    fs::write(src.join("c/other/omit.log"), "x").unwrap();
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -4399,6 +4401,8 @@ fn double_star_glob_matches() {
     assert!(!dst.join("a/omit.log").exists());
     assert!(!dst.join("a/inner/omit.log").exists());
     assert!(!dst.join("b/deeper/more/omit.log").exists());
+    assert!(!dst.join("c/other/omit.log").exists());
+    assert!(!dst.join("c").exists());
 }
 
 #[test]
@@ -4424,7 +4428,9 @@ fn single_star_does_not_cross_directories() {
         .assert()
         .success();
     assert!(dst.join("a/file.txt").exists());
+    assert!(dst.join("a").is_dir());
     assert!(!dst.join("a/b/file.txt").exists());
+    assert!(!dst.join("a/b").exists());
 }
 
 #[test]
@@ -4450,5 +4456,7 @@ fn char_class_respects_directory_boundaries() {
         .assert()
         .success();
     assert!(dst.join("1/keep.txt").exists());
+    assert!(dst.join("1").is_dir());
     assert!(!dst.join("1/2/keep.txt").exists());
+    assert!(!dst.join("1/2").exists());
 }
