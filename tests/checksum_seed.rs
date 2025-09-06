@@ -14,7 +14,7 @@ fn checksum_seed_changes_weak_checksum() {
 }
 
 #[test]
-fn checksum_seed_changes_strong_checksum() {
+fn checksum_seed_changes_strong_checksum_default_md4() {
     let data = b"hello world";
     let cfg0 = ChecksumConfigBuilder::new().seed(0).build();
     let cfg1 = ChecksumConfigBuilder::new().seed(1).build();

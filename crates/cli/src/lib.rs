@@ -40,7 +40,7 @@ use filters::{Matcher, Rule, default_cvs_rules};
 pub use formatter::{ARG_ORDER, dump_help_body, render_help};
 use logging::{InfoFlag, human_bytes, parse_escapes};
 use meta::{IdKind, parse_chmod, parse_chown};
-use protocol::{ExitCode, LATEST_VERSION, SUPPORTED_PROTOCOLS, V30, negotiate_version};
+use protocol::{ExitCode, SUPPORTED_PROTOCOLS, negotiate_version};
 use transport::{AddressFamily, parse_sockopts};
 #[cfg(unix)]
 use users::get_user_by_uid;
@@ -425,22 +425,15 @@ fn run_single(
         rsync_env.push(("RSYNC_TIMEOUT".into(), to.as_secs().to_string()));
     }
 
-    let proto = opts.protocol.unwrap_or(LATEST_VERSION);
     if !rsync_env.iter().any(|(k, _)| k == "RSYNC_CHECKSUM_LIST") {
-        let list: Vec<&str> = if proto < V30 {
-            vec!["md4", "md5", "sha1"]
-        } else {
-            vec!["md5", "md4", "sha1"]
-        };
+        let list: Vec<&str> = vec!["md4", "md5", "sha1"];
         rsync_env.push(("RSYNC_CHECKSUM_LIST".into(), list.join(",")));
     }
 
     let remote_bin_vec = rsync_path_cmd.as_ref().map(|c| c.cmd.clone());
     let remote_env_vec = rsync_path_cmd.as_ref().map(|c| c.env.clone());
 
-    let strong = if proto < V30 {
-        StrongHash::Md4
-    } else if let Some(choice) = opts.checksum_choice.as_deref() {
+    let strong = if let Some(choice) = opts.checksum_choice.as_deref() {
         match choice {
             "md4" => StrongHash::Md4,
             "md5" => StrongHash::Md5,
@@ -450,11 +443,7 @@ fn run_single(
             }
         }
     } else if let Ok(list) = env::var("RSYNC_CHECKSUM_LIST") {
-        let mut chosen = if proto < V30 {
-            StrongHash::Md4
-        } else {
-            StrongHash::Md5
-        };
+        let mut chosen = StrongHash::Md4;
         for name in list.split(',') {
             match name {
                 "sha1" => {
@@ -474,7 +463,7 @@ fn run_single(
         }
         chosen
     } else {
-        StrongHash::Md5
+        StrongHash::Md4
     };
 
     let src_trailing = match &src {
