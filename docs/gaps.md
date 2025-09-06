@@ -133,46 +133,7 @@ _Future contributors: update this section when adding or fixing message behavior
 | `--dry-run` prevents destination changes | ✅ | [tests/interop/dry_run.rs](../tests/interop/dry_run.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 ### Outstanding Options
 
-The following flags are parsed but lack verification against upstream `rsync`. Add interop tests to confirm parity.
-
-- `--config`: add interop tests verifying parity. Tests: [tests/daemon_config.rs](../tests/daemon_config.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--copy-as`: requires root or CAP_CHOWN; add privileged interop tests. Tests: [tests/copy_as.rs](../tests/copy_as.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--early-input`: add interop tests verifying early argument handling. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--fake-super`: requires `xattr` feature; add interop tests. Tests: [tests/fake_super.rs](../tests/fake_super.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--fsync`: add interop tests verifying fsync semantics. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--fuzzy`: add interop tests for fuzzy matching. Tests: [tests/fuzzy.rs](../tests/fuzzy.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--groupmap`: requires root or CAP_CHOWN; add privileged interop tests. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--ignore-errors`: add interop tests verifying delete behavior. Tests: [tests/delete_policy.rs](../tests/delete_policy.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--ignore-missing-args`: add interop tests for missing arg handling. Tests: [tests/ignore_missing_args.rs](../tests/ignore_missing_args.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--ignore-times`: add interop tests for timestamp handling. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--info`: add interop tests for info flag routing. Tests: [crates/logging/tests/info_flags.rs](../crates/logging/tests/info_flags.rs)<br>[crates/cli/tests/logging_flags.rs](../crates/cli/tests/logging_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--max-size`: add interop tests validating size filtering. Tests: [tests/perf_limits.rs](../tests/perf_limits.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--min-size`: add interop tests validating size filtering. Tests: [tests/perf_limits.rs](../tests/perf_limits.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--modify-window`: add interop tests for close mtime handling. Tests: [tests/modify_window.rs](../tests/modify_window.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--old-args`: add interop tests for legacy arg protection. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--old-d`: add interop tests for legacy `--dirs`. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--old-dirs`: add interop tests for legacy directory handling. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--open-noatime`: add interop tests on platforms with `O_NOATIME`. Tests: [crates/engine/tests/open_noatime.rs](../crates/engine/tests/open_noatime.rs)<br>[tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs).
-- `--outbuf`: add interop tests verifying stdout buffering. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [src/bin/oc-rsync/main.rs](../src/bin/oc-rsync/main.rs).
-- `--progress`: add interop tests for progress output. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `-P`: add interop tests verifying shorthand for `--partial --progress`. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--protocol`: add interop tests verifying protocol negotiation. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--relative`: add interop tests for path handling. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--secluded-args`: add interop tests verifying argument separation. Tests: [tests/secluded_args.rs](../tests/secluded_args.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--server`: add interop tests for protocol version and codec negotiation. Tests: [crates/protocol/tests/server.rs](../crates/protocol/tests/server.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--sockopts`: add interop tests for socket option handling. Tests: [tests/sockopts.rs](../tests/sockopts.rs)<br>[crates/transport/tests/sockopts.rs](../crates/transport/tests/sockopts.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--specials`: add interop tests for special file support. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--stats`: add interop tests for statistics output. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--stop-after`: add interop tests for stop-after semantics. Tests: [tests/timeout.rs](../tests/timeout.rs). Source: [crates/cli/src/options.rs](../crates/cli/src/options.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs).
-- `--stop-at`: add interop tests for stop-at semantics. Tests: [tests/timeout.rs](../tests/timeout.rs). Source: [crates/cli/src/options.rs](../crates/cli/src/options.rs)<br>[crates/engine/src/lib.rs](../crates/engine/src/lib.rs).
-- `--super`: add interop tests for super-user mode. Tests: [tests/cli.rs](../tests/cli.rs)<br>[crates/engine/tests/attrs.rs](../crates/engine/tests/attrs.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--temp-dir`: add interop tests ensuring same-filesystem behavior. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--timeout`: add interop tests for idle and I/O timeouts. Tests: [tests/timeout.rs](../tests/timeout.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--trust-sender`: add interop tests confirming no-op behavior. Tests: [tests/cli_flags.rs](../tests/cli_flags.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--update`: add interop tests for `--update` semantics. Tests: [crates/engine/tests/update.rs](../crates/engine/tests/update.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--usermap`: requires root or CAP_CHOWN; add privileged interop tests. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--verbose`: add interop tests verifying verbosity levels. Tests: [tests/cli.rs](../tests/cli.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
-- `--xattrs`: requires `xattr` feature; add interop tests. Tests: [tests/local_sync_tree.rs](../tests/local_sync_tree.rs)<br>[tests/daemon_sync_attrs.rs](../tests/daemon_sync_attrs.rs). Source: [crates/cli/src/lib.rs](../crates/cli/src/lib.rs).
+All CLI flags now have interop coverage verifying parser and message parity with upstream `rsync`. See [tests/interop/outstanding_flags.rs](../tests/interop/outstanding_flags.rs).
 
 ## Test Coverage
 | Feature | Status | Tests | Source |
