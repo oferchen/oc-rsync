@@ -194,6 +194,12 @@ fn zstd_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[allow(dead_code)]
 #[target_feature(enable = "sse4.2")]
+/// Compress data using zstd with SSE4.2 optimizations.
+///
+/// # Safety
+/// The caller must ensure that the CPU running this code supports the
+/// `sse4.2` target feature. Calling this function on hardware without
+/// `sse4.2` support results in undefined behaviour.
 unsafe fn zstd_compress_sse42(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     use zstd::zstd_safe;
     let bound = zstd_safe::compress_bound(data.len());
@@ -207,22 +213,28 @@ unsafe fn zstd_compress_sse42(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
 #[cfg(feature = "zstd")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[allow(dead_code)]
-#[target_feature(enable = "avx2")]
-unsafe fn zstd_compress_avx2(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
-    use zstd::zstd_safe;
-    let bound = zstd_safe::compress_bound(data.len());
-    let mut out = vec![0u8; bound];
-    let written =
-        zstd_safe::compress(&mut out, data, level).map_err(|e| io::Error::other(format!("{e}")))?;
-    out.truncate(written);
-    Ok(out)
+fn zstd_compress_sse42_safe(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
+    if std::arch::is_x86_feature_detected!("sse4.2") {
+        unsafe { zstd_compress_sse42(data, level) }
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "sse4.2 not detected",
+        ))
+    }
 }
 
 #[cfg(feature = "zstd")]
-#[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[allow(dead_code)]
-#[target_feature(enable = "avx512f")]
-unsafe fn zstd_compress_avx512(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
+#[target_feature(enable = "avx2")]
+/// Compress data using zstd with AVX2 optimizations.
+///
+/// # Safety
+/// The caller must ensure that the CPU running this code supports the
+/// `avx2` target feature. Calling this function on hardware without
+/// `avx2` support results in undefined behaviour.
+unsafe fn zstd_compress_avx2(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     use zstd::zstd_safe;
     let bound = zstd_safe::compress_bound(data.len());
     let mut out = vec![0u8; bound];
@@ -235,7 +247,61 @@ unsafe fn zstd_compress_avx512(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
 #[cfg(feature = "zstd")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[allow(dead_code)]
+fn zstd_compress_avx2_safe(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
+    if std::arch::is_x86_feature_detected!("avx2") {
+        unsafe { zstd_compress_avx2(data, level) }
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "avx2 not detected",
+        ))
+    }
+}
+
+#[cfg(feature = "zstd")]
+#[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
+#[allow(dead_code)]
+#[target_feature(enable = "avx512f")]
+/// Compress data using zstd with AVX512 optimizations.
+///
+/// # Safety
+/// The caller must ensure that the CPU running this code supports the
+/// `avx512f` target feature. Calling this function on hardware without
+/// `avx512f` support results in undefined behaviour.
+unsafe fn zstd_compress_avx512(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
+    use zstd::zstd_safe;
+    let bound = zstd_safe::compress_bound(data.len());
+    let mut out = vec![0u8; bound];
+    let written =
+        zstd_safe::compress(&mut out, data, level).map_err(|e| io::Error::other(format!("{e}")))?;
+    out.truncate(written);
+    Ok(out)
+}
+
+#[cfg(feature = "zstd")]
+#[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
+#[allow(dead_code)]
+fn zstd_compress_avx512_safe(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
+    if std::arch::is_x86_feature_detected!("avx512f") {
+        unsafe { zstd_compress_avx512(data, level) }
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "avx512f not detected",
+        ))
+    }
+}
+
+#[cfg(feature = "zstd")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(dead_code)]
 #[target_feature(enable = "sse4.2")]
+/// Decompress data using zstd with SSE4.2 optimizations.
+///
+/// # Safety
+/// The caller must ensure that the CPU running this code supports the
+/// `sse4.2` target feature. Calling this function on hardware without
+/// `sse4.2` support results in undefined behaviour.
 unsafe fn zstd_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
     use zstd::zstd_safe;
     let size = zstd_safe::get_frame_content_size(data)
@@ -251,8 +317,64 @@ unsafe fn zstd_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
 #[cfg(feature = "zstd")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[allow(dead_code)]
+fn zstd_decompress_sse42_safe(data: &[u8]) -> io::Result<Vec<u8>> {
+    if std::arch::is_x86_feature_detected!("sse4.2") {
+        unsafe { zstd_decompress_sse42(data) }
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "sse4.2 not detected",
+        ))
+    }
+}
+
+#[cfg(feature = "zstd")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(dead_code)]
 #[target_feature(enable = "avx2")]
+/// Decompress data using zstd with AVX2 optimizations.
+///
+/// # Safety
+/// The caller must ensure that the CPU running this code supports the
+/// `avx2` target feature. Calling this function on hardware without
+/// `avx2` support results in undefined behaviour.
 unsafe fn zstd_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
+    use zstd::zstd_safe;
+    let size = zstd_safe::get_frame_content_size(data)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e}")))?
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "unknown size"))?;
+    let mut out = vec![0u8; size as usize];
+    let written = zstd_safe::decompress(&mut out, data)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e}")))?;
+    out.truncate(written);
+    Ok(out)
+}
+
+#[cfg(feature = "zstd")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(dead_code)]
+fn zstd_decompress_avx2_safe(data: &[u8]) -> io::Result<Vec<u8>> {
+    if std::arch::is_x86_feature_detected!("avx2") {
+        unsafe { zstd_decompress_avx2(data) }
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "avx2 not detected",
+        ))
+    }
+}
+
+#[cfg(feature = "zstd")]
+#[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
+#[allow(dead_code)]
+#[target_feature(enable = "avx512f")]
+/// Decompress data using zstd with AVX512 optimizations.
+///
+/// # Safety
+/// The caller must ensure that the CPU running this code supports the
+/// `avx512f` target feature. Calling this function on hardware without
+/// `avx512f` support results in undefined behaviour.
+unsafe fn zstd_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
     use zstd::zstd_safe;
     let size = zstd_safe::get_frame_content_size(data)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e}")))?
@@ -267,17 +389,15 @@ unsafe fn zstd_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
 #[cfg(feature = "zstd")]
 #[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
 #[allow(dead_code)]
-#[target_feature(enable = "avx512f")]
-unsafe fn zstd_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
-    use zstd::zstd_safe;
-    let size = zstd_safe::get_frame_content_size(data)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e}")))?
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "unknown size"))?;
-    let mut out = vec![0u8; size as usize];
-    let written = zstd_safe::decompress(&mut out, data)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e}")))?;
-    out.truncate(written);
-    Ok(out)
+fn zstd_decompress_avx512_safe(data: &[u8]) -> io::Result<Vec<u8>> {
+    if std::arch::is_x86_feature_detected!("avx512f") {
+        unsafe { zstd_decompress_avx512(data) }
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "avx512f not detected",
+        ))
+    }
 }
 
 #[cfg(feature = "zstd")]
@@ -309,16 +429,19 @@ mod tests {
         let data = b"hello world";
         let level = 0;
         let scalar_c = zstd_compress_scalar(data, level).unwrap();
-        unsafe {
-            assert_eq!(zstd_compress_sse42(data, level).unwrap(), scalar_c);
-            assert_eq!(zstd_compress_avx2(data, level).unwrap(), scalar_c);
-            #[cfg(feature = "nightly")]
-            assert_eq!(zstd_compress_avx512(data, level).unwrap(), scalar_c);
-            let scalar_d = zstd_decompress_scalar(&scalar_c).unwrap();
-            assert_eq!(zstd_decompress_sse42(&scalar_c).unwrap(), scalar_d);
-            assert_eq!(zstd_decompress_avx2(&scalar_c).unwrap(), scalar_d);
-            #[cfg(feature = "nightly")]
-            assert_eq!(zstd_decompress_avx512(&scalar_c).unwrap(), scalar_d);
+        let scalar_d = zstd_decompress_scalar(&scalar_c).unwrap();
+        if std::arch::is_x86_feature_detected!("sse4.2") {
+            assert_eq!(zstd_compress_sse42_safe(data, level).unwrap(), scalar_c);
+            assert_eq!(zstd_decompress_sse42_safe(&scalar_c).unwrap(), scalar_d);
+        }
+        if std::arch::is_x86_feature_detected!("avx2") {
+            assert_eq!(zstd_compress_avx2_safe(data, level).unwrap(), scalar_c);
+            assert_eq!(zstd_decompress_avx2_safe(&scalar_c).unwrap(), scalar_d);
+        }
+        #[cfg(feature = "nightly")]
+        if std::arch::is_x86_feature_detected!("avx512f") {
+            assert_eq!(zstd_compress_avx512_safe(data, level).unwrap(), scalar_c);
+            assert_eq!(zstd_decompress_avx512_safe(&scalar_c).unwrap(), scalar_d);
         }
     }
 
