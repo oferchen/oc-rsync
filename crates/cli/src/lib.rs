@@ -1264,15 +1264,18 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         let mut finished = true;
         let trimmed = rooted.trim_end_matches('/');
         for part in trimmed.trim_start_matches('/').split('/') {
-            if part.contains(['*', '?', '[', ']']) {
-                finished = false;
-                break;
-            }
             if !base.is_empty() {
                 base.push('/');
             }
             base.push_str(part);
-            dirs.push(format!("/{}", base));
+            let has_glob = part.contains(['*', '?', '[', ']']);
+            if has_glob {
+                dirs.push(format!("/{base}/"));
+                dirs.push(format!("/{base}/**"));
+                finished = false;
+                break;
+            }
+            dirs.push(format!("/{base}/"));
         }
         if finished {
             dirs.pop();
@@ -1335,9 +1338,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             );
             for dir in parents {
                 let rule = if opts.from0 {
-                    format!("+{}/", dir)
+                    format!("+{}", dir)
                 } else {
-                    format!("+ {}/", dir)
+                    format!("+ {}", dir)
                 };
                 add_rules(
                     idx + 1,
@@ -1381,9 +1384,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                         );
                         for dir in parents {
                             let rule = if opts.from0 {
-                                format!("+{}/", dir)
+                                format!("+{}", dir)
                             } else {
-                                format!("+ {}/", dir)
+                                format!("+ {}", dir)
                             };
                             add_rules(
                                 idx + 1,
@@ -1407,9 +1410,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     );
                     for dir in parents {
                         let rule = if opts.from0 {
-                            format!("+{}/", dir)
+                            format!("+{}", dir)
                         } else {
-                            format!("+ {}/", dir)
+                            format!("+ {}", dir)
                         };
                         add_rules(
                             idx + 1,
