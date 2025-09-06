@@ -9,6 +9,7 @@ use std::env;
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 const MAX_PARSE_DEPTH: usize = 64;
 
@@ -83,6 +84,8 @@ pub struct PerDir {
 struct Cached {
     rules: Vec<(usize, Rule)>,
     merges: Vec<(usize, PerDir)>,
+    mtime: Option<SystemTime>,
+    len: u64,
 }
 
 #[derive(Clone, Default)]
@@ -211,7 +214,21 @@ impl Matcher {
     }
 
     pub fn preload_dir<P: AsRef<Path>>(&self, dir: P) -> Result<(), ParseError> {
-        let _ = self.dir_rules_at(dir.as_ref(), false, false)?;
+        let dir = dir.as_ref();
+        if let Some(root) = &self.root {
+            if dir.starts_with(root) {
+                let mut current = root.to_path_buf();
+                let _ = self.dir_rules_at(&current, false, false)?;
+                if let Ok(rel) = dir.strip_prefix(root) {
+                    for comp in rel.components() {
+                        current.push(comp.as_os_str());
+                        let _ = self.dir_rules_at(&current, false, false)?;
+                    }
+                }
+                return Ok(());
+            }
+        }
+        let _ = self.dir_rules_at(dir, false, false)?;
         Ok(())
     }
 
@@ -522,10 +539,28 @@ impl Matcher {
                     .filter(|p| !p.as_os_str().is_empty())
             };
 
-            let mut cache = self.cached.borrow_mut();
             let key = (path.clone(), pd.sign, pd.word_split);
-            let state = if let Some(c) = cache.get(&key) {
-                c.clone()
+            let meta = fs::metadata(&path).ok();
+            let (mtime, len) = match &meta {
+                Some(m) => (m.modified().ok(), m.len()),
+                None => (None, 0),
+            };
+
+            let state = {
+                let cache = self.cached.borrow();
+                if let Some(c) = cache.get(&key) {
+                    if c.mtime == mtime && c.len == len {
+                        Some(c.clone())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            };
+
+            let state = if let Some(cached) = state {
+                cached
             } else {
                 let mut visited = HashSet::new();
                 visited.insert(path.clone());
@@ -543,8 +578,10 @@ impl Matcher {
                 let cached = Cached {
                     rules: rules.clone(),
                     merges: merges.clone(),
+                    mtime,
+                    len,
                 };
-                cache.insert(key, cached.clone());
+                self.cached.borrow_mut().insert(key.clone(), cached.clone());
                 cached
             };
 

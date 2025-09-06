@@ -1,4 +1,5 @@
 // crates/engine/src/lib.rs
+#![allow(clippy::collapsible_if)]
 #[cfg(unix)]
 use nix::unistd::{chown, Gid, Uid};
 use rand::{distributions::Alphanumeric, Rng};
