@@ -2919,6 +2919,34 @@ fn include_pattern_allows_file() {
 }
 
 #[test]
+fn include_nested_path_allows_file() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("sub")).unwrap();
+    fs::write(src.join("sub/keep.txt"), b"k").unwrap();
+    fs::write(src.join("sub/skip.txt"), b"s").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--include",
+            "sub/keep.txt",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("sub/keep.txt").exists());
+    assert!(!dst.join("sub/skip.txt").exists());
+}
+
+#[test]
 fn include_complex_glob_pattern_allows_file() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
