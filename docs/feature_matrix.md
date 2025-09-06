@@ -7,11 +7,11 @@ Classic `rsync` protocol versions 30–32 are supported.
 
 ## Internal features
 
-| Feature | Supported | Notes |
-| --- | --- | --- |
-| File list path-delta encoding with uid/gid tables | ✅ | Exercised via `filelist` tests |
-| Challenge-response token authentication | ✅ | Protocol handshake verifies tokens |
-| Remote-to-remote forwarding | ✅ | Bridges two remote endpoints via existing transports, including `rsync://` daemon paths (root and subpaths) |
+| Feature | Supported | Tests | Source | Notes |
+| --- | --- | --- | --- | --- |
+| File list path-delta encoding with uid/gid tables | ✅ | [crates/engine/tests/flist.rs](../crates/engine/tests/flist.rs) | [crates/filelist/src/lib.rs](../crates/filelist/src/lib.rs) | Exercised via encode/decode roundtrip tests |
+| Challenge-response token authentication | ✅ | [crates/protocol/tests/auth.rs](../crates/protocol/tests/auth.rs) | [crates/protocol/src/server.rs](../crates/protocol/src/server.rs) | Protocol handshake verifies tokens |
+| Remote-to-remote forwarding | ✅ | [tests/remote_remote.rs](../tests/remote_remote.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) | Bridges two remote endpoints via existing transports, including `rsync://` daemon paths (root and subpaths) |
 
 ## CLI options
 
