@@ -83,9 +83,11 @@ fn files_from_mixed_file_dir_entries() {
     assert!(m.is_included("foo").unwrap());
     assert!(m.is_included("foo/bar").unwrap());
     assert!(m.is_included("foo/bar/baz").unwrap());
+    assert!(!m.is_included("foo/bar/qux").unwrap());
     assert!(m.is_included("qux").unwrap());
     assert!(m.is_included("qux/inner").unwrap());
     assert!(!m.is_included("other").unwrap());
+    assert!(!m.is_included("qux/other").unwrap());
 }
 
 #[test]
