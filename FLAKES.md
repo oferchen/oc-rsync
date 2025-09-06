@@ -14,4 +14,3 @@ This file documents tests marked `#[ignore]` and why they remain excluded from a
 | `tests/filter_corpus.rs::perdir_sign_parity` | Per-directory signing parity pending. |
 | `tests/cli.rs::default_umask_masks_permissions` | Umask handling under review. |
 | `tests/no_implied_dirs.rs::preserves_symlinked_implied_dirs` | Symlinked implied directory behavior unfinished. |
-| `tests/remote_remote.rs::remote_remote_via_daemon_paths` | Remote-to-remote transfer through daemon not yet supported. |
