@@ -22,25 +22,25 @@ fn check_file(path: &Path, root: &Path) -> bool {
         return false;
     }
     let mut pos = 0;
-    let mut allow = true;
+    let mut first_line = true;
     for token in tokenize(&content) {
         let text = &content[pos..pos + token.len];
         if matches!(
             token.kind,
             TokenKind::LineComment | TokenKind::BlockComment { .. }
         ) {
-            if allow {
+            if first_line {
                 if text.starts_with("///") {
                     eprintln!("{}: doc comment", rel_str);
                     return false;
                 }
-            } else {
+            } else if !text.starts_with("///") {
                 eprintln!("{}: additional comments", rel_str);
                 return false;
             }
         }
         if text.contains('\n') {
-            allow = false;
+            first_line = false;
         }
         pos += token.len;
     }
