@@ -87,7 +87,7 @@ An overview of crate boundaries, data flow, and algorithms is in [docs/architect
 
 ## Testing & CI
 
-`make test` runs the full test suite. CI workflows live under [.github/workflows](.github/workflows). Fuzzing and interoperability grids are described in [docs/fuzzing.md](docs/fuzzing.md) and [docs/interop-grid.md](docs/interop-grid.md).
+`make test` runs the full test suite with `cargo nextest run --workspace --no-fail-fast --all-features`. CI workflows live under [.github/workflows](.github/workflows). Fuzzing and interoperability grids are described in [docs/fuzzing.md](docs/fuzzing.md) and [docs/interop-grid.md](docs/interop-grid.md).
 
 ## Security
 
@@ -105,7 +105,7 @@ Report vulnerabilities via [SECURITY.md](SECURITY.md). The daemon aims to match 
 
 ## License
 
-Dual-licensed under [MIT](LICENSE-MIT) and [Apache-2.0](LICENSE-APACHE).
+Licensed under [Apache-2.0](LICENSE-APACHE).
 
 ## Acknowledgements
 
