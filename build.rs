@@ -53,7 +53,6 @@ fn main() {
                     let lib_dir = search_dirs.iter().find(|dir| {
                         dir.join("libacl.so").exists() || dir.join("libacl.a").exists()
                     });
-
                     if let Some(dir) = lib_dir {
                         println!("cargo:rustc-link-lib=acl");
                         println!("cargo:rustc-link-search=native={}", dir.display());

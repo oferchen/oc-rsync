@@ -25,6 +25,18 @@ fn exclude_from_null_separated() {
     assert!(matcher.is_included("baz").unwrap());
 }
 
+#[test]
+fn include_from_nested_paths_include_ancestors() {
+    let data = b"foo/bar/baz\n";
+    let mut v = HashSet::new();
+    let rules = parse_rule_list_from_bytes(data, false, '+', &mut v, 0, None).unwrap();
+    let matcher = Matcher::new(rules);
+    assert!(matcher.is_included("foo").unwrap());
+    assert!(matcher.is_included("foo/bar").unwrap());
+    assert!(matcher.is_included("foo/bar/baz").unwrap());
+    assert!(!matcher.is_included("foo/bar/qux").unwrap());
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(16))]
     #[test]
