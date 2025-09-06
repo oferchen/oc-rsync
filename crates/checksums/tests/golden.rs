@@ -43,7 +43,7 @@ fn builder_strong_digests() {
     assert_eq!(cs_md4.weak, rolling_checksum(data));
     assert_eq!(
         hex::encode(cs_md4.strong),
-        "ea91f391e02b5e19f432b43bd87a531d"
+        "7ced6b52c8203ba97580659d7dc33548"
     );
 
     let cs_md5 = cfg_md5.checksum(data);

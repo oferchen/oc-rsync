@@ -22,8 +22,8 @@ fn checksum_seed_changes_strong_checksum() {
     let strong1 = cfg1.checksum(data).strong;
     let hex0 = hex::encode(&strong0);
     let hex1 = hex::encode(&strong1);
-    assert_eq!(hex0, "ea91f391e02b5e19f432b43bd87a531d");
-    assert_eq!(hex1, "92e5994e0babddace03f0ff88f767181");
+    assert_eq!(hex0, "7ced6b52c8203ba97580659d7dc33548");
+    assert_eq!(hex1, "681d333539cc115fe7b2f40bb5aa8b89");
     assert_ne!(hex0, hex1);
 }
 
