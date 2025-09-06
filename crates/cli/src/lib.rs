@@ -1477,7 +1477,8 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     if !opts.files_from.is_empty() {
         add_rules(
             usize::MAX,
-            parse_filters("- *", opts.from0).map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+            parse_filters("- /**", opts.from0)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
         );
     }
     if opts.cvs_exclude {
@@ -1538,7 +1539,7 @@ mod tests {
     use super::*;
     use crate::utils::{parse_bool, parse_remote_spec, RemoteSpec};
     use clap::Parser;
-    use ::daemon::authenticate;
+    use daemon::authenticate;
     use engine::SyncOptions;
     use std::ffi::OsStr;
     use std::path::PathBuf;

@@ -246,6 +246,10 @@ impl Matcher {
             }
         }
 
+        if path.as_os_str().is_empty() {
+            return Ok((true, false));
+        }
+
         let mut seq = 0usize;
         let mut active: Vec<(usize, usize, usize, Rule)> = Vec::new();
 
