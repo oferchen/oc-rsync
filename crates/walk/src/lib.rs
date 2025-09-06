@@ -1,4 +1,5 @@
 // crates/walk/src/lib.rs
+#![allow(clippy::collapsible_if)]
 
 use std::collections::HashMap;
 use std::fs::FileType;
