@@ -183,7 +183,7 @@ This agent architecture provides a **clean separation of responsibilities** and 
 - Lint with `cargo clippy --all-targets --all-features -- -D warnings`.
 
 ### Mandatory Checks
-- Install `cargo-nextest` with `cargo install cargo-nextest --locked` if it is not already available.
+- Install `cargo-nextest` with `cargo install cargo-nextest --locked` if it is not already available (test beforehand).
 - Run `cargo nextest run --workspace --no-fail-fast` and
   `cargo nextest run --workspace --no-fail-fast --features "cli nightly"`,
   ensuring all tests pass. Interop tests behind the `interop` feature
