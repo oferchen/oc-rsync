@@ -1,4 +1,5 @@
 // tests/interop/failure_cases.rs
+
 #![cfg(all(unix, feature = "interop"))]
 
 use assert_cmd::Command;
