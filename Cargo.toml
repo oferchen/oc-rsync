@@ -115,8 +115,8 @@ cli = []
 nightly = ["checksums/nightly", "compress/nightly"]
 
 [package.metadata.deb]
-maintainer = "Project Maintainers <maintainers@oc-rsync.project>"
-license-file = ["LICENSE"]
+maintainer = "Ofer Chen <skewers.irises.3b@icloud.com>"
+license-file = "LICENSE"
 section = "net"
 priority = "optional"
 depends = "zlib1g, libzstd1"
