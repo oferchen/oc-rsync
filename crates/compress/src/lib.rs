@@ -174,16 +174,14 @@ impl Zstd {
     }
 }
 
-#[cfg(feature = "zstd")]
+#[cfg(all(feature = "zstd", test))]
 #[inline]
-#[allow(dead_code)]
 fn zstd_compress_scalar(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     zstd::bulk::compress(data, level).map_err(io::Error::other)
 }
 
-#[cfg(feature = "zstd")]
+#[cfg(all(feature = "zstd", test))]
 #[inline]
-#[allow(dead_code)]
 fn zstd_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
     let mut decoder = zstd::stream::Decoder::new(data)?;
     let mut out = Vec::new();
@@ -191,9 +189,11 @@ fn zstd_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
-#[cfg(feature = "zstd")]
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[allow(dead_code)]
+#[cfg(all(
+    feature = "zstd",
+    test,
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 #[target_feature(enable = "sse4.2")]
 /// Compress data using zstd with SSE4.2 optimizations.
 ///
@@ -211,9 +211,11 @@ unsafe fn zstd_compress_sse42(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
-#[cfg(feature = "zstd")]
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[allow(dead_code)]
+#[cfg(all(
+    feature = "zstd",
+    test,
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 fn zstd_compress_sse42_safe(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     if std::arch::is_x86_feature_detected!("sse4.2") {
         unsafe { zstd_compress_sse42(data, level) }
@@ -225,9 +227,11 @@ fn zstd_compress_sse42_safe(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     }
 }
 
-#[cfg(feature = "zstd")]
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[allow(dead_code)]
+#[cfg(all(
+    feature = "zstd",
+    test,
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 #[target_feature(enable = "avx2")]
 /// Compress data using zstd with AVX2 optimizations.
 ///
@@ -245,9 +249,11 @@ unsafe fn zstd_compress_avx2(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
-#[cfg(feature = "zstd")]
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[allow(dead_code)]
+#[cfg(all(
+    feature = "zstd",
+    test,
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 fn zstd_compress_avx2_safe(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     if std::arch::is_x86_feature_detected!("avx2") {
         unsafe { zstd_compress_avx2(data, level) }
@@ -259,9 +265,12 @@ fn zstd_compress_avx2_safe(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     }
 }
 
-#[cfg(feature = "zstd")]
-#[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
-#[allow(dead_code)]
+#[cfg(all(
+    feature = "zstd",
+    feature = "nightly",
+    test,
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 #[target_feature(enable = "avx512f")]
 /// Compress data using zstd with AVX512 optimizations.
 ///
@@ -279,9 +288,12 @@ unsafe fn zstd_compress_avx512(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
-#[cfg(feature = "zstd")]
-#[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
-#[allow(dead_code)]
+#[cfg(all(
+    feature = "zstd",
+    feature = "nightly",
+    test,
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 fn zstd_compress_avx512_safe(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     if std::arch::is_x86_feature_detected!("avx512f") {
         unsafe { zstd_compress_avx512(data, level) }
@@ -293,9 +305,11 @@ fn zstd_compress_avx512_safe(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     }
 }
 
-#[cfg(feature = "zstd")]
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[allow(dead_code)]
+#[cfg(all(
+    feature = "zstd",
+    test,
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 #[target_feature(enable = "sse4.2")]
 /// Decompress data using zstd with SSE4.2 optimizations.
 ///
@@ -315,9 +329,11 @@ unsafe fn zstd_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
-#[cfg(feature = "zstd")]
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[allow(dead_code)]
+#[cfg(all(
+    feature = "zstd",
+    test,
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 fn zstd_decompress_sse42_safe(data: &[u8]) -> io::Result<Vec<u8>> {
     if std::arch::is_x86_feature_detected!("sse4.2") {
         unsafe { zstd_decompress_sse42(data) }
@@ -329,9 +345,11 @@ fn zstd_decompress_sse42_safe(data: &[u8]) -> io::Result<Vec<u8>> {
     }
 }
 
-#[cfg(feature = "zstd")]
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[allow(dead_code)]
+#[cfg(all(
+    feature = "zstd",
+    test,
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 #[target_feature(enable = "avx2")]
 /// Decompress data using zstd with AVX2 optimizations.
 ///
@@ -351,9 +369,11 @@ unsafe fn zstd_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
-#[cfg(feature = "zstd")]
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[allow(dead_code)]
+#[cfg(all(
+    feature = "zstd",
+    test,
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 fn zstd_decompress_avx2_safe(data: &[u8]) -> io::Result<Vec<u8>> {
     if std::arch::is_x86_feature_detected!("avx2") {
         unsafe { zstd_decompress_avx2(data) }
@@ -365,9 +385,12 @@ fn zstd_decompress_avx2_safe(data: &[u8]) -> io::Result<Vec<u8>> {
     }
 }
 
-#[cfg(feature = "zstd")]
-#[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
-#[allow(dead_code)]
+#[cfg(all(
+    feature = "zstd",
+    feature = "nightly",
+    test,
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 #[target_feature(enable = "avx512f")]
 /// Decompress data using zstd with AVX512 optimizations.
 ///
@@ -387,9 +410,12 @@ unsafe fn zstd_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
-#[cfg(feature = "zstd")]
-#[cfg(all(feature = "nightly", any(target_arch = "x86", target_arch = "x86_64")))]
-#[allow(dead_code)]
+#[cfg(all(
+    feature = "zstd",
+    feature = "nightly",
+    test,
+    any(target_arch = "x86", target_arch = "x86_64")
+))]
 fn zstd_decompress_avx512_safe(data: &[u8]) -> io::Result<Vec<u8>> {
     if std::arch::is_x86_feature_detected!("avx512f") {
         unsafe { zstd_decompress_avx512(data) }
