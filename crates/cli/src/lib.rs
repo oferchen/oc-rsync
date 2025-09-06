@@ -1,4 +1,5 @@
 // crates/cli/src/lib.rs
+
 #![allow(clippy::collapsible_if)]
 use std::collections::HashSet;
 use std::env;
@@ -1420,28 +1421,45 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     format!("/{}", pat)
                 };
 
-                let rule1 = if opts.from0 {
-                    format!("+{}", anchored)
-                } else {
-                    format!("+ {}", anchored)
-                };
-                add_rules(
-                    idx + 1,
-                    parse_filters(&rule1, opts.from0)
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                );
-
-                let dir_pat = format!("{}/***", anchored.trim_end_matches('/'));
-                let rule2 = if opts.from0 {
-                    format!("+{}", dir_pat)
-                } else {
-                    format!("+ {}", dir_pat)
-                };
-                add_rules(
-                    idx + 1,
-                    parse_filters(&rule2, opts.from0)
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                );
+                let is_dir = anchored.ends_with('/');
+                let trimmed = anchored.trim_end_matches('/');
+                if trimmed.is_empty() {
+                    continue;
+                }
+                let parts: Vec<&str> = trimmed.split('/').filter(|s| !s.is_empty()).collect();
+                let mut prefix = String::new();
+                for (i, part) in parts.iter().enumerate() {
+                    prefix.push('/');
+                    prefix.push_str(part);
+                    let rule = if i < parts.len() - 1 || is_dir {
+                        if opts.from0 {
+                            format!("+{}/", prefix)
+                        } else {
+                            format!("+ {}/", prefix)
+                        }
+                    } else if opts.from0 {
+                        format!("+{}", prefix)
+                    } else {
+                        format!("+ {}", prefix)
+                    };
+                    add_rules(
+                        idx + 1,
+                        parse_filters(&rule, opts.from0)
+                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    );
+                    if i == parts.len() - 1 {
+                        let dir_rule = if opts.from0 {
+                            format!("+{}/***", prefix)
+                        } else {
+                            format!("+ {}/***", prefix)
+                        };
+                        add_rules(
+                            idx + 1,
+                            parse_filters(&dir_rule, opts.from0)
+                                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                        );
+                    }
+                }
             }
         }
     }
@@ -1520,7 +1538,7 @@ mod tests {
     use super::*;
     use crate::utils::{parse_bool, parse_remote_spec, RemoteSpec};
     use clap::Parser;
-    use daemon::authenticate;
+    use ::daemon::authenticate;
     use engine::SyncOptions;
     use std::ffi::OsStr;
     use std::path::PathBuf;

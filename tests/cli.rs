@@ -3344,6 +3344,33 @@ fn files_from_zero_separated_list_allows_hash() {
 }
 
 #[test]
+fn files_from_zero_separated_list_includes_directories() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    std::fs::create_dir_all(src.join("dir/sub")).unwrap();
+    std::fs::write(src.join("dir/sub/file.txt"), b"k").unwrap();
+    let list = dir.path().join("files.lst");
+    std::fs::write(&list, b"dir\0").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--from0",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("dir/sub/file.txt").exists());
+}
+
+#[test]
 fn files_from_list_file() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
