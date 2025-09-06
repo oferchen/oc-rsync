@@ -93,7 +93,7 @@ pub fn brand_credits() -> String {
 }
 
 fn default_copyright() -> String {
-    let year = option_env!("CURRENT_YEAR").unwrap_or("2025");
+    let year = env!("CURRENT_YEAR");
     format!("Copyright (C) 2024-{year} oc-rsync contributors.")
 }
 
