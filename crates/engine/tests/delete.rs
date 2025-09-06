@@ -20,6 +20,7 @@ fn run_delete_filter(mode: DeleteMode) {
     let rules = parse("- keep.txt", &mut visited, 0).unwrap();
     let matcher = Matcher::new(rules);
 
+    let mode2 = mode.clone();
     sync(
         &src,
         &dst,
@@ -43,7 +44,7 @@ fn run_delete_filter(mode: DeleteMode) {
         &matcher,
         &available_codecs(),
         &SyncOptions {
-            delete: Some(mode),
+            delete: Some(mode2),
             delete_excluded: true,
             ..Default::default()
         },

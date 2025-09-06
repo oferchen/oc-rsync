@@ -2,6 +2,7 @@
 #![allow(clippy::collapsible_if)]
 #[cfg(unix)]
 use nix::unistd::{Gid, Uid, chown};
+use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, Write};
 #[cfg(any(
@@ -407,7 +408,7 @@ pub struct SyncOptions {
     pub compress_level: Option<i32>,
     pub compress_choice: Option<Vec<Codec>>,
     pub whole_file: bool,
-    pub skip_compress: Vec<String>,
+    pub skip_compress: HashSet<String>,
     pub partial: bool,
     pub progress: bool,
     pub human_readable: bool,
@@ -511,7 +512,7 @@ impl Default for SyncOptions {
             compress_level: None,
             compress_choice: None,
             whole_file: false,
-            skip_compress: Vec::new(),
+            skip_compress: HashSet::new(),
             partial: false,
             progress: false,
             human_readable: false,

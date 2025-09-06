@@ -1,7 +1,9 @@
 // crates/compress/src/lib.rs
+use std::collections::HashSet;
 use std::io::{self, Read, Write};
 
 use std::path::Path;
+use std::sync::LazyLock;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Codec {
@@ -75,17 +77,20 @@ pub const DEFAULT_SKIP_COMPRESS: &[&str] = &[
     "webp", "xz", "z", "zip", "zst",
 ];
 
-pub fn should_compress(path: &Path, skip: &[String]) -> bool {
+static DEFAULT_SKIP_COMPRESS_SET: LazyLock<HashSet<&'static str>> =
+    LazyLock::new(|| DEFAULT_SKIP_COMPRESS.iter().copied().collect());
+
+pub fn should_compress(path: &Path, skip: &HashSet<String>) -> bool {
     let ext = match path.extension().and_then(|e| e.to_str()) {
         Some(ext) => ext.to_ascii_lowercase(),
         None => return true,
     };
 
     if skip.is_empty() {
-        return !DEFAULT_SKIP_COMPRESS.iter().any(|s| ext == *s);
+        return !DEFAULT_SKIP_COMPRESS_SET.contains(ext.as_str());
     }
 
-    !skip.iter().any(|s| ext == s.to_ascii_lowercase())
+    !skip.contains(ext.as_str())
 }
 
 #[cfg(feature = "zlib")]

@@ -664,7 +664,7 @@ fn run_single(
         } else {
             opts.whole_file
         },
-        skip_compress: opts.skip_compress.clone(),
+        skip_compress: opts.skip_compress.iter().cloned().collect::<HashSet<_>>(),
         partial: opts.partial
             || opts.partial_progress
             || opts.partial_dir.is_some()
