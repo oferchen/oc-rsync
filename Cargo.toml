@@ -113,7 +113,7 @@ nightly = ["checksums/nightly", "compress/nightly"]
 
 [package.metadata.deb]
 maintainer = "Project Maintainers <maintainers@oc-rsync.project>"
-license-file = ["LICENSE-MIT", "LICENSE-APACHE"]
+license-file = "LICENSE"
 section = "net"
 priority = "optional"
 depends = "zlib1g, libzstd1"
