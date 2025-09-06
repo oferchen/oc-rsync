@@ -1,12 +1,12 @@
 // tests/cli.rs
 
 use assert_cmd::prelude::*;
-use assert_cmd::{Command, cargo::cargo_bin};
+use assert_cmd::{cargo::cargo_bin, Command};
 use engine::SyncOptions;
-use filetime::{FileTime, set_file_mtime};
+use filetime::{set_file_mtime, FileTime};
 use logging::progress_formatter;
 #[cfg(unix)]
-use nix::unistd::{Gid, Uid, chown, mkfifo};
+use nix::unistd::{chown, mkfifo, Gid, Uid};
 use oc_rsync_cli::{parse_iconv, spawn_daemon_session};
 use predicates::prelude::PredicateBooleanExt;
 use protocol::SUPPORTED_PROTOCOLS;
@@ -21,7 +21,7 @@ use std::path::PathBuf;
 use std::process::Command as StdCommand;
 use std::thread;
 use std::time::Duration;
-use tempfile::{TempDir, tempdir, tempdir_in};
+use tempfile::{tempdir, tempdir_in, TempDir};
 #[cfg(unix)]
 use users::{get_current_gid, get_current_uid, get_group_by_gid, get_user_by_uid};
 #[cfg(all(unix, feature = "xattr"))]
@@ -1561,7 +1561,7 @@ fn owner_group_and_mode_preserved() {
 #[cfg(all(unix, feature = "acl"))]
 #[test]
 fn owner_group_perms_acls_preserved() {
-    use posix_acl::{ACL_READ, PosixACL, Qualifier};
+    use posix_acl::{PosixACL, Qualifier, ACL_READ};
     use std::os::unix::fs::PermissionsExt;
     if !Uid::effective().is_root() {
         eprintln!("skipping owner_group_perms_acls_preserved: requires root or CAP_CHOWN");
@@ -1924,7 +1924,7 @@ fn group_names_are_mapped() {
 #[cfg(unix)]
 #[test]
 fn parse_usermap_accepts_numeric_and_name() {
-    use meta::{IdKind, parse_id_map};
+    use meta::{parse_id_map, IdKind};
     use users::get_user_by_uid;
 
     let numeric = parse_id_map("0:1", IdKind::User).unwrap();
@@ -1943,7 +1943,7 @@ fn parse_usermap_accepts_numeric_and_name() {
 #[cfg(unix)]
 #[test]
 fn parse_groupmap_accepts_numeric_and_name() {
-    use meta::{IdKind, parse_id_map};
+    use meta::{parse_id_map, IdKind};
     use users::get_group_by_gid;
 
     let numeric = parse_id_map("0:1", IdKind::Group).unwrap();
@@ -2007,7 +2007,11 @@ fn user_name_to_numeric_id_is_mapped() {
             parts.next();
             let uid_str = parts.next()?;
             let uid_val: u32 = uid_str.parse().ok()?;
-            if uid_val != uid { Some(uid_val) } else { None }
+            if uid_val != uid {
+                Some(uid_val)
+            } else {
+                None
+            }
         })
         .expect("no alternate user id found");
 
@@ -2358,7 +2362,7 @@ fn force_removes_multiple_non_empty_dirs() {
 #[test]
 #[serial]
 fn perms_flag_preserves_permissions() {
-    use nix::sys::stat::{Mode, umask};
+    use nix::sys::stat::{umask, Mode};
     use std::fs;
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
@@ -2394,7 +2398,7 @@ fn perms_flag_preserves_permissions() {
 #[test]
 #[serial]
 fn default_umask_masks_permissions() {
-    use nix::sys::stat::{Mode, umask};
+    use nix::sys::stat::{umask, Mode};
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
     let dir = tempdir().unwrap();
@@ -2682,6 +2686,37 @@ fn include_pattern_allows_file() {
 }
 
 #[test]
+fn include_complex_glob_pattern_allows_file() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("dir1/sub")).unwrap();
+    fs::create_dir_all(src.join("dir2")).unwrap();
+    fs::write(src.join("dir1/sub/keep1.txt"), b"k").unwrap();
+    fs::write(src.join("dir2/keep2.txt"), b"k").unwrap();
+    fs::write(src.join("dir1/sub/skip.log"), b"s").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--include",
+            "dir*/**/keep[0-9].txt",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("dir1/sub/keep1.txt").exists());
+    assert!(dst.join("dir2/keep2.txt").exists());
+    assert!(!dst.join("dir1/sub/skip.log").exists());
+}
+
+#[test]
 fn include_after_exclude_does_not_override() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
@@ -2707,6 +2742,34 @@ fn include_after_exclude_does_not_override() {
 
     assert!(!dst.join("keep.log").exists());
     assert!(!dst.join("skip.log").exists());
+}
+
+#[test]
+fn include_nested_path_allows_parent_dirs() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("a/b")).unwrap();
+    fs::write(src.join("a/b/keep.txt"), b"k").unwrap();
+    fs::write(src.join("a/b/skip.txt"), b"s").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--include",
+            "a/b/keep.txt",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("a/b/keep.txt").exists());
+    assert!(!dst.join("a/b/skip.txt").exists());
 }
 
 #[test]
@@ -2739,6 +2802,36 @@ fn include_from_file_allows_patterns() {
 
     assert!(dst.join("keep.txt").exists());
     assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
+fn include_from_nested_path_allows_parent_dirs() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("nested/dir")).unwrap();
+    fs::write(src.join("nested/dir/keep.txt"), b"k").unwrap();
+    fs::write(src.join("nested/dir/skip.txt"), b"s").unwrap();
+    let inc = dir.path().join("inc.lst");
+    fs::write(&inc, "nested/dir/keep.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--include-from",
+            inc.to_str().unwrap(),
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("nested/dir/keep.txt").exists());
+    assert!(!dst.join("nested/dir/skip.txt").exists());
 }
 
 #[test]
@@ -2942,6 +3035,40 @@ fn exclude_before_include_from_skips_file() {
         .success();
 
     assert!(!dst.join("keep.txt").exists());
+    assert!(!dst.join("skip.txt").exists());
+}
+
+#[test]
+fn include_from_mixed_with_include_and_exclude() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("keep1.txt"), b"k1").unwrap();
+    fs::write(src.join("keep2.txt"), b"k2").unwrap();
+    fs::write(src.join("skip.txt"), b"s").unwrap();
+    let inc = dir.path().join("inc.lst");
+    fs::write(&inc, "keep1.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--include-from",
+            inc.to_str().unwrap(),
+            "--exclude",
+            "*",
+            "--include",
+            "keep2.txt",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("keep1.txt").exists());
+    assert!(!dst.join("keep2.txt").exists());
     assert!(!dst.join("skip.txt").exists());
 }
 

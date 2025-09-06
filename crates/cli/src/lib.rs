@@ -1256,6 +1256,28 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
     }
 
+    fn parent_dirs(pat: &str) -> Vec<String> {
+        let anchored = pat.starts_with('/');
+        let mut base = String::new();
+        let mut dirs = Vec::new();
+        for part in pat.trim_start_matches('/').split('/') {
+            if part.contains(['*', '?', '[', ']']) {
+                break;
+            }
+            if !base.is_empty() {
+                base.push('/');
+            }
+            base.push_str(part);
+            let dir = if anchored {
+                format!("/{}", base)
+            } else {
+                base.clone()
+            };
+            dirs.push(dir.clone());
+        }
+        dirs
+    }
+
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
     let mut seq = 0;
     let mut add_rules = |idx: usize, rs: Vec<Rule>| {
@@ -1297,6 +1319,19 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                 parse_filters(&format!("+ {}", pat), opts.from0)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
             );
+            for dir in parent_dirs(pat) {
+                let dir_pat = format!("{}/***", dir.trim_end_matches('/'));
+                let rule = if opts.from0 {
+                    format!("+{}", dir_pat)
+                } else {
+                    format!("+ {}", dir_pat)
+                };
+                add_rules(
+                    idx + 1,
+                    parse_filters(&rule, opts.from0)
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                );
+            }
         }
     }
     if let Some(values) = matches.get_many::<String>("exclude") {
@@ -1316,10 +1351,39 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("include_from")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
-            let mut vset = HashSet::new();
-            let rs = filters::parse_rule_list_file(file, opts.from0, '+', &mut vset, 0)
-                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
-            add_rules(idx + 1, rs);
+            for pat in load_patterns(file, opts.from0)? {
+                let trimmed = pat.trim();
+                let (line, parents) = if trimmed.starts_with(['+', '-', ':']) {
+                    let sign = trimmed.chars().next().unwrap();
+                    let rest = trimmed[1..].trim_start();
+                    let mut parents = Vec::new();
+                    if sign == '+' {
+                        parents = parent_dirs(rest);
+                    }
+                    (trimmed.to_string(), parents)
+                } else {
+                    let parents = parent_dirs(trimmed);
+                    (format!("+ {}", trimmed), parents)
+                };
+                add_rules(
+                    idx + 1,
+                    parse_filters(&line, opts.from0)
+                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                );
+                for dir in parents {
+                    let dir_pat = format!("{}/***", dir.trim_end_matches('/'));
+                    let rule = if opts.from0 {
+                        format!("+{}", dir_pat)
+                    } else {
+                        format!("+ {}", dir_pat)
+                    };
+                    add_rules(
+                        idx + 1,
+                        parse_filters(&rule, opts.from0)
+                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    );
+                }
+            }
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("exclude_from") {
