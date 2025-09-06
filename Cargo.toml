@@ -26,6 +26,7 @@ version = "0.1.0"
 description = "Pure-Rust reimplementation of rsync (protocol v32)"
 license = "Apache-2.0"
 edition = "2024"
+rust-version = "1.87"
 authors = ["Ofer Chen <skewers.irises.3b@icloud.com>"]
 repository = "https://github.com/oferchen/oc-rsync"
 readme = "README.md"
