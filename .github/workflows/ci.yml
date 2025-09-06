@@ -78,19 +78,27 @@ jobs:
         run: scripts/preflight.sh
 
       - name: Install cargo-llvm-cov
+        id: install_llvm_cov
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov
 
       - name: Install cargo-nextest
+        id: install_nextest
         run: cargo install cargo-nextest --locked
 
       - name: Run tests
+        if: steps.install_nextest.outcome == 'success'
         run: cargo nextest run --workspace --no-fail-fast
+      - name: Run tests (all features)
+        if: steps.install_nextest.outcome == 'success'
+        run: cargo nextest run --workspace --no-fail-fast --all-features
       - name: Test with coverage (95% lines & functions)
-        run: cargo llvm-cov nextest --workspace --fail-under-lines 95 --fail-under-functions 95 --html -- --no-fail-fast
+        if: steps.install_nextest.outcome == 'success' && steps.install_llvm_cov.outcome == 'success'
+        run: cargo llvm-cov nextest --workspace --all-features --fail-under-lines 95 --fail-under-functions 95 --html -- --no-fail-fast
 
       - name: Upload coverage report
+        if: steps.install_nextest.outcome == 'success' && steps.install_llvm_cov.outcome == 'success'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
