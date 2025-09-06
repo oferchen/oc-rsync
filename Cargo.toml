@@ -101,9 +101,11 @@ path = "tools/strip_rs_comments.rs"
 # without requiring feature flags. Individual crates handle runtime
 # detection of platform support.
 [features]
-default = ["xattr", "acl"]
+default = ["xattr", "acl", "zlib", "zstd"]
 xattr = ["engine/xattr"]
 acl = ["engine/acl", "meta/acl", "posix-acl"]
+zlib = ["compress/zlib"]
+zstd = ["compress/zstd"]
 # Enables CLI-only tools
 cli = []
 # Enables AVX-512 implementations requiring a nightly toolchain
