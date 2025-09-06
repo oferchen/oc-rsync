@@ -111,24 +111,26 @@ nightly = ["checksums/nightly", "compress/nightly"]
 
 [package.metadata.deb]
 maintainer = "oc-rsync maintainers <maintainers@rsync.rs>"
-depends = "$auto, systemd, libzstd1, zlib1g, libacl1"
+license-file = ["LICENSE-MIT", "0"]
+section = "net"
+priority = "optional"
+depends = "zlib1g, libzstd1"
 assets = [
     ["target/release/oc-rsync", "/usr/bin/oc-rsync", "755"],
-    ["target/release/oc-rsyncd", "/usr/bin/oc-rsyncd", "755"],
     ["packaging/systemd/oc-rsyncd.service", "/lib/systemd/system/oc-rsyncd.service", "644"],
     ["packaging/examples/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf", "644"],
     ["packaging/systemd/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf", "644"],
+    ["man/oc-rsync.1", "/usr/share/man/man1/oc-rsync.1", "644"],
+    ["man/oc-rsyncd.8", "/usr/share/man/man8/oc-rsyncd.8", "644"],
+    ["man/oc-rsyncd.conf.5", "/usr/share/man/man5/oc-rsyncd.conf.5", "644"],
 ]
 
 [package.metadata.rpm]
 maintainer = "oc-rsync maintainers <maintainers@rsync.rs>"
-requires = ["systemd", "libzstd1", "zlib1g", "libacl1"]
+requires = ["zlib1g", "libzstd1"]
 
 [package.metadata.rpm.targets.oc-rsync]
 path = "/usr/bin/oc-rsync"
-
-[package.metadata.rpm.targets.oc-rsyncd]
-path = "/usr/bin/oc-rsyncd"
 
 [package.metadata.rpm.files."oc-rsyncd.conf"]
 path = "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf"
@@ -140,4 +142,16 @@ mode = "644"
 
 [package.metadata.rpm.files."oc-rsyncd.service"]
 path = "/usr/lib/systemd/system/oc-rsyncd.service"
+mode = "644"
+
+[package.metadata.rpm.files."oc-rsync.1"]
+path = "/usr/share/man/man1/oc-rsync.1"
+mode = "644"
+
+[package.metadata.rpm.files."oc-rsyncd.8"]
+path = "/usr/share/man/man8/oc-rsyncd.8"
+mode = "644"
+
+[package.metadata.rpm.files."oc-rsyncd.conf.5"]
+path = "/usr/share/man/man5/oc-rsyncd.conf.5"
 mode = "644"

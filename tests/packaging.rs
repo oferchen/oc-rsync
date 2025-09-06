@@ -38,7 +38,6 @@ fn packaging_includes_service_unit() {
 }
 
 #[test]
-#[ignore]
 fn service_unit_matches_spec() {
     let unit = std::fs::read_to_string("packaging/systemd/oc-rsyncd.service")
         .expect("failed to read service unit");
