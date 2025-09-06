@@ -71,6 +71,34 @@ impl Tmpfs {
     }
 }
 
+fn rsync_supports_filter_file() -> bool {
+    StdCommand::new("rsync")
+        .arg("--version")
+        .output()
+        .ok()
+        .and_then(|out| {
+            if !out.status.success() {
+                return None;
+            }
+            std::str::from_utf8(&out.stdout).ok().and_then(|s| {
+                s.lines().next().and_then(|line| {
+                    let mut parts = line.split_whitespace();
+                    while let Some(part) = parts.next() {
+                        if part == "version" {
+                            let ver = parts.next()?;
+                            let mut nums = ver.split('.').filter_map(|n| n.parse::<u32>().ok());
+                            let major = nums.next().unwrap_or(0);
+                            let minor = nums.next().unwrap_or(0);
+                            return Some(major > 3 || (major == 3 && minor >= 4));
+                        }
+                    }
+                    None
+                })
+            })
+        })
+        .unwrap_or(false)
+}
+
 #[test]
 fn files_from_from0_matches_rsync() {
     use std::process::Command as StdCommand;
@@ -399,6 +427,11 @@ fn filter_merge_from0_matches_filter_file() {
 #[test]
 fn filter_file_from0_stdin_matches_rsync() {
     use std::process::Command as StdCommand;
+
+    if !rsync_supports_filter_file() {
+        eprintln!("skipping filter_file_from0_stdin_matches_rsync: rsync lacks --filter-file",);
+        return;
+    }
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
