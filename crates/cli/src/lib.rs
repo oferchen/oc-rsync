@@ -1,4 +1,5 @@
 // crates/cli/src/lib.rs
+#![allow(clippy::collapsible_if)]
 use std::collections::HashSet;
 use std::env;
 use std::ffi::OsStr;
@@ -1440,8 +1441,8 @@ fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
 mod tests {
     use super::*;
     use crate::utils::{parse_bool, parse_remote_spec, RemoteSpec};
-    use ::daemon::authenticate;
     use clap::Parser;
+    use daemon::authenticate;
     use engine::SyncOptions;
     use std::ffi::OsStr;
     use std::path::PathBuf;
