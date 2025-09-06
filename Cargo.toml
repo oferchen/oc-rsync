@@ -24,7 +24,7 @@ supported_protocols = [32, 31, 30]
 name = "oc-rsync"
 version = "0.1.0"
 description = "Pure-Rust reimplementation of rsync (protocol v32)"
-license = "Apache-2.0 OR MIT"
+license = "Apache-2.0"
 edition = "2024"
 categories = ["command-line-utilities", "filesystem"]
 keywords = ["rsync", "sync", "filesystem"]
@@ -113,7 +113,7 @@ nightly = ["checksums/nightly", "compress/nightly"]
 
 [package.metadata.deb]
 maintainer = "Project Maintainers <maintainers@oc-rsync.project>"
-license-file = ["LICENSE-MIT", "LICENSE-APACHE"]
+license-file = ["LICENSE-APACHE"]
 section = "net"
 priority = "optional"
 depends = "zlib1g, libzstd1"
