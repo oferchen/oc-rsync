@@ -26,6 +26,7 @@ fn extract_options(help: &str) -> String {
 }
 
 #[test]
+#[serial]
 fn dump_help_body_lists_unique_options() {
     let output = dump_help_body(&cli_command());
     let mut seen = HashSet::new();
