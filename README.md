@@ -52,6 +52,12 @@ sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
 Run `scripts/preflight.sh` to verify these dependencies before building. Then
 install from crates.io or build from a local checkout:
 
+`libacl` is detected with `pkg-config` (package name `libacl`). If that probe
+fails, the build script scans common library directories along with the
+`LD_LIBRARY_PATH`/`LIBRARY_PATH` variables. Override the search logic with
+`LIBACL_PATH` when cross-compiling or when `libacl` lives in a non-standard
+location.
+
 The build script embeds the current year into the binary for copyright
 messages. If the `CURRENT_YEAR` environment variable is not set, the build
 defaults to the system year. Set this variable when you need reproducible
