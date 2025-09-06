@@ -9,12 +9,19 @@ when available. Do not exceed functionality of upstream at <https://rsync.samba.
 
 ## Interop matrix scenarios
 
-The interoperability matrix replays pre-generated fixtures and does not invoke
-the system `rsync` during tests. The following scenarios are currently
-captured:
+The interoperability matrix builds upstream `rsync 3.4.1` locally and exercises
+`oc-rsync` against it using [run_matrix.sh](../tests/interop/run_matrix.sh). The
+following scenarios are executed:
 
-  - `base`: baseline transfer using [run_matrix.sh](../tests/interop/run_matrix.sh)
-  - `delete`: `--delete` removes extraneous files
+  - `base`
+  - `delete`
+  - `compress_zlib`
+  - `compress_zstd`
+  - `filters`
+  - `metadata`
+  - `partial`
+  - `resume`
+  - `vanished`
 
 ## Parser Parity
 | Feature | Status | Tests | Source |
