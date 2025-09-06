@@ -9,15 +9,21 @@ fn bench_compress(c: &mut Criterion) {
     #[cfg(feature = "zstd")]
     {
         let zstd = Zstd::default();
-        let compressed = zstd.compress(&data).unwrap();
+        let mut compressed = Vec::new();
+        let mut src = data.as_slice();
+        zstd.compress(&mut src, &mut compressed).unwrap();
         c.bench_function("zstd_compress_1mb", |b| {
             b.iter(|| {
-                zstd.compress(&data).unwrap();
+                let mut out = Vec::new();
+                let mut cursor = data.as_slice();
+                zstd.compress(&mut cursor, &mut out).unwrap();
             });
         });
         c.bench_function("zstd_decompress_1mb", |b| {
             b.iter(|| {
-                zstd.decompress(&compressed).unwrap();
+                let mut out = Vec::new();
+                let mut cursor = compressed.as_slice();
+                zstd.decompress(&mut cursor, &mut out).unwrap();
             });
         });
     }

@@ -22,8 +22,14 @@ const DATA: &[u8] = b"The quick brown fox jumps over the lazy dog";
 #[test]
 fn zlib_roundtrip() {
     let codec = Zlib::default();
-    let compressed = codec.compress(DATA).expect("compress");
-    let decompressed = codec.decompress(&compressed).expect("decompress");
+    let mut compressed = Vec::new();
+    let mut src = DATA;
+    codec.compress(&mut src, &mut compressed).expect("compress");
+    let mut decompressed = Vec::new();
+    let mut c_slice = compressed.as_slice();
+    codec
+        .decompress(&mut c_slice, &mut decompressed)
+        .expect("decompress");
     assert_eq!(DATA, decompressed.as_slice());
 }
 
@@ -31,8 +37,14 @@ fn zlib_roundtrip() {
 #[test]
 fn zlibx_roundtrip() {
     let codec = ZlibX::default();
-    let compressed = codec.compress(DATA).expect("compress");
-    let decompressed = codec.decompress(&compressed).expect("decompress");
+    let mut compressed = Vec::new();
+    let mut src = DATA;
+    codec.compress(&mut src, &mut compressed).expect("compress");
+    let mut decompressed = Vec::new();
+    let mut c_slice = compressed.as_slice();
+    codec
+        .decompress(&mut c_slice, &mut decompressed)
+        .expect("decompress");
     assert_eq!(DATA, decompressed.as_slice());
 }
 
@@ -40,8 +52,14 @@ fn zlibx_roundtrip() {
 #[test]
 fn zstd_roundtrip() {
     let codec = Zstd::default();
-    let compressed = codec.compress(DATA).expect("compress");
-    let decompressed = codec.decompress(&compressed).expect("decompress");
+    let mut compressed = Vec::new();
+    let mut src = DATA;
+    codec.compress(&mut src, &mut compressed).expect("compress");
+    let mut decompressed = Vec::new();
+    let mut c_slice = compressed.as_slice();
+    codec
+        .decompress(&mut c_slice, &mut decompressed)
+        .expect("decompress");
     assert_eq!(DATA, decompressed.as_slice());
 }
 

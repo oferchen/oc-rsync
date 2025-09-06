@@ -1371,11 +1371,21 @@ impl Sender {
                     *d = match codec {
                         Codec::Zlib | Codec::Zlibx => {
                             let lvl = self.opts.compress_level.unwrap_or(6);
-                            Zlib::new(lvl).compress(d).map_err(EngineError::from)?
+                            let mut out = Vec::new();
+                            let mut cursor = d.as_slice();
+                            Zlib::new(lvl)
+                                .compress(&mut cursor, &mut out)
+                                .map_err(EngineError::from)?;
+                            out
                         }
                         Codec::Zstd => {
                             let lvl = self.opts.compress_level.unwrap_or(0);
-                            Zstd::new(lvl).compress(d).map_err(EngineError::from)?
+                            let mut out = Vec::new();
+                            let mut cursor = d.as_slice();
+                            Zstd::new(lvl)
+                                .compress(&mut cursor, &mut out)
+                                .map_err(EngineError::from)?;
+                            out
                         }
                     };
                 }
@@ -1666,9 +1676,21 @@ impl Receiver {
                 if let Op::Data(ref mut d) = op {
                     *d = match codec {
                         Codec::Zlib | Codec::Zlibx => {
-                            ZlibX::default().decompress(d).map_err(EngineError::from)?
+                            let mut out = Vec::new();
+                            let mut cursor = d.as_slice();
+                            ZlibX::default()
+                                .decompress(&mut cursor, &mut out)
+                                .map_err(EngineError::from)?;
+                            out
                         }
-                        Codec::Zstd => Zstd::default().decompress(d).map_err(EngineError::from)?,
+                        Codec::Zstd => {
+                            let mut out = Vec::new();
+                            let mut cursor = d.as_slice();
+                            Zstd::default()
+                                .decompress(&mut cursor, &mut out)
+                                .map_err(EngineError::from)?;
+                            out
+                        }
                     };
                 }
             }
