@@ -1491,7 +1491,7 @@ pub fn parse_with_options(
         if has_anchor && !pattern.starts_with('/') {
             pattern = format!("/{}", pattern);
         }
-        let anchored = pattern.starts_with('/');
+        let anchored = pattern.starts_with('/') || pattern.contains('/');
         let dir_all = pattern.ends_with("/***");
         let dir_only = !dir_all && pattern.ends_with('/');
         let mut base = pattern.trim_start_matches('/').to_string();
@@ -1500,11 +1500,12 @@ pub fn parse_with_options(
         } else if dir_only {
             base = base.trim_end_matches('/').to_string();
         }
-        let bases: Vec<String> = if !anchored && !base.starts_with("**/") && base != "**" {
-            vec![base.clone(), format!("**/{}", base)]
-        } else {
-            vec![base]
-        };
+        let bases: Vec<String> =
+            if !anchored && !base.starts_with("**/") && base != "**" && !base.contains('/') {
+                vec![base.clone(), format!("**/{}", base)]
+            } else {
+                vec![base]
+            };
         let mut pats: Vec<(String, bool)> = Vec::new();
         for b in bases {
             if dir_all {
@@ -1592,7 +1593,8 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
         } else if pat.ends_with('/') {
             base = base.trim_end_matches('/').to_string();
         }
-        let bases: Vec<String> = if !base.starts_with("**/") && base != "**" {
+        let bases: Vec<String> = if !base.starts_with("**/") && base != "**" && !base.contains('/')
+        {
             vec![base.clone(), format!("**/{}", base)]
         } else {
             vec![base]
