@@ -46,3 +46,27 @@ fn brace_expansion_range() {
     assert!(m.is_included("file3.txt").unwrap());
     assert!(!m.is_included("file4.txt").unwrap());
 }
+
+#[test]
+fn brace_expansion_with_step() {
+    let m = p("+ file{1..5..2}.txt\n- *\n");
+    assert!(m.is_included("file1.txt").unwrap());
+    assert!(m.is_included("file3.txt").unwrap());
+    assert!(m.is_included("file5.txt").unwrap());
+    assert!(!m.is_included("file2.txt").unwrap());
+}
+
+#[test]
+fn character_class_matching() {
+    let m = p("+ file[[:digit:]].txt\n- *\n");
+    assert!(m.is_included("file0.txt").unwrap());
+    assert!(m.is_included("file9.txt").unwrap());
+    assert!(!m.is_included("filea.txt").unwrap());
+}
+
+#[test]
+fn negated_character_class_matching() {
+    let m = p("+ file[![:digit:]].txt\n- *\n");
+    assert!(m.is_included("filea.txt").unwrap());
+    assert!(!m.is_included("file1.txt").unwrap());
+}
