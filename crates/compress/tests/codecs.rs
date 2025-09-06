@@ -86,7 +86,7 @@ fn encode_decode_roundtrip_and_error() {
     {
         codecs.push(Codec::Zlib);
         bytes.push(1);
-        codecs.push(Codec::Zlibx);
+        codecs.push(Codec::ZlibX);
         bytes.push(2);
     }
     #[cfg(feature = "zstd")]
@@ -132,7 +132,7 @@ fn available_codecs_matches_features() {
     expected.push(Codec::Zstd);
     #[cfg(feature = "zlib")]
     {
-        expected.push(Codec::Zlibx);
+        expected.push(Codec::ZlibX);
         expected.push(Codec::Zlib);
     }
     assert_eq!(available_codecs(), expected);
