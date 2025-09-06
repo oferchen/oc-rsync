@@ -46,6 +46,7 @@ const FLAGS: &[&str] = &[
 ];
 
 #[test]
+#[ignore = "requires rsync"]
 fn outstanding_flags_help_matches_upstream() {
     for flag in FLAGS {
         let ours = Command::cargo_bin("oc-rsync")

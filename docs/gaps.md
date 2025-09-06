@@ -9,9 +9,9 @@ when available. Do not exceed functionality of upstream at <https://rsync.samba.
 
 ## Interop matrix scenarios
 
-The interoperability matrix replays pre-generated fixtures and does not invoke
-the system `rsync` during tests. The following scenarios are currently
-captured:
+The interoperability matrix builds upstream `rsync 3.4.1` via
+[tests/interop/build_upstream.sh](../tests/interop/build_upstream.sh) and
+exercises real transfers. The following scenarios are currently captured:
 
   - `base`: baseline transfer using [run_matrix.sh](../tests/interop/run_matrix.sh)
   - `delete`: `--delete` removes extraneous files
@@ -96,9 +96,6 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | SSH stdio transport | ✅ | [crates/transport/tests/ssh_stdio.rs](../crates/transport/tests/ssh_stdio.rs) | [crates/transport/src/ssh.rs](../crates/transport/src/ssh.rs) |
 | TCP transport with bandwidth limiting | ✅ | [crates/transport/tests/bwlimit.rs](../crates/transport/tests/bwlimit.rs) | [crates/transport/src/rate.rs](../crates/transport/src/rate.rs) |
 | Extended socket options | ✅ | [crates/transport/tests/sockopts.rs](../crates/transport/tests/sockopts.rs) | [crates/transport/src/tcp.rs](../crates/transport/src/tcp.rs) |
-
-### Outstanding gaps
-- Transport edge-case parity: error-handling in SSH and daemon transports diverges from classic `rsync`. **Owner**: TransportAgent maintainers. **Remediation**: broaden interoperability coverage of failure scenarios to align with upstream.
 
 ## Engine
 | Feature | Status | Tests | Source |

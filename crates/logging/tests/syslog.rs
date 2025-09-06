@@ -26,7 +26,7 @@ fn syslog_emits_message() {
         .colored(true)
         .timestamps(false)
         .build();
-    init(cfg);
+    init(cfg).unwrap();
     info!(target: "test", "hello");
     let mut buf = [0u8; 256];
     let (n, _) = server.recv_from(&mut buf).unwrap();

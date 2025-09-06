@@ -6,6 +6,7 @@ use std::process::Command as StdCommand;
 use tempfile::tempdir;
 
 #[test]
+#[ignore = "requires rsync"]
 fn complex_filter_cases_match_rsync() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");

@@ -199,7 +199,11 @@ impl SyncConfigBuilder {
     }
 }
 
-pub fn synchronize_with_config<P: AsRef<Path>>(src: P, dst: P, cfg: &SyncConfig) -> Result<()> {
+pub fn synchronize_with_config<S: AsRef<Path>, D: AsRef<Path>>(
+    src: S,
+    dst: D,
+    cfg: &SyncConfig,
+) -> Result<()> {
     let src = src.as_ref();
     let dst = dst.as_ref();
     let sub_cfg = SubscriberConfig::builder()
@@ -214,7 +218,7 @@ pub fn synchronize_with_config<P: AsRef<Path>>(src: P, dst: P, cfg: &SyncConfig)
         .colored(cfg.colored)
         .timestamps(cfg.timestamps)
         .build();
-    let sub = subscriber(sub_cfg);
+    let sub = subscriber(sub_cfg)?;
     with_default(sub, || -> Result<()> {
         let opts = SyncOptions {
             perms: cfg.perms,
@@ -238,6 +242,6 @@ pub fn synchronize_with_config<P: AsRef<Path>>(src: P, dst: P, cfg: &SyncConfig)
     })
 }
 
-pub fn synchronize<P: AsRef<Path>>(src: P, dst: P) -> Result<()> {
+pub fn synchronize<S: AsRef<Path>, D: AsRef<Path>>(src: S, dst: D) -> Result<()> {
     synchronize_with_config(src, dst, &SyncConfig::default())
 }

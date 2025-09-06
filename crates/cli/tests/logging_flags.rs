@@ -22,7 +22,7 @@ fn make_sub(
         .colored(true)
         .timestamps(false)
         .build();
-    logging::subscriber(cfg)
+    logging::subscriber(cfg).unwrap()
 }
 
 #[test]
