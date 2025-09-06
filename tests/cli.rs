@@ -4495,3 +4495,55 @@ fn complex_glob_matches() {
     assert!(!dst.join("dirB/sub/other.txt").exists());
     assert!(!dst.join("otherdir/keep4.txt").exists());
 }
+
+#[test]
+fn single_star_does_not_cross_directories() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("a/b")).unwrap();
+    fs::write(src.join("a/file.txt"), b"1").unwrap();
+    fs::write(src.join("a/b/file.txt"), b"2").unwrap();
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "-r",
+            "--include",
+            "*/file.txt",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert!(dst.join("a/file.txt").exists());
+    assert!(!dst.join("a/b/file.txt").exists());
+}
+
+#[test]
+fn char_class_respects_directory_boundaries() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("1/2")).unwrap();
+    fs::write(src.join("1/keep.txt"), b"k").unwrap();
+    fs::write(src.join("1/2/keep.txt"), b"x").unwrap();
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "-r",
+            "--include",
+            "[0-9]/*",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert!(dst.join("1/keep.txt").exists());
+    assert!(!dst.join("1/2/keep.txt").exists());
+}
