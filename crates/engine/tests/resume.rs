@@ -28,8 +28,10 @@ fn resume_from_partial_file() {
     partial_data.extend_from_slice(&vec![0u8; 1024]);
     fs::write(dst.join("file.bin.partial"), &partial_data).unwrap();
 
-    let mut opts = SyncOptions::default();
-    opts.partial = true;
+    let opts = SyncOptions {
+        partial: true,
+        ..Default::default()
+    };
     sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts).unwrap();
 
     let out = fs::read(dst.join("file.bin")).unwrap();
@@ -49,8 +51,8 @@ fn resume_large_file_minimal_network_io() {
     let total_len = block_size * total_blocks;
     let partial_len = total_len / 2;
     let mut data = Vec::with_capacity(total_len);
-    data.extend(std::iter::repeat(1u8).take(partial_len));
-    data.extend(std::iter::repeat(2u8).take(total_len - partial_len));
+    data.extend(vec![1u8; partial_len]);
+    data.extend(vec![2u8; total_len - partial_len]);
     fs::write(src.join("big.bin"), &data).unwrap();
 
     fs::write(dst.join("big.bin.partial"), &data[..partial_len]).unwrap();
@@ -77,9 +79,11 @@ fn resume_large_file_minimal_network_io() {
     }
     assert_eq!(sent, data.len() - partial_len);
 
-    let mut opts = SyncOptions::default();
-    opts.partial = true;
-    opts.block_size = block_size;
+    let opts = SyncOptions {
+        partial: true,
+        block_size,
+        ..Default::default()
+    };
     sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts).unwrap();
     assert_eq!(fs::read(dst.join("big.bin")).unwrap(), data);
 }

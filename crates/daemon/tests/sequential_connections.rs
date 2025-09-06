@@ -17,12 +17,14 @@ fn handle_sequential_chrooted_connections() {
         return;
     }
     let dir = tempdir().unwrap();
-    let mut module = Module::default();
-    module.name = "data".to_string();
-    module.path = dir.path().to_path_buf();
-    module.uid = Some(1);
-    module.gid = Some(1);
-    module.use_chroot = true;
+    let module = Module {
+        name: "data".to_string(),
+        path: dir.path().to_path_buf(),
+        uid: Some(1),
+        gid: Some(1),
+        use_chroot: true,
+        ..Default::default()
+    };
     let mut modules = HashMap::new();
     modules.insert(module.name.clone(), module);
     let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
