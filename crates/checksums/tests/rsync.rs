@@ -1,5 +1,5 @@
 // crates/checksums/tests/rsync.rs
-use checksums::{strong_digest, StrongHash};
+use checksums::{StrongHash, strong_digest};
 use std::{fs, path::Path};
 
 fn golden(alg: &str, endian: &str) -> String {

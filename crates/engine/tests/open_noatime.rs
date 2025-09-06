@@ -5,8 +5,8 @@ use std::fs;
 use std::time::SystemTime;
 
 use compress::available_codecs;
-use engine::{sync, SyncOptions};
-use filetime::{set_file_times, FileTime};
+use engine::{SyncOptions, sync};
+use filetime::{FileTime, set_file_times};
 use filters::Matcher;
 use tempfile::tempdir;
 

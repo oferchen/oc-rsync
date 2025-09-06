@@ -4,7 +4,7 @@ use std::io;
 use std::thread::sleep;
 use std::time::Duration;
 
-use transport::{ssh::SshStdioTransport, Transport};
+use transport::{Transport, ssh::SshStdioTransport};
 
 #[test]
 fn no_zombie_after_drop() {

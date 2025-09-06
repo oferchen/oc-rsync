@@ -1,6 +1,6 @@
 // crates/engine/benches/rolling.rs
 use checksums::rolling_checksum_seeded;
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 
 fn bench_rolling(c: &mut Criterion) {
     let data = vec![0u8; 1024 * 1024];

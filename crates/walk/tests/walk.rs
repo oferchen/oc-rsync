@@ -31,18 +31,26 @@ fn walk_includes_files_dirs_and_symlinks() {
         }
     }
     assert!(entries.iter().any(|(p, t)| p == root && t.is_dir()));
-    assert!(entries
-        .iter()
-        .any(|(p, t)| p.as_path() == root.join("dir").as_path() && t.is_dir()));
-    assert!(entries
-        .iter()
-        .any(|(p, t)| p.as_path() == root.join("dir/large.txt").as_path() && t.is_file()));
-    assert!(entries
-        .iter()
-        .any(|(p, t)| p == link_path.as_path() && t.is_symlink()));
-    assert!(entries
-        .iter()
-        .any(|(p, t)| p.as_path() == root.join("small.txt").as_path() && t.is_file()));
+    assert!(
+        entries
+            .iter()
+            .any(|(p, t)| p.as_path() == root.join("dir").as_path() && t.is_dir())
+    );
+    assert!(
+        entries
+            .iter()
+            .any(|(p, t)| p.as_path() == root.join("dir/large.txt").as_path() && t.is_file())
+    );
+    assert!(
+        entries
+            .iter()
+            .any(|(p, t)| p == link_path.as_path() && t.is_symlink())
+    );
+    assert!(
+        entries
+            .iter()
+            .any(|(p, t)| p.as_path() == root.join("small.txt").as_path() && t.is_file())
+    );
 }
 
 #[test]

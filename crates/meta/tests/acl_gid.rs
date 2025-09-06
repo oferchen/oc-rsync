@@ -1,8 +1,8 @@
 // crates/meta/tests/acl_gid.rs
 #![cfg(feature = "acl")]
 use meta::{Metadata, Options};
-use nix::unistd::{chown, Gid};
-use posix_acl::{PosixACL, Qualifier, ACL_READ};
+use nix::unistd::{Gid, chown};
+use posix_acl::{ACL_READ, PosixACL, Qualifier};
 use std::fs;
 use tempfile::tempdir;
 

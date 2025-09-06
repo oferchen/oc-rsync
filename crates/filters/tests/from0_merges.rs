@@ -1,5 +1,5 @@
 // crates/filters/tests/from0_merges.rs
-use filters::{parse, parse_list, parse_with_options, Matcher};
+use filters::{Matcher, parse, parse_list, parse_with_options};
 use proptest::prelude::*;
 use std::collections::HashSet;
 use std::fs;

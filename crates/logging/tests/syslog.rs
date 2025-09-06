@@ -1,7 +1,7 @@
 // crates/logging/tests/syslog.rs
 #![cfg(all(unix, feature = "syslog"))]
 
-use logging::{init, DebugFlag, InfoFlag, LogFormat, SubscriberConfig};
+use logging::{DebugFlag, InfoFlag, LogFormat, SubscriberConfig, init};
 use std::os::unix::net::UnixDatagram;
 use tempfile::tempdir;
 use tracing::info;

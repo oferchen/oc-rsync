@@ -1,5 +1,5 @@
 // crates/filters/tests/escaped_patterns.rs
-use filters::{parse, Matcher};
+use filters::{Matcher, parse};
 use std::collections::HashSet;
 
 fn p(s: &str) -> Matcher {

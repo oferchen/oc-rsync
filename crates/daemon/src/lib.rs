@@ -6,19 +6,19 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
-use std::sync::{atomic::AtomicUsize, atomic::Ordering, Arc};
+use std::sync::{Arc, atomic::AtomicUsize, atomic::Ordering};
 use std::time::{Duration, Instant};
 
 #[cfg(unix)]
 use nix::sys::wait::waitpid;
 #[cfg(unix)]
-use nix::unistd::{fork, setsid, ForkResult};
+use nix::unistd::{ForkResult, fork, setsid};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
 use ipnet::IpNet;
 use logging::{DebugFlag, InfoFlag, LogFormat, StderrMode, SubscriberConfig};
-use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
+use protocol::{SUPPORTED_PROTOCOLS, negotiate_version};
 #[cfg(unix)]
 use sd_notify::{self, NotifyState};
 use transport::{AddressFamily, RateLimitedTransport, TcpTransport, TimeoutTransport, Transport};
@@ -44,7 +44,7 @@ pub struct PrivilegeContext {
 #[cfg(unix)]
 impl Drop for PrivilegeContext {
     fn drop(&mut self) {
-        use nix::unistd::{chroot, fchdir, setegid, seteuid, Gid, Uid};
+        use nix::unistd::{Gid, Uid, chroot, fchdir, setegid, seteuid};
         let _ = setegid(Gid::from_raw(self.gid));
         let _ = seteuid(Uid::from_raw(self.uid));
         if self.use_chroot {
@@ -936,7 +936,7 @@ pub fn drop_privileges(uid: u32, gid: u32) -> io::Result<()> {
         target_os = "haiku",
     )))]
     use nix::unistd::setgroups;
-    use nix::unistd::{getegid, geteuid, setegid, seteuid, Gid, Uid};
+    use nix::unistd::{Gid, Uid, getegid, geteuid, setegid, seteuid};
     let cur_uid = geteuid().as_raw();
     let cur_gid = getegid().as_raw();
     if (uid != cur_uid || gid != cur_gid) && cur_uid != 0 {
@@ -1489,7 +1489,7 @@ mod tests {
     use transport::LocalPipeTransport;
 
     #[cfg(unix)]
-    use std::os::unix::fs::{symlink, PermissionsExt};
+    use std::os::unix::fs::{PermissionsExt, symlink};
 
     struct ChunkReader {
         data: Vec<u8>,

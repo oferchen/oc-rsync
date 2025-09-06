@@ -4,7 +4,7 @@ use std::fs::{self, Permissions};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
 use meta::{Metadata, Options};
-use nix::unistd::{setgid, setuid, Gid, Uid};
+use nix::unistd::{Gid, Uid, setgid, setuid};
 use tempfile::tempdir;
 use users::get_user_by_name;
 

@@ -2,7 +2,7 @@
 #[cfg(feature = "zstd")]
 use compress::Zstd;
 use compress::{Compressor, Decompressor};
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 
 fn bench_compress(c: &mut Criterion) {
     let data = vec![0u8; 1024 * 1024];

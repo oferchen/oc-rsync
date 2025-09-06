@@ -26,24 +26,24 @@ use crate::daemon::run_daemon;
 pub use daemon::spawn_daemon_session;
 use options::{ClientOpts, ProbeOpts};
 use utils::{
-    init_logging, parse_filters, parse_name_map, parse_remote_spec, parse_remote_specs,
-    parse_rsync_path, RemoteSpec,
+    RemoteSpec, init_logging, parse_filters, parse_name_map, parse_remote_spec, parse_remote_specs,
+    parse_rsync_path,
 };
 pub use utils::{parse_iconv, parse_logging_flags, parse_rsh, print_version_if_requested};
 
-use compress::{available_codecs, Codec};
+use compress::{Codec, available_codecs};
 pub use engine::EngineError;
-use engine::{pipe_sessions, sync, DeleteMode, Result, Stats, StrongHash, SyncOptions};
-use filters::{default_cvs_rules, Matcher, Rule};
-pub use formatter::{dump_help_body, render_help, ARG_ORDER};
-use logging::{human_bytes, parse_escapes, InfoFlag};
-use meta::{parse_chmod, parse_chown, IdKind};
+use engine::{DeleteMode, Result, Stats, StrongHash, SyncOptions, pipe_sessions, sync};
+use filters::{Matcher, Rule, default_cvs_rules};
+pub use formatter::{ARG_ORDER, dump_help_body, render_help};
+use logging::{InfoFlag, human_bytes, parse_escapes};
+use meta::{IdKind, parse_chmod, parse_chown};
 use protocol::{
-    negotiate_version, CharsetConv, ExitCode, CAP_ACLS, CAP_CODECS, CAP_XATTRS, LATEST_VERSION,
-    SUPPORTED_PROTOCOLS, V30,
+    CAP_ACLS, CAP_CODECS, CAP_XATTRS, CharsetConv, ExitCode, LATEST_VERSION, SUPPORTED_PROTOCOLS,
+    V30, negotiate_version,
 };
 use transport::{
-    daemon_remote_opts, parse_sockopts, AddressFamily, RateLimitedTransport, SshStdioTransport,
+    AddressFamily, RateLimitedTransport, SshStdioTransport, daemon_remote_opts, parse_sockopts,
 };
 #[cfg(unix)]
 use users::get_user_by_uid;
@@ -389,7 +389,7 @@ fn run_single(
                 Err(e) => {
                     return Err(EngineError::Other(format!(
                         "failed to detect CAP_CHOWN capability: {e}"
-                    )))
+                    )));
                 }
             };
             #[cfg(not(target_os = "linux"))]
@@ -638,11 +638,7 @@ fn run_single(
                 }
                 list.push(codec);
             }
-            if list.is_empty() {
-                None
-            } else {
-                Some(list)
-            }
+            if list.is_empty() { None } else { Some(list) }
         }
         None => None,
     };
@@ -1428,37 +1424,52 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                 }
                 let parts: Vec<&str> = trimmed.split('/').filter(|s| !s.is_empty()).collect();
                 let mut prefix = String::new();
-                for (i, part) in parts.iter().enumerate() {
+                let mut ancestors: Vec<String> = Vec::new();
+                for part in parts.iter() {
                     prefix.push('/');
                     prefix.push_str(part);
-                    let rule = if i < parts.len() - 1 || is_dir {
-                        if opts.from0 {
-                            format!("+{}/", prefix)
-                        } else {
-                            format!("+ {}/", prefix)
-                        }
-                    } else if opts.from0 {
-                        format!("+{}", prefix)
+                    ancestors.push(prefix.clone());
+                }
+                let ancestor_paths = if is_dir {
+                    ancestors.clone()
+                } else {
+                    ancestors[..ancestors.len() - 1].to_vec()
+                };
+                for anc in &ancestor_paths {
+                    let rule = if opts.from0 {
+                        format!("+{}/", anc)
                     } else {
-                        format!("+ {}", prefix)
+                        format!("+ {}/", anc)
                     };
                     add_rules(
                         idx + 1,
                         parse_filters(&rule, opts.from0)
                             .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
                     );
-                    if i == parts.len() - 1 {
-                        let dir_rule = if opts.from0 {
-                            format!("+{}/***", prefix)
-                        } else {
-                            format!("+ {}/***", prefix)
-                        };
-                        add_rules(
-                            idx + 1,
-                            parse_filters(&dir_rule, opts.from0)
-                                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                        );
-                    }
+                    let rule = if opts.from0 {
+                        format!("+{}/***", anc)
+                    } else {
+                        format!("+ {}/***", anc)
+                    };
+                    add_rules(
+                        idx + 1,
+                        parse_filters(&rule, opts.from0)
+                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    );
+                }
+
+                if !is_dir {
+                    let file_rule = ancestors.last().unwrap();
+                    let rule = if opts.from0 {
+                        format!("+{}", file_rule)
+                    } else {
+                        format!("+ {}", file_rule)
+                    };
+                    add_rules(
+                        idx + 1,
+                        parse_filters(&rule, opts.from0)
+                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+                    );
                 }
             }
         }
@@ -1536,9 +1547,9 @@ fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::{parse_bool, parse_remote_spec, RemoteSpec};
-    use clap::Parser;
+    use crate::utils::{RemoteSpec, parse_bool, parse_remote_spec};
     use ::daemon::authenticate;
+    use clap::Parser;
     use engine::SyncOptions;
     use std::ffi::OsStr;
     use std::path::PathBuf;

@@ -1,7 +1,7 @@
 // crates/transport/src/ssh.rs
 
-use nix::fcntl::{fcntl, FcntlArg, OFlag};
-use nix::poll::{poll, PollFd, PollFlags, PollTimeout};
+use nix::fcntl::{FcntlArg, OFlag, fcntl};
+use nix::poll::{PollFd, PollFlags, PollTimeout, poll};
 use std::ffi::OsStr;
 use std::io::{self, BufReader, Read, Write};
 use std::os::fd::{AsRawFd, BorrowedFd, RawFd};
@@ -11,9 +11,9 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use checksums::{strong_digest, StrongHash};
-use compress::{available_codecs, Codec};
-use protocol::{negotiate_version, Frame, FrameHeader, Message, Msg, Tag, CAP_CODECS};
+use checksums::{StrongHash, strong_digest};
+use compress::{Codec, available_codecs};
+use protocol::{CAP_CODECS, Frame, FrameHeader, Message, Msg, Tag, negotiate_version};
 
 use crate::{AddressFamily, LocalPipeTransport, SshTransport, Transport};
 

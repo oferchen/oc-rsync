@@ -1,5 +1,5 @@
 // crates/filters/tests/merge.rs
-use filters::{parse, Matcher};
+use filters::{Matcher, parse};
 use proptest::prelude::*;
 use std::collections::HashSet;
 

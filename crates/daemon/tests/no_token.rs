@@ -1,5 +1,5 @@
 // crates/daemon/tests/no_token.rs
-use daemon::{handle_connection, Handler, Module};
+use daemon::{Handler, Module, handle_connection};
 use protocol::SUPPORTED_PROTOCOLS;
 use std::collections::HashMap;
 use std::io::Cursor;

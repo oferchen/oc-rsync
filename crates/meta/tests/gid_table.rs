@@ -1,5 +1,5 @@
 // crates/meta/tests/gid_table.rs
-use meta::{parse_chown, parse_id_map, GidTable, IdKind};
+use meta::{GidTable, IdKind, parse_chown, parse_id_map};
 
 #[test]
 fn gid_table_deduplicates_and_indexes() {

@@ -1,5 +1,5 @@
 // crates/filters/tests/cvs_rules.rs
-use filters::{default_cvs_rules, parse, Matcher};
+use filters::{Matcher, default_cvs_rules, parse};
 use std::collections::HashSet;
 use std::env;
 use std::fs;

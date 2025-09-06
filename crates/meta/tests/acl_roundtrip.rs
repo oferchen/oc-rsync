@@ -2,7 +2,7 @@
 #![cfg(feature = "acl")]
 
 use meta::{read_acl, write_acl};
-use posix_acl::{PosixACL, Qualifier, ACL_READ};
+use posix_acl::{ACL_READ, PosixACL, Qualifier};
 use std::fs;
 use tempfile::tempdir;
 

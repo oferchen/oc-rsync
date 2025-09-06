@@ -8,14 +8,14 @@ use std::io::{Seek, SeekFrom, Write};
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 
 use compress::available_codecs;
-use engine::{sync, IdMapper, SyncOptions};
-use filetime::{set_file_atime, set_file_mtime, set_file_times, set_symlink_file_times, FileTime};
+use engine::{IdMapper, SyncOptions, sync};
+use filetime::{FileTime, set_file_atime, set_file_mtime, set_file_times, set_symlink_file_times};
 use filters::Matcher;
-use meta::{parse_chmod, parse_chown, parse_id_map, IdKind};
-use nix::sys::stat::{mknod, Mode, SFlag};
-use nix::unistd::{chown, mkfifo, Gid, Uid};
+use meta::{IdKind, parse_chmod, parse_chown, parse_id_map};
+use nix::sys::stat::{Mode, SFlag, mknod};
+use nix::unistd::{Gid, Uid, chown, mkfifo};
 #[cfg(feature = "acl")]
-use posix_acl::{PosixACL, Qualifier, ACL_READ, ACL_WRITE};
+use posix_acl::{ACL_READ, ACL_WRITE, PosixACL, Qualifier};
 use tempfile::tempdir;
 #[cfg(feature = "xattr")]
 use xattr;
@@ -503,7 +503,7 @@ fn symlink_xattrs_roundtrip() {
 #[cfg(feature = "acl")]
 #[test]
 fn acls_roundtrip() {
-    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+    use posix_acl::{ACL_READ, PosixACL, Qualifier};
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
@@ -587,7 +587,7 @@ fn acls_roundtrip() {
 #[cfg(feature = "acl")]
 #[test]
 fn acls_imply_perms() {
-    use posix_acl::{PosixACL, Qualifier, ACL_READ};
+    use posix_acl::{ACL_READ, PosixACL, Qualifier};
     use std::os::unix::fs::PermissionsExt;
 
     let tmp = tempdir().unwrap();

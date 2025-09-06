@@ -2,7 +2,7 @@
 use std::thread::sleep;
 use std::time::Duration;
 
-use protocol::{demux::Demux, mux::Mux, Message};
+use protocol::{Message, demux::Demux, mux::Mux};
 
 #[test]
 fn multiplex_multiple_channels() {

@@ -1,6 +1,6 @@
 // crates/engine/tests/streaming.rs
 use compress::available_codecs;
-use engine::{sync, SyncOptions};
+use engine::{SyncOptions, sync};
 use filters::Matcher;
 use std::fs;
 use tempfile::tempdir;

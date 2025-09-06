@@ -1,5 +1,5 @@
 // crates/meta/src/windows.rs
-use filetime::{set_file_times, FileTime};
+use filetime::{FileTime, set_file_times};
 #[cfg(feature = "acl")]
 use posix_acl::ACLEntry;
 #[cfg(feature = "xattr")]

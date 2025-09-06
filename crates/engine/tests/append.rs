@@ -1,6 +1,6 @@
 // crates/engine/tests/append.rs
 use compress::available_codecs;
-use engine::{sync, EngineError, SyncOptions};
+use engine::{EngineError, SyncOptions, sync};
 use filters::Matcher;
 use std::fs;
 use tempfile::tempdir;

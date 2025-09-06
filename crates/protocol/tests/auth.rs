@@ -1,7 +1,7 @@
 // crates/protocol/tests/auth.rs
-use checksums::{strong_digest, StrongHash};
+use checksums::{StrongHash, strong_digest};
 use compress::{available_codecs, encode_codecs};
-use protocol::{Message, Server, SUPPORTED_CAPS, SUPPORTED_PROTOCOLS};
+use protocol::{Message, SUPPORTED_CAPS, SUPPORTED_PROTOCOLS, Server};
 use std::io::Cursor;
 use std::time::Duration;
 

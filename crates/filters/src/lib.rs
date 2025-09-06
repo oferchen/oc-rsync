@@ -993,11 +993,7 @@ fn decode_line(raw: &str) -> Option<String> {
         last_non_space = out.len();
     }
     out.truncate(last_non_space);
-    if out.is_empty() {
-        None
-    } else {
-        Some(out)
-    }
+    if out.is_empty() { None } else { Some(out) }
 }
 
 pub fn parse_with_options(
@@ -1412,7 +1408,7 @@ pub fn parse_with_options(
                     let sub = match parse_file(&path, from0, visited, depth + 1) {
                         Ok(r) => r,
                         Err(ParseError::Io(_)) => {
-                            return Err(ParseError::InvalidRule(raw_line.to_string()))
+                            return Err(ParseError::InvalidRule(raw_line.to_string()));
                         }
                         Err(e) => return Err(e),
                     };
@@ -1780,7 +1776,7 @@ mod tests {
     #[cfg(unix)]
     use std::os::unix::io::IntoRawFd;
     use std::path::Path;
-    use tempfile::{tempfile, NamedTempFile};
+    use tempfile::{NamedTempFile, tempfile};
 
     #[test]
     fn reads_from_file() {

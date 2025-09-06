@@ -1,5 +1,5 @@
 // crates/filters/tests/rule_stats.rs
-use filters::{parse_file, Matcher};
+use filters::{Matcher, parse_file};
 use std::collections::HashSet;
 use tempfile::NamedTempFile;
 

@@ -3,7 +3,7 @@ use std::fs;
 use std::sync::Arc;
 
 use meta::{Metadata, Options};
-use nix::unistd::{chown, Gid, Uid};
+use nix::unistd::{Gid, Uid, chown};
 use tempfile::tempdir;
 
 #[test]

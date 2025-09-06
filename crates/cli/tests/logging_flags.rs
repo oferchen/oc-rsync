@@ -2,8 +2,8 @@
 use clap::ValueEnum;
 use logging::SubscriberConfig;
 use oc_rsync_cli::{cli_command, parse_logging_flags};
-use tracing::subscriber::with_default;
 use tracing::Level;
+use tracing::subscriber::with_default;
 
 fn make_sub(
     format: logging::LogFormat,

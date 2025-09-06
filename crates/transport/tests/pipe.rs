@@ -6,7 +6,7 @@ use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
 use transport::{
-    pipe, LocalPipeTransport, SshStdioTransport, TcpTransport, TimeoutTransport, Transport,
+    LocalPipeTransport, SshStdioTransport, TcpTransport, TimeoutTransport, Transport, pipe,
 };
 
 fn wait_for<F: Fn() -> bool>(cond: F) {
