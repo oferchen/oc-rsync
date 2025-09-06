@@ -1,7 +1,8 @@
 // crates/filters/tests/files_from.rs
-use filters::parse;
-use filters::Matcher;
+use filters::{parse, parse_with_options, Matcher};
 use std::collections::HashSet;
+use std::fs;
+use tempfile::tempdir;
 
 fn p(s: &str) -> Vec<filters::Rule> {
     let mut v = HashSet::new();
@@ -33,4 +34,24 @@ fn files_from_null_separated() {
     assert!(matcher.is_included("foo").unwrap());
     assert!(matcher.is_included("bar").unwrap());
     assert!(!matcher.is_included("baz").unwrap());
+}
+
+#[test]
+fn files_from_vs_exclude_ordering() {
+    let tmp = tempdir().unwrap();
+    let list = tmp.path().join("list");
+    fs::write(&list, "a\nb\n").unwrap();
+    let filter = format!("files-from {}\n- a\n- *\n", list.display());
+    let mut v = HashSet::new();
+    let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
+    let m = Matcher::new(rules);
+    assert!(m.is_included("b").unwrap());
+    assert!(!m.is_included("a").unwrap());
+
+    let filter_rev = format!("- a\nfiles-from {}\n- *\n", list.display());
+    let mut v2 = HashSet::new();
+    let rules_rev = parse_with_options(&filter_rev, false, &mut v2, 0, None).unwrap();
+    let m_rev = Matcher::new(rules_rev);
+    assert!(!m_rev.is_included("a").unwrap());
+    assert!(m_rev.is_included("b").unwrap());
 }
