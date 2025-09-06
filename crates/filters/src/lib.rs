@@ -1379,7 +1379,46 @@ pub fn parse_with_options(
                         } else {
                             format!("/{}", pat)
                         };
-                        let dir_pat = format!("{}/***", anchored.trim_end_matches('/'));
+                        let trimmed = anchored.trim_end_matches('/');
+                        let mut cur = Path::new(trimmed);
+                        let mut ancestors = Vec::new();
+                        while let Some(parent) = cur.parent() {
+                            if parent.as_os_str().is_empty() || parent == Path::new("/") {
+                                break;
+                            }
+                            ancestors.push(parent.to_path_buf());
+                            cur = parent;
+                        }
+                        ancestors.reverse();
+                        for anc in ancestors {
+                            let anc_str = anc.to_string_lossy().to_string();
+                            let dir_pat = format!("{}/***", anc_str);
+                            let line1 = if from0 {
+                                format!("+{anc_str}\n")
+                            } else {
+                                format!("+ {anc_str}\n")
+                            };
+                            rules.extend(parse_with_options(
+                                &line1,
+                                from0,
+                                visited,
+                                depth + 1,
+                                Some(path.clone()),
+                            )?);
+                            let line2 = if from0 {
+                                format!("+{dir_pat}\n")
+                            } else {
+                                format!("+ {dir_pat}\n")
+                            };
+                            rules.extend(parse_with_options(
+                                &line2,
+                                from0,
+                                visited,
+                                depth + 1,
+                                Some(path.clone()),
+                            )?);
+                        }
+                        let dir_pat = format!("{}/***", trimmed);
                         let line1 = if from0 {
                             format!("+{anchored}\n")
                         } else {
