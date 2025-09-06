@@ -3,7 +3,7 @@ use compress::{
     available_codecs, decode_codecs, encode_codecs, negotiate_codec, should_compress, Codec,
 };
 
-#[cfg(any(feature = "zlib", feature = "zstd", feature = "experimental-lz4"))]
+#[cfg(any(feature = "zlib", feature = "zstd"))]
 use compress::{Compressor, Decompressor};
 
 #[cfg(feature = "zlib")]
@@ -12,13 +12,10 @@ use compress::{Zlib, ZlibX};
 #[cfg(feature = "zstd")]
 use compress::Zstd;
 
-#[cfg(feature = "experimental-lz4")]
-use compress::Lz4;
-
 use std::io;
 use std::path::Path;
 
-#[cfg(any(feature = "zlib", feature = "zstd", feature = "experimental-lz4"))]
+#[cfg(any(feature = "zlib", feature = "zstd"))]
 const DATA: &[u8] = b"The quick brown fox jumps over the lazy dog";
 
 #[cfg(feature = "zlib")]
@@ -43,15 +40,6 @@ fn zlibx_roundtrip() {
 #[test]
 fn zstd_roundtrip() {
     let codec = Zstd::default();
-    let compressed = codec.compress(DATA).expect("compress");
-    let decompressed = codec.decompress(&compressed).expect("decompress");
-    assert_eq!(DATA, decompressed.as_slice());
-}
-
-#[cfg(feature = "experimental-lz4")]
-#[test]
-fn lz4_roundtrip() {
-    let codec = Lz4::new();
     let compressed = codec.compress(DATA).expect("compress");
     let decompressed = codec.decompress(&compressed).expect("decompress");
     assert_eq!(DATA, decompressed.as_slice());

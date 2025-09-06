@@ -9,10 +9,6 @@ use std::io::Write;
 
 use std::path::Path;
 
-#[cfg(feature = "experimental-lz4")]
-mod lz4;
-#[cfg(feature = "experimental-lz4")]
-pub use lz4::Lz4;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Codec {
     Zlib,
