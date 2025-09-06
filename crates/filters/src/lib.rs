@@ -1,4 +1,5 @@
 // crates/filters/src/lib.rs
+#![allow(clippy::collapsible_if)]
 
 use globset::{Glob, GlobMatcher};
 use logging::InfoFlag;
@@ -1145,10 +1146,7 @@ pub fn parse_with_options(
             };
             if m.contains('s') || m.contains('r') || m.contains('p') || m.contains('x') {
                 for rule in &mut sub {
-                    if let Rule::Include(d)
-                    | Rule::Exclude(d)
-                    | Rule::Protect(d) = rule
-                    {
+                    if let Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) = rule {
                         if m.contains('s') {
                             d.flags.sender = true;
                         }
@@ -1509,12 +1507,11 @@ pub const CVS_DEFAULTS: &[&str] = &[
 
 pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
     fn add_pat(out: &mut Vec<Rule>, pat: &str) -> Result<(), ParseError> {
-        let dir_all = pat.ends_with("/***");
-        let dir_only = !dir_all && pat.ends_with('/');
+        let dir_all = pat.ends_with('/') || pat.ends_with("/***");
         let mut base = pat.to_string();
-        if dir_all {
+        if pat.ends_with("/***") {
             base = base.trim_end_matches("/***").to_string();
-        } else if dir_only {
+        } else if pat.ends_with('/') {
             base = base.trim_end_matches('/').to_string();
         }
         let bases: Vec<String> = if !base.contains('/') {
@@ -1528,7 +1525,7 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
                 pats.push((b.clone(), true));
                 pats.push((format!("{}/**", b), false));
             } else {
-                pats.push((b, dir_only));
+                pats.push((b, false));
             }
         }
         for (p, dir_only) in pats {
