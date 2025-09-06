@@ -1698,7 +1698,7 @@ pub fn parse_with_options(
                         }
                     }
                     rules.extend(parse_with_options(
-                        "- *\n",
+                        "- /**\n",
                         from0,
                         visited,
                         depth + 1,
@@ -2073,6 +2073,36 @@ pub fn parse_file(
     parse_from_bytes(&data, from0, visited, depth, source)
 }
 
+fn rooted_and_parents(pat: &str) -> (String, Vec<String>) {
+    let rooted = if pat.starts_with('/') {
+        pat.to_string()
+    } else {
+        format!("/{pat}")
+    };
+    let trimmed = rooted.trim_end_matches('/');
+    let mut base = String::new();
+    let mut dirs = Vec::new();
+    let mut finished = true;
+    for part in trimmed.trim_start_matches('/').split('/') {
+        if !base.is_empty() {
+            base.push('/');
+        }
+        base.push_str(part);
+        let has_glob = part.contains(['*', '?', '[', ']']);
+        if has_glob {
+            dirs.push(format!("/{base}/"));
+            dirs.push(format!("/{base}/**"));
+            finished = false;
+            break;
+        }
+        dirs.push(format!("/{base}/"));
+    }
+    if finished {
+        dirs.pop();
+    }
+    (rooted, dirs)
+}
+
 pub fn parse_rule_list_from_bytes(
     input: &[u8],
     from0: bool,
@@ -2084,18 +2114,51 @@ pub fn parse_rule_list_from_bytes(
     let pats = parse_list(input, from0);
     let mut rules = Vec::new();
     for pat in pats {
-        let line = if from0 {
-            format!("{sign}{pat}\n")
+        if pat.is_empty() {
+            continue;
+        }
+        if sign == '+' && !pat.starts_with(['+', '-', ':']) {
+            let (rooted, parents) = rooted_and_parents(&pat);
+            let line = if from0 {
+                format!("+{rooted}\n")
+            } else {
+                format!("+ {rooted}\n")
+            };
+            rules.extend(parse_with_options(
+                &line,
+                from0,
+                visited,
+                depth,
+                source.clone(),
+            )?);
+            for dir in parents {
+                let rule = if from0 {
+                    format!("+{dir}\n")
+                } else {
+                    format!("+ {dir}\n")
+                };
+                rules.extend(parse_with_options(
+                    &rule,
+                    from0,
+                    visited,
+                    depth,
+                    source.clone(),
+                )?);
+            }
         } else {
-            format!("{sign} {pat}\n")
-        };
-        rules.extend(parse_with_options(
-            &line,
-            from0,
-            visited,
-            depth,
-            source.clone(),
-        )?);
+            let line = if from0 {
+                format!("{sign}{pat}\n")
+            } else {
+                format!("{sign} {pat}\n")
+            };
+            rules.extend(parse_with_options(
+                &line,
+                from0,
+                visited,
+                depth,
+                source.clone(),
+            )?);
+        }
     }
     Ok(rules)
 }

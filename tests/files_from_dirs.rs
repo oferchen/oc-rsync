@@ -16,7 +16,10 @@ fn files_from_mixed_entries_integration() {
     assert!(m.is_included("foo").unwrap());
     assert!(m.is_included("foo/bar").unwrap());
     assert!(m.is_included("foo/bar/baz").unwrap());
+    assert!(!m.is_included("foo/bar/qux").unwrap());
+    assert!(!m.is_included("foo/other").unwrap());
     assert!(m.is_included("qux").unwrap());
     assert!(m.is_included("qux/sub").unwrap());
     assert!(!m.is_included("other").unwrap());
+    assert!(!m.is_included("qux/other").unwrap());
 }
