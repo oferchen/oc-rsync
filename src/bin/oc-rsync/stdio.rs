@@ -103,8 +103,13 @@ where
         let _ = set_stream(out, orig_mode);
     }
     let err_res = set_stream(err, mode);
-    if err_res.is_err() && out_res.is_ok() && !out.is_null() {
-        let _ = set_stream(out, orig_mode);
+    if err_res.is_err() {
+        if !err.is_null() {
+            let _ = set_stream(err, orig_mode);
+        }
+        if out_res.is_ok() && !out.is_null() {
+            let _ = set_stream(out, orig_mode);
+        }
     }
     match (out_res, err_res) {
         (Ok(()), Ok(())) => Ok(()),
@@ -163,7 +168,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io;
+    use std::{cell::RefCell, io};
 
     #[test]
     fn ok_with_valid_streams() {
@@ -202,6 +207,35 @@ mod tests {
         };
         let res = set_std_buffering_for_test(libc::_IONBF, libc::_IOLBF, out, err, set_stream);
         assert!(matches!(res, Err(StdBufferError::Stderr(_))));
+    }
+
+    #[test]
+    fn stderr_failure_resets_streams() {
+        let mut out_stub = std::mem::MaybeUninit::<libc::FILE>::uninit();
+        let mut err_stub = std::mem::MaybeUninit::<libc::FILE>::uninit();
+        let out: *mut libc::FILE = out_stub.as_mut_ptr();
+        let err: *mut libc::FILE = err_stub.as_mut_ptr();
+        let calls = RefCell::new(Vec::new());
+        let set_stream = |stream: *mut libc::FILE, mode: libc::c_int| {
+            calls.borrow_mut().push((stream, mode));
+            if stream == err {
+                Err(io::Error::other("stderr failure"))
+            } else {
+                Ok(())
+            }
+        };
+        let res = set_std_buffering_for_test(libc::_IONBF, libc::_IOLBF, out, err, set_stream);
+        assert!(matches!(res, Err(StdBufferError::Stderr(_))));
+        let calls = calls.into_inner();
+        assert_eq!(
+            calls,
+            vec![
+                (out, libc::_IONBF),
+                (err, libc::_IONBF),
+                (err, libc::_IOLBF),
+                (out, libc::_IOLBF),
+            ]
+        );
     }
 
     #[test]
