@@ -999,6 +999,9 @@ impl Matcher {
         let mut content = match fs::read_to_string(path) {
             Ok(c) => c,
             Err(err) => {
+                if err.kind() == io::ErrorKind::NotFound {
+                    return Ok((Vec::new(), Vec::new()));
+                }
                 tracing::warn!(
                     target: InfoFlag::Filter.target(),
                     ?path,
