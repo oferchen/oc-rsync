@@ -84,3 +84,24 @@ fn escaped_brackets() {
     assert!(m.is_included("file[data].txt").unwrap());
     assert!(!m.is_included("filea.txt").unwrap());
 }
+
+#[test]
+fn single_star_does_not_cross_directories() {
+    let m = p("+ *.txt\n- *\n");
+    assert!(m.is_included("file.txt").unwrap());
+    assert!(!m.is_included("dir/file.txt").unwrap());
+}
+
+#[test]
+fn double_star_matches_any_depth() {
+    let m = p("+ **/keep.txt\n- *\n");
+    assert!(m.is_included("keep.txt").unwrap());
+    assert!(m.is_included("dir/sub/keep.txt").unwrap());
+}
+
+#[test]
+fn character_class_confined_to_segment() {
+    let m = p("+ [![:digit:]]/*.txt\n- *\n");
+    assert!(m.is_included("a/file.txt").unwrap());
+    assert!(!m.is_included("a/b/file.txt").unwrap());
+}
