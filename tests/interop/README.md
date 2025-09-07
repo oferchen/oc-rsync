@@ -15,6 +15,8 @@ filesystem trees for interoperability tests.
   `rsync`. Daemon ports are assigned deterministically starting from
   `INTEROP_PORT_BASE` (default `43000`), incrementing for each daemon to ensure
   unique, stable ports across runs.
+- `build_upstream.sh` and `run_matrix.sh` download upstream `rsync` releases and
+  verify their SHA256 checksums before extraction.
 
 The committed goldens were recorded in a controlled environment using upstream
 `rsync 3.4.1` and the local `oc-rsync` build. To record fresh goldens, point
