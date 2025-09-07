@@ -1,6 +1,8 @@
 // crates/filters/tests/directory_boundaries.rs
 use filters::{Matcher, parse};
 use std::collections::HashSet;
+use std::fs;
+use tempfile::tempdir;
 
 fn p(input: &str) -> Vec<filters::Rule> {
     let mut v = HashSet::new();
@@ -41,4 +43,20 @@ fn leading_double_star() {
     assert!(matcher.is_included("dir/keep2.txt").unwrap());
     assert!(!matcher.is_included("keep10.txt").unwrap());
     assert!(!matcher.is_included("dir/sub/keep12.txt").unwrap());
+}
+
+#[test]
+fn exclude_star_then_include_class_slash_prevents_deep_traversal() {
+    let tmp = tempdir().unwrap();
+    fs::create_dir_all(tmp.path().join("1/dir")).unwrap();
+    fs::write(tmp.path().join("1/file.txt"), b"hi").unwrap();
+    fs::write(tmp.path().join("1/dir/file.txt"), b"hi").unwrap();
+
+    let rules = p("+ [0-9]/*\n- *\n");
+    let matcher = Matcher::new(rules).with_root(tmp.path());
+
+    assert!(matcher.is_included("1").unwrap());
+    assert!(matcher.is_included("1/file.txt").unwrap());
+    assert!(!matcher.is_included("1/dir").unwrap());
+    assert!(!matcher.is_included("1/dir/file.txt").unwrap());
 }

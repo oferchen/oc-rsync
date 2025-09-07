@@ -87,22 +87,25 @@ pub struct RuleData {
     flags: RuleFlags,
     source: Option<PathBuf>,
     dir_only: bool,
-    has_slash: bool,
+    name_only: bool,
 }
 
 impl RuleData {
-    fn is_match(&self, path: &Path) -> bool {
-        let full = format!("/{}", path.to_string_lossy());
-        let full_match = self.matcher.is_match(&full);
-        if self.has_slash {
-            full_match
-        } else {
-            let file_match = path
-                .file_name()
-                .map(|name| self.matcher.is_match(Path::new(name)))
-                .unwrap_or(false);
-            full_match || file_match
+    fn is_match(&self, path: &Path, is_dir: bool) -> bool {
+        let mut p = path.to_string_lossy().to_string();
+        if is_dir {
+            p.push('/');
         }
+        let full = format!("/{}", p);
+        let mut matched = self.matcher.is_match(&full);
+        if !matched && self.name_only {
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy())
+                .unwrap_or_default();
+            matched = self.matcher.is_match(Path::new(&*name));
+        }
+        matched
     }
 }
 
@@ -635,6 +638,11 @@ impl Matcher {
             }
         }
 
+        let is_dir = self
+            .root
+            .as_ref()
+            .map(|r| r.join(path).is_dir())
+            .unwrap_or(false);
         let mut included = true;
         let mut matched = false;
         let mut matched_source: Option<PathBuf> = None;
@@ -645,19 +653,13 @@ impl Matcher {
                     if !data.flags.applies(for_delete, xattr) {
                         continue;
                     }
-                    if data.dir_only {
-                        if let Some(root) = &self.root {
-                            if !root.join(path).is_dir() {
-                                continue;
-                            }
-                        } else {
-                            continue;
-                        }
+                    if data.dir_only && !is_dir {
+                        continue;
                     }
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched_rule = data.is_match(path);
+                    let matched_rule = data.is_match(path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
                     self.stats
@@ -674,19 +676,13 @@ impl Matcher {
                     if !data.flags.applies(for_delete, xattr) {
                         continue;
                     }
-                    if data.dir_only {
-                        if let Some(root) = &self.root {
-                            if !root.join(path).is_dir() {
-                                continue;
-                            }
-                        } else {
-                            continue;
-                        }
+                    if data.dir_only && !is_dir {
+                        continue;
                     }
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched_rule = data.is_match(path);
+                    let matched_rule = data.is_match(path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
                     self.stats
@@ -703,19 +699,13 @@ impl Matcher {
                     if !data.flags.applies(for_delete, xattr) {
                         continue;
                     }
-                    if data.dir_only {
-                        if let Some(root) = &self.root {
-                            if !root.join(path).is_dir() {
-                                continue;
-                            }
-                        } else {
-                            continue;
-                        }
+                    if data.dir_only && !is_dir {
+                        continue;
                     }
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched_rule = data.is_match(path);
+                    let matched_rule = data.is_match(path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
                     self.stats
@@ -1151,7 +1141,7 @@ impl Matcher {
                         if d.dir_only && !is_dir {
                             continue;
                         }
-                        let matched = d.is_match(path);
+                        let matched = d.is_match(path, is_dir);
                         if (d.invert && !matched) || (!d.invert && matched) {
                             state = Some(true);
                         }
@@ -1160,7 +1150,7 @@ impl Matcher {
                         if d.dir_only && !is_dir {
                             continue;
                         }
-                        let matched = d.is_match(path);
+                        let matched = d.is_match(path, is_dir);
                         if (d.invert && !matched) || (!d.invert && matched) {
                             state = Some(false);
                         }
@@ -1414,7 +1404,7 @@ pub fn parse_with_options(
                         flags: RuleFlags::default(),
                         source: source.clone(),
                         dir_only: false,
-                        has_slash: pat.contains('/'),
+                        name_only: !pat.contains('/'),
                     };
                     rules.push(Rule::Exclude(data));
                 }
@@ -1555,7 +1545,7 @@ pub fn parse_with_options(
                     flags: RuleFlags::default(),
                     source: source.clone(),
                     dir_only: false,
-                    has_slash: pat.contains('/'),
+                    name_only: !pat.contains('/'),
                 };
                 rules.push(Rule::Exclude(data));
             }
@@ -1636,7 +1626,7 @@ pub fn parse_with_options(
                     flags: RuleFlags::default(),
                     source: source.clone(),
                     dir_only: false,
-                    has_slash: pat.contains('/'),
+                    name_only: !pat.contains('/'),
                 };
                 rules.push(Rule::Exclude(data));
             }
@@ -1872,6 +1862,7 @@ pub fn parse_with_options(
                         vec![ancestor]
                     };
                     for pat in ancestor_bases {
+                        let name_only = !pat.contains('/');
                         for exp in expand_braces(&pat) {
                             let matcher = compile_glob(&exp)?;
                             let data = RuleData {
@@ -1880,7 +1871,7 @@ pub fn parse_with_options(
                                 flags: flags.clone(),
                                 source: source.clone(),
                                 dir_only: true,
-                                has_slash: exp.contains('/'),
+                                name_only,
                             };
                             rules.push(Rule::Include(data));
                         }
@@ -1901,6 +1892,7 @@ pub fn parse_with_options(
 
         let invert = mods.contains('!');
         for (pat, dir_only) in pats {
+            let name_only = !pat.contains('/');
             for exp in expand_braces(&pat) {
                 let matcher = compile_glob(&exp)?;
                 let data = RuleData {
@@ -1909,7 +1901,7 @@ pub fn parse_with_options(
                     flags: flags.clone(),
                     source: source.clone(),
                     dir_only,
-                    has_slash: exp.contains('/'),
+                    name_only,
                 };
                 match kind {
                     RuleKind::Include => rules.push(Rule::Include(data)),
@@ -2213,26 +2205,28 @@ pub fn parse_rule_list_from_bytes(
             for dir in parents {
                 let glob = dir.trim_end_matches('/');
                 let matcher = compile_glob(glob)?;
+                let name_only = !glob.contains('/');
                 let data = RuleData {
                     matcher,
                     invert: false,
                     flags: RuleFlags::default(),
                     source: source.clone(),
                     dir_only: true,
-                    has_slash: glob.contains('/'),
+                    name_only,
                 };
                 rules.push(Rule::Include(data));
 
                 let mut exc_pat = dir.clone();
                 exc_pat.push('*');
                 let matcher = compile_glob(&exc_pat)?;
+                let name_only = !exc_pat.contains('/');
                 let data = RuleData {
                     matcher,
                     invert: false,
                     flags: RuleFlags::default(),
                     source: source.clone(),
                     dir_only: false,
-                    has_slash: exc_pat.contains('/'),
+                    name_only,
                 };
                 rules.push(Rule::Exclude(data));
             }
