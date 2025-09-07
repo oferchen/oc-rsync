@@ -151,10 +151,10 @@ jobs:
       - name: Build upstream rsync 3.4.1
         run: echo "UPSTREAM_RSYNC=$(tests/interop/build_upstream.sh)" >> $GITHUB_ENV
 
-      - name: Run interop matrix
+      - name: Collect interop snapshots
         env:
           UPSTREAM_RSYNC: ${{ env.UPSTREAM_RSYNC }}
-        run: scripts/interop.sh
+        run: scripts/interop/run.sh
 
       - name: Install cargo-nextest
         run: cargo install cargo-nextest --locked
