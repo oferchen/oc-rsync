@@ -1,4 +1,6 @@
 // crates/filters/tests/rsync_special_chars.rs
+#![cfg(all(unix, feature = "interop"))]
+
 use filters::{Matcher, parse};
 use proptest::prelude::*;
 use std::collections::HashSet;
@@ -28,6 +30,7 @@ fn pattern_strategy() -> impl Strategy<Value = String> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
     #[test]
+    #[ignore = "requires rsync"]
     fn special_chars_parity(rule in pattern_strategy()) {
         let tmp = tempdir().unwrap();
         let root = tmp.path().join("src");

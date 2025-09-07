@@ -1,4 +1,6 @@
 // crates/filters/tests/posix_classes.rs
+#![cfg(all(unix, feature = "interop"))]
+
 use filters::{Matcher, parse};
 use std::collections::HashSet;
 use std::fs;
@@ -66,6 +68,7 @@ fn parity(class: &str, cases: &[(&str, bool)]) {
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn space_class_parity() {
     parity(
         "space",
@@ -79,6 +82,7 @@ fn space_class_parity() {
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn blank_class_parity() {
     parity(
         "blank",
@@ -92,6 +96,7 @@ fn blank_class_parity() {
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn punct_class_parity() {
     parity(
         "punct",
@@ -105,11 +110,13 @@ fn punct_class_parity() {
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn cntrl_class_parity() {
     parity("cntrl", &[("file\u{1}name", true), ("filename", false)]);
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn graph_class_parity() {
     parity(
         "graph",
@@ -122,6 +129,7 @@ fn graph_class_parity() {
 }
 
 #[test]
+#[ignore = "requires rsync"]
 fn print_class_parity() {
     parity(
         "print",
