@@ -1,6 +1,5 @@
 // crates/logging/src/lib.rs
 
-#![allow(clippy::too_many_arguments)]
 use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::io;
@@ -798,13 +797,40 @@ pub fn parse_escapes(input: &str) -> String {
     out
 }
 
-pub fn render_out_format(
-    format: &str,
-    name: &Path,
-    link: Option<&Path>,
-    itemized: Option<&str>,
+pub struct OutFormatOptions<'a> {
+    name: &'a Path,
+    link: Option<&'a Path>,
+    itemized: Option<&'a str>,
     eight_bit_output: bool,
-) -> String {
+}
+
+impl<'a> OutFormatOptions<'a> {
+    pub fn new(name: &'a Path) -> Self {
+        Self {
+            name,
+            link: None,
+            itemized: None,
+            eight_bit_output: false,
+        }
+    }
+
+    pub fn link(mut self, link: Option<&'a Path>) -> Self {
+        self.link = link;
+        self
+    }
+
+    pub fn itemized(mut self, itemized: Option<&'a str>) -> Self {
+        self.itemized = itemized;
+        self
+    }
+
+    pub fn eight_bit_output(mut self, eight_bit_output: bool) -> Self {
+        self.eight_bit_output = eight_bit_output;
+        self
+    }
+}
+
+pub fn render_out_format(format: &str, opts: &OutFormatOptions<'_>) -> String {
     let fmt = parse_escapes(format);
     let mut out = String::new();
     let mut chars = fmt.chars();
@@ -812,20 +838,20 @@ pub fn render_out_format(
         if c == '%' {
             if let Some(n) = chars.next() {
                 match n {
-                    'n' | 'f' => out.push_str(&escape_path(name, eight_bit_output)),
+                    'n' | 'f' => out.push_str(&escape_path(opts.name, opts.eight_bit_output)),
                     'L' => {
-                        if let Some(l) = link {
+                        if let Some(l) = opts.link {
                             out.push_str(" -> ");
-                            out.push_str(&escape_path(l, eight_bit_output));
+                            out.push_str(&escape_path(l, opts.eight_bit_output));
                         }
                     }
                     'i' => {
-                        if let Some(i) = itemized {
+                        if let Some(i) = opts.itemized {
                             out.push_str(i);
                         }
                     }
                     'o' => {
-                        if let Some(i) = itemized {
+                        if let Some(i) = opts.itemized {
                             let op = match i.chars().next().unwrap_or(' ') {
                                 '>' => "send",
                                 '<' => "recv",
