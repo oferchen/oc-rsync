@@ -169,8 +169,8 @@ pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
 pub fn available_strong_hashes() -> Vec<StrongHash> {
     vec![
         StrongHash::XxHash,
-        StrongHash::Md4,
         StrongHash::Md5,
+        StrongHash::Md4,
         StrongHash::Sha1,
     ]
 }
@@ -518,6 +518,33 @@ mod tests {
                 #[cfg(all(feature = "nightly", rustversion = "nightly"))]
                 assert_eq!(rolling_checksum_avx512(slice, 1), scalar);
             }
+        }
+    }
+
+    #[test]
+    fn negotiate_prefers_upstream_order() {
+        let local = available_strong_hashes();
+
+        let cases = [
+            (vec![StrongHash::Md4, StrongHash::Md5], StrongHash::Md5),
+            (
+                vec![StrongHash::Sha1, StrongHash::Md4, StrongHash::Md5],
+                StrongHash::Md5,
+            ),
+            (
+                vec![StrongHash::Md4, StrongHash::XxHash],
+                StrongHash::XxHash,
+            ),
+        ];
+
+        for (remote, expected) in cases {
+            assert_eq!(
+                negotiate_strong_hash(&local, &remote),
+                Some(expected),
+                "remote list {:?} should negotiate to {:?}",
+                remote,
+                expected
+            );
         }
     }
 }
