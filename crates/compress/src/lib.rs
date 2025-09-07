@@ -200,12 +200,12 @@ fn zstd_decompress_scalar(data: &[u8]) -> io::Result<Vec<u8>> {
     any(target_arch = "x86", target_arch = "x86_64")
 ))]
 #[target_feature(enable = "sse4.2")]
-/// Compress data using zstd with SSE4.2 optimizations.
-///
-/// # Safety
-/// The caller must ensure that the CPU running this code supports the
-/// `sse4.2` target feature. Calling this function on hardware without
-/// `sse4.2` support results in undefined behaviour.
+#[doc = "Compress data using zstd with SSE4.2 optimizations."]
+#[doc = ""]
+#[doc = "# Safety"]
+#[doc = "The caller must ensure that the CPU running this code supports the"]
+#[doc = "`sse4.2` target feature. Calling this function on hardware without"]
+#[doc = "`sse4.2` support results in undefined behaviour."]
 unsafe fn zstd_compress_sse42(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     use zstd::zstd_safe;
     let bound = zstd_safe::compress_bound(data.len());
@@ -238,12 +238,12 @@ fn zstd_compress_sse42_safe(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     any(target_arch = "x86", target_arch = "x86_64")
 ))]
 #[target_feature(enable = "avx2")]
-/// Compress data using zstd with AVX2 optimizations.
-///
-/// # Safety
-/// The caller must ensure that the CPU running this code supports the
-/// `avx2` target feature. Calling this function on hardware without
-/// `avx2` support results in undefined behaviour.
+#[doc = "Compress data using zstd with AVX2 optimizations."]
+#[doc = ""]
+#[doc = "# Safety"]
+#[doc = "The caller must ensure that the CPU running this code supports the"]
+#[doc = "`avx2` target feature. Calling this function on hardware without"]
+#[doc = "`avx2` support results in undefined behaviour."]
 unsafe fn zstd_compress_avx2(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     use zstd::zstd_safe;
     let bound = zstd_safe::compress_bound(data.len());
@@ -277,12 +277,12 @@ fn zstd_compress_avx2_safe(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     any(target_arch = "x86", target_arch = "x86_64")
 ))]
 #[target_feature(enable = "avx512f")]
-/// Compress data using zstd with AVX512 optimizations.
-///
-/// # Safety
-/// The caller must ensure that the CPU running this code supports the
-/// `avx512f` target feature. Calling this function on hardware without
-/// `avx512f` support results in undefined behaviour.
+#[doc = "Compress data using zstd with AVX512 optimizations."]
+#[doc = ""]
+#[doc = "# Safety"]
+#[doc = "The caller must ensure that the CPU running this code supports the"]
+#[doc = "`avx512f` target feature. Calling this function on hardware without"]
+#[doc = "`avx512f` support results in undefined behaviour."]
 unsafe fn zstd_compress_avx512(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     use zstd::zstd_safe;
     let bound = zstd_safe::compress_bound(data.len());
@@ -316,12 +316,12 @@ fn zstd_compress_avx512_safe(data: &[u8], level: i32) -> io::Result<Vec<u8>> {
     any(target_arch = "x86", target_arch = "x86_64")
 ))]
 #[target_feature(enable = "sse4.2")]
-/// Decompress data using zstd with SSE4.2 optimizations.
-///
-/// # Safety
-/// The caller must ensure that the CPU running this code supports the
-/// `sse4.2` target feature. Calling this function on hardware without
-/// `sse4.2` support results in undefined behaviour.
+#[doc = "Decompress data using zstd with SSE4.2 optimizations."]
+#[doc = ""]
+#[doc = "# Safety"]
+#[doc = "The caller must ensure that the CPU running this code supports the"]
+#[doc = "`sse4.2` target feature. Calling this function on hardware without"]
+#[doc = "`sse4.2` support results in undefined behaviour."]
 unsafe fn zstd_decompress_sse42(data: &[u8]) -> io::Result<Vec<u8>> {
     use zstd::zstd_safe;
     let size = zstd_safe::get_frame_content_size(data)
@@ -356,12 +356,12 @@ fn zstd_decompress_sse42_safe(data: &[u8]) -> io::Result<Vec<u8>> {
     any(target_arch = "x86", target_arch = "x86_64")
 ))]
 #[target_feature(enable = "avx2")]
-/// Decompress data using zstd with AVX2 optimizations.
-///
-/// # Safety
-/// The caller must ensure that the CPU running this code supports the
-/// `avx2` target feature. Calling this function on hardware without
-/// `avx2` support results in undefined behaviour.
+#[doc = "Decompress data using zstd with AVX2 optimizations."]
+#[doc = ""]
+#[doc = "# Safety"]
+#[doc = "The caller must ensure that the CPU running this code supports the"]
+#[doc = "`avx2` target feature. Calling this function on hardware without"]
+#[doc = "`avx2` support results in undefined behaviour."]
 unsafe fn zstd_decompress_avx2(data: &[u8]) -> io::Result<Vec<u8>> {
     use zstd::zstd_safe;
     let size = zstd_safe::get_frame_content_size(data)
@@ -397,12 +397,12 @@ fn zstd_decompress_avx2_safe(data: &[u8]) -> io::Result<Vec<u8>> {
     any(target_arch = "x86", target_arch = "x86_64")
 ))]
 #[target_feature(enable = "avx512f")]
-/// Decompress data using zstd with AVX512 optimizations.
-///
-/// # Safety
-/// The caller must ensure that the CPU running this code supports the
-/// `avx512f` target feature. Calling this function on hardware without
-/// `avx512f` support results in undefined behaviour.
+#[doc = "Decompress data using zstd with AVX512 optimizations."]
+#[doc = ""]
+#[doc = "# Safety"]
+#[doc = "The caller must ensure that the CPU running this code supports the"]
+#[doc = "`avx512f` target feature. Calling this function on hardware without"]
+#[doc = "`avx512f` support results in undefined behaviour."]
 unsafe fn zstd_decompress_avx512(data: &[u8]) -> io::Result<Vec<u8>> {
     use zstd::zstd_safe;
     let size = zstd_safe::get_frame_content_size(data)
