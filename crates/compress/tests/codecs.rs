@@ -1,6 +1,6 @@
 // crates/compress/tests/codecs.rs
 use compress::{
-    Codec, available_codecs, decode_codecs, encode_codecs, negotiate_codec, should_compress,
+    available_codecs, decode_codecs, encode_codecs, negotiate_codec, should_compress, Codec,
 };
 
 #[cfg(any(feature = "zlib", feature = "zstd"))]
@@ -65,12 +65,17 @@ fn zstd_roundtrip() {
 }
 
 #[test]
-fn negotiation_helper_picks_common_codec() {
+fn negotiate_codec_returns_common_codec() {
     let local = [Codec::Zstd, Codec::Zlib];
     let remote = [Codec::Zlib];
     assert_eq!(negotiate_codec(&local, &remote), Some(Codec::Zlib));
-    let remote2 = [Codec::Zstd];
-    assert_eq!(negotiate_codec(&[Codec::Zlib], &remote2), None);
+}
+
+#[test]
+fn negotiate_codec_returns_none_without_overlap() {
+    let local = [Codec::Zlib];
+    let remote = [Codec::Zstd];
+    assert_eq!(negotiate_codec(&local, &remote), None);
 }
 
 #[test]
@@ -81,7 +86,7 @@ fn codec_from_byte_rejects_unknown() {
 }
 
 #[test]
-fn encode_decode_roundtrip_and_error() {
+fn encode_decode_roundtrip_and_invalid_bytes() {
     let mut codecs = Vec::new();
     let mut bytes = Vec::new();
     #[cfg(feature = "zlib")]
@@ -96,11 +101,12 @@ fn encode_decode_roundtrip_and_error() {
         codecs.push(Codec::Zstd);
         bytes.push(4);
     }
-    let encoded = encode_codecs(&codecs);
+    let mut encoded = encode_codecs(&codecs);
     assert_eq!(encoded, bytes);
     let decoded = decode_codecs(&encoded).expect("decode");
     assert_eq!(decoded, codecs);
-    let err = decode_codecs(&[42]).unwrap_err();
+    encoded.push(42);
+    let err = decode_codecs(&encoded).unwrap_err();
     assert_eq!(err.kind(), io::ErrorKind::InvalidData);
 }
 
@@ -119,6 +125,7 @@ fn should_compress_handles_mixed_case_patterns() {
         .into_iter()
         .collect::<HashSet<_>>();
     assert!(!should_compress(Path::new("file.TXT"), &skip));
+    assert!(should_compress(Path::new("archive.gz"), &skip));
 }
 
 #[test]
