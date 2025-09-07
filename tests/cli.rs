@@ -4283,6 +4283,11 @@ fn cvs_exclude_skips_ignored_files() {
     fs::write(src.join("local_ignored"), "local").unwrap();
     fs::write(src.join(".cvsignore"), "local_ignored\n").unwrap();
 
+    let sub = src.join("nested");
+    fs::create_dir_all(&sub).unwrap();
+    fs::write(sub.join("keep.txt"), "keep").unwrap();
+    fs::write(sub.join("core"), "core").unwrap();
+
     let home = tempdir().unwrap();
     fs::write(home.path().join(".cvsignore"), "home_ignored\n").unwrap();
 
@@ -4299,7 +4304,9 @@ fn cvs_exclude_skips_ignored_files() {
     cmd.assert().success();
 
     assert!(dst.join("keep.txt").exists());
+    assert!(dst.join("nested/keep.txt").exists());
     assert!(!dst.join("core").exists());
+    assert!(!dst.join("nested/core").exists());
     assert!(!dst.join("foo.o").exists());
     assert!(!dst.join("env_ignored").exists());
     assert!(!dst.join("home_ignored").exists());
