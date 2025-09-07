@@ -93,17 +93,9 @@ pub struct RuleData {
 }
 
 impl RuleData {
-    fn is_match(&self, path: &Path, is_dir: bool) -> bool {
+    fn is_match(&self, path: &Path, _is_dir: bool) -> bool {
         let full = format!("/{}", path.to_string_lossy());
-        let mut full_match = self.matcher.is_match(&full);
-        if is_dir
-            && full_match
-            && !(self.pattern.ends_with('/')
-                || self.pattern.ends_with("/**")
-                || self.pattern.ends_with("/***"))
-        {
-            full_match = false;
-        }
+        let full_match = self.matcher.is_match(&full);
         if self.has_slash {
             full_match
         } else {
@@ -761,10 +753,14 @@ impl Matcher {
                     let matched_rule = data.is_match(path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
+                    let desc = data.may_match_descendant(path);
                     self.stats
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
-                    if rule_match || (is_dir && data.may_match_descendant(path)) {
+                    if rule_match || (is_dir && desc) {
+                        if rule_match && is_dir && !desc {
+                            dir_only_match = true;
+                        }
                         included = true;
                         matched = true;
                         matched_source = data.source.clone();
@@ -842,7 +838,7 @@ impl Matcher {
             source = %source_str,
             rules = ordered.len(),
         );
-        Ok((included, matched && dir_only_match && !included))
+        Ok((included, matched && dir_only_match))
     }
 
     pub fn merge(&mut self, more: Vec<Rule>) {

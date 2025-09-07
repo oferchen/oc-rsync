@@ -4532,6 +4532,6 @@ fn char_class_respects_directory_boundaries() {
         .success();
     assert!(dst.join("1/keep.txt").exists());
     assert!(dst.join("1").is_dir());
+    assert!(dst.join("1/2").is_dir());
     assert!(!dst.join("1/2/keep.txt").exists());
-    assert!(!dst.join("1/2").exists());
 }
