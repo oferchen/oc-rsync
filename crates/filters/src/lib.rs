@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 const MAX_PARSE_DEPTH: usize = 64;
+pub const MAX_BRACE_EXPANSIONS: usize = 10_000;
 
 #[derive(Clone, Default, Hash, PartialEq, Eq)]
 pub struct RuleFlags {
@@ -303,8 +304,13 @@ fn confine_char_classes(pat: &str) -> String {
     out
 }
 
-fn expand_braces(pat: &str) -> Vec<String> {
-    fn inner(pattern: &str) -> Vec<String> {
+fn expand_braces(pat: &str) -> Result<Vec<String>, ParseError> {
+    fn inner(
+        prefix: &str,
+        pattern: &str,
+        out: &mut Vec<String>,
+        count: &mut usize,
+    ) -> Result<(), ParseError> {
         if let Some(start) = pattern.find('{') {
             let mut depth = 0;
             let mut end = start;
@@ -323,9 +329,15 @@ fn expand_braces(pat: &str) -> Vec<String> {
                 }
             }
             if depth != 0 {
-                return vec![pattern.to_string()];
+                let final_str = format!("{}{}", prefix, pattern);
+                *count += 1;
+                if *count > MAX_BRACE_EXPANSIONS {
+                    return Err(ParseError::TooManyExpansions);
+                }
+                out.push(final_str);
+                return Ok(());
             }
-            let prefix = &pattern[..start];
+            let pre = &pattern[..start];
             let suffix = &pattern[end + 1..];
             let body = &pattern[start + 1..end];
             let mut parts = Vec::new();
@@ -351,28 +363,35 @@ fn expand_braces(pat: &str) -> Vec<String> {
             parts.push(part);
             let mut expanded_parts = Vec::new();
             for p in parts {
-                if let Some(range) = expand_range(&p) {
+                if let Some(range) = expand_range(&p)? {
                     expanded_parts.extend(range);
                 } else {
                     expanded_parts.push(p);
                 }
             }
-            let mut results = Vec::new();
             for part in expanded_parts {
-                for suf in inner(suffix) {
-                    results.push(format!("{}{}{}", prefix, part, suf));
+                let new_prefix = format!("{}{}{}", prefix, pre, part);
+                inner(&new_prefix, suffix, out, count)?;
+                if *count > MAX_BRACE_EXPANSIONS {
+                    return Err(ParseError::TooManyExpansions);
                 }
             }
-            results
+            Ok(())
         } else {
-            vec![pattern.to_string()]
+            let final_str = format!("{}{}", prefix, pattern);
+            *count += 1;
+            if *count > MAX_BRACE_EXPANSIONS {
+                return Err(ParseError::TooManyExpansions);
+            }
+            out.push(final_str);
+            Ok(())
         }
     }
 
-    fn expand_range(part: &str) -> Option<Vec<String>> {
+    fn expand_range(part: &str) -> Result<Option<Vec<String>>, ParseError> {
         let parts: Vec<&str> = part.split("..").collect();
         if parts.len() < 2 || parts.len() > 3 {
-            return None;
+            return Ok(None);
         }
         let start = parts[0];
         let end = parts[1];
@@ -383,7 +402,7 @@ fn expand_braces(pat: &str) -> Vec<String> {
             step.parse::<i64>(),
         ) {
             if s == 0 {
-                return None;
+                return Ok(None);
             }
             let width = start.len().max(end.len());
             let mut out = Vec::new();
@@ -397,6 +416,9 @@ fn expand_braces(pat: &str) -> Vec<String> {
                             out.push(i.to_string());
                         }
                         i += s;
+                        if out.len() > MAX_BRACE_EXPANSIONS {
+                            return Err(ParseError::TooManyExpansions);
+                        }
                     }
                 } else {
                     while i >= b {
@@ -406,9 +428,12 @@ fn expand_braces(pat: &str) -> Vec<String> {
                             out.push(i.to_string());
                         }
                         i += s;
+                        if out.len() > MAX_BRACE_EXPANSIONS {
+                            return Err(ParseError::TooManyExpansions);
+                        }
                     }
                 }
-                return Some(out);
+                return Ok(Some(out));
             }
         } else if start.len() == 1 && end.len() == 1 {
             let a = start.chars().next().unwrap() as u32;
@@ -418,18 +443,23 @@ fn expand_braces(pat: &str) -> Vec<String> {
                 .and_then(|v| v.parse::<u32>().ok())
                 .unwrap_or(1);
             if a <= b && s > 0 {
-                return Some(
-                    (a..=b)
-                        .step_by(s as usize)
-                        .map(|c| char::from_u32(c).unwrap().to_string())
-                        .collect(),
-                );
+                let out: Vec<String> = (a..=b)
+                    .step_by(s as usize)
+                    .map(|c| char::from_u32(c).unwrap().to_string())
+                    .collect();
+                if out.len() > MAX_BRACE_EXPANSIONS {
+                    return Err(ParseError::TooManyExpansions);
+                }
+                return Ok(Some(out));
             }
         }
-        None
+        Ok(None)
     }
 
-    inner(pat)
+    let mut out = Vec::new();
+    let mut count = 0;
+    inner("", pat, &mut out, &mut count)?;
+    Ok(out)
 }
 
 #[derive(Clone, Default)]
@@ -1258,6 +1288,7 @@ pub enum ParseError {
     Glob(globset::Error),
     RecursiveInclude(PathBuf),
     RecursionLimit,
+    TooManyExpansions,
     Io(std::io::Error),
 }
 
@@ -1883,7 +1914,7 @@ pub fn parse_with_options(
                         vec![ancestor]
                     };
                     for pat in ancestor_bases {
-                        for exp in expand_braces(&pat) {
+                        for exp in expand_braces(&pat)? {
                             let matcher = compile_glob(&exp)?;
                             let data = RuleData {
                                 matcher,
@@ -1912,7 +1943,7 @@ pub fn parse_with_options(
 
         let invert = mods.contains('!');
         for (pat, dir_only) in pats {
-            for exp in expand_braces(&pat) {
+            for exp in expand_braces(&pat)? {
                 let matcher = compile_glob(&exp)?;
                 let data = RuleData {
                     matcher,
