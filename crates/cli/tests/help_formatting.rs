@@ -41,36 +41,32 @@ fn dump_help_body_lists_unique_options() {
 
 #[test]
 #[serial]
-fn help_wrapping_matches_upstream() {
+fn help_wrapping_matches_upstream_80() {
     let cmd = cli_command();
-    let cases = [
-        (
-            60,
-            include_str!("../../../tests/golden/help/rsync-help-60.txt"),
-        ),
-        (
-            80,
-            include_str!("../../../tests/golden/help/rsync-help-80.txt"),
-        ),
-        (
-            100,
-            include_str!("../../../tests/golden/help/rsync-help-100.txt"),
-        ),
-    ];
-    for (cols, upstream) in cases {
-        unsafe {
-            env::set_var("COLUMNS", cols.to_string());
-        }
-        let ours = render_help(&cmd);
-        assert_eq!(
-            extract_options(&ours),
-            extract_options(upstream),
-            "options mismatch at width {cols}"
-        );
+    unsafe {
+        env::set_var("COLUMNS", "80");
     }
+    let ours = render_help(&cmd);
     unsafe {
         env::remove_var("COLUMNS");
     }
+    let upstream = include_str!("../../../tests/golden/help/rsync-help-80.txt");
+    assert_eq!(extract_options(&ours), extract_options(upstream));
+}
+
+#[test]
+#[serial]
+fn help_wrapping_matches_upstream_100() {
+    let cmd = cli_command();
+    unsafe {
+        env::set_var("COLUMNS", "100");
+    }
+    let ours = render_help(&cmd);
+    unsafe {
+        env::remove_var("COLUMNS");
+    }
+    let upstream = include_str!("../../../tests/golden/help/rsync-help-100.txt");
+    assert_eq!(extract_options(&ours), extract_options(upstream));
 }
 
 #[test]
