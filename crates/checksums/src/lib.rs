@@ -48,7 +48,7 @@ impl ChecksumConfigBuilder {
     }
 
     pub fn negotiate(mut self, remote: &[StrongHash]) -> Self {
-        if let Some(alg) = negotiate_strong_hash(&available_strong_hashes(), remote) {
+        if let Some(alg) = negotiate_strong_hash(available_strong_hashes(), remote) {
             self.strong = alg;
         }
         self
@@ -166,8 +166,8 @@ pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
     }
 }
 
-pub fn available_strong_hashes() -> Vec<StrongHash> {
-    vec![
+pub fn available_strong_hashes() -> &'static [StrongHash] {
+    &[
         StrongHash::XxHash,
         StrongHash::Md5,
         StrongHash::Md4,
@@ -542,7 +542,7 @@ mod tests {
 
         for (remote, expected) in cases {
             assert_eq!(
-                negotiate_strong_hash(&local, &remote),
+                negotiate_strong_hash(local, &remote),
                 Some(expected),
                 "remote list {:?} should negotiate to {:?}",
                 remote,
