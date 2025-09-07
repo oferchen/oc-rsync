@@ -742,39 +742,44 @@ fn run_single(
     )?;
     Ok(stats)
 }
+
+fn root_and_parents(pat: &str) -> (String, Vec<String>) {
+    let rooted = if pat.starts_with('/') {
+        pat.to_string()
+    } else {
+        format!("/{pat}")
+    };
+    let mut base = String::new();
+    let mut dirs = Vec::new();
+    let mut finished = true;
+    let trimmed = rooted.trim_end_matches('/');
+    let parts: Vec<&str> = trimmed.trim_start_matches('/').split('/').collect();
+    for (i, part) in parts.iter().enumerate() {
+        if !base.is_empty() {
+            base.push('/');
+        }
+        base.push_str(part);
+        let has_glob = part.contains(['*', '?', '[', ']']);
+        if has_glob {
+            dirs.push(format!("/{base}/"));
+            let remainder = &parts[i + 1..];
+            if !(remainder.is_empty() || (remainder.len() == 1 && remainder[0] == "*")) {
+                dirs.push(format!("/{base}/**"));
+            }
+            finished = false;
+            break;
+        }
+        dirs.push(format!("/{base}/"));
+    }
+    if finished {
+        dirs.pop();
+    }
+    (rooted, dirs)
+}
+
 fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
         filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
-    }
-
-    fn root_and_parents(pat: &str) -> (String, Vec<String>) {
-        let rooted = if pat.starts_with('/') {
-            pat.to_string()
-        } else {
-            format!("/{pat}")
-        };
-        let mut base = String::new();
-        let mut dirs = Vec::new();
-        let mut finished = true;
-        let trimmed = rooted.trim_end_matches('/');
-        for part in trimmed.trim_start_matches('/').split('/') {
-            if !base.is_empty() {
-                base.push('/');
-            }
-            base.push_str(part);
-            let has_glob = part.contains(['*', '?', '[', ']']);
-            if has_glob {
-                dirs.push(format!("/{base}/"));
-                dirs.push(format!("/{base}/**"));
-                finished = false;
-                break;
-            }
-            dirs.push(format!("/{base}/"));
-        }
-        if finished {
-            dirs.pop();
-        }
-        (rooted, dirs)
     }
 
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
@@ -1105,6 +1110,13 @@ mod tests {
             }
             _ => panic!("expected remote spec"),
         }
+    }
+
+    #[test]
+    fn root_and_parents_avoids_recursive_for_single_star() {
+        let (rooted, parents) = root_and_parents("[0-9]/*");
+        assert_eq!(rooted, "/[0-9]/*");
+        assert_eq!(parents, vec!["/[0-9]/".to_string()]);
     }
 
     #[test]
