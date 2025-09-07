@@ -749,9 +749,10 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
 
     fn root_and_parents(pat: &str) -> (String, Vec<String>) {
         let (rooted, parents) = filters::rooted_and_parents(pat);
-        let rooted = format!("/{rooted}");
-        let parents = parents.into_iter().map(|d| format!("/{d}")).collect();
-        (rooted, parents)
+        (
+            format!("/{rooted}"),
+            parents.into_iter().map(|d| format!("/{d}")).collect(),
+        )
     }
 
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
