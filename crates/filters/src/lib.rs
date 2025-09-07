@@ -1840,6 +1840,9 @@ pub fn parse_with_options(
         if has_anchor && !pattern.starts_with('/') {
             pattern = format!("/{}", pattern);
         }
+        if pattern.contains('/') && !pattern.starts_with('/') {
+            pattern.insert(0, '/');
+        }
         let anchored = pattern.starts_with('/') || pattern.contains('/');
         let dir_all = pattern.ends_with("/***");
         let dir_only = !dir_all && pattern.ends_with('/');
