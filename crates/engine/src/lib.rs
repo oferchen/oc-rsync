@@ -604,7 +604,7 @@ impl SyncOptions {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Stats {
     pub files_total: usize,
     pub dirs_total: usize,
@@ -621,6 +621,36 @@ pub struct Stats {
     pub file_list_transfer_time: Duration,
     pub bytes_sent: u64,
     pub bytes_received: u64,
+    pub start_time: Instant,
+}
+
+impl Default for Stats {
+    fn default() -> Self {
+        Self {
+            files_total: 0,
+            dirs_total: 0,
+            files_transferred: 0,
+            files_deleted: 0,
+            files_created: 0,
+            dirs_created: 0,
+            total_file_size: 0,
+            bytes_transferred: 0,
+            literal_data: 0,
+            matched_data: 0,
+            file_list_size: 0,
+            file_list_gen_time: Duration::default(),
+            file_list_transfer_time: Duration::default(),
+            bytes_sent: 0,
+            bytes_received: 0,
+            start_time: Instant::now(),
+        }
+    }
+}
+
+impl Stats {
+    pub fn elapsed(&self) -> Duration {
+        self.start_time.elapsed()
+    }
 }
 
 fn count_entries(

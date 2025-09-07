@@ -1011,6 +1011,15 @@ fn stats_parity() {
         .collect();
     assert_eq!(our_stats, up_stats);
 
+    let rate_line = our_stdout
+        .lines()
+        .find_map(|l| {
+            let l = l.trim_start();
+            l.starts_with("sent ").then(|| l.to_string())
+        })
+        .expect("missing rate line");
+    assert!(!rate_line.contains("0.00"));
+
     insta::assert_snapshot!("stats_parity", our_stats.join("\n"));
 }
 

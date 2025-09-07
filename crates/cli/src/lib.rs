@@ -38,7 +38,7 @@ pub use engine::EngineError;
 use engine::{DeleteMode, Result, Stats, StrongHash, SyncOptions};
 use filters::{Matcher, Rule, default_cvs_rules};
 pub use formatter::{ARG_ORDER, dump_help_body, render_help};
-use logging::{InfoFlag, human_bytes, parse_escapes};
+use logging::{InfoFlag, human_bytes, parse_escapes, rate_formatter};
 use meta::{IdKind, parse_chmod, parse_chown};
 use protocol::{ExitCode, SUPPORTED_PROTOCOLS, negotiate_version};
 use transport::{AddressFamily, parse_sockopts};
@@ -263,9 +263,16 @@ fn print_stats(stats: &Stats, opts: &ClientOpts) {
     );
     println!("Total bytes sent: {}", stats.bytes_sent);
     println!("Total bytes received: {}", stats.bytes_received);
+    let elapsed = stats.elapsed().as_secs_f64();
+    let rate = if elapsed > 0.0 {
+        let total = stats.bytes_sent + stats.bytes_received;
+        rate_formatter(total as f64 / elapsed)
+    } else {
+        rate_formatter(0.0)
+    };
     println!(
-        "\nsent {} bytes  received {} bytes  0.00 bytes/sec",
-        stats.bytes_sent, stats.bytes_received
+        "\nsent {} bytes  received {} bytes  {}",
+        stats.bytes_sent, stats.bytes_received, rate
     );
     if stats.bytes_transferred > 0 {
         let speedup = stats.total_file_size as f64 / stats.bytes_transferred as f64;
