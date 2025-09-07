@@ -782,6 +782,14 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
     }
 
+    fn root_and_parents(pat: &str) -> (String, Vec<String>) {
+        let (rooted, parents) = filters::rooted_and_parents(pat);
+        (
+            format!("/{rooted}"),
+            parents.into_iter().map(|d| format!("/{d}")).collect(),
+        )
+    }
+
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
     let mut seq = 0;
     let mut add_rules = |idx: usize, rs: Vec<Rule>| {
