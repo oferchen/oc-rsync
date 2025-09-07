@@ -9,14 +9,6 @@ use textwrap::{Options as WrapOptions, wrap};
 
 use crate::branding;
 
-fn set_env_var(key: &str, value: &str) {
-    unsafe { env::set_var(key, value) }
-}
-
-fn remove_env_var(key: &str) {
-    unsafe { env::remove_var(key) }
-}
-
 const RSYNC_HELP: &str = include_str!("../resources/rsync-help-80.txt");
 
 const UPSTREAM_HELP_PREFIX: &str = r#"rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
@@ -361,12 +353,12 @@ pub fn render_help(_cmd: &Command) -> String {
 
 pub fn dump_help_body(cmd: &Command) -> String {
     let prev = env::var("COLUMNS").ok();
-    set_env_var("COLUMNS", "80");
-    let _guard = guard(prev, |prev| {
+    unsafe { env::set_var("COLUMNS", "80") };
+    let _guard = guard(prev, |prev| unsafe {
         if let Some(v) = prev {
-            set_env_var("COLUMNS", &v);
+            env::set_var("COLUMNS", &v);
         } else {
-            remove_env_var("COLUMNS");
+            env::remove_var("COLUMNS");
         }
     });
     let help = render_help(cmd);

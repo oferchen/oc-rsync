@@ -32,9 +32,9 @@ fn progress_parity() {
     };
     let our_line = norm(&ours.stderr);
     let our_parts: Vec<_> = our_line.split_whitespace().collect();
-    assert_eq!(our_parts.get(0), Some(&"5"));
+    assert_eq!(our_parts.first(), Some(&"5"));
     assert_eq!(our_parts.get(1), Some(&"100%"));
-    assert!(our_parts.get(2).map_or(false, |s| s.ends_with("KB/s")));
+    assert!(our_parts.get(2).is_some_and(|s| s.ends_with("KB/s")));
     let rate_placeholder: String = our_parts[2]
         .chars()
         .map(|c| if c.is_ascii_digit() { 'X' } else { c })

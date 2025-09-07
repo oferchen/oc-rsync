@@ -2,18 +2,18 @@
 
 use std::path::Path;
 
-use clap::{ArgMatches, parser::ValueSource};
+use clap::{parser::ValueSource, ArgMatches};
 
 use crate::options::ClientOpts;
 use crate::session::check_session_errors;
 use crate::utils::{RemoteSpec, RshCommand};
-use crate::{EngineError, spawn_daemon_session};
+use crate::{spawn_daemon_session, EngineError};
 
 use compress::available_codecs;
-use engine::{Result, Stats, SyncOptions, pipe_sessions, sync};
+use engine::{pipe_sessions, sync, Result, Stats, SyncOptions};
 use filters::Matcher;
-use protocol::{CAP_ACLS, CAP_CODECS, CAP_XATTRS, CharsetConv, ExitCode};
-use transport::{AddressFamily, RateLimitedTransport, SshStdioTransport, daemon_remote_opts};
+use protocol::{CharsetConv, ExitCode, CAP_ACLS, CAP_CODECS, CAP_XATTRS};
+use transport::{daemon_remote_opts, AddressFamily, RateLimitedTransport, SshStdioTransport};
 
 #[cfg(unix)]
 use nix::unistd;
@@ -496,7 +496,7 @@ fn is_effective_root() -> bool {
 
 #[cfg(all(test, unix))]
 thread_local! {
-    static MOCK_IS_ROOT: std::cell::RefCell<Option<bool>> = std::cell::RefCell::new(None);
+    static MOCK_IS_ROOT: std::cell::RefCell<Option<bool>> = const { std::cell::RefCell::new(None) };
 }
 
 #[cfg(all(test, unix))]
@@ -517,7 +517,7 @@ fn has_cap_chown() -> std::result::Result<bool, caps::errors::CapsError> {
 thread_local! {
     static MOCK_CAPS: std::cell::RefCell<
         Option<std::result::Result<bool, caps::errors::CapsError>>,
-    > = std::cell::RefCell::new(None);
+    > = const { std::cell::RefCell::new(None) };
 }
 
 #[cfg(all(test, target_os = "linux"))]
