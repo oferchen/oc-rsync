@@ -68,7 +68,8 @@ download_rsync() {
     mkdir -p "$ROOT/target/upstream"
     pushd "$ROOT/target/upstream" >/dev/null
     tarball="rsync-$ver.tar.gz"
-    curl -L "https://download.samba.org/pub/rsync/src/$tarball" -o "$tarball"
+    curl --fail --silent --show-error -L "https://download.samba.org/pub/rsync/src/$tarball" -o "$tarball" \
+      || { echo "failed to download $tarball" >&2; return 1; }
     sha="${RSYNC_SHA256[$ver]}"
     if [[ -z "$sha" ]]; then
       echo "missing checksum for rsync $ver" >&2
