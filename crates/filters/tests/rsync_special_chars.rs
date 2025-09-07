@@ -68,7 +68,7 @@ proptest! {
             let ours = matcher.is_included(p).unwrap();
             let candidate = if p == "dir" { format!("{p}/") } else { p.to_string() };
             let theirs = rsync_included.contains(&candidate);
-            prop_assert_eq!(ours, theirs, "rule {rule} path {p}");
+            prop_assert_eq!(ours, theirs, "rule {} path {}", rule, p);
         }
     }
 }
