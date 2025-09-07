@@ -109,6 +109,17 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | `--read-batch` replay | ✅ | [crates/engine/tests/upstream_batch.rs](../crates/engine/tests/upstream_batch.rs) | [crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |
 | `--block-size` semantics | ✅ | [tests/block_size.rs](../tests/block_size.rs) | [crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |
 
+`--block-size` adjusts the delta algorithm's chunk size. To mirror upstream
+behavior, it is typically combined with `--checksum` and `--no-whole-file` so
+that only changed blocks are transferred.
+
+```bash
+$ oc-rsync --checksum --no-whole-file --block-size=4K --stats src/ dst/
+Literal data: 4,096 bytes
+```
+
+The stats output shows that only a single 4 KiB block was sent.
+
 ## Daemon Features
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
