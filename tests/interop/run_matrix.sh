@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Run interop scenarios against multiple upstream rsync releases with
+# verified source tarballs.
 ROOT="$(git rev-parse --show-toplevel)"
 SCENARIOS=(
   "base"
@@ -15,6 +17,12 @@ SCENARIOS=(
 )
 
 RSYNC_VERSIONS=(3.0.9 3.1.3 3.4.1)
+
+declare -A RSYNC_SHA256=(
+  [3.0.9]=30f10f8dd5490d28240d4271bb652b1da7a60b22ed2b9ae28090668de9247c05
+  [3.1.3]=55cc554efec5fdaad70de921cd5a5eeb6c29a95524c715f3bbf849235b0800c0
+  [3.4.1]=2924bcb3a1ed8b551fc101f740b9f0fe0a202b115027647cf69850d65fd88c52
+)
 
 # Base port for rsync daemons. Override with INTEROP_PORT_BASE to avoid
 # collisions when running tests in parallel environments. Ports are
@@ -56,6 +64,12 @@ download_rsync() {
     pushd "$ROOT/target/upstream" >/dev/null
     tarball="rsync-$ver.tar.gz"
     curl -L "https://download.samba.org/pub/rsync/src/$tarball" -o "$tarball"
+    sha256="${RSYNC_SHA256[$ver]}"
+    if [[ -z "$sha256" ]]; then
+      echo "Unknown SHA256 for rsync $ver" >&2
+      exit 1
+    fi
+    echo "$sha256  $tarball" | sha256sum -c -
     tar xzf "$tarball"
     pushd "rsync-$ver" >/dev/null
     ./configure --prefix="$prefix" >/dev/null
