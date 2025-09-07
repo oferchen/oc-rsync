@@ -59,5 +59,26 @@ for ((mask=0; mask< (1<<N); mask++)); do
   echo $? >"$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.exit"
   set -e
 
+  RSYNC_STDOUT="$OUT_DIR/${prefix}.rsync-${UP_VER}.stdout"
+  RSYNC_STDERR="$OUT_DIR/${prefix}.rsync-${UP_VER}.stderr"
+  RSYNC_EXIT="$OUT_DIR/${prefix}.rsync-${UP_VER}.exit"
+  OC_STDOUT="$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.stdout"
+  OC_STDERR="$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.stderr"
+  OC_EXIT="$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.exit"
+
+  diff "$RSYNC_STDOUT" "$OC_STDOUT"
+  diff "$RSYNC_STDERR" "$OC_STDERR"
+  diff "$RSYNC_EXIT" "$OC_EXIT"
+
+  DIR_DIFF="$OUT_DIR/${prefix}.dir.diff"
+  if ! rsync -an --delete --acls --xattrs "$RSYNC_DST/" "$OC_DST/" >"$DIR_DIFF"; then
+    cat "$DIR_DIFF" >&2 || true
+    exit 1
+  fi
+  if [ -s "$DIR_DIFF" ]; then
+    cat "$DIR_DIFF" >&2
+    exit 1
+  fi
+
   rm -rf "$RSYNC_DST" "$OC_DST"
 done
