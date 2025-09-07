@@ -4,6 +4,7 @@ set -euo pipefail
 # Run interop scenarios against multiple upstream rsync releases with
 # verified source tarballs.
 ROOT="$(git rev-parse --show-toplevel)"
+
 SCENARIOS=(
   "base"
   "delete --delete"
@@ -15,8 +16,14 @@ SCENARIOS=(
   "resume --partial"
   "vanished"
 )
+if [[ -n ${SCENARIOS_OVERRIDE:-} ]]; then
+  readarray -t SCENARIOS <<< "$SCENARIOS_OVERRIDE"
+fi
 
 RSYNC_VERSIONS=(3.0.9 3.1.3 3.4.1)
+if [[ -n ${RSYNC_VERSIONS_OVERRIDE:-} ]]; then
+  readarray -t RSYNC_VERSIONS <<< "$RSYNC_VERSIONS_OVERRIDE"
+fi
 
 declare -A RSYNC_SHA256=(
   [3.0.9]=30f10f8dd5490d28240d4271bb652b1da7a60b22ed2b9ae28090668de9247c05
@@ -41,12 +48,16 @@ fi
 OC_RSYNC="$ROOT/target/debug/oc-rsync"
 
 ensure_build_deps() {
-  if ! command -v gcc >/dev/null 2>&1; then
-    apt-get update >/dev/null
-    apt-get install -y build-essential >/dev/null
+  local apt="apt-get"
+  if command -v sudo >/dev/null 2>&1; then
+    apt="sudo apt-get"
   fi
-  apt-get update >/dev/null
-  apt-get install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev >/dev/null
+  if ! command -v gcc >/dev/null 2>&1; then
+    $apt update >/dev/null
+    $apt install -y build-essential >/dev/null
+  fi
+  $apt update >/dev/null
+  $apt install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev >/dev/null
 }
 
 if [[ ! -x "$OC_RSYNC" ]]; then
@@ -130,6 +141,8 @@ for ver in "${RSYNC_VERSIONS[@]}"; do
   for entry in "${SCENARIOS[@]}"; do
     IFS=' ' read -r name extra <<< "$entry"
     extra=($extra)
+
+    # oc-rsync client against upstream daemon
     src="$(mktemp -d)"
     create_tree "$src"
     IFS=$'\t' read -r port rootdir pid < <(setup_daemon "$UPSTREAM")
@@ -140,19 +153,59 @@ for ver in "${RSYNC_VERSIONS[@]}"; do
       vanished) (sleep 0.1 && rm -f "$src/file.txt") & ;;
     esac
     if [[ "$name" == resume ]]; then
-      timeout 1 "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null || true
+      timeout 1 "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null 2>&1 || true
     fi
     set +e
-    "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" > /tmp/stdout 2> /tmp/stderr
-    status=$?
+    "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" > /tmp/oc.stdout 2> /tmp/oc.stderr
+    status_oc=$?
     set -e
     if [[ "$name" == vanished ]]; then
-      [[ "$status" -ne 0 ]] || { echo "expected failure" >&2; exit 1; }
+      [[ "$status_oc" -ne 0 ]] || { echo "expected failure" >&2; exit 1; }
     else
       verify_tree "$src" "$rootdir"
     fi
     kill "$pid" >/dev/null 2>&1 || true
-    rm -rf "$src" "$rootdir"
+    rm -rf "$rootdir" "$src"
+
+    # upstream client against oc-rsync daemon
+    src="$(mktemp -d)"
+    create_tree "$src"
+    IFS=$'\t' read -r port rootdir pid < <(setup_daemon "$OC_RSYNC")
+    case "$name" in
+      delete) touch "$rootdir/stale.txt" ;;
+      resume) dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null ;;
+      partial) dd if=/dev/zero of="$src/big.bin" bs=1M count=20 >/dev/null ;;
+      vanished) (sleep 0.1 && rm -f "$src/file.txt") & ;;
+    esac
+    if [[ "$name" == resume ]]; then
+      timeout 1 "$UPSTREAM" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null 2>&1 || true
+    fi
+    set +e
+    "$UPSTREAM" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" > /tmp/up.stdout 2> /tmp/up.stderr
+    status_up=$?
+    set -e
+    if [[ "$name" == vanished ]]; then
+      [[ "$status_up" -ne 0 ]] || { echo "expected failure" >&2; exit 1; }
+    else
+      verify_tree "$src" "$rootdir"
+    fi
+    kill "$pid" >/dev/null 2>&1 || true
+    rm -rf "$rootdir" "$src"
+
+    # compare outputs and exit codes
+    if ! diff -u /tmp/oc.stdout /tmp/up.stdout; then
+      echo "stdout mismatch for $name" >&2
+      exit 1
+    fi
+    if ! diff -u /tmp/oc.stderr /tmp/up.stderr; then
+      echo "stderr mismatch for $name" >&2
+      exit 1
+    fi
+    if [[ $status_oc -ne $status_up ]]; then
+      echo "exit codes differ: oc $status_oc upstream $status_up" >&2
+      exit 1
+    fi
+
     echo "scenario $name ok"
   done
 done
