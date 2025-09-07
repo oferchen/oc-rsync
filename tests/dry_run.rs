@@ -2,10 +2,24 @@
 
 use assert_cmd::Command;
 use std::fs;
+use std::process::Command as StdCommand;
 use tempfile::tempdir;
 
 #[test]
 fn dry_run_deletions_match_rsync() {
+    let check = StdCommand::new("rsync")
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .ok();
+    if let Some(status) = check {
+        assert!(status.success());
+    } else {
+        eprintln!("skipping test: rsync not installed");
+        return;
+    }
+
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -16,6 +30,19 @@ fn dry_run_deletions_match_rsync() {
     let src_arg = format!("{}/", src.display());
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
+        .env("LC_ALL", "C")
+        .args([
+            "--recursive",
+            "--delete",
+            "--dry-run",
+            "--verbose",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    let rsync = StdCommand::new("rsync")
+        .env("LC_ALL", "C")
         .args([
             "--recursive",
             "--delete",
@@ -31,15 +58,30 @@ fn dry_run_deletions_match_rsync() {
         .lines()
         .filter(|l| l.starts_with("deleting "))
         .collect();
-
-    let rsync_out = fs::read_to_string("tests/golden/dry_run/deletions.txt").unwrap();
-    let rsync_lines: Vec<_> = rsync_out.lines().collect();
-
-    assert_eq!(rsync_lines, our_lines);
+    let up_out = String::from_utf8(rsync.stdout).unwrap();
+    let up_lines: Vec<_> = up_out
+        .lines()
+        .filter(|l| l.starts_with("deleting "))
+        .collect();
+    assert_eq!(rsync.status.code(), ours.status.code());
+    assert_eq!(up_lines, our_lines);
 }
 
 #[test]
 fn dry_run_errors_match_rsync() {
+    let check = StdCommand::new("rsync")
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .ok();
+    if let Some(status) = check {
+        assert!(status.success());
+    } else {
+        eprintln!("skipping test: rsync not installed");
+        return;
+    }
+
     let tmp = tempdir().unwrap();
     let dst = tmp.path().join("dst");
     fs::create_dir_all(&dst).unwrap();
@@ -47,24 +89,17 @@ fn dry_run_errors_match_rsync() {
     let ours = Command::cargo_bin("oc-rsync")
         .unwrap()
         .current_dir(tmp.path())
+        .env("LC_ALL", "C")
         .args(["--dry-run", "missing.txt", dst.to_str().unwrap()])
         .output()
         .unwrap();
-    assert_eq!(ours.status.code(), Some(23));
-    let ours_err = String::from_utf8(ours.stderr).unwrap();
-
-    let expected = fs::read_to_string("tests/golden/dry_run/error.txt").unwrap();
-    let mut expected_lines = expected.lines();
-    let mut our_lines = ours_err.lines();
-
-    let first = expected_lines.next().unwrap().replace(
-        "{PATH}",
-        &tmp.path().join("missing.txt").display().to_string(),
-    );
-    assert_eq!(Some(first.as_str()), our_lines.next());
-
-    let exp_prefix = expected_lines.next().unwrap();
-    let our_second = our_lines.next().unwrap();
-    let our_prefix = our_second.split(" at ").next().unwrap();
-    assert_eq!(exp_prefix, our_prefix);
+    let up = StdCommand::new("rsync")
+        .current_dir(tmp.path())
+        .env("LC_ALL", "C")
+        .args(["--dry-run", "missing.txt", dst.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert_eq!(up.status.code(), ours.status.code());
+    assert_eq!(up.stdout, ours.stdout);
+    assert_eq!(up.stderr, ours.stderr);
 }
