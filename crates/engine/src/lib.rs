@@ -1,7 +1,7 @@
 // crates/engine/src/lib.rs
 #![allow(clippy::collapsible_if)]
 #[cfg(unix)]
-use nix::unistd::{Gid, Uid, chown};
+use nix::unistd::{chown, Gid, Uid};
 use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, Write};
@@ -18,16 +18,16 @@ use std::os::fd::AsRawFd;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Component, Path, PathBuf};
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
-use transport::{Transport, pipe};
+use transport::{pipe, Transport};
 
 use checksums::ChecksumConfig;
 pub use checksums::StrongHash;
 use compress::Codec;
 use filters::{Matcher, ParseError};
-use logging::{InfoFlag, escape_path};
+use logging::{escape_path, InfoFlag};
 use protocol::ExitCode;
 use thiserror::Error;
 mod cleanup;
@@ -38,7 +38,7 @@ mod sender;
 
 pub mod flist;
 
-pub use delta::{DeltaIter, Op, compute_delta};
+pub use delta::{compute_delta, DeltaIter, Op};
 pub use meta::MetaOpts;
 pub use receiver::{Receiver, ReceiverState};
 pub use sender::{Sender, SenderState};
@@ -58,30 +58,27 @@ pub fn block_size(len: u64) -> usize {
         return RSYNC_BLOCK_SIZE;
     }
 
-    let mut c: i32 = 1;
+    let mut c: usize = 1;
     let mut l = len;
     while (l >> 2) != 0 {
         l >>= 2;
         c <<= 1;
     }
 
-    if c < 0 || (c as usize) >= RSYNC_MAX_BLOCK_SIZE {
+    if c >= RSYNC_MAX_BLOCK_SIZE {
         return RSYNC_MAX_BLOCK_SIZE;
     }
 
-    let mut blength: i32 = 0;
-    loop {
+    let mut blength = 0usize;
+    while c >= 8 {
         blength |= c;
         if len < (blength as u64) * (blength as u64) {
             blength &= !c;
         }
         c >>= 1;
-        if c < 8 {
-            break;
-        }
     }
 
-    std::cmp::max(blength as usize, RSYNC_BLOCK_SIZE)
+    blength.max(RSYNC_BLOCK_SIZE)
 }
 
 fn is_device(file_type: &std::fs::FileType) -> bool {
@@ -196,7 +193,7 @@ fn check_time_limit(start: Instant, opts: &SyncOptions) -> Result<()> {
 pub fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     {
-        use nix::fcntl::{FallocateFlags, fallocate};
+        use nix::fcntl::{fallocate, FallocateFlags};
         fallocate(file, FallocateFlags::empty(), 0, len as i64).map_err(std::io::Error::from)
     }
 
@@ -946,7 +943,11 @@ fn delete_extraneous(
         }
     }
     if let Some(e) = first_err {
-        if opts.ignore_errors { Ok(()) } else { Err(e) }
+        if opts.ignore_errors {
+            Ok(())
+        } else {
+            Err(e)
+        }
     } else {
         Ok(())
     }
@@ -1601,13 +1602,13 @@ pub fn sync(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::delta::{LIT_CAP, apply_delta};
-    use checksums::{ChecksumConfigBuilder, rolling_checksum};
+    use crate::delta::{apply_delta, LIT_CAP};
+    use checksums::{rolling_checksum, ChecksumConfigBuilder};
     use compress::available_codecs;
     use filters::Matcher;
     use std::fs;
     use std::io::{Cursor, Write};
-    use tempfile::{NamedTempFile, tempdir};
+    use tempfile::{tempdir, NamedTempFile};
 
     #[test]
     fn delta_roundtrip() {

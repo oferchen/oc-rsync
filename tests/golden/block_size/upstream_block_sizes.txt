@@ -1,0 +1,11 @@
+# tests/golden/block_size/upstream_block_sizes.txt
+# Source: rsync 3.4.1 default block-size heuristic
+# Format: "<length> <block_size>"
+100 700
+490000 700
+500000 704
+1048576 1024
+10000000 3160
+100000000 10000
+1000000000 31616
+1000000000000 131072
