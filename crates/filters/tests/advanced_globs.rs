@@ -1,5 +1,5 @@
 // crates/filters/tests/advanced_globs.rs
-use filters::{Matcher, parse};
+use filters::{MAX_BRACE_EXPANSIONS, Matcher, ParseError, parse};
 use std::collections::HashSet;
 
 fn p(s: &str) -> Matcher {
@@ -104,4 +104,32 @@ fn character_class_confined_to_segment() {
     let m = p("+ [![:digit:]]/*.txt\n- *\n");
     assert!(m.is_included("a/file.txt").unwrap());
     assert!(!m.is_included("a/b/file.txt").unwrap());
+}
+
+#[test]
+fn brace_expansion_limit_range() {
+    let mut v = HashSet::new();
+    let pattern = format!("+ file{{1..{}}}.txt\n- *\n", MAX_BRACE_EXPANSIONS + 1);
+    let err = match parse(&pattern, &mut v, 0) {
+        Ok(_) => panic!("expected error"),
+        Err(e) => e,
+    };
+    assert!(matches!(err, ParseError::TooManyExpansions));
+}
+
+#[test]
+fn brace_expansion_limit_set() {
+    let mut body = String::new();
+    for i in 0..=MAX_BRACE_EXPANSIONS {
+        if i > 0 {
+            body.push(',');
+        }
+        body.push_str(&i.to_string());
+    }
+    let pattern = format!("+ file{{{}}}.txt\n- *\n", body);
+    let err = match parse(&pattern, &mut HashSet::new(), 0) {
+        Ok(_) => panic!("expected error"),
+        Err(e) => e,
+    };
+    assert!(matches!(err, ParseError::TooManyExpansions));
 }
