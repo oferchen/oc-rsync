@@ -26,8 +26,8 @@ and a high-level summary of CLI goals lives in the README\[cq]s CLI
 section.
 For a complete list of flags and their implementation status, see the
 feature matrix, which is the authoritative reference for contributors.
-The full \f[V]--help\f[R] output is captured in cli-help.txt and checked
-in CI to match the binary.
+The \f[V]--help\f[R] output is validated against committed golden files
+in \f[V]tests/golden/help\f[R] to ensure it matches the binary.
 The upstream \f[V]rsync --help\f[R] text wrapped to 80 columns is stored
 in \f[V]crates/cli/resources/rsync-help-80.txt\f[R].
 A unit test derives the expected option ordering from this file and
