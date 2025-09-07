@@ -748,33 +748,10 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     }
 
     fn root_and_parents(pat: &str) -> (String, Vec<String>) {
-        let rooted = if pat.starts_with('/') {
-            pat.to_string()
-        } else {
-            format!("/{pat}")
-        };
-        let mut base = String::new();
-        let mut dirs = Vec::new();
-        let mut finished = true;
-        let trimmed = rooted.trim_end_matches('/');
-        for part in trimmed.trim_start_matches('/').split('/') {
-            if !base.is_empty() {
-                base.push('/');
-            }
-            base.push_str(part);
-            let has_glob = part.contains(['*', '?', '[', ']']);
-            if has_glob {
-                dirs.push(format!("/{base}/"));
-                dirs.push(format!("/{base}/**"));
-                finished = false;
-                break;
-            }
-            dirs.push(format!("/{base}/"));
-        }
-        if finished {
-            dirs.pop();
-        }
-        (rooted, dirs)
+        let (rooted, parents) = filters::rooted_and_parents(pat);
+        let rooted = format!("/{rooted}");
+        let parents = parents.into_iter().map(|d| format!("/{d}")).collect();
+        (rooted, parents)
     }
 
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
