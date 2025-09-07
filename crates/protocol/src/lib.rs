@@ -102,6 +102,7 @@ pub fn negotiate_caps(local: u32, peer: u32) -> u32 {
 pub enum Tag {
     Message = 0,
     KeepAlive = 1,
+    Data = 2,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,6 +129,7 @@ impl TryFrom<u8> for Tag {
         match v {
             0 => Ok(Tag::Message),
             1 => Ok(Tag::KeepAlive),
+            2 => Ok(Tag::Data),
             other => Err(UnknownTag(other)),
         }
     }
@@ -404,7 +406,7 @@ impl Message {
             Message::Data(payload) => {
                 let header = FrameHeader {
                     channel,
-                    tag: Tag::Message,
+                    tag: Tag::Data,
                     msg: Msg::Data,
                     len: payload.len() as u32,
                 };
@@ -635,6 +637,15 @@ impl Message {
                     "invalid keepalive message",
                 )),
             },
+            Tag::Data => {
+                if f.header.msg != Msg::Data {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "invalid data message",
+                    ));
+                }
+                Ok(Message::Data(f.payload))
+            }
             Tag::Message =>
             {
                 #[allow(unreachable_patterns)]
@@ -857,18 +868,22 @@ mod tests {
     fn frame_roundtrip() {
         let msg = Message::Data(b"hello".to_vec());
         let frame = msg.to_frame(7, None);
+        assert_eq!(frame.header.tag, Tag::Data);
         let mut buf = Vec::new();
         frame.encode(&mut buf).unwrap();
         let decoded = Frame::decode(&buf[..]).unwrap();
+        assert_eq!(decoded.header.tag, Tag::Data);
         assert_eq!(decoded, frame);
         let msg2 = Message::from_frame(decoded, None).unwrap();
         assert_eq!(msg2, msg);
 
         let msg4 = Message::Data(b"1234".to_vec());
         let frame4 = msg4.to_frame(3, None);
+        assert_eq!(frame4.header.tag, Tag::Data);
         let mut buf4 = Vec::new();
         frame4.encode(&mut buf4).unwrap();
         let decoded4 = Frame::decode(&buf4[..]).unwrap();
+        assert_eq!(decoded4.header.tag, Tag::Data);
         assert_eq!(decoded4, frame4);
         let msg4_round = Message::from_frame(decoded4, None).unwrap();
         assert_eq!(msg4_round, msg4);
