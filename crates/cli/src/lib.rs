@@ -743,51 +743,9 @@ fn run_single(
     Ok(stats)
 }
 
-fn root_and_parents(pat: &str) -> (String, Vec<String>) {
-    let rooted = if pat.starts_with('/') {
-        pat.to_string()
-    } else {
-        format!("/{pat}")
-    };
-    let mut base = String::new();
-    let mut dirs = Vec::new();
-    let mut finished = true;
-    let trimmed = rooted.trim_end_matches('/');
-    let parts: Vec<&str> = trimmed.trim_start_matches('/').split('/').collect();
-    for (i, part) in parts.iter().enumerate() {
-        if !base.is_empty() {
-            base.push('/');
-        }
-        base.push_str(part);
-        let has_glob = part.contains(['*', '?', '[', ']']);
-        if has_glob {
-            dirs.push(format!("/{base}/"));
-            let remainder = &parts[i + 1..];
-            if !(remainder.is_empty() || (remainder.len() == 1 && remainder[0] == "*")) {
-                dirs.push(format!("/{base}/**"));
-            }
-            finished = false;
-            break;
-        }
-        dirs.push(format!("/{base}/"));
-    }
-    if finished {
-        dirs.pop();
-    }
-    (rooted, dirs)
-}
-
 fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
         filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
-    }
-
-    fn root_and_parents(pat: &str) -> (String, Vec<String>) {
-        let (rooted, parents) = filters::rooted_and_parents(pat);
-        (
-            format!("/{rooted}"),
-            parents.into_iter().map(|d| format!("/{d}")).collect(),
-        )
     }
 
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
@@ -837,24 +795,17 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("include")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, pat) in idxs.into_iter().zip(values) {
-            let (rooted, parents) = root_and_parents(pat);
-            add_rules(
-                idx + 1,
-                parse_filters(&format!("+ {}", rooted), opts.from0)
-                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-            );
-            for dir in parents {
-                let rule = if opts.from0 {
-                    format!("+{}", dir)
-                } else {
-                    format!("+ {}", dir)
-                };
-                add_rules(
-                    idx + 1,
-                    parse_filters(&rule, opts.from0)
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                );
+            let mut vset = HashSet::new();
+            let mut bytes = pat.clone().into_bytes();
+            if opts.from0 {
+                bytes.push(0);
+            } else {
+                bytes.push(b'\n');
             }
+            let rs =
+                filters::parse_rule_list_from_bytes(&bytes, opts.from0, '+', &mut vset, 0, None)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+            add_rules(idx + 1, rs);
         }
     }
     if let Some(values) = matches.get_many::<String>("exclude") {
@@ -874,61 +825,10 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("include_from")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
-            for pat in load_patterns(file, opts.from0)? {
-                let trimmed = pat.trim();
-                if trimmed.is_empty() {
-                    continue;
-                }
-                if trimmed.starts_with(['+', '-', ':']) {
-                    let sign = trimmed.chars().next().unwrap();
-                    let rest = trimmed[1..].trim_start();
-                    if sign == '+' {
-                        let (rooted, parents) = root_and_parents(rest);
-                        add_rules(
-                            idx + 1,
-                            parse_filters(&format!("+ {}", rooted), opts.from0)
-                                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                        );
-                        for dir in parents {
-                            let rule = if opts.from0 {
-                                format!("+{}", dir)
-                            } else {
-                                format!("+ {}", dir)
-                            };
-                            add_rules(
-                                idx + 1,
-                                parse_filters(&rule, opts.from0)
-                                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                            );
-                        }
-                    } else {
-                        add_rules(
-                            idx + 1,
-                            parse_filters(trimmed, opts.from0)
-                                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                        );
-                    }
-                } else {
-                    let (rooted, parents) = root_and_parents(trimmed);
-                    add_rules(
-                        idx + 1,
-                        parse_filters(&format!("+ {}", rooted), opts.from0)
-                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                    );
-                    for dir in parents {
-                        let rule = if opts.from0 {
-                            format!("+{}", dir)
-                        } else {
-                            format!("+ {}", dir)
-                        };
-                        add_rules(
-                            idx + 1,
-                            parse_filters(&rule, opts.from0)
-                                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                        );
-                    }
-                }
-            }
+            let mut vset = HashSet::new();
+            let rs = filters::parse_rule_list_file(file, opts.from0, '+', &mut vset, 0)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+            add_rules(idx + 1, rs);
         }
     }
     if let Some(values) = matches.get_many::<PathBuf>("exclude_from") {
@@ -1118,13 +1018,6 @@ mod tests {
             }
             _ => panic!("expected remote spec"),
         }
-    }
-
-    #[test]
-    fn root_and_parents_avoids_recursive_for_single_star() {
-        let (rooted, parents) = root_and_parents("[0-9]/*");
-        assert_eq!(rooted, "/[0-9]/*");
-        assert_eq!(parents, vec!["/[0-9]/".to_string()]);
     }
 
     #[test]
