@@ -968,7 +968,15 @@ impl Matcher {
 
         let mut content = match fs::read_to_string(path) {
             Ok(c) => c,
-            Err(_) => return Ok((Vec::new(), Vec::new())),
+            Err(err) => {
+                tracing::warn!(
+                    target: InfoFlag::Filter.target(),
+                    ?path,
+                    ?err,
+                    "unable to open",
+                );
+                return Err(ParseError::Io(err));
+            }
         };
 
         let adjusted = if cvs {
