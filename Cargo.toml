@@ -128,8 +128,7 @@ depends = "zlib1g, libzstd1"
 assets = [
     ["target/release/oc-rsync", "/usr/bin/oc-rsync", "755"],
     ["packaging/systemd/oc-rsyncd.service", "/lib/systemd/system/oc-rsyncd.service", "644"],
-    ["packaging/examples/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf", "644"],
-    ["packaging/systemd/oc-rsyncd.conf", "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf", "644"],
+    ["packaging/examples/oc-rsyncd.conf", "/etc/oc-rsyncd.conf", "644"],
     ["man/oc-rsync.1", "/usr/share/man/man1/oc-rsync.1", "644"],
     ["man/oc-rsyncd.8", "/usr/share/man/man8/oc-rsyncd.8", "644"],
     ["man/oc-rsyncd.conf.5", "/usr/share/man/man5/oc-rsyncd.conf.5", "644"],
@@ -145,11 +144,7 @@ license = "Apache-2.0 OR MIT"
 path = "/usr/bin/oc-rsync"
 
 [package.metadata.rpm.files.".rpm/oc-rsyncd.conf"]
-path = "/usr/share/doc/oc-rsync/examples/oc-rsyncd.conf"
-mode = "644"
-
-[package.metadata.rpm.files.".rpm/oc-rsyncd.systemd.conf"]
-path = "/usr/share/doc/oc-rsync/examples/oc-rsyncd.systemd.conf"
+path = "/etc/oc-rsyncd.conf"
 mode = "644"
 
 [package.metadata.rpm.files.".rpm/oc-rsyncd.service"]
