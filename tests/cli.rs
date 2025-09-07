@@ -4527,6 +4527,34 @@ fn single_star_does_not_cross_directories() {
 }
 
 #[test]
+fn segment_star_does_not_cross_directories() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("data/sub")).unwrap();
+    fs::write(src.join("data/file.txt"), b"1").unwrap();
+    fs::write(src.join("data/sub/file.txt"), b"2").unwrap();
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "-r",
+            "--include",
+            "data*/file.txt",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert!(dst.join("data/file.txt").exists());
+    assert!(dst.join("data").is_dir());
+    assert!(!dst.join("data/sub/file.txt").exists());
+    assert!(!dst.join("data/sub").exists());
+}
+
+#[test]
 fn char_class_respects_directory_boundaries() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
