@@ -101,7 +101,7 @@ CFG
 
 verify_tree() {
   local src="$1" dst="$2"
-  $UPSTREAM -an --delete "$src/" "$dst/" | tee /tmp/verify.log
+  $UPSTREAM -an --delete --acls --xattrs "$src/" "$dst/" | tee /tmp/verify.log
   if [[ -s /tmp/verify.log ]]; then
     echo "Trees differ" >&2
     exit 1
