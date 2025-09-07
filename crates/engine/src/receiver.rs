@@ -581,6 +581,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    #[allow(clippy::field_reassign_with_default)]
     fn apply_without_existing_partial() {
         let tmp = tempdir().unwrap();
         let src = tmp.path().join("src.txt");
@@ -599,6 +600,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::field_reassign_with_default)]
     fn apply_with_existing_partial() {
         let tmp = tempdir().unwrap();
         let src = tmp.path().join("src.txt");

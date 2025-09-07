@@ -4,7 +4,7 @@ use nix::fcntl::{FcntlArg, OFlag, fcntl};
 use std::net::TcpListener;
 #[cfg(unix)]
 use std::thread;
-use transport::{Transport, ssh::SshStdioTransport, tcp::TcpTransport};
+use transport::{ssh::SshStdioTransport, tcp::TcpTransport};
 
 #[cfg(unix)]
 #[test]
