@@ -1005,6 +1005,9 @@ impl Matcher {
                     ?err,
                     "unable to open",
                 );
+                if err.kind() == io::ErrorKind::NotFound {
+                    return Ok((Vec::new(), Vec::new()));
+                }
                 return Err(ParseError::Io(err));
             }
         };
