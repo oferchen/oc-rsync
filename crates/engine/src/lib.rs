@@ -1,7 +1,7 @@
 // crates/engine/src/lib.rs
 #![allow(clippy::collapsible_if)]
 #[cfg(unix)]
-use nix::unistd::{Gid, Uid, chown};
+use nix::unistd::{chown, Gid, Uid};
 use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, Write};
@@ -18,16 +18,16 @@ use std::os::fd::AsRawFd;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Component, Path, PathBuf};
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
-use transport::{Transport, pipe};
+use transport::{pipe, Transport};
 
 use checksums::ChecksumConfig;
 pub use checksums::StrongHash;
 use compress::Codec;
 use filters::{Matcher, ParseError};
-use logging::{InfoFlag, escape_path};
+use logging::{escape_path, InfoFlag};
 use protocol::ExitCode;
 use thiserror::Error;
 mod cleanup;
@@ -38,7 +38,7 @@ mod sender;
 
 pub mod flist;
 
-pub use delta::{DeltaIter, Op, compute_delta};
+pub use delta::{compute_delta, DeltaIter, Op};
 pub use meta::MetaOpts;
 pub use receiver::{Receiver, ReceiverState};
 pub use sender::{Sender, SenderState};
@@ -196,7 +196,7 @@ fn check_time_limit(start: Instant, opts: &SyncOptions) -> Result<()> {
 pub fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     {
-        use nix::fcntl::{FallocateFlags, fallocate};
+        use nix::fcntl::{fallocate, FallocateFlags};
         fallocate(file, FallocateFlags::empty(), 0, len as i64).map_err(std::io::Error::from)
     }
 
@@ -631,7 +631,7 @@ fn count_entries(
     matcher: &Matcher,
     opts: &SyncOptions,
 ) -> Result<(usize, usize, u64)> {
-    let mut walker = walk(src_root, 1024, opts.walk_links(), opts.one_file_system);
+    let mut walker = walk(src_root, 1024, opts.walk_links(), opts.one_file_system)?;
     let mut state = String::new();
     let mut files = 0usize;
     let mut dirs = 0usize;
@@ -795,7 +795,7 @@ fn delete_extraneous(
     stats: &mut Stats,
     start: Instant,
 ) -> Result<()> {
-    let mut walker = walk(dst, 1, opts.walk_links(), opts.one_file_system);
+    let mut walker = walk(dst, 1, opts.walk_links(), opts.one_file_system)?;
     let mut state = String::new();
     let mut first_err: Option<EngineError> = None;
     while let Some(batch) = walker.next() {
@@ -946,7 +946,11 @@ fn delete_extraneous(
         }
     }
     if let Some(e) = first_err {
-        if opts.ignore_errors { Ok(()) } else { Err(e) }
+        if opts.ignore_errors {
+            Ok(())
+        } else {
+            Err(e)
+        }
     } else {
         Ok(())
     }
@@ -1046,7 +1050,7 @@ pub fn sync(
     }
     if opts.list_only {
         let matcher = matcher.clone().with_root(src_root.clone());
-        let mut walker = walk(&src_root, 1024, opts.walk_links(), opts.one_file_system);
+        let mut walker = walk(&src_root, 1024, opts.walk_links(), opts.one_file_system)?;
         let mut state = String::new();
         while let Some(batch) = walker.next() {
             let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1187,7 +1191,7 @@ pub fn sync(
     sender.start();
     stats.file_list_transfer_time = flist_xfer_start.elapsed();
     let mut state = String::new();
-    let mut walker = walk(&src_root, 1024, opts.walk_links(), opts.one_file_system);
+    let mut walker = walk(&src_root, 1024, opts.walk_links(), opts.one_file_system)?;
     while let Some(batch) = walker.next() {
         check_time_limit(start, opts)?;
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
@@ -1601,13 +1605,13 @@ pub fn sync(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::delta::{LIT_CAP, apply_delta};
-    use checksums::{ChecksumConfigBuilder, rolling_checksum};
+    use crate::delta::{apply_delta, LIT_CAP};
+    use checksums::{rolling_checksum, ChecksumConfigBuilder};
     use compress::available_codecs;
     use filters::Matcher;
     use std::fs;
     use std::io::{Cursor, Write};
-    use tempfile::{NamedTempFile, tempdir};
+    use tempfile::{tempdir, NamedTempFile};
 
     #[test]
     fn delta_roundtrip() {

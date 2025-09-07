@@ -64,7 +64,7 @@ impl Walk {
         max_file_size: Option<u64>,
         include_links: bool,
         one_file_system: bool,
-    ) -> Self {
+    ) -> std::io::Result<Self> {
         #[cfg(windows)]
         let walk_root = normalize_path(&root);
         #[cfg(windows)]
@@ -76,9 +76,7 @@ impl Walk {
 
         #[cfg(unix)]
         let root_dev = if one_file_system {
-            std::fs::symlink_metadata(&root)
-                .map(|m| m.dev())
-                .unwrap_or(0)
+            std::fs::symlink_metadata(&root)?.dev()
         } else {
             0
         };
@@ -94,7 +92,7 @@ impl Walk {
             .sort_by(|a, b| a.file_name().cmp(b.file_name()))
             .into_iter();
 
-        Walk {
+        Ok(Walk {
             iter,
             prev_path: String::new(),
             batch_size,
@@ -110,7 +108,7 @@ impl Walk {
             dev_table: Vec::new(),
             inode_map: HashMap::new(),
             inode_table: Vec::new(),
-        }
+        })
     }
 
     pub fn skip_current_dir(&mut self) {
@@ -139,7 +137,7 @@ pub fn walk(
     batch_size: usize,
     include_links: bool,
     one_file_system: bool,
-) -> Walk {
+) -> std::io::Result<Walk> {
     Walk::new(
         root.as_ref().to_path_buf(),
         batch_size,
@@ -155,7 +153,7 @@ pub fn walk_with_max_size(
     max_file_size: u64,
     include_links: bool,
     one_file_system: bool,
-) -> Walk {
+) -> std::io::Result<Walk> {
     Walk::new(
         root.as_ref().to_path_buf(),
         batch_size,
