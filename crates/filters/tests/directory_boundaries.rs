@@ -24,6 +24,15 @@ fn class_slash_star() {
 }
 
 #[test]
+fn char_class_first_level_only() {
+    let rules = p("+ [0-9]/*\n- *\n");
+    let matcher = Matcher::new(rules);
+    assert!(matcher.is_included("1/file.txt").unwrap());
+    assert!(!matcher.is_included("1/2/file.txt").unwrap());
+    assert!(!matcher.is_included("dir/1/file.txt").unwrap());
+}
+
+#[test]
 fn dir_prefix_double_star() {
     let rules = p("+ dir*/**/keep[0-9].txt\n- *\n");
     let matcher = Matcher::new(rules);
