@@ -293,6 +293,38 @@ fn include_exclude_from_order() {
 }
 
 #[test]
+fn include_glob_prunes_unmatched_dirs() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("a")).unwrap();
+    fs::create_dir_all(src.join("b/sub")).unwrap();
+    fs::create_dir_all(src.join("c")).unwrap();
+    fs::write(src.join("a/keep1.txt"), b"hi").unwrap();
+    fs::write(src.join("b/sub/keep2.txt"), b"hi").unwrap();
+    fs::write(src.join("c/omit.txt"), b"no").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--include",
+            "**/keep?.txt",
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("a/keep1.txt").exists());
+    assert!(dst.join("b/sub/keep2.txt").exists());
+    assert!(!dst.join("c").exists());
+}
+
+#[test]
 fn filter_merge_from0_matches_filter_file() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");

@@ -1,7 +1,7 @@
 // crates/engine/src/lib.rs
 #![allow(clippy::collapsible_if)]
 #[cfg(unix)]
-use nix::unistd::{chown, Gid, Uid};
+use nix::unistd::{Gid, Uid, chown};
 use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, Write};
@@ -18,16 +18,16 @@ use std::os::fd::AsRawFd;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Component, Path, PathBuf};
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant, SystemTime};
-use transport::{pipe, Transport};
+use transport::{Transport, pipe};
 
 use checksums::ChecksumConfig;
 pub use checksums::StrongHash;
 use compress::Codec;
 use filters::{Matcher, ParseError};
-use logging::{escape_path, InfoFlag};
+use logging::{InfoFlag, escape_path};
 use protocol::ExitCode;
 use thiserror::Error;
 mod cleanup;
@@ -38,7 +38,7 @@ mod sender;
 
 pub mod flist;
 
-pub use delta::{compute_delta, DeltaIter, Op};
+pub use delta::{DeltaIter, Op, compute_delta};
 pub use meta::MetaOpts;
 pub use receiver::{Receiver, ReceiverState};
 pub use sender::{Sender, SenderState};
@@ -193,7 +193,7 @@ fn check_time_limit(start: Instant, opts: &SyncOptions) -> Result<()> {
 pub fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     {
-        use nix::fcntl::{fallocate, FallocateFlags};
+        use nix::fcntl::{FallocateFlags, fallocate};
         fallocate(file, FallocateFlags::empty(), 0, len as i64).map_err(std::io::Error::from)
     }
 
@@ -642,9 +642,9 @@ fn count_entries(
                 continue;
             }
             if let Ok(rel) = path.strip_prefix(src_root) {
-                let (included, dir_only) = matcher.is_included_with_dir(rel)?;
-                if !included {
-                    if dir_only || entry.file_type.is_dir() {
+                let res = matcher.is_included_with_dir(rel)?;
+                if !res.include {
+                    if !res.descend && entry.file_type.is_dir() {
                         walker.skip_current_dir();
                         skip_dirs.push(path.clone());
                     }
@@ -652,7 +652,7 @@ fn count_entries(
                 }
                 if entry.file_type.is_dir() {
                     dirs += 1;
-                    if dir_only {
+                    if !res.descend {
                         walker.skip_current_dir();
                         skip_dirs.push(path.clone());
                     }
@@ -807,12 +807,12 @@ fn delete_extraneous(
             }
             let file_type = entry.file_type;
             if let Ok(rel) = path.strip_prefix(dst) {
-                let (included, dir_only) = matcher
+                let res = matcher
                     .is_included_for_delete_with_dir(rel)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
                 let src_exists = src.join(rel).exists();
                 if file_type.is_dir() {
-                    if (included && !src_exists) || (!included && opts.delete_excluded) {
+                    if (res.include && !src_exists) || (!res.include && opts.delete_excluded) {
                         if let Some(max) = opts.max_delete {
                             if stats.files_deleted >= max {
                                 return Err(EngineError::Other("max-delete limit exceeded".into()));
@@ -874,13 +874,13 @@ fn delete_extraneous(
                                 }
                             }
                         }
-                    } else if !included {
+                    } else if !res.include {
                         walker.skip_current_dir();
-                        if dir_only || file_type.is_dir() {
+                        if !res.descend || file_type.is_dir() {
                             skip_dirs.push(path.clone());
                         }
                     }
-                } else if (included && !src_exists) || (!included && opts.delete_excluded) {
+                } else if (res.include && !src_exists) || (!res.include && opts.delete_excluded) {
                     if let Some(max) = opts.max_delete {
                         if stats.files_deleted >= max {
                             return Err(EngineError::Other("max-delete limit exceeded".into()));
@@ -943,11 +943,7 @@ fn delete_extraneous(
         }
     }
     if let Some(e) = first_err {
-        if opts.ignore_errors {
-            Ok(())
-        } else {
-            Err(e)
-        }
+        if opts.ignore_errors { Ok(()) } else { Err(e) }
     } else {
         Ok(())
     }
@@ -1058,16 +1054,16 @@ pub fn sync(
                     continue;
                 }
                 if let Ok(rel) = path.strip_prefix(&src_root) {
-                    let (included, dir_only) = matcher.is_included_with_dir(rel)?;
-                    if !included {
-                        if dir_only || entry.file_type.is_dir() {
+                    let res = matcher.is_included_with_dir(rel)?;
+                    if !res.include {
+                        if !res.descend && entry.file_type.is_dir() {
                             walker.skip_current_dir();
                             skip_dirs.push(path.clone());
                         }
                         continue;
                     }
                     if entry.file_type.is_dir() {
-                        if dir_only {
+                        if !res.descend {
                             walker.skip_current_dir();
                             skip_dirs.push(path.clone());
                         } else {
@@ -1201,9 +1197,9 @@ pub fn sync(
             }
             let file_type = entry.file_type;
             if let Ok(rel) = path.strip_prefix(&src_root) {
-                let (included, dir_only) = matcher.is_included_with_dir(rel)?;
-                if !included {
-                    if dir_only || file_type.is_dir() {
+                let res = matcher.is_included_with_dir(rel)?;
+                if !res.include {
+                    if !res.descend && file_type.is_dir() {
                         walker.skip_current_dir();
                         skip_dirs.push(path.clone());
                     }
@@ -1215,7 +1211,7 @@ pub fn sync(
                         dest_path.push(name);
                     }
                 }
-                if file_type.is_dir() && dir_only {
+                if file_type.is_dir() && !res.descend {
                     walker.skip_current_dir();
                     skip_dirs.push(path.clone());
                 }
@@ -1335,7 +1331,7 @@ pub fn sync(
                         remove_file_opts(&path, opts)?;
                     }
                 } else if file_type.is_dir() {
-                    if !dir_only {
+                    if res.descend {
                         matcher
                             .preload_dir(&path)
                             .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
@@ -1602,13 +1598,13 @@ pub fn sync(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::delta::{apply_delta, LIT_CAP};
-    use checksums::{rolling_checksum, ChecksumConfigBuilder};
+    use crate::delta::{LIT_CAP, apply_delta};
+    use checksums::{ChecksumConfigBuilder, rolling_checksum};
     use compress::available_codecs;
     use filters::Matcher;
     use std::fs;
     use std::io::{Cursor, Write};
-    use tempfile::{tempdir, NamedTempFile};
+    use tempfile::{NamedTempFile, tempdir};
 
     #[test]
     fn delta_roundtrip() {
