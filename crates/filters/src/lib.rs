@@ -2279,6 +2279,10 @@ pub fn rooted_and_parents(pat: &str) -> (String, Vec<String>) {
     let mut dirs = Vec::new();
     let mut finished = true;
     for part in trimmed.split('/') {
+        if part == "**" {
+            finished = false;
+            break;
+        }
         if !base.is_empty() {
             base.push('/');
         }
@@ -2312,6 +2316,7 @@ pub fn parse_rule_list_from_bytes(
         }
         if sign == '+' && !pat.starts_with(['+', '-', ':']) {
             let (rooted, parents) = rooted_and_parents(&pat);
+            let has_globstar = rooted.contains("**");
 
             let line = if from0 {
                 format!("+./{rooted}\n")
@@ -2330,7 +2335,6 @@ pub fn parse_rule_list_from_bytes(
                 .rsplit('/')
                 .next()
                 .is_some_and(|seg| seg.chars().all(|c| c == '*'));
-
             for dir in &parents {
                 let glob = format!("/{}", dir.trim_end_matches('/'));
                 let matcher = compile_glob(&glob)?;
@@ -2346,7 +2350,7 @@ pub fn parse_rule_list_from_bytes(
                 rules.push(Rule::Include(data));
             }
 
-            if !skip_exclude {
+            if !skip_exclude && !has_globstar {
                 for dir in &parents {
                     let exc_pat = format!("/{}*", dir);
                     let matcher = compile_glob(&exc_pat)?;

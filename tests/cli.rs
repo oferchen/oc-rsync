@@ -3629,6 +3629,49 @@ fn include_from_zero_separated_list_allows_hash() {
 }
 
 #[test]
+fn include_from_complex_glob_matches() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("dirA")).unwrap();
+    fs::write(src.join("dirA/keep1.txt"), "1").unwrap();
+    fs::write(src.join("dirA/skip.log"), "x").unwrap();
+    fs::create_dir_all(src.join("dirB/sub")).unwrap();
+    fs::write(src.join("dirB/sub/keep2.txt"), "2").unwrap();
+    fs::write(src.join("dirB/sub/other.txt"), "x").unwrap();
+    fs::create_dir_all(src.join("dirC/deep/deeper")).unwrap();
+    fs::write(src.join("dirC/deep/deeper/keep3.txt"), "3").unwrap();
+    fs::create_dir_all(src.join("otherdir")).unwrap();
+    fs::write(src.join("otherdir/keep4.txt"), "4").unwrap();
+    let inc = tmp.path().join("include.lst");
+    fs::write(&inc, "dir*/**/keep[0-9].txt\n").unwrap();
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "-r",
+            "--include-from",
+            inc.to_str().unwrap(),
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert!(dst.join("dirA/keep1.txt").is_file());
+    assert!(dst.join("dirB/sub/keep2.txt").is_file());
+    assert!(dst.join("dirC/deep/deeper/keep3.txt").is_file());
+    assert!(dst.join("dirA").is_dir());
+    assert!(dst.join("dirB/sub").is_dir());
+    assert!(dst.join("dirC/deep/deeper").is_dir());
+    assert!(!dst.join("dirA/skip.log").exists());
+    assert!(!dst.join("dirB/sub/other.txt").exists());
+    assert!(!dst.join("otherdir/keep4.txt").exists());
+    assert!(!dst.join("otherdir").exists());
+}
+
+#[test]
 fn files_from_zero_separated_list_allows_hash() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
