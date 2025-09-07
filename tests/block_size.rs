@@ -3,7 +3,9 @@
 
 use assert_cmd::Command;
 use checksums::ChecksumConfigBuilder;
-use engine::{block_size, compute_delta, Op, SyncOptions};
+use compress::available_codecs;
+use engine::{Op, SyncOptions, block_size, compute_delta, sync};
+use filters::Matcher;
 use std::fs;
 use tempfile::tempdir;
 
@@ -291,6 +293,47 @@ fn delta_block_size_smaller_file() {
     let rsync_literal = parse_literal(&stats);
     assert_eq!(literal, rsync_literal);
     assert_eq!(literal, size);
+}
+
+#[test]
+fn sync_block_size_literal_matches_rsync() {
+    let block_size = 1024usize;
+    let size = 1 << 20;
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    let dst_dir = dir.path().join("dst");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    let src_file = src_dir.join("file.bin");
+    let dst_file = dst_dir.join("file.bin");
+
+    let mut basis = vec![0u8; size];
+    for i in 0..size {
+        basis[i] = (i % 256) as u8;
+    }
+    let mut target = basis.clone();
+    let off = size / 2;
+    target[off..off + block_size].fill(0xFF);
+    fs::write(&src_file, &target).unwrap();
+    fs::write(&dst_file, &basis).unwrap();
+
+    let stats = sync(
+        &src_dir,
+        &dst_dir,
+        &Matcher::default(),
+        &available_codecs(),
+        &SyncOptions {
+            block_size,
+            checksum: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let rsync_stats =
+        fs::read_to_string("tests/golden/block_size/cli_block_size_matches_rsync.stdout").unwrap();
+    let rsync_literal = parse_literal(&rsync_stats) as u64;
+    assert_eq!(stats.literal_data, rsync_literal);
+    assert_eq!(stats.literal_data, block_size as u64);
 }
 
 #[test]

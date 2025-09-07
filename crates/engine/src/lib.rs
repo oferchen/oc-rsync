@@ -1182,7 +1182,7 @@ pub fn sync(
         }
     }
 
-    let mut sender = Sender::new(opts.block_size, matcher.clone(), codec, opts.clone());
+    let mut sender = Sender::new(matcher.clone(), codec, opts.clone());
     let mut receiver = Receiver::new(codec, opts.clone());
     receiver.matcher = matcher.clone();
     let mut dir_meta: Vec<(PathBuf, PathBuf)> = Vec::new();
@@ -1842,7 +1842,6 @@ mod tests {
         fs::write(&outside, b"outside").unwrap();
 
         let mut sender = Sender::new(
-            1024,
             Matcher::default(),
             Some(Codec::Zlib),
             SyncOptions::default(),
@@ -1955,12 +1954,7 @@ mod tests {
             tmp.write_all(&chunk).unwrap();
         }
         let path = tmp.path().to_path_buf();
-        let sender = Sender::new(
-            RSYNC_BLOCK_SIZE,
-            Matcher::default(),
-            None,
-            SyncOptions::default(),
-        );
+        let sender = Sender::new(Matcher::default(), None, SyncOptions::default());
         let new_sum = sender.strong_file_checksum(&path).unwrap();
         let data = fs::read(&path).unwrap();
         let old_sum = sender.cfg.checksum(&data).strong;

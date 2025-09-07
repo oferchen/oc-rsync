@@ -168,7 +168,9 @@ fn misuse_matches_upstream() {
     let our_lines: Vec<_> = ours_stderr.lines().collect();
     assert_eq!(ours.status.code(), Some(1));
     assert_eq!(our_lines.first(), golden_lines.first());
-    assert!(our_lines
-        .get(1)
-        .is_some_and(|l| l.starts_with(golden_lines[1])));
+    assert!(
+        our_lines
+            .get(1)
+            .is_some_and(|l| l.starts_with(golden_lines[1]))
+    );
 }

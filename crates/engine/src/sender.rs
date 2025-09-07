@@ -31,26 +31,19 @@ pub enum SenderState {
 pub struct Sender {
     state: SenderState,
     pub(crate) cfg: ChecksumConfig,
-    block_size: usize,
     _matcher: Matcher,
     codec: Option<Codec>,
     opts: SyncOptions,
 }
 
 impl Sender {
-    pub fn new(
-        block_size: usize,
-        matcher: Matcher,
-        codec: Option<Codec>,
-        opts: SyncOptions,
-    ) -> Self {
+    pub fn new(matcher: Matcher, codec: Option<Codec>, opts: SyncOptions) -> Self {
         Self {
             state: SenderState::Idle,
             cfg: ChecksumConfigBuilder::new()
                 .strong(opts.strong)
                 .seed(opts.checksum_seed)
                 .build(),
-            block_size,
             _matcher: matcher,
             codec,
             opts,
@@ -176,10 +169,10 @@ impl Sender {
         let meta = fs::metadata(path).map_err(|e| io_context(path, e))?;
         let src_len = meta.len();
         ensure_max_alloc(src_len, &self.opts)?;
-        let block_size = if self.block_size == 0 {
-            block_size(src_len)
+        let block_size = if self.opts.block_size > 0 {
+            self.opts.block_size
         } else {
-            self.block_size
+            block_size(src_len)
         };
         let file_type = meta.file_type();
         let atime_guard = if self.opts.atimes {
