@@ -1971,17 +1971,46 @@ pub const CVS_DEFAULTS: &[&str] = &[
 ];
 
 pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
-    let joined = CVS_DEFAULTS.join("\0");
-    let mut rules =
-        parse_rule_list_from_bytes(joined.as_bytes(), true, '-', &mut HashSet::new(), 0, None)?;
+    fn append_rule(buf: &mut String, tok: &str) {
+        if tok.is_empty() {
+            return;
+        }
+        let mut chars = tok.chars();
+        if let Some(first) = chars.next() {
+            if matches!(first, '+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R' | '!') {
+                let rest = chars.as_str();
+                let mods_len = rest.chars().take_while(|c| "!/Csrpx".contains(*c)).count();
+                let (mods, pat) = rest.split_at(mods_len);
+                let mut mods = mods.to_string();
+                if !mods.contains('p') {
+                    mods.push('p');
+                }
+                if pat.is_empty() {
+                    buf.push(first);
+                    buf.push_str(&mods);
+                } else {
+                    buf.push(first);
+                    buf.push_str(&mods);
+                    buf.push(' ');
+                    buf.push_str(pat);
+                }
+            } else {
+                buf.push_str("-p ");
+                buf.push_str(tok);
+            }
+            buf.push('\n');
+        }
+    }
+
+    let mut buf = String::new();
+    for pat in CVS_DEFAULTS {
+        append_rule(&mut buf, pat);
+    }
+    let mut rules = parse(&buf, &mut HashSet::new(), 0)?;
     for rule in &mut rules {
         match rule {
-            Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => {
-                d.flags.perishable = true;
-            }
-            Rule::DirMerge(pd) => {
-                pd.flags.perishable = true;
-            }
+            Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => d.flags.perishable = true,
+            Rule::DirMerge(pd) => pd.flags.perishable = true,
             _ => {}
         }
     }
@@ -1991,19 +2020,7 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
         if let Ok(content) = fs::read_to_string(path) {
             let mut buf = String::new();
             for tok in content.split_whitespace() {
-                if tok.is_empty() {
-                    continue;
-                }
-                if matches!(
-                    tok.chars().next(),
-                    Some('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R' | '!')
-                ) {
-                    buf.push_str(tok);
-                } else {
-                    buf.push_str("-p ");
-                    buf.push_str(tok);
-                }
-                buf.push('\n');
+                append_rule(&mut buf, tok);
             }
             let mut v = parse(&buf, &mut HashSet::new(), 0)?;
             for rule in &mut v {
@@ -2011,9 +2028,7 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
                     Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => {
                         d.flags.perishable = true;
                     }
-                    Rule::DirMerge(pd) => {
-                        pd.flags.perishable = true;
-                    }
+                    Rule::DirMerge(pd) => pd.flags.perishable = true,
                     _ => {}
                 }
             }
@@ -2024,19 +2039,7 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
     if let Ok(envpats) = env::var("CVSIGNORE") {
         let mut buf = String::new();
         for tok in envpats.split_whitespace() {
-            if tok.is_empty() {
-                continue;
-            }
-            if matches!(
-                tok.chars().next(),
-                Some('+' | '-' | 'P' | 'p' | 'S' | 'H' | 'R' | '!')
-            ) {
-                buf.push_str(tok);
-            } else {
-                buf.push_str("-p ");
-                buf.push_str(tok);
-            }
-            buf.push('\n');
+            append_rule(&mut buf, tok);
         }
         let mut v = parse(&buf, &mut HashSet::new(), 0)?;
         for rule in &mut v {
@@ -2044,9 +2047,7 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
                 Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => {
                     d.flags.perishable = true;
                 }
-                Rule::DirMerge(pd) => {
-                    pd.flags.perishable = true;
-                }
+                Rule::DirMerge(pd) => pd.flags.perishable = true,
                 _ => {}
             }
         }
