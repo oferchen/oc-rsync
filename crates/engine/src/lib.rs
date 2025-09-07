@@ -653,13 +653,17 @@ fn count_entries(
                     }
                     continue;
                 }
-                if entry.file_type.is_file() {
+                if entry.file_type.is_dir() {
+                    dirs += 1;
+                    if dir_only {
+                        walker.skip_current_dir();
+                        skip_dirs.push(path.clone());
+                    }
+                } else if entry.file_type.is_file() {
                     files += 1;
                     if let Ok(meta) = fs::metadata(&path) {
                         size += meta.len();
                     }
-                } else if entry.file_type.is_dir() {
-                    dirs += 1;
                 }
             }
         }
@@ -1062,9 +1066,14 @@ pub fn sync(
                         continue;
                     }
                     if entry.file_type.is_dir() {
-                        matcher
-                            .preload_dir(&path)
-                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+                        if dir_only {
+                            walker.skip_current_dir();
+                            skip_dirs.push(path.clone());
+                        } else {
+                            matcher
+                                .preload_dir(&path)
+                                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+                        }
                     }
                     if opts.dirs && !entry.file_type.is_dir() {
                         continue;
@@ -1205,6 +1214,10 @@ pub fn sync(
                         dest_path.push(name);
                     }
                 }
+                if file_type.is_dir() && dir_only {
+                    walker.skip_current_dir();
+                    skip_dirs.push(path.clone());
+                }
                 if opts.dirs && !file_type.is_dir() {
                     continue;
                 }
@@ -1321,9 +1334,11 @@ pub fn sync(
                         remove_file_opts(&path, opts)?;
                     }
                 } else if file_type.is_dir() {
-                    matcher
-                        .preload_dir(&path)
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+                    if !dir_only {
+                        matcher
+                            .preload_dir(&path)
+                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+                    }
                     let dest_meta = fs::symlink_metadata(&dest_path).ok();
                     let dest_is_symlink = dest_meta
                         .as_ref()

@@ -46,8 +46,12 @@ fn char_class_allows_descendant_without_deeper_dirs() {
     let matcher = Matcher::new(rules).with_root(tmp.path());
     assert!(matcher.is_included("1/keep.txt").unwrap());
     assert!(!matcher.is_included("1/2/keep.txt").unwrap());
-    assert!(matcher.is_included_with_dir("1").unwrap().0);
-    assert!(!matcher.is_included_with_dir("1/2").unwrap().0);
+    let res1 = matcher.is_included_with_dir("1").unwrap();
+    assert!(res1.0);
+    assert!(!res1.1);
+    let res2 = matcher.is_included_with_dir("1/2").unwrap();
+    assert!(res2.0);
+    assert!(res2.1);
 }
 
 #[test]
