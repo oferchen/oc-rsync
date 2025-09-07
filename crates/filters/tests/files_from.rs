@@ -87,7 +87,37 @@ fn files_from_mixed_file_dir_entries() {
     assert!(m.is_included("qux").unwrap());
     assert!(m.is_included("qux/inner").unwrap());
     assert!(!m.is_included("other").unwrap());
-    assert!(!m.is_included("qux/other").unwrap());
+    assert!(m.is_included("qux/other").unwrap());
+}
+
+#[test]
+fn files_from_nested_file_prunes_siblings() {
+    let tmp = tempdir().unwrap();
+    let list = tmp.path().join("list");
+    fs::write(&list, "a/b/c\n").unwrap();
+    let filter = format!("files-from {}\n", list.display());
+    let mut v = HashSet::new();
+    let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
+    let m = Matcher::new(rules);
+    assert!(m.is_included("a").unwrap());
+    assert!(m.is_included("a/b").unwrap());
+    assert!(m.is_included("a/b/c").unwrap());
+    assert!(!m.is_included("a/b/d").unwrap());
+    assert!(!m.is_included("a/d").unwrap());
+}
+
+#[test]
+fn files_from_directory_entry_prunes_siblings() {
+    let tmp = tempdir().unwrap();
+    let list = tmp.path().join("list");
+    fs::write(&list, "dir/\n").unwrap();
+    let filter = format!("files-from {}\n", list.display());
+    let mut v = HashSet::new();
+    let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
+    let m = Matcher::new(rules);
+    assert!(m.is_included("dir").unwrap());
+    assert!(m.is_included("dir/sub/file").unwrap());
+    assert!(!m.is_included("other/file").unwrap());
 }
 
 #[test]

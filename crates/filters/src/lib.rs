@@ -1609,6 +1609,9 @@ pub fn parse_with_options(
                         return Err(ParseError::RecursiveInclude(path));
                     }
                     let pats = parse_list_file(&path, from0)?;
+                    // Track directories that should have their unlisted siblings excluded.
+                    let mut dirs: std::collections::BTreeSet<String> =
+                        std::collections::BTreeSet::new();
                     for pat in pats {
                         let anchored = if pat.starts_with('/') {
                             pat.clone()
@@ -1632,7 +1635,13 @@ pub fn parse_with_options(
                             prefix.push_str(part);
                             ancestors.push(prefix.clone());
                         }
-                        for anc in ancestors.iter().take(ancestors.len().saturating_sub(1)) {
+                        // Include ancestor directories.
+                        let dir_count = if is_dir {
+                            ancestors.len()
+                        } else {
+                            ancestors.len().saturating_sub(1)
+                        };
+                        for anc in ancestors.iter().take(dir_count) {
                             let line = if from0 {
                                 format!("+{anc}/\n")
                             } else {
@@ -1645,20 +1654,10 @@ pub fn parse_with_options(
                                 depth + 1,
                                 Some(path.clone()),
                             )?);
+                            dirs.insert(anc.clone());
                         }
+                        // Include the final path.
                         if let Some(last) = ancestors.last() {
-                            let line = if from0 {
-                                format!("+{last}\n")
-                            } else {
-                                format!("+ {last}\n")
-                            };
-                            rules.extend(parse_with_options(
-                                &line,
-                                from0,
-                                visited,
-                                depth + 1,
-                                Some(path.clone()),
-                            )?);
                             if is_dir {
                                 let line = if from0 {
                                     format!("+{}/***\n", last)
@@ -1672,8 +1671,37 @@ pub fn parse_with_options(
                                     depth + 1,
                                     Some(path.clone()),
                                 )?);
+                                dirs.insert(last.clone());
+                            } else {
+                                let line = if from0 {
+                                    format!("+{last}\n")
+                                } else {
+                                    format!("+ {last}\n")
+                                };
+                                rules.extend(parse_with_options(
+                                    &line,
+                                    from0,
+                                    visited,
+                                    depth + 1,
+                                    Some(path.clone()),
+                                )?);
                             }
                         }
+                    }
+                    // Exclude unlisted siblings within each included directory.
+                    for d in dirs {
+                        let line = if from0 {
+                            format!("-{d}/*\n")
+                        } else {
+                            format!("- {d}/*\n")
+                        };
+                        rules.extend(parse_with_options(
+                            &line,
+                            from0,
+                            visited,
+                            depth + 1,
+                            Some(path.clone()),
+                        )?);
                     }
                     rules.extend(parse_with_options(
                         "- /**\n",
