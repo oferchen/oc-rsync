@@ -179,6 +179,7 @@ fn compile_glob(pat: &str) -> Result<GlobMatcher, ParseError> {
     }
 
     let pat = expand_posix_classes(&translated);
+    let pat = confine_char_classes(&pat);
     Ok(GlobBuilder::new(&pat)
         .literal_separator(true)
         .backslash_escape(true)
@@ -235,6 +236,51 @@ fn expand_posix_classes(pat: &str) -> String {
         } else {
             out.push(chars[i]);
             i += 1;
+        }
+    }
+    out
+}
+
+fn confine_char_classes(pat: &str) -> String {
+    let mut out = String::new();
+    let mut chars = pat.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '[' {
+            out.push('[');
+            let mut negated = false;
+            if let Some(&next) = chars.peek() {
+                if next == '!' {
+                    negated = true;
+                    out.push('!');
+                    chars.next();
+                }
+            }
+            let mut inner = String::new();
+            while let Some(c) = chars.next() {
+                if c == '\\' {
+                    inner.push('\\');
+                    if let Some(esc) = chars.next() {
+                        inner.push(esc);
+                    }
+                    continue;
+                }
+                if c == ']' {
+                    break;
+                }
+                inner.push(c);
+            }
+            if negated {
+                if !inner.contains('/') {
+                    inner.push('/');
+                }
+                out.push_str(&inner);
+            } else {
+                inner.retain(|c| c != '/');
+                out.push_str(&inner);
+            }
+            out.push(']');
+        } else {
+            out.push(ch);
         }
     }
     out
