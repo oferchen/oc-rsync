@@ -105,7 +105,7 @@ pub fn handle_clap_error(cmd: &clap::Command, e: clap::Error) -> ! {
         let mut msg = e.to_string();
         if matches!(kind, ErrorKind::ValueValidation | ErrorKind::InvalidValue) {
             let first = msg.lines().next().unwrap_or("");
-            if first.contains("--block-size") {
+            if first.contains("--block-size") || first.contains("'-B") {
                 let val = first.split('\'').nth(1).unwrap_or("");
                 msg = format!("--block-size={val} is invalid");
             } else if let Some(rest) = first.strip_prefix("error: invalid value '") {
