@@ -8,6 +8,9 @@ use std::os::unix::net::UnixDatagram;
 use tempfile::tempdir;
 use tracing::warn;
 
+mod common;
+use common::temp_env;
+
 fn with_env_var<K, V, F, R>(key: K, value: V, f: F) -> R
 where
     K: AsRef<OsStr>,
@@ -31,13 +34,12 @@ fn daemon_syslog_emits_message() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("sock");
     let server = UnixDatagram::bind(&path).unwrap();
-    with_env_var("OC_RSYNC_SYSLOG_PATH", &path, || {
-        init_logging(None, None, true, false, false).unwrap();
-        warn!(target: "test", "daemon syslog");
-        let mut buf = [0u8; 256];
-        let (n, _) = server.recv_from(&mut buf).unwrap();
-        let msg = std::str::from_utf8(&buf[..n]).unwrap();
-        let expected = format!("<12>rsync[{}]: daemon syslog", std::process::id());
-        assert_eq!(msg, expected);
-    });
+    let _env = temp_env("OC_RSYNC_SYSLOG_PATH", &path);
+    init_logging(None, None, true, false, false).unwrap();
+    warn!(target: "test", "daemon syslog");
+    let mut buf = [0u8; 256];
+    let (n, _) = server.recv_from(&mut buf).unwrap();
+    let msg = std::str::from_utf8(&buf[..n]).unwrap();
+    let expected = format!("<12>rsync[{}]: daemon syslog", std::process::id());
+    assert_eq!(msg, expected);
 }
