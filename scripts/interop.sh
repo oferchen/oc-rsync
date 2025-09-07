@@ -38,7 +38,13 @@ if ! command -v sshd >/dev/null 2>&1; then
 fi
 
 TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+cleanup() {
+  if [[ -f "$TMP/sshd.pid" ]]; then
+    kill "$(cat "$TMP/sshd.pid")" >/dev/null 2>&1 || true
+  fi
+  rm -rf "$TMP"
+}
+trap cleanup EXIT
 
 # SSH server setup
 PORT=2222
@@ -56,7 +62,6 @@ PasswordAuthentication no
 PermitRootLogin yes
 CFG
 /usr/sbin/sshd -f "$TMP/sshd_config"
-trap 'kill $(cat "$TMP/sshd.pid") >/dev/null 2>&1 || true' EXIT
 SSH="ssh -p $PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i $CLIENTKEY"
 
 download_rsync() {
