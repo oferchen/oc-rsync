@@ -19,31 +19,6 @@ fn remove_env_var(key: &str) {
 
 const RSYNC_HELP: &str = include_str!("../resources/rsync-help-80.txt");
 
-const UPSTREAM_HELP_PREFIX: &str = r#"rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
-are welcome to redistribute it under certain conditions.  See the GNU
-General Public Licence for details.
-
-rsync is a file transfer program capable of efficient remote update
-via a fast differencing algorithm.
-
-Usage: rsync [OPTION]... SRC [SRC]... DEST
-  or   rsync [OPTION]... SRC [SRC]... [USER@]HOST:DEST
-  or   rsync [OPTION]... SRC [SRC]... [USER@]HOST::DEST
-  or   rsync [OPTION]... SRC [SRC]... rsync://[USER@]HOST[:PORT]/DEST
-  or   rsync [OPTION]... [USER@]HOST:SRC [DEST]
-  or   rsync [OPTION]... [USER@]HOST::SRC [DEST]
-  or   rsync [OPTION]... rsync://[USER@]HOST[:PORT]/SRC [DEST]
-The ':' usages connect via remote shell, while '::' & 'rsync://' usages connect
-to an rsync daemon, and require SRC or DEST to start with a module name.
-
-Options
-"#;
-
-const UPSTREAM_HELP_SUFFIX: &str = r#"Use "rsync --daemon --help" to see the daemon-mode command-line options.
-Please see the rsync(1) and rsyncd.conf(5) manpages for full documentation.
-See https://rsync.samba.org/ for updates, bug reports, and answers
-"#;
-
 static RSYNC_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\brsync\b").unwrap());
 
 static UPSTREAM_OPTS: Lazy<Vec<(String, String)>> = Lazy::new(|| {
@@ -270,48 +245,6 @@ pub fn render_help(_cmd: &Command) -> String {
             .replace("{version}", &version)
             .replace("{credits}", &credits)
             .replace("{url}", &url);
-    }
-    if width == 80 {
-        let prefix_end = match RSYNC_HELP.find(UPSTREAM_HELP_PREFIX) {
-            Some(idx) => idx + UPSTREAM_HELP_PREFIX.len(),
-            None => {
-                let mut out = String::new();
-                out.push_str(&help_prefix);
-                out.push_str(
-                    "Failed to locate upstream help prefix; displaying unmodified help text.\n\n",
-                );
-                out.push_str(RSYNC_HELP);
-                out.push_str(&help_suffix);
-                return out;
-            }
-        };
-        let suffix_start = match RSYNC_HELP.rfind(UPSTREAM_HELP_SUFFIX) {
-            Some(idx) => idx,
-            None => {
-                let mut out = String::new();
-                out.push_str(&help_prefix);
-                out.push_str(
-                    "Failed to locate upstream help suffix; displaying unmodified help text.\n\n",
-                );
-                out.push_str(RSYNC_HELP);
-                out.push_str(&help_suffix);
-                return out;
-            }
-        };
-        if prefix_end >= suffix_start {
-            let mut out = String::new();
-            out.push_str(&help_prefix);
-            out.push_str("Upstream help markers are invalid; displaying unmodified help text.\n\n");
-            out.push_str(RSYNC_HELP);
-            out.push_str(&help_suffix);
-            return out;
-        }
-        let body = &RSYNC_HELP[prefix_end..suffix_start];
-        let mut out = String::new();
-        out.push_str(&help_prefix);
-        out.push_str(body);
-        out.push_str(&help_suffix);
-        return out;
     }
     let spec_width = 23;
     let desc_width = if width > spec_width + 2 {
