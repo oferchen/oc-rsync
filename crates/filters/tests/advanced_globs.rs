@@ -93,6 +93,13 @@ fn single_star_does_not_cross_directories() {
 }
 
 #[test]
+fn segment_star_does_not_cross_directories() {
+    let m = p("+ data*/file.txt\n- *\n");
+    assert!(m.is_included("data/file.txt").unwrap());
+    assert!(!m.is_included("data/sub/file.txt").unwrap());
+}
+
+#[test]
 fn double_star_matches_any_depth() {
     let m = p("+ **/keep.txt\n- *\n");
     assert!(m.is_included("keep.txt").unwrap());

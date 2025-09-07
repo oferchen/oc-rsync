@@ -111,28 +111,42 @@ impl RuleData {
         if !self.has_slash {
             return false;
         }
+
         let pat_trim = self.pattern.trim_end_matches('/');
-        let pat_depth = if pat_trim.contains("**") {
-            usize::MAX
-        } else {
-            pat_trim.split('/').filter(|s| !s.is_empty()).count()
-        };
-        let path_depth = path.components().count();
-        if pat_depth == usize::MAX {
-            let mut cand = path.to_path_buf();
-            cand.push("ocrsync");
-            let full = format!("/{}", cand.to_string_lossy());
-            return self.matcher.is_match(&full);
+        let pat_segments: Vec<&str> = pat_trim.split('/').filter(|s| !s.is_empty()).collect();
+        let path_segments: Vec<String> = path
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned())
+            .collect();
+
+        let mut idx = 0;
+        while idx < path_segments.len() {
+            if idx >= pat_segments.len() {
+                return false;
+            }
+            let pat_seg = pat_segments[idx];
+            if pat_seg == "**" {
+                return true;
+            }
+            if pat_seg.contains('*') || pat_seg.contains('?') || pat_seg.contains('[') {
+                let m = match GlobBuilder::new(pat_seg)
+                    .literal_separator(true)
+                    .backslash_escape(true)
+                    .build()
+                {
+                    Ok(g) => g.compile_matcher(),
+                    Err(_) => return false,
+                };
+                if !m.is_match(&path_segments[idx]) {
+                    return false;
+                }
+            } else if pat_seg != path_segments[idx] {
+                return false;
+            }
+            idx += 1;
         }
-        if pat_depth <= path_depth {
-            return false;
-        }
-        let mut cand = path.to_path_buf();
-        for _ in 0..(pat_depth - path_depth) {
-            cand.push("ocrsync");
-        }
-        let full = format!("/{}", cand.to_string_lossy());
-        self.matcher.is_match(&full)
+
+        idx < pat_segments.len()
     }
 }
 

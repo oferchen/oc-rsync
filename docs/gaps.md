@@ -73,7 +73,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | CVS ignore semantics (`--cvs-exclude`) | ✅ | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | Complex glob patterns | Implemented | [crates/filters/tests/advanced_globs.rs](../crates/filters/tests/advanced_globs.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | `--files-from` directory entries | Implemented | [crates/filters/tests/files_from.rs](../crates/filters/tests/files_from.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
-| Directory boundary handling | Partial | [tests/cli.rs](../tests/cli.rs) (`single_star_does_not_cross_directories`) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
+| Directory boundary handling | Implemented | [tests/cli.rs](../tests/cli.rs) (`single_star_does_not_cross_directories`<br>`segment_star_does_not_cross_directories`) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 
 ## File Selection
 | Feature | Status | Tests | Source |
