@@ -899,11 +899,14 @@ impl Matcher {
             };
 
             let key = (path.clone(), pd.sign, pd.word_split);
-            let meta = fs::metadata(&path).ok();
-            let (mtime, len) = match &meta {
-                Some(m) => (m.modified().ok(), m.len()),
-                None => (None, 0),
+            let meta = match fs::metadata(&path) {
+                Ok(m) => m,
+                Err(_) => {
+                    continue;
+                }
             };
+            let mtime = meta.modified().ok();
+            let len = meta.len();
 
             let state = {
                 let cache = self.cached.borrow();

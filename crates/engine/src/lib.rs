@@ -31,6 +31,8 @@ use logging::{InfoFlag, escape_path};
 use protocol::ExitCode;
 use thiserror::Error;
 mod cleanup;
+#[cfg(test)]
+pub use cleanup::fuzzy_match;
 mod delta;
 mod receiver;
 mod sender;
