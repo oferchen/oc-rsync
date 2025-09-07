@@ -2276,7 +2276,7 @@ pub fn parse_file(
     parse_from_bytes(&data, from0, visited, depth, source)
 }
 
-fn rooted_and_parents(pat: &str) -> (String, Vec<String>) {
+pub fn rooted_and_parents(pat: &str) -> (String, Vec<String>) {
     let rooted = pat.trim_start_matches('/').to_string();
     let trimmed = rooted.trim_end_matches('/');
     let mut base = String::new();
