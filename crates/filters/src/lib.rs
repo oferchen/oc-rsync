@@ -2166,27 +2166,22 @@ pub fn parse_file(
 }
 
 fn rooted_and_parents(pat: &str) -> (String, Vec<String>) {
-    let rooted = if pat.starts_with('/') {
-        pat.to_string()
-    } else {
-        format!("/{pat}")
-    };
+    let rooted = pat.trim_start_matches('/').to_string();
     let trimmed = rooted.trim_end_matches('/');
     let mut base = String::new();
     let mut dirs = Vec::new();
     let mut finished = true;
-    for part in trimmed.trim_start_matches('/').split('/') {
+    for part in trimmed.split('/') {
         if !base.is_empty() {
             base.push('/');
         }
         base.push_str(part);
         let has_glob = part.contains(['*', '?', '[', ']']);
+        dirs.push(format!("{base}/"));
         if has_glob {
-            dirs.push(format!("/{base}/"));
             finished = false;
             break;
         }
-        dirs.push(format!("/{base}/"));
     }
     if finished {
         dirs.pop();
@@ -2210,37 +2205,11 @@ pub fn parse_rule_list_from_bytes(
         }
         if sign == '+' && !pat.starts_with(['+', '-', ':']) {
             let (rooted, parents) = rooted_and_parents(&pat);
-            for dir in parents {
-                let glob = dir.trim_end_matches('/');
-                let matcher = compile_glob(glob)?;
-                let data = RuleData {
-                    matcher,
-                    invert: false,
-                    flags: RuleFlags::default(),
-                    source: source.clone(),
-                    dir_only: true,
-                    has_slash: glob.contains('/'),
-                };
-                rules.push(Rule::Include(data));
-
-                let mut exc_pat = dir.clone();
-                exc_pat.push('*');
-                let matcher = compile_glob(&exc_pat)?;
-                let data = RuleData {
-                    matcher,
-                    invert: false,
-                    flags: RuleFlags::default(),
-                    source: source.clone(),
-                    dir_only: false,
-                    has_slash: exc_pat.contains('/'),
-                };
-                rules.push(Rule::Exclude(data));
-            }
 
             let line = if from0 {
-                format!("+{rooted}\n")
+                format!("+./{rooted}\n")
             } else {
-                format!("+ {rooted}\n")
+                format!("+ ./{rooted}\n")
             };
             rules.extend(parse_with_options(
                 &line,
@@ -2249,6 +2218,34 @@ pub fn parse_rule_list_from_bytes(
                 depth,
                 source.clone(),
             )?);
+
+            for dir in &parents {
+                let glob = format!("/{}", dir.trim_end_matches('/'));
+                let matcher = compile_glob(&glob)?;
+                let data = RuleData {
+                    matcher,
+                    invert: false,
+                    flags: RuleFlags::default(),
+                    source: source.clone(),
+                    dir_only: false,
+                    has_slash: true,
+                };
+                rules.push(Rule::Include(data));
+            }
+
+            for dir in parents {
+                let exc_pat = format!("/{}*", dir);
+                let matcher = compile_glob(&exc_pat)?;
+                let data = RuleData {
+                    matcher,
+                    invert: false,
+                    flags: RuleFlags::default(),
+                    source: source.clone(),
+                    dir_only: false,
+                    has_slash: true,
+                };
+                rules.push(Rule::Exclude(data));
+            }
         } else {
             let line = if from0 {
                 format!("{sign}{pat}\n")
