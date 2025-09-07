@@ -33,6 +33,24 @@ fn char_class_first_level_only() {
 }
 
 #[test]
+fn char_class_allows_descendant_without_deeper_dirs() {
+    use std::fs;
+    use tempfile::tempdir;
+
+    let tmp = tempdir().unwrap();
+    fs::create_dir_all(tmp.path().join("1/2")).unwrap();
+    fs::write(tmp.path().join("1/keep.txt"), b"k").unwrap();
+    fs::write(tmp.path().join("1/2/keep.txt"), b"x").unwrap();
+
+    let rules = p("+ [0-9]/*\n- *\n");
+    let matcher = Matcher::new(rules).with_root(tmp.path());
+    assert!(matcher.is_included("1/keep.txt").unwrap());
+    assert!(!matcher.is_included("1/2/keep.txt").unwrap());
+    assert!(matcher.is_included_with_dir("1").unwrap().0);
+    assert!(!matcher.is_included_with_dir("1/2").unwrap().0);
+}
+
+#[test]
 fn dir_prefix_double_star() {
     let rules = p("+ dir*/**/keep[0-9].txt\n- *\n");
     let matcher = Matcher::new(rules);
