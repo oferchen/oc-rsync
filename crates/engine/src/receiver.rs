@@ -179,10 +179,10 @@ impl Receiver {
             .seed(self.opts.checksum_seed)
             .build();
         let src_len = fs::metadata(src).map(|m| m.len()).unwrap_or(0);
-        let block_size = if self.opts.block_size == 0 {
-            block_size(src_len)
-        } else {
+        let block_size = if self.opts.block_size > 0 {
             self.opts.block_size
+        } else {
+            block_size(src_len)
         };
         let resume_basis = existing_partial.as_ref().unwrap_or(&tmp_dest);
         let mut resume = if self.opts.partial || self.opts.append || self.opts.append_verify {

@@ -1,6 +1,6 @@
 // crates/compress/tests/codecs.rs
 use compress::{
-    available_codecs, decode_codecs, encode_codecs, negotiate_codec, should_compress, Codec,
+    Codec, available_codecs, decode_codecs, encode_codecs, negotiate_codec, should_compress,
 };
 
 #[cfg(any(feature = "zlib", feature = "zstd"))]
