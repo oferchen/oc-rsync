@@ -282,8 +282,13 @@ fn log_name(rel: &Path, link: Option<&Path>, opts: &SyncOptions, default: String
     }
     let itemized = default.split_once(' ').map(|(i, _)| i.to_string());
     if let Some(fmt) = &opts.out_format {
-        let msg =
-            logging::render_out_format(fmt, rel, link, itemized.as_deref(), opts.eight_bit_output);
+        let msg = logging::render_out_format(
+            fmt,
+            &logging::OutFormatOptions::new(rel)
+                .link(link)
+                .itemized(itemized.as_deref())
+                .eight_bit_output(opts.eight_bit_output),
+        );
         tracing::info!(target: InfoFlag::Name.target(), "{}", msg);
     } else if opts.itemize_changes {
         println!("{}", default);
