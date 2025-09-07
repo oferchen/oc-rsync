@@ -489,6 +489,9 @@ mod tests {
             hex::encode(digest_sha1),
             "1fb6475c524899f98b088f7608bdab8f1591e078",
         );
+
+        let digest_xxhash = strong_digest(b"hello world", StrongHash::XxHash, 0);
+        assert_eq!(hex::encode(digest_xxhash), "68691eb23467ab45");
     }
 
     #[test]
