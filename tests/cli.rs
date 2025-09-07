@@ -2266,7 +2266,7 @@ fn archive_implies_recursive() {
 
 #[test]
 fn dry_run_parity_destination_untouched() {
-    let rsync = StdCommand::new(cargo_bin("oc-rsync"))
+    let rsync = StdCommand::new("rsync")
         .arg("--version")
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -2303,7 +2303,7 @@ fn dry_run_parity_destination_untouched() {
         "keep"
     );
     assert!(!dst_dir.join("new.txt").exists());
-    let up = StdCommand::new(cargo_bin("oc-rsync"))
+    let up = StdCommand::new("rsync")
         .env("LC_ALL", "C")
         .args(["-r", "--dry-run", &src_arg, dst_arg])
         .output()

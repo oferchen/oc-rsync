@@ -50,3 +50,4 @@ fn daemon_journald_emits_message() {
         let expected = "PRIORITY=4\nSYSLOG_IDENTIFIER=rsync\nMESSAGE=daemon journald\n";
         assert_eq!(msg, expected);
     });
+}
