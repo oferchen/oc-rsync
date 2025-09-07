@@ -107,6 +107,9 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | In-place updates and resume | ✅ | [crates/engine/tests/resume.rs](../crates/engine/tests/resume.rs) | [crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |
 | Delete policies | ✅ | [crates/engine/tests/delete.rs](../crates/engine/tests/delete.rs) | [crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |
 | `--read-batch` replay | ✅ | [crates/engine/tests/upstream_batch.rs](../crates/engine/tests/upstream_batch.rs) | [crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |
+| `--block-size` semantics | Diverges ([#375](https://github.com/oferchen/oc-rsync/issues/375)) | [tests/block_size.rs](../tests/block_size.rs) | [crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |
+
+_Note: update or remove this entry once `--block-size` achieves parity with upstream._
 
 ## Daemon Features
 | Feature | Status | Tests | Source |
