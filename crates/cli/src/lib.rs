@@ -853,24 +853,16 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                 } else {
                     format!("/{}", pat)
                 };
-
-                let trimmed = anchored.trim_end_matches('/');
-                if trimmed.is_empty() {
+                let (rooted, parents) = filters::rooted_and_parents(&anchored);
+                if rooted.is_empty() {
                     continue;
                 }
-                let parts: Vec<&str> = trimmed.split('/').filter(|s| !s.is_empty()).collect();
-                let mut prefix = String::new();
-                let mut ancestors: Vec<String> = Vec::new();
-                for part in parts.iter() {
-                    prefix.push('/');
-                    prefix.push_str(part);
-                    ancestors.push(prefix.clone());
-                }
-                for anc in ancestors.iter().take(ancestors.len().saturating_sub(1)) {
+                for anc in parents.iter() {
+                    let path = format!("/{}", anc);
                     let rule = if opts.from0 {
-                        format!("+{}/", anc)
+                        format!("+{path}")
                     } else {
-                        format!("+ {}/", anc)
+                        format!("+ {path}")
                     };
                     add_rules(
                         idx + 1,
@@ -879,11 +871,11 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                     );
                 }
 
-                let last = ancestors.last().unwrap();
+                let last = format!("/{}", rooted);
                 let rule = if opts.from0 {
-                    format!("+{}", last)
+                    format!("+{last}")
                 } else {
-                    format!("+ {}", last)
+                    format!("+ {last}")
                 };
                 add_rules(
                     idx + 1,
@@ -899,9 +891,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                 let is_dir = pat.ends_with('/') || fs_path.is_dir();
                 if is_dir {
                     let rule = if opts.from0 {
-                        format!("+{}/***", last)
+                        format!("+{last}/***")
                     } else {
-                        format!("+ {}/***", last)
+                        format!("+ {last}/***")
                     };
                     add_rules(
                         idx + 1,
