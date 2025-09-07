@@ -1047,6 +1047,9 @@ impl Matcher {
                 return Ok((Vec::new(), Vec::new()));
             }
             Err(err) => {
+                if err.kind() == io::ErrorKind::NotFound {
+                    return Ok((Vec::new(), Vec::new()));
+                }
                 tracing::warn!(
                     target: InfoFlag::Filter.target(),
                     ?path,
