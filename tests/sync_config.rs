@@ -7,6 +7,8 @@ use serial_test::serial;
 use std::{fs, path::Path};
 use tempfile::{TempDir, tempdir};
 
+mod common;
+
 fn setup_dirs() -> (TempDir, std::path::PathBuf, std::path::PathBuf) {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
@@ -299,11 +301,11 @@ fn custom_syslog_and_journald_settings() {
 
     let syslog_path = dir.path().join("syslog.sock");
     let syslog_server = UnixDatagram::bind(&syslog_path).unwrap();
-    unsafe { std::env::set_var("OC_RSYNC_SYSLOG_PATH", &syslog_path) };
+    let _syslog = common::temp_env("OC_RSYNC_SYSLOG_PATH", &syslog_path);
 
     let journald_path = dir.path().join("journald.sock");
     let journald_server = UnixDatagram::bind(&journald_path).unwrap();
-    unsafe { std::env::set_var("OC_RSYNC_JOURNALD_PATH", &journald_path) };
+    let _journald = common::temp_env("OC_RSYNC_JOURNALD_PATH", &journald_path);
 
     let cfg = SyncConfig::builder()
         .verbose(1)
@@ -320,9 +322,4 @@ fn custom_syslog_and_journald_settings() {
     let (n, _) = journald_server.recv_from(&mut buf).unwrap();
     let jour_msg = std::str::from_utf8(&buf[..n]).unwrap();
     assert!(jour_msg.contains("MESSAGE"));
-
-    unsafe {
-        std::env::remove_var("OC_RSYNC_SYSLOG_PATH");
-        std::env::remove_var("OC_RSYNC_JOURNALD_PATH");
-    }
 }
