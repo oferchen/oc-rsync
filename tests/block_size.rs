@@ -375,18 +375,23 @@ fn cli_block_size_errors_match_rsync() {
         .unwrap_or(rsync_lines[1]);
     let rsync_second_prefix = sanitize(rsync_second_lhs);
 
-    let ours = Command::cargo_bin("oc-rsync")
-        .unwrap()
-        .args(["--block-size=1x", "/dev/null", "--", dst.to_str().unwrap()])
-        .output()
-        .unwrap();
-    assert_eq!(ours.status.code(), Some(expected_code));
-    let ours_err = String::from_utf8(ours.stderr).unwrap();
-    let ours_lines: Vec<_> = ours_err.lines().collect();
-    assert_eq!(rsync_first, sanitize(ours_lines[0]));
-    let ours_second_lhs = ours_lines[1]
-        .split_once(" at ")
-        .map(|(lhs, _)| lhs)
-        .unwrap_or(ours_lines[1]);
-    assert_eq!(rsync_second_prefix, sanitize(ours_second_lhs));
+    for args in [&["--block-size=1x"][..], &["-B1x"][..], &["-B", "1x"][..]] {
+        let ours = Command::cargo_bin("oc-rsync")
+            .unwrap()
+            .args(args)
+            .arg("/dev/null")
+            .arg("--")
+            .arg(dst.to_str().unwrap())
+            .output()
+            .unwrap();
+        assert_eq!(ours.status.code(), Some(expected_code));
+        let ours_err = String::from_utf8(ours.stderr).unwrap();
+        let ours_lines: Vec<_> = ours_err.lines().collect();
+        assert_eq!(rsync_first, sanitize(ours_lines[0]));
+        let ours_second_lhs = ours_lines[1]
+            .split_once(" at ")
+            .map(|(lhs, _)| lhs)
+            .unwrap_or(ours_lines[1]);
+        assert_eq!(rsync_second_prefix, sanitize(ours_second_lhs));
+    }
 }
