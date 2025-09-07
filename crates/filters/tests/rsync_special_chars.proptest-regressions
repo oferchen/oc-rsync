@@ -4,3 +4,4 @@
 #
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
+cc 18215db34a5558f09eeafb7b01cf06d4d769e7b34f4971aba3f981994e54ea0d # shrinks to rule = "- dir/[!a]"

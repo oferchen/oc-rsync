@@ -2276,7 +2276,7 @@ pub fn parse_file(
     parse_from_bytes(&data, from0, visited, depth, source)
 }
 
-fn rooted_and_parents(pat: &str) -> (String, Vec<String>) {
+pub fn rooted_and_parents(pat: &str) -> (String, Vec<String>) {
     let rooted = pat.trim_start_matches('/').to_string();
     let trimmed = rooted.trim_end_matches('/');
     let mut base = String::new();
@@ -2330,6 +2330,11 @@ pub fn parse_rule_list_from_bytes(
                 source.clone(),
             )?);
 
+            let skip_exclude = rooted
+                .rsplit('/')
+                .next()
+                .is_some_and(|seg| seg.chars().all(|c| c == '*'));
+
             for dir in &parents {
                 let glob = format!("/{}", dir.trim_end_matches('/'));
                 let matcher = compile_glob(&glob)?;
@@ -2345,19 +2350,21 @@ pub fn parse_rule_list_from_bytes(
                 rules.push(Rule::Include(data));
             }
 
-            for dir in parents {
-                let exc_pat = format!("/{}*", dir);
-                let matcher = compile_glob(&exc_pat)?;
-                let data = RuleData {
-                    matcher,
-                    invert: false,
-                    flags: RuleFlags::default(),
-                    source: source.clone(),
-                    dir_only: false,
-                    has_slash: true,
-                    pattern: exc_pat.clone(),
-                };
-                rules.push(Rule::Exclude(data));
+            if !skip_exclude {
+                for dir in &parents {
+                    let exc_pat = format!("/{}*", dir);
+                    let matcher = compile_glob(&exc_pat)?;
+                    let data = RuleData {
+                        matcher,
+                        invert: false,
+                        flags: RuleFlags::default(),
+                        source: source.clone(),
+                        dir_only: false,
+                        has_slash: true,
+                        pattern: exc_pat.clone(),
+                    };
+                    rules.push(Rule::Exclude(data));
+                }
             }
         } else {
             let line = if from0 {
