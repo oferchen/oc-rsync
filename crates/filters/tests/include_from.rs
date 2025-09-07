@@ -37,6 +37,17 @@ fn include_from_nested_paths_include_ancestors() {
     assert!(!matcher.is_included("foo/bar/qux").unwrap());
 }
 
+#[test]
+fn include_from_nested_paths_exclude_siblings() {
+    let data = b"foo/bar/baz\n";
+    let mut v = HashSet::new();
+    let rules = parse_rule_list_from_bytes(data, false, '+', &mut v, 0, None).unwrap();
+    let matcher = Matcher::new(rules);
+    assert!(matcher.is_included("foo/bar/baz").unwrap());
+    assert!(!matcher.is_included("foo/bar/qux").unwrap());
+    assert!(!matcher.is_included("foo/qux").unwrap());
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(16))]
     #[test]

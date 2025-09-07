@@ -3116,6 +3116,39 @@ fn include_from_list_transfers_nested_paths() {
 }
 
 #[test]
+fn include_from_list_nested_file_excludes_siblings() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    fs::create_dir_all(src.join("a/b")).unwrap();
+    fs::create_dir_all(src.join("a/c")).unwrap();
+    fs::write(src.join("a/b/file.txt"), b"f").unwrap();
+    fs::write(src.join("a/b/other.txt"), b"o").unwrap();
+    fs::write(src.join("a/c/unrelated.txt"), b"u").unwrap();
+    let inc = dir.path().join("inc.lst");
+    fs::write(&inc, "a/b/file.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--include-from",
+            inc.to_str().unwrap(),
+            "--exclude",
+            "*",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(dst.join("a/b/file.txt").exists());
+    assert!(!dst.join("a/b/other.txt").exists());
+    assert!(!dst.join("a/c/unrelated.txt").exists());
+}
+
+#[test]
 fn per_dir_merge_can_override_later_include() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
