@@ -23,14 +23,24 @@ fn parse_literal(stats: &str) -> usize {
 
 #[test]
 fn cdc_block_size_heuristics() {
+    const BLOCK: usize = 700;
+    const MAX_BLOCK: usize = 1 << 17;
+    let max_square = (MAX_BLOCK as u64) * (MAX_BLOCK as u64);
     let cases = [
-        (100u64, 700usize),
+        (0u64, BLOCK),
+        (BLOCK as u64 * BLOCK as u64, BLOCK),
+        (BLOCK as u64 * BLOCK as u64 + 1, BLOCK),
+        (704u64 * 704u64 - 1, BLOCK),
+        (704u64 * 704u64, 704usize),
         (500_000, 704),
         (1_048_576, 1024),
         (10_000_000, 3160),
         (100_000_000, 10_000),
         (1_000_000_000, 31_616),
-        (1_000_000_000_000, 131_072),
+        (max_square - 1, MAX_BLOCK - 8),
+        (max_square, MAX_BLOCK),
+        (max_square + 1, MAX_BLOCK),
+        (1_000_000_000_000, MAX_BLOCK),
     ];
     for (len, expected) in cases {
         assert_eq!(block_size(len), expected, "len={len}");

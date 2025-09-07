@@ -31,7 +31,6 @@ use logging::{InfoFlag, escape_path};
 use protocol::ExitCode;
 use thiserror::Error;
 mod cleanup;
-#[cfg(test)]
 pub use cleanup::fuzzy_match;
 mod delta;
 mod receiver;
@@ -59,25 +58,31 @@ pub fn block_size(len: u64) -> usize {
         return RSYNC_BLOCK_SIZE;
     }
 
-    let mut c: usize = 1;
+    let mut c: u32 = 1;
     let mut l = len;
-    while l >> 2 > 0 {
+    while {
         l >>= 2;
+        l > 0
+    } {
         c <<= 1;
     }
 
-    if c >= RSYNC_MAX_BLOCK_SIZE || c == 0 {
+    if c >= RSYNC_MAX_BLOCK_SIZE as u32 || c == 0 {
         RSYNC_MAX_BLOCK_SIZE
     } else {
-        let mut blength: usize = 0;
-        while c >= 8 {
+        let mut blength: u32 = 0;
+        loop {
             blength |= c;
             if len < (blength as u64).wrapping_mul(blength as u64) {
                 blength &= !c;
             }
             c >>= 1;
+            if c < 8 {
+                break;
+            }
         }
-        blength.max(RSYNC_BLOCK_SIZE)
+        blength = blength.max(RSYNC_BLOCK_SIZE as u32);
+        blength as usize
     }
 }
 
