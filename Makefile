@@ -43,7 +43,7 @@ coverage:
 	--fail-under-lines 95 --fail-under-functions 95 -- --no-fail-fast
 
 interop:
-	@bash tests/interop/run_matrix.sh
+	@bash scripts/interop.sh
 
 test-golden:
 	env RSYNC_UPSTREAM_VER="$(RSYNC_UPSTREAM_VER)" BUILD_REVISION="$(BUILD_REVISION)" OFFICIAL_BUILD="$(OFFICIAL_BUILD)" cargo build --quiet -p oc-rsync --bin oc-rsync

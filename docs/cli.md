@@ -49,7 +49,7 @@ Multiple source paths may be specified; the last path is treated as the destinat
 ## Testing
 
 Interop tests replay golden fixtures captured from upstream `rsync` runs.
-`tests/interop/run_matrix.sh` consumes the committed data under
+`scripts/interop.sh` consumes the committed data under
 `tests/interop/golden` and verifies `oc-rsync` without invoking the system
 `rsync` binary.
 

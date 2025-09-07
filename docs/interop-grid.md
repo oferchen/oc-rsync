@@ -12,7 +12,7 @@ Results are written to `tests/interop/interop-grid.log` for inspection alongside
 
 ## Extended matrix coverage
 
-`tests/interop/run_matrix.sh` exercises a wider set of options to ensure
+`scripts/interop.sh` exercises a wider set of options to ensure
 parity with upstream `rsync`. Recent runs include the following flags and all
 combinations completed without mismatches:
 
