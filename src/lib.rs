@@ -4,10 +4,7 @@ use compress::available_codecs;
 use engine::{Result, SyncOptions};
 use filters::Matcher;
 use logging::{DebugFlag, InfoFlag, LogFormat, SubscriberConfig, subscriber};
-use std::{
-    collections::HashSet,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 use tracing::subscriber::with_default;
 
 pub use meta;
@@ -97,12 +94,10 @@ impl SyncConfigBuilder {
         I: IntoIterator,
         I::Item: Into<InfoFlag>,
     {
-        self.cfg.info = info
-            .into_iter()
-            .map(Into::into)
-            .collect::<HashSet<_>>()
-            .into_iter()
-            .collect();
+        let mut info = info.into_iter().map(Into::into).collect::<Vec<_>>();
+        info.sort_by_key(|flag| flag.as_str());
+        info.dedup();
+        self.cfg.info = info;
         self
     }
 
@@ -111,12 +106,10 @@ impl SyncConfigBuilder {
         I: IntoIterator,
         I::Item: Into<DebugFlag>,
     {
-        self.cfg.debug = debug
-            .into_iter()
-            .map(Into::into)
-            .collect::<HashSet<_>>()
-            .into_iter()
-            .collect();
+        let mut debug = debug.into_iter().map(Into::into).collect::<Vec<_>>();
+        debug.sort_by_key(|flag| flag.as_str());
+        debug.dedup();
+        self.cfg.debug = debug;
         self
     }
 
@@ -279,5 +272,21 @@ mod tests {
             .build();
         assert_eq!(cfg.debug.len(), 1);
         assert!(cfg.debug.contains(&DebugFlag::Backup));
+    }
+
+    #[test]
+    fn info_flag_order_deterministic() {
+        let flags = [InfoFlag::Del, InfoFlag::Backup, InfoFlag::Copy];
+        let cfg1 = SyncConfig::builder().info(flags).build();
+        let cfg2 = SyncConfig::builder().info(flags).build();
+        assert_eq!(cfg1.info, cfg2.info);
+    }
+
+    #[test]
+    fn debug_flag_order_deterministic() {
+        let flags = [DebugFlag::Recv, DebugFlag::Backup, DebugFlag::Send];
+        let cfg1 = SyncConfig::builder().debug(flags).build();
+        let cfg2 = SyncConfig::builder().debug(flags).build();
+        assert_eq!(cfg1.debug, cfg2.debug);
     }
 }
