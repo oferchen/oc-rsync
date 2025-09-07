@@ -23,7 +23,7 @@ fn walk_includes_files_dirs_and_symlinks() {
 
     let mut entries = Vec::new();
     let mut state = String::new();
-    for batch in walk(root, 10, true, false) {
+    for batch in walk(root, 10, true, false).unwrap() {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
@@ -31,26 +31,18 @@ fn walk_includes_files_dirs_and_symlinks() {
         }
     }
     assert!(entries.iter().any(|(p, t)| p == root && t.is_dir()));
-    assert!(
-        entries
-            .iter()
-            .any(|(p, t)| p.as_path() == root.join("dir").as_path() && t.is_dir())
-    );
-    assert!(
-        entries
-            .iter()
-            .any(|(p, t)| p.as_path() == root.join("dir/large.txt").as_path() && t.is_file())
-    );
-    assert!(
-        entries
-            .iter()
-            .any(|(p, t)| p == link_path.as_path() && t.is_symlink())
-    );
-    assert!(
-        entries
-            .iter()
-            .any(|(p, t)| p.as_path() == root.join("small.txt").as_path() && t.is_file())
-    );
+    assert!(entries
+        .iter()
+        .any(|(p, t)| p.as_path() == root.join("dir").as_path() && t.is_dir()));
+    assert!(entries
+        .iter()
+        .any(|(p, t)| p.as_path() == root.join("dir/large.txt").as_path() && t.is_file()));
+    assert!(entries
+        .iter()
+        .any(|(p, t)| p == link_path.as_path() && t.is_symlink()));
+    assert!(entries
+        .iter()
+        .any(|(p, t)| p.as_path() == root.join("small.txt").as_path() && t.is_file()));
 }
 
 #[test]
@@ -66,7 +58,7 @@ fn walk_preserves_order_and_bounds_batches() {
 
     let mut paths = Vec::new();
     let mut state = String::new();
-    for batch in walk(root, 2, false, false) {
+    for batch in walk(root, 2, false, false).unwrap() {
         let batch = batch.unwrap();
         assert!(batch.len() <= 2);
         for e in batch {
@@ -96,7 +88,7 @@ fn walk_skips_files_over_threshold() {
 
     let mut paths = Vec::new();
     let mut state = String::new();
-    for batch in walk_with_max_size(root, 10, 1024, false, false) {
+    for batch in walk_with_max_size(root, 10, 1024, false, false).unwrap() {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
@@ -118,7 +110,7 @@ fn walk_skips_cross_device_entries() {
 
     let mut state = String::new();
     let mut found_pts = false;
-    for batch in walk(root, 100, false, false) {
+    for batch in walk(root, 100, false, false).unwrap() {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
@@ -134,7 +126,7 @@ fn walk_skips_cross_device_entries() {
     assert!(found_pts, "expected to see /dev/pts without restriction");
 
     state.clear();
-    for batch in walk(root, 100, false, true) {
+    for batch in walk(root, 100, false, true).unwrap() {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
