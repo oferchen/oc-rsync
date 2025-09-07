@@ -6,7 +6,9 @@ use serial_test::serial;
 #[test]
 #[serial]
 fn errors_use_program_name() {
-    std::env::set_var("OC_RSYNC_NAME", "myrsync");
+    unsafe {
+        std::env::set_var("OC_RSYNC_NAME", "myrsync");
+    }
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .arg("--bogus")
@@ -14,7 +16,9 @@ fn errors_use_program_name() {
         .failure()
         .stderr(contains("myrsync:"))
         .stderr(contains("myrsync error:"));
-    std::env::remove_var("OC_RSYNC_NAME");
+    unsafe {
+        std::env::remove_var("OC_RSYNC_NAME");
+    }
 }
 
 #[test]
