@@ -19,7 +19,7 @@ The Makefile offers shortcuts for common CI checks:
   `cargo nextest run --workspace --no-fail-fast --features "cli nightly"`.
 - `make coverage` – execute `cargo llvm-cov nextest --workspace --features "cli nightly" --doctests \
   --fail-under-lines 95 --fail-under-functions 95` to gather test coverage.
-- `make interop` – run the interoperability matrix with `tests/interop/run_matrix.sh`.
+- `make interop` – run the interoperability matrix with `scripts/interop.sh`.
   These tests are behind the `interop` feature and require upstream `rsync`
   binaries.
 
