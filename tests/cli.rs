@@ -18,7 +18,6 @@ use std::os::unix::fs::symlink;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::PathBuf;
-use std::process::Command as StdCommand;
 use std::thread;
 use std::time::Duration;
 use tempfile::{TempDir, tempdir, tempdir_in};
@@ -26,6 +25,8 @@ use tempfile::{TempDir, tempdir, tempdir_in};
 use users::{get_current_gid, get_current_uid, get_group_by_gid, get_user_by_uid};
 #[cfg(all(unix, feature = "xattr"))]
 use xattr as _;
+mod common;
+use common::read_golden;
 
 #[cfg(unix)]
 struct Tmpfs(TempDir);
@@ -73,8 +74,6 @@ impl Tmpfs {
 
 #[test]
 fn files_from_from0_matches_rsync() {
-    use std::process::Command as StdCommand;
-
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let rsync_dst = tmp.path().join("rsync");
@@ -90,7 +89,7 @@ fn files_from_from0_matches_rsync() {
     fs::write(&list, b"include_me.txt\0omit.log\0").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    let status = StdCommand::new(cargo_bin("oc-rsync"))
+    let status = std::process::Command::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--from0",
@@ -120,7 +119,7 @@ fn files_from_from0_matches_rsync() {
         .assert()
         .success();
 
-    let diff = StdCommand::new("diff")
+    let diff = std::process::Command::new("diff")
         .arg("-r")
         .arg(&rsync_dst)
         .arg(&ours_dst)
@@ -131,8 +130,6 @@ fn files_from_from0_matches_rsync() {
 
 #[test]
 fn include_from_from0_matches_rsync() {
-    use std::process::Command as StdCommand;
-
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let rsync_dst = tmp.path().join("rsync");
@@ -149,7 +146,7 @@ fn include_from_from0_matches_rsync() {
     fs::write(&list, b"a.txt\0c.txt\0").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    let status = StdCommand::new(cargo_bin("oc-rsync"))
+    let status = std::process::Command::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--from0",
@@ -179,7 +176,7 @@ fn include_from_from0_matches_rsync() {
         .assert()
         .success();
 
-    let diff = StdCommand::new("diff")
+    let diff = std::process::Command::new("diff")
         .arg("-r")
         .arg(&rsync_dst)
         .arg(&ours_dst)
@@ -190,8 +187,6 @@ fn include_from_from0_matches_rsync() {
 
 #[test]
 fn exclude_from_from0_matches_rsync() {
-    use std::process::Command as StdCommand;
-
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let rsync_dst = tmp.path().join("rsync");
@@ -207,7 +202,7 @@ fn exclude_from_from0_matches_rsync() {
     fs::write(&list, b"drop.txt\0").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    let status = StdCommand::new(cargo_bin("oc-rsync"))
+    let status = std::process::Command::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--from0",
@@ -233,7 +228,7 @@ fn exclude_from_from0_matches_rsync() {
         .assert()
         .success();
 
-    let diff = StdCommand::new("diff")
+    let diff = std::process::Command::new("diff")
         .arg("-r")
         .arg(&rsync_dst)
         .arg(&ours_dst)
@@ -299,8 +294,6 @@ fn include_exclude_from_order() {
 
 #[test]
 fn filter_merge_from0_matches_filter_file() {
-    use std::process::Command as StdCommand;
-
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let merge_dst = tmp.path().join("merge");
@@ -317,7 +310,7 @@ fn filter_merge_from0_matches_filter_file() {
     fs::write(&filter, b"+ *.txt\0- *\0").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    let status = StdCommand::new(cargo_bin("oc-rsync"))
+    let status = std::process::Command::new(cargo_bin("oc-rsync"))
         .args([
             "-r",
             "--from0",
@@ -343,7 +336,7 @@ fn filter_merge_from0_matches_filter_file() {
         .assert()
         .success();
 
-    let diff = StdCommand::new("diff")
+    let diff = std::process::Command::new("diff")
         .arg("-r")
         .arg(&merge_dst)
         .arg(&file_dst)
@@ -2266,19 +2259,6 @@ fn archive_implies_recursive() {
 
 #[test]
 fn dry_run_parity_destination_untouched() {
-    let rsync = StdCommand::new("rsync")
-        .arg("--version")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .ok();
-    if let Some(status) = rsync {
-        assert!(status.success());
-    } else {
-        eprintln!("skipping test: rsync not installed");
-        return;
-    }
-
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
@@ -2303,16 +2283,11 @@ fn dry_run_parity_destination_untouched() {
         "keep"
     );
     assert!(!dst_dir.join("new.txt").exists());
-    let up = StdCommand::new("rsync")
-        .env("LC_ALL", "C")
-        .args(["-r", "--dry-run", &src_arg, dst_arg])
-        .output()
-        .unwrap();
-    assert!(up.status.success());
+    let (exp_stdout, exp_stderr, exp_exit) = read_golden("dry_run/untouched");
 
-    assert_eq!(up.status.code(), ours.status.code());
-    assert_eq!(up.stdout, ours.stdout);
-    assert_eq!(up.stderr, ours.stderr);
+    assert_eq!(ours.status.code(), Some(exp_exit));
+    assert_eq!(ours.stdout, exp_stdout);
+    assert_eq!(ours.stderr, exp_stderr);
 }
 
 #[test]

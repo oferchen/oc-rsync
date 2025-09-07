@@ -2,24 +2,12 @@
 
 use assert_cmd::Command;
 use std::fs;
-use std::process::Command as StdCommand;
 use tempfile::tempdir;
+mod common;
+use common::{normalize_paths, read_golden};
 
 #[test]
 fn dry_run_deletions_match_rsync() {
-    let check = StdCommand::new("rsync")
-        .arg("--version")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .ok();
-    if let Some(status) = check {
-        assert!(status.success());
-    } else {
-        eprintln!("skipping test: rsync not installed");
-        return;
-    }
-
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -41,47 +29,21 @@ fn dry_run_deletions_match_rsync() {
         ])
         .output()
         .unwrap();
-    let rsync = StdCommand::new("rsync")
-        .env("LC_ALL", "C")
-        .args([
-            "--recursive",
-            "--delete",
-            "--dry-run",
-            "--verbose",
-            &src_arg,
-            dst.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
-    let our_out = String::from_utf8(ours.stdout).unwrap();
-    let our_lines: Vec<_> = our_out
+
+    let (exp_stdout, _exp_stderr, exp_exit) = read_golden("dry_run/deletions");
+    let expected_str = String::from_utf8(exp_stdout).unwrap();
+    let expected: Vec<_> = expected_str.lines().collect();
+    let ours_stdout = String::from_utf8(ours.stdout).unwrap();
+    let ours_lines: Vec<_> = ours_stdout
         .lines()
         .filter(|l| l.starts_with("deleting "))
         .collect();
-    let up_out = String::from_utf8(rsync.stdout).unwrap();
-    let up_lines: Vec<_> = up_out
-        .lines()
-        .filter(|l| l.starts_with("deleting "))
-        .collect();
-    assert_eq!(rsync.status.code(), ours.status.code());
-    assert_eq!(up_lines, our_lines);
+    assert_eq!(ours.status.code(), Some(exp_exit));
+    assert_eq!(ours_lines, expected);
 }
 
 #[test]
 fn dry_run_errors_match_rsync() {
-    let check = StdCommand::new("rsync")
-        .arg("--version")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .ok();
-    if let Some(status) = check {
-        assert!(status.success());
-    } else {
-        eprintln!("skipping test: rsync not installed");
-        return;
-    }
-
     let tmp = tempdir().unwrap();
     let dst = tmp.path().join("dst");
     fs::create_dir_all(&dst).unwrap();
@@ -93,13 +55,12 @@ fn dry_run_errors_match_rsync() {
         .args(["--dry-run", "missing.txt", dst.to_str().unwrap()])
         .output()
         .unwrap();
-    let up = StdCommand::new("rsync")
-        .current_dir(tmp.path())
-        .env("LC_ALL", "C")
-        .args(["--dry-run", "missing.txt", dst.to_str().unwrap()])
-        .output()
-        .unwrap();
-    assert_eq!(up.status.code(), ours.status.code());
-    assert_eq!(up.stdout, ours.stdout);
-    assert_eq!(up.stderr, ours.stderr);
+
+    let (exp_stdout, exp_stderr, exp_exit) = read_golden("dry_run/errors");
+    let our_stdout = normalize_paths(&ours.stdout, tmp.path());
+    let our_stderr = normalize_paths(&ours.stderr, tmp.path());
+
+    assert_eq!(ours.status.code(), Some(exp_exit));
+    assert_eq!(our_stdout, String::from_utf8(exp_stdout).unwrap());
+    assert_eq!(our_stderr, String::from_utf8(exp_stderr).unwrap());
 }

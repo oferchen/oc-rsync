@@ -3,6 +3,8 @@
 
 use std::env;
 use std::ffi::{OsStr, OsString};
+use std::fs;
+use std::path::Path;
 
 pub struct EnvVarGuard {
     key: OsString,
@@ -29,4 +31,24 @@ impl Drop for EnvVarGuard {
             None => unsafe { env::remove_var(&self.key) },
         }
     }
+}
+
+pub fn read_golden(name: &str) -> (Vec<u8>, Vec<u8>, i32) {
+    let base = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/golden")
+        .join(name);
+    let stdout = fs::read(base.with_extension("stdout")).unwrap_or_default();
+    let stderr = fs::read(base.with_extension("stderr")).unwrap_or_default();
+    let exit: i32 = fs::read_to_string(base.with_extension("exit"))
+        .unwrap_or_else(|_| "0".into())
+        .trim()
+        .parse()
+        .unwrap();
+    (stdout, stderr, exit)
+}
+
+pub fn normalize_paths(data: &[u8], root: &Path) -> String {
+    let text = String::from_utf8_lossy(data).replace('\r', "");
+    let root_str = root.to_string_lossy().replace("\\", "/");
+    text.replace(&root_str, "TMP")
 }
