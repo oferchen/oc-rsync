@@ -69,7 +69,7 @@ jobs:
         run: make lint
 
       - name: Verify comments
-        run: make verify-comments
+        run: bash tools/comment_lint.sh
 
       - name: Validate interop matrix docs
         run: scripts/check-run-matrix-docs.sh
