@@ -10,6 +10,12 @@ scripts/interop-grid.sh
 
 Results are written to `tests/interop/interop-grid.log` for inspection alongside other interoperability fixtures.
 
+`scripts/interop/run.sh` provides a lower‑level view of these transfers.  It
+records each `rsync` invocation's stdout, stderr, and exit code in versioned
+files under `tests/interop/streams/`.  The companion
+`scripts/interop/validate.sh` compares the captured streams from `oc-rsync` and
+upstream `rsync`, failing fast on any mismatch in output or exit status.
+
 ## Extended matrix coverage
 
 `scripts/interop.sh` exercises a wider set of options to ensure
