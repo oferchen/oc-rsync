@@ -8,7 +8,7 @@ use tempfile::tempdir;
 
 fn pattern_strategy() -> impl Strategy<Value = String> {
     let chars =
-        prop::collection::vec(prop::sample::select(['a', 'b', 'c']), 1..4).prop_map(|mut v| {
+        prop::collection::vec(prop::sample::select(&['a', 'b', 'c']), 1..4).prop_map(|mut v| {
             v.sort();
             v.dedup();
             v.into_iter().collect::<String>()
