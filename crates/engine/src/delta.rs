@@ -12,6 +12,7 @@ use logging::{InfoFlag, progress_formatter, rate_formatter};
 
 use crate::{EngineError, Result, SyncOptions, ensure_max_alloc};
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Op {
     Data(Vec<u8>),
     Copy { offset: usize, len: usize },

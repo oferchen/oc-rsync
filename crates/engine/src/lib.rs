@@ -26,7 +26,7 @@ use transport::{Transport, pipe};
 use checksums::ChecksumConfig;
 pub use checksums::StrongHash;
 use compress::Codec;
-use filters::Matcher;
+use filters::{Matcher, ParseError};
 use logging::{InfoFlag, escape_path};
 use protocol::ExitCode;
 use thiserror::Error;
@@ -133,6 +133,11 @@ pub enum EngineError {
 }
 
 pub type Result<T> = std::result::Result<T, EngineError>;
+impl From<ParseError> for EngineError {
+    fn from(e: ParseError) -> Self {
+        EngineError::Other(format!("{:?}", e))
+    }
+}
 use walk::walk;
 
 #[derive(Clone)]
@@ -616,7 +621,11 @@ pub struct Stats {
     pub bytes_received: u64,
 }
 
-fn count_entries(src_root: &Path, matcher: &Matcher, opts: &SyncOptions) -> (usize, usize, u64) {
+fn count_entries(
+    src_root: &Path,
+    matcher: &Matcher,
+    opts: &SyncOptions,
+) -> Result<(usize, usize, u64)> {
     let mut walker = walk(src_root, 1024, opts.walk_links(), opts.one_file_system);
     let mut state = String::new();
     let mut files = 0usize;
@@ -631,8 +640,7 @@ fn count_entries(src_root: &Path, matcher: &Matcher, opts: &SyncOptions) -> (usi
                 continue;
             }
             if let Ok(rel) = path.strip_prefix(src_root) {
-                let (included, dir_only) =
-                    matcher.is_included_with_dir(rel).unwrap_or((true, false));
+                let (included, dir_only) = matcher.is_included_with_dir(rel)?;
                 if !included {
                     if dir_only || entry.file_type.is_dir() {
                         walker.skip_current_dir();
@@ -651,7 +659,7 @@ fn count_entries(src_root: &Path, matcher: &Matcher, opts: &SyncOptions) -> (usi
             }
         }
     }
-    (files, dirs, size)
+    Ok((files, dirs, size))
 }
 
 pub fn select_codec(remote: &[Codec], opts: &SyncOptions) -> Option<Codec> {
@@ -1040,9 +1048,7 @@ pub fn sync(
                     continue;
                 }
                 if let Ok(rel) = path.strip_prefix(&src_root) {
-                    let (included, dir_only) = matcher
-                        .is_included_with_dir(rel)
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+                    let (included, dir_only) = matcher.is_included_with_dir(rel)?;
                     if !included {
                         if dir_only || entry.file_type.is_dir() {
                             walker.skip_current_dir();
@@ -1082,7 +1088,7 @@ pub fn sync(
     let codec = select_codec(remote, opts);
     let matcher = matcher.clone().with_root(src_root.clone());
     let list_start = Instant::now();
-    let (file_cnt, dir_cnt, total_size) = count_entries(&src_root, &matcher, opts);
+    let (file_cnt, dir_cnt, total_size) = count_entries(&src_root, &matcher, opts)?;
     stats.file_list_gen_time = list_start.elapsed();
     stats.files_total = file_cnt;
     stats.dirs_total = dir_cnt;
@@ -1180,9 +1186,7 @@ pub fn sync(
             }
             let file_type = entry.file_type;
             if let Ok(rel) = path.strip_prefix(&src_root) {
-                let (included, dir_only) = matcher
-                    .is_included_with_dir(rel)
-                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+                let (included, dir_only) = matcher.is_included_with_dir(rel)?;
                 if !included {
                     if dir_only || file_type.is_dir() {
                         walker.skip_current_dir();
@@ -1582,7 +1586,7 @@ mod tests {
     use compress::available_codecs;
     use filters::Matcher;
     use std::fs;
-    use std::io::Write;
+    use std::io::{Cursor, Write};
     use tempfile::{NamedTempFile, tempdir};
 
     #[test]
