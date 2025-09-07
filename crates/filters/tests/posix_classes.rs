@@ -44,11 +44,11 @@ fn parity(class: &str, cases: &[(&str, bool)]) {
         .arg("--out-format=%n")
         .arg("-FF")
         .arg("-f")
-        .arg(&inc)
+        .arg(inc)
         .arg("-f")
-        .arg(&exc)
-        .arg(&root_arg)
-        .arg(&dest)
+        .arg(exc)
+        .arg(root_arg)
+        .arg(dest)
         .output()
         .unwrap();
     assert!(
