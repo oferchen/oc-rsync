@@ -26,8 +26,8 @@ SCENARIOS=base UPDATE=1 \
   SERVER_VERSIONS="upstream oc-rsync" \
   UPSTREAM_RSYNC=/path/to/rsync scripts/interop.sh
 ```
-- `interop-grid.log` is produced by `scripts/interop-grid.sh` and captures exit
-  codes and stderr comparisons for key flag combinations.
+- `interop-grid.log` is produced by `scripts/interop-grid.sh` and records
+  stdout, stderr, exit codes, and metadata checks for key flag combinations.
 
 The CI workflow runs `scripts/interop.sh` without network access and relies solely on
 the committed fixtures to verify interoperability.
