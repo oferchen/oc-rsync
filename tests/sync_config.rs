@@ -2,6 +2,7 @@
 
 use filetime::{FileTime, set_file_times};
 use oc_rsync::{SyncConfig, synchronize, synchronize_with_config};
+#[cfg(all(unix, not(feature = "nightly")))]
 use serial_test::serial;
 use std::{fs, path::Path};
 use tempfile::{TempDir, tempdir};
@@ -286,7 +287,7 @@ fn custom_log_file_and_quiet_settings() {
     assert!(contents2.is_empty());
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(feature = "nightly")))]
 #[test]
 #[serial]
 fn custom_syslog_and_journald_settings() {
@@ -298,11 +299,11 @@ fn custom_syslog_and_journald_settings() {
 
     let syslog_path = dir.path().join("syslog.sock");
     let syslog_server = UnixDatagram::bind(&syslog_path).unwrap();
-    std::env::set_var("OC_RSYNC_SYSLOG_PATH", &syslog_path);
+    unsafe { std::env::set_var("OC_RSYNC_SYSLOG_PATH", &syslog_path) };
 
     let journald_path = dir.path().join("journald.sock");
     let journald_server = UnixDatagram::bind(&journald_path).unwrap();
-    std::env::set_var("OC_RSYNC_JOURNALD_PATH", &journald_path);
+    unsafe { std::env::set_var("OC_RSYNC_JOURNALD_PATH", &journald_path) };
 
     let cfg = SyncConfig::builder()
         .verbose(1)
@@ -320,6 +321,8 @@ fn custom_syslog_and_journald_settings() {
     let jour_msg = std::str::from_utf8(&buf[..n]).unwrap();
     assert!(jour_msg.contains("MESSAGE"));
 
-    std::env::remove_var("OC_RSYNC_SYSLOG_PATH");
-    std::env::remove_var("OC_RSYNC_JOURNALD_PATH");
+    unsafe {
+        std::env::remove_var("OC_RSYNC_SYSLOG_PATH");
+        std::env::remove_var("OC_RSYNC_JOURNALD_PATH");
+    }
 }
