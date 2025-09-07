@@ -280,8 +280,7 @@ impl Sender {
             atomic_rename(&dest, &backup_path)?;
         }
         let mut skip = resume as u64;
-        let mut literal = 0u64;
-        let mut matched = 0u64;
+        let stats_ref = stats;
         let adjusted = delta.filter_map(move |op_res| match op_res {
             Ok(op) => {
                 if skip == 0 {
@@ -315,11 +314,13 @@ impl Sender {
             }
             Err(e) => Some(Err(e)),
         });
-        let adjusted = adjusted.inspect(|op_res| {
+        let adjusted = adjusted.inspect(move |op_res| {
             if let Ok(op) = op_res {
                 match op {
-                    Op::Data(d) => literal += d.len() as u64,
-                    Op::Copy { len, .. } => matched += *len as u64,
+                    Op::Data(d) => stats_ref.literal_data += d.len() as u64,
+                    Op::Copy { len, .. } => {
+                        stats_ref.matched_data += *len as u64;
+                    }
                 }
             }
         });
@@ -361,8 +362,6 @@ impl Sender {
                 let _ = op;
             }
         }
-        stats.literal_data += literal;
-        stats.matched_data += matched;
         Ok(true)
     }
 }
