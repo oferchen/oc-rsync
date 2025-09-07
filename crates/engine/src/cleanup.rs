@@ -196,7 +196,7 @@ fn levenshtein(a: &str, b: &str) -> usize {
 }
 
 #[doc(hidden)]
-pub(crate) fn fuzzy_match(dest: &Path) -> Option<PathBuf> {
+pub fn fuzzy_match(dest: &Path) -> Option<PathBuf> {
     let parent = dest.parent()?;
     let stem = dest.file_stem()?.to_string_lossy().to_string();
     let mut best: Option<(usize, PathBuf)> = None;
