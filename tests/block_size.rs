@@ -3,7 +3,7 @@
 
 use assert_cmd::Command;
 use checksums::ChecksumConfigBuilder;
-use engine::{Op, SyncOptions, block_size, compute_delta};
+use engine::{block_size, compute_delta, Op, SyncOptions};
 use std::fs;
 use tempfile::tempdir;
 
@@ -22,18 +22,16 @@ fn parse_literal(stats: &str) -> usize {
 }
 
 #[test]
-fn cdc_block_size_heuristics() {
-    let cases = [
-        (100u64, 700usize),
-        (490_000, 700),
-        (500_000, 704),
-        (1_048_576, 1024),
-        (10_000_000, 3_160),
-        (100_000_000, 10_000),
-        (1_000_000_000, 31_616),
-        (1_000_000_000_000, 131_072),
-    ];
-    for (len, expected) in cases {
+fn block_size_matches_upstream() {
+    let data = fs::read_to_string("tests/golden/block_size/upstream_block_sizes.txt").unwrap();
+    for line in data.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let mut parts = line.split_whitespace();
+        let len: u64 = parts.next().unwrap().parse().unwrap();
+        let expected: usize = parts.next().unwrap().parse().unwrap();
         assert_eq!(block_size(len), expected, "len={len}");
     }
 }
