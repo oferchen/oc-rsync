@@ -10,10 +10,10 @@ when available. Do not exceed functionality of upstream at <https://rsync.samba.
 ## Interop matrix scenarios
 
 The interoperability matrix builds upstream `rsync 3.4.1` via
-[scripts/interop.sh](../scripts/interop.sh) and exercises real
+[tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) and exercises real
 transfers across the following scenarios:
 
-  - `base`: baseline transfer using [scripts/interop.sh](../scripts/interop.sh)
+  - `base`: baseline transfer using [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh)
   - `delete`: `--delete` removes extraneous files
   - `compress_zlib`: zlib negotiation using [codec_negotiation.rs](../tests/interop/codec_negotiation.rs)
   - `compress_zstd`: zstd negotiation using [codec_negotiation.rs](../tests/interop/codec_negotiation.rs)
