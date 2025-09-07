@@ -8,6 +8,26 @@ use std::{fs, path::Path};
 use tempfile::{TempDir, tempdir};
 
 mod common;
+#[cfg(all(unix, not(feature = "nightly")))]
+use std::ffi::OsStr;
+
+#[cfg(all(unix, not(feature = "nightly")))]
+fn with_env_var<K, V, F, R>(key: K, value: V, f: F) -> R
+where
+    K: AsRef<OsStr>,
+    V: AsRef<OsStr>,
+    F: FnOnce() -> R,
+{
+    let key = key.as_ref();
+    let old = std::env::var_os(key);
+    unsafe { std::env::set_var(key, value) };
+    let result = f();
+    match old {
+        Some(v) => unsafe { std::env::set_var(key, v) },
+        None => unsafe { std::env::remove_var(key) },
+    }
+    result
+}
 
 fn setup_dirs() -> (TempDir, std::path::PathBuf, std::path::PathBuf) {
     let dir = tempdir().unwrap();
@@ -322,4 +342,7 @@ fn custom_syslog_and_journald_settings() {
     let (n, _) = journald_server.recv_from(&mut buf).unwrap();
     let jour_msg = std::str::from_utf8(&buf[..n]).unwrap();
     assert!(jour_msg.contains("MESSAGE"));
+
+    let journald_path = dir.path().join("journald.sock");
+    let journald_server = UnixDatagram::bind(&journald_path).unwrap();
 }
