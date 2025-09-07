@@ -100,21 +100,17 @@ mod non_unix {
 
     impl Metadata {
         pub fn from_path(_path: &Path, _opts: Options) -> io::Result<Self> {
-            Ok(Metadata {
-                uid: 0,
-                gid: 0,
-                mode: 0,
-                mtime: FileTime::from_unix_time(0, 0),
-                atime: None,
-                crtime: None,
-                xattrs: Vec::new(),
-                acl: Vec::new(),
-                default_acl: Vec::new(),
-            })
+            Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "metadata operations are not supported on this platform",
+            ))
         }
 
         pub fn apply(&self, _path: &Path, _opts: Options) -> io::Result<()> {
-            Ok(())
+            Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "metadata operations are not supported on this platform",
+            ))
         }
     }
 
@@ -123,20 +119,26 @@ mod non_unix {
 
     impl HardLinks {
         pub fn register(&mut self, _id: u64, _path: &Path) -> bool {
-            false
+            unimplemented!("hard links are not supported on this platform")
         }
 
         pub fn finalize(&mut self) -> io::Result<()> {
-            Ok(())
+            Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "hard links are not supported on this platform",
+            ))
         }
     }
 
     pub fn hard_link_id(_dev: u64, _ino: u64) -> u64 {
-        0
+        unimplemented!("hard links are not supported on this platform")
     }
 
     pub fn read_acl(_path: &Path, _fake_super: bool) -> io::Result<(Vec<()>, Vec<()>)> {
-        Ok((Vec::new(), Vec::new()))
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "ACLs are not supported on this platform",
+        ))
     }
 
     pub fn write_acl(
@@ -146,10 +148,15 @@ mod non_unix {
         _fake_super: bool,
         _super_user: bool,
     ) -> io::Result<()> {
-        Ok(())
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "ACLs are not supported on this platform",
+        ))
     }
 
-    pub fn store_fake_super(_path: &Path, _uid: u32, _gid: u32, _mode: u32) {}
+    pub fn store_fake_super(_path: &Path, _uid: u32, _gid: u32, _mode: u32) {
+        unimplemented!("fake super is not supported on this platform")
+    }
 }
 
 #[cfg(not(unix))]
