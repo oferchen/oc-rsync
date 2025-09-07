@@ -89,12 +89,21 @@ pub struct RuleData {
     source: Option<PathBuf>,
     dir_only: bool,
     has_slash: bool,
+    pattern: String,
 }
 
 impl RuleData {
-    fn is_match(&self, path: &Path) -> bool {
+    fn is_match(&self, path: &Path, is_dir: bool) -> bool {
         let full = format!("/{}", path.to_string_lossy());
-        let full_match = self.matcher.is_match(&full);
+        let mut full_match = self.matcher.is_match(&full);
+        if is_dir
+            && full_match
+            && !(self.pattern.ends_with('/')
+                || self.pattern.ends_with("/**")
+                || self.pattern.ends_with("/***"))
+        {
+            full_match = false;
+        }
         if self.has_slash {
             full_match
         } else {
@@ -104,6 +113,34 @@ impl RuleData {
                 .unwrap_or(false);
             full_match || file_match
         }
+    }
+
+    fn may_match_descendant(&self, path: &Path) -> bool {
+        if !self.has_slash {
+            return false;
+        }
+        let pat_trim = self.pattern.trim_end_matches('/');
+        let pat_depth = if pat_trim.contains("**") {
+            usize::MAX
+        } else {
+            pat_trim.split('/').filter(|s| !s.is_empty()).count()
+        };
+        let path_depth = path.components().count();
+        if pat_depth == usize::MAX {
+            let mut cand = path.to_path_buf();
+            cand.push("ocrsync");
+            let full = format!("/{}", cand.to_string_lossy());
+            return self.matcher.is_match(&full);
+        }
+        if pat_depth <= path_depth {
+            return false;
+        }
+        let mut cand = path.to_path_buf();
+        for _ in 0..(pat_depth - path_depth) {
+            cand.push("ocrsync");
+        }
+        let full = format!("/{}", cand.to_string_lossy());
+        self.matcher.is_match(&full)
     }
 }
 
@@ -606,6 +643,11 @@ impl Matcher {
             return Ok((true, false));
         }
 
+        let mut is_dir = false;
+        if let Some(root) = &self.root {
+            is_dir = root.join(path).is_dir();
+        }
+
         let mut seq = 0usize;
         let mut active: Vec<(usize, usize, usize, Rule)> = Vec::new();
 
@@ -687,13 +729,13 @@ impl Matcher {
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched_rule = data.is_match(path);
+                    let matched_rule = data.is_match(path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
                     self.stats
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
-                    if rule_match {
+                    if rule_match || (is_dir && data.may_match_descendant(path)) {
                         included = true;
                         matched = true;
                         matched_source = data.source.clone();
@@ -716,13 +758,13 @@ impl Matcher {
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched_rule = data.is_match(path);
+                    let matched_rule = data.is_match(path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
                     self.stats
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
-                    if rule_match {
+                    if rule_match || (is_dir && data.may_match_descendant(path)) {
                         included = true;
                         matched = true;
                         matched_source = data.source.clone();
@@ -745,17 +787,17 @@ impl Matcher {
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched_rule = data.is_match(path);
+                    let matched_rule = data.is_match(path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
                     self.stats
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
-                    if rule_match {
+                    if rule_match || (is_dir && data.may_match_descendant(path)) {
                         included = false;
                         matched = true;
                         matched_source = data.source.clone();
-                        dir_only_match = data.dir_only;
+                        dir_only_match = data.dir_only && rule_match;
                         break;
                     }
                 }
@@ -1195,18 +1237,26 @@ impl Matcher {
                         if d.dir_only && !is_dir {
                             continue;
                         }
-                        let matched = d.is_match(path);
-                        if (d.invert && !matched) || (!d.invert && matched) {
+                        let matched = d.is_match(path, is_dir);
+                        if (d.invert && !matched)
+                            || (!d.invert && matched)
+                            || (is_dir && d.may_match_descendant(path))
+                        {
                             state = Some(true);
+                            break;
                         }
                     }
                     Rule::Exclude(d) => {
                         if d.dir_only && !is_dir {
                             continue;
                         }
-                        let matched = d.is_match(path);
-                        if (d.invert && !matched) || (!d.invert && matched) {
+                        let matched = d.is_match(path, is_dir);
+                        if (d.invert && !matched)
+                            || (!d.invert && matched)
+                            || (is_dir && d.may_match_descendant(path))
+                        {
                             state = Some(false);
+                            break;
                         }
                     }
                     Rule::DirMerge(_)
@@ -1460,6 +1510,7 @@ pub fn parse_with_options(
                         source: source.clone(),
                         dir_only: false,
                         has_slash: pat.contains('/'),
+                        pattern: pat.to_string(),
                     };
                     rules.push(Rule::Exclude(data));
                 }
@@ -1601,6 +1652,7 @@ pub fn parse_with_options(
                     source: source.clone(),
                     dir_only: false,
                     has_slash: pat.contains('/'),
+                    pattern: pat.clone(),
                 };
                 rules.push(Rule::Exclude(data));
             }
@@ -1682,6 +1734,7 @@ pub fn parse_with_options(
                     source: source.clone(),
                     dir_only: false,
                     has_slash: pat.contains('/'),
+                    pattern: pat.clone(),
                 };
                 rules.push(Rule::Exclude(data));
             }
@@ -1929,6 +1982,7 @@ pub fn parse_with_options(
                                 source: source.clone(),
                                 dir_only: true,
                                 has_slash: exp.contains('/'),
+                                pattern: exp.clone(),
                             };
                             rules.push(Rule::Include(data));
                         }
@@ -1958,6 +2012,7 @@ pub fn parse_with_options(
                     source: source.clone(),
                     dir_only,
                     has_slash: exp.contains('/'),
+                    pattern: exp.clone(),
                 };
                 match kind {
                     RuleKind::Include => rules.push(Rule::Include(data)),
@@ -2278,6 +2333,7 @@ pub fn parse_rule_list_from_bytes(
                     source: source.clone(),
                     dir_only: false,
                     has_slash: true,
+                    pattern: glob.clone(),
                 };
                 rules.push(Rule::Include(data));
             }
@@ -2292,6 +2348,7 @@ pub fn parse_rule_list_from_bytes(
                     source: source.clone(),
                     dir_only: false,
                     has_slash: true,
+                    pattern: exc_pat.clone(),
                 };
                 rules.push(Rule::Exclude(data));
             }
