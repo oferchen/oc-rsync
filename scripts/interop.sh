@@ -109,4 +109,16 @@ for ver in "${VERSIONS[@]}"; do
 
   diff -u "$WIRE_DIR/rsync-$ver.log" "$OC_RSYNC_LOG"
   diff -u "$FILELIST_DIR/rsync-$ver.txt" "$OC_RSYNC_LIST"
+
+  RSYNC_DST="/tmp/rsync_dst_$ver"
+  OC_RSYNC_DST="/tmp/oc_rsync_dst_$ver"
+
+  diff -r "$RSYNC_DST" "$OC_RSYNC_DST"
+
+  META_DIFF=$("$BIN" -acn --delete "$RSYNC_DST/" "$OC_RSYNC_DST/")
+  if [[ -n "$META_DIFF" ]]; then
+    echo "metadata mismatch for rsync $ver" >&2
+    echo "$META_DIFF" >&2
+    exit 1
+  fi
 done
