@@ -105,13 +105,6 @@ jobs:
         if: steps.install_nextest.outcome == 'success' && steps.install_llvm_cov.outcome == 'success'
         run: ls -l coverage.lcov
 
-      - name: Upload coverage report
-        if: steps.install_nextest.outcome == 'success' && steps.install_llvm_cov.outcome == 'success'
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          name: coverage-report
-          files: coverage.lcov
 
   interop:
     needs: test-linux
