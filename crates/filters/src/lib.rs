@@ -201,6 +201,12 @@ impl FilterStats {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct MatchResult {
+    pub include: bool,
+    pub descend: bool,
+}
+
 fn compile_glob(pat: &str) -> Result<GlobMatcher, ParseError> {
     let mut translated = String::new();
     let mut chars = pat.chars().peekable();
@@ -575,46 +581,39 @@ impl Matcher {
     }
 
     pub fn is_included<P: AsRef<Path>>(&self, path: P) -> Result<bool, ParseError> {
-        self.check(path.as_ref(), false, false)
-            .map(|(included, _)| included)
+        self.check(path.as_ref(), false, false).map(|r| r.include)
     }
 
-    pub fn is_included_with_dir<P: AsRef<Path>>(
-        &self,
-        path: P,
-    ) -> Result<(bool, bool), ParseError> {
+    pub fn is_included_with_dir<P: AsRef<Path>>(&self, path: P) -> Result<MatchResult, ParseError> {
         self.check(path.as_ref(), false, false)
     }
 
     pub fn is_included_for_delete<P: AsRef<Path>>(&self, path: P) -> Result<bool, ParseError> {
-        self.check(path.as_ref(), true, false)
-            .map(|(included, _)| included)
+        self.check(path.as_ref(), true, false).map(|r| r.include)
     }
 
     pub fn is_included_for_delete_with_dir<P: AsRef<Path>>(
         &self,
         path: P,
-    ) -> Result<(bool, bool), ParseError> {
+    ) -> Result<MatchResult, ParseError> {
         self.check(path.as_ref(), true, false)
     }
 
     pub fn is_xattr_included<P: AsRef<Path>>(&self, name: P) -> Result<bool, ParseError> {
-        self.check(name.as_ref(), false, true)
-            .map(|(included, _)| included)
+        self.check(name.as_ref(), false, true).map(|r| r.include)
     }
 
     pub fn is_xattr_included_for_delete<P: AsRef<Path>>(
         &self,
         name: P,
     ) -> Result<bool, ParseError> {
-        self.check(name.as_ref(), true, true)
-            .map(|(included, _)| included)
+        self.check(name.as_ref(), true, true).map(|r| r.include)
     }
 
     pub fn is_xattr_included_for_delete_with_dir<P: AsRef<Path>>(
         &self,
         name: P,
-    ) -> Result<(bool, bool), ParseError> {
+    ) -> Result<MatchResult, ParseError> {
         self.check(name.as_ref(), true, true)
     }
 
@@ -637,22 +636,23 @@ impl Matcher {
         Ok(())
     }
 
-    fn check(
-        &self,
-        path: &Path,
-        for_delete: bool,
-        xattr: bool,
-    ) -> Result<(bool, bool), ParseError> {
+    fn check(&self, path: &Path, for_delete: bool, xattr: bool) -> Result<MatchResult, ParseError> {
         if self.existing {
             if let Some(root) = &self.root {
                 if !root.join(path).exists() {
-                    return Ok((false, false));
+                    return Ok(MatchResult {
+                        include: false,
+                        descend: false,
+                    });
                 }
             }
         }
 
         if path.as_os_str().is_empty() {
-            return Ok((true, false));
+            return Ok(MatchResult {
+                include: true,
+                descend: false,
+            });
         }
 
         let mut is_dir = false;
@@ -719,10 +719,9 @@ impl Matcher {
             }
         }
 
-        let mut included = true;
-        let mut matched = false;
+        let mut include: Option<bool> = None;
+        let mut descend = false;
         let mut matched_source: Option<PathBuf> = None;
-        let mut dir_only_match = false;
         for rule in ordered.iter() {
             match rule {
                 Rule::Protect(data) => {
@@ -744,14 +743,19 @@ impl Matcher {
                     let matched_rule = data.is_match(path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
+                    let may_desc = is_dir && data.may_match_descendant(path);
                     self.stats
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
-                    if rule_match || (is_dir && data.may_match_descendant(path)) {
-                        included = true;
-                        matched = true;
+                    if rule_match {
+                        include = Some(true);
+                        if may_desc {
+                            descend = true;
+                        }
                         matched_source = data.source.clone();
                         break;
+                    } else if may_desc {
+                        descend = true;
                     }
                 }
                 Rule::Include(data) => {
@@ -773,18 +777,19 @@ impl Matcher {
                     let matched_rule = data.is_match(path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
-                    let desc = data.may_match_descendant(path);
+                    let may_desc = is_dir && data.may_match_descendant(path);
                     self.stats
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
-                    if rule_match || (is_dir && desc) {
-                        if rule_match && is_dir && !desc {
-                            dir_only_match = true;
+                    if rule_match {
+                        include = Some(true);
+                        if may_desc {
+                            descend = true;
                         }
-                        included = true;
-                        matched = true;
                         matched_source = data.source.clone();
                         break;
+                    } else if may_desc {
+                        descend = true;
                     }
                 }
                 Rule::Exclude(data) => {
@@ -806,15 +811,21 @@ impl Matcher {
                     let matched_rule = data.is_match(path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
+                    let may_desc = is_dir && data.may_match_descendant(path);
                     self.stats
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
-                    if rule_match || (is_dir && data.may_match_descendant(path)) {
-                        included = false;
-                        matched = true;
+                    if rule_match {
+                        include = Some(false);
+                        if data.dir_only {
+                            descend = false;
+                        } else if !descend {
+                            descend = may_desc;
+                        }
                         matched_source = data.source.clone();
-                        dir_only_match = data.dir_only && rule_match;
                         break;
+                    } else if may_desc {
+                        descend = true;
                     }
                 }
                 Rule::DirMerge(_)
@@ -825,7 +836,14 @@ impl Matcher {
                 | Rule::NoPruneEmptyDirs => {}
             }
         }
-        if included && self.prune_empty_dirs {
+
+        let matched = include.is_some();
+        let mut include_val = include.unwrap_or(true);
+        if !matched {
+            descend = true;
+        }
+
+        if include_val && self.prune_empty_dirs {
             if let Some(root) = &self.root {
                 let full = root.join(path);
                 if full.is_dir() {
@@ -833,13 +851,13 @@ impl Matcher {
                     for entry in fs::read_dir(&full)? {
                         let entry = entry?;
                         let rel = path.join(entry.file_name());
-                        if self.check(&rel, for_delete, xattr)?.0 {
+                        if self.check(&rel, for_delete, xattr)?.include {
                             has_child = true;
                             break;
                         }
                     }
                     if !has_child {
-                        included = false;
+                        include_val = false;
                     }
                 }
             }
@@ -858,7 +876,10 @@ impl Matcher {
             source = %source_str,
             rules = ordered.len(),
         );
-        Ok((included, matched && dir_only_match))
+        Ok(MatchResult {
+            include: include_val,
+            descend,
+        })
     }
 
     pub fn merge(&mut self, more: Vec<Rule>) {

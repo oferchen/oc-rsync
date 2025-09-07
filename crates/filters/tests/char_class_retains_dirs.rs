@@ -21,9 +21,9 @@ fn include_char_class_retains_dirs() {
     assert!(matcher.is_included("1/keep.txt").unwrap());
     assert!(!matcher.is_included("1/2/keep.txt").unwrap());
     let res1 = matcher.is_included_with_dir("1").unwrap();
-    assert!(res1.0);
-    assert!(!res1.1);
+    assert!(!res1.include);
+    assert!(res1.descend);
     let res2 = matcher.is_included_with_dir("1/2").unwrap();
-    assert!(res2.0);
-    assert!(res2.1);
+    assert!(res2.include);
+    assert!(!res2.descend);
 }
