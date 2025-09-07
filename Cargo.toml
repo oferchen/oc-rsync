@@ -138,6 +138,8 @@ assets = [
 [package.metadata.rpm]
 maintainer = "Project Maintainers <maintainers@oc-rsync.project>"
 requires = ["zlib", "libzstd"]
+summary = "Pure-Rust rsync replica"
+license = "Apache-2.0 OR MIT"
 
 [package.metadata.rpm.targets.oc-rsync]
 path = "/usr/bin/oc-rsync"

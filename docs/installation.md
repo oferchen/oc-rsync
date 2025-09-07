@@ -25,3 +25,7 @@ support using:
 cargo build --no-default-features --features xattr
 ```
 
+### RPM packaging
+
+The RPM metadata is defined in `Cargo.toml` under `[package.metadata.rpm]` and includes the package summary and license. Run `cargo rpm build --release` to produce an RPM spec file containing these fields.
+
