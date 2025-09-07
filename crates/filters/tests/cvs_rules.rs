@@ -27,7 +27,7 @@ fn cvsignore_is_scoped_per_directory() {
     fs::create_dir_all(&sub).unwrap();
     fs::write(sub.join(".cvsignore"), "bar\n").unwrap();
 
-    let rules = p(":C\n");
+    let rules = p("-C\n");
     let matcher = Matcher::new(rules).with_root(root);
 
     assert!(!matcher.is_included("foo").unwrap());
@@ -35,15 +35,15 @@ fn cvsignore_is_scoped_per_directory() {
     assert!(matcher.is_included("bar").unwrap());
     assert!(!matcher.is_included("sub/bar").unwrap());
     assert!(matcher.is_included("sub/nested/bar").unwrap());
+    assert!(matcher.is_included(".cvsignore").unwrap());
 }
 
 #[test]
-fn home_and_env_patterns_are_global() {
+fn home_patterns_are_global() {
     let home = tempdir().unwrap();
     fs::write(home.path().join(".cvsignore"), "home_ignored\n").unwrap();
     unsafe {
         env::set_var("HOME", home.path());
-        env::set_var("CVSIGNORE", "env_ignored");
     }
 
     let rules = p("-C\n");
@@ -51,11 +51,25 @@ fn home_and_env_patterns_are_global() {
 
     assert!(!matcher.is_included("home_ignored").unwrap());
     assert!(!matcher.is_included("sub/home_ignored").unwrap());
+
+    unsafe {
+        env::remove_var("HOME");
+    }
+}
+
+#[test]
+fn env_patterns_are_global() {
+    unsafe {
+        env::set_var("CVSIGNORE", "env_ignored");
+    }
+
+    let rules = p("-C\n");
+    let matcher = Matcher::new(rules);
+
     assert!(!matcher.is_included("env_ignored").unwrap());
     assert!(!matcher.is_included("sub/env_ignored").unwrap());
 
     unsafe {
-        env::remove_var("HOME");
         env::remove_var("CVSIGNORE");
     }
 }

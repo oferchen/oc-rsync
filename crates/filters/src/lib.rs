@@ -920,14 +920,14 @@ impl Matcher {
                 }
                 let pat = if let Some(rel_str) = &rel_str {
                     if token.starts_with('/') {
-                        format!("/{}/{}", rel_str, token.trim_start_matches('/'))
+                        format!("{}/{}", rel_str, token.trim_start_matches('/'))
                     } else {
-                        format!("/{}/{}", rel_str, token)
+                        format!("{}/{}", rel_str, token)
                     }
                 } else if token.starts_with('/') {
-                    token.to_string()
+                    token.trim_start_matches('/').to_string()
                 } else {
-                    format!("/{}", token)
+                    token.to_string()
                 };
                 buf.push_str("- ");
                 buf.push_str(&pat);
@@ -1959,6 +1959,20 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
         }
         rules.append(&mut v);
     }
+
+    rules.push(Rule::DirMerge(PerDir {
+        file: ".cvsignore".into(),
+        anchored: true,
+        root_only: false,
+        inherit: false,
+        cvs: true,
+        word_split: false,
+        sign: None,
+        flags: RuleFlags {
+            perishable: true,
+            ..RuleFlags::default()
+        },
+    }));
 
     Ok(rules)
 }
