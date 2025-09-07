@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-files="$@"
 if [ $# -eq 0 ]; then
-    files=$(git ls-files '*.rs')
+    readarray -d '' -t files < <(git ls-files -z '*.rs')
+else
+    files=("$@")
 fi
-cargo run --quiet -p xtask --bin comment_lint -- $files
+cargo run --quiet -p xtask --bin comment_lint -- "${files[@]}"
