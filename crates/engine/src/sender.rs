@@ -360,8 +360,6 @@ impl Sender {
         });
         if !self.opts.only_write_batch {
             recv.apply(path, &dest, rel, ops)?;
-            stats.literal_data += literal;
-            stats.matched_data += matched;
             drop(atime_guard);
             recv.copy_metadata(path, &dest)?;
         } else {
@@ -369,9 +367,9 @@ impl Sender {
             for op in ops {
                 let _ = op;
             }
-            stats.literal_data += literal;
-            stats.matched_data += matched;
         }
+        stats.literal_data += literal;
+        stats.matched_data += matched;
         Ok(true)
     }
 }
