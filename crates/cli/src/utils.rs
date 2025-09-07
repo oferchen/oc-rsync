@@ -478,7 +478,20 @@ mod tests {
     }
 
     #[test]
+    fn parse_size_supports_k_suffixes() {
+        assert_eq!(parse_size::<u64>("1k").unwrap(), 1u64 << 10);
+        assert_eq!(parse_size::<u64>("1K").unwrap(), 1u64 << 10);
+    }
+
+    #[test]
+    fn parse_size_rejects_internal_spaces() {
+        assert!(parse_size::<u64>("1 k").is_err());
+    }
+
+    #[test]
     fn parse_size_overflow() {
         assert!(parse_size::<u64>("16384p").is_err());
+        assert!(parse_size::<u64>("18446744073709551616").is_err());
+        assert!(parse_size::<u32>("5g").is_err());
     }
 }
