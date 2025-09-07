@@ -384,11 +384,24 @@ fn cli_block_size_matches_rsync() {
         .arg(dst_arg)
         .output()
         .unwrap();
-    assert_eq!(ours.status.code(), Some(expected_status));
-    let our_literal = parse_literal(std::str::from_utf8(&ours.stdout).unwrap());
+    let our_status = ours.status.code();
+    let our_stdout = String::from_utf8(ours.stdout).unwrap();
+    let our_stderr = String::from_utf8(ours.stderr).unwrap();
+    assert_eq!(
+        our_status,
+        Some(expected_status),
+        "stdout: {our_stdout}\nstderr: {our_stderr}"
+    );
+    let our_literal = parse_literal(&our_stdout);
 
-    assert_eq!(our_literal, rsync_literal);
-    assert_eq!(our_literal, block_size);
+    assert_eq!(
+        our_literal, rsync_literal,
+        "stdout: {our_stdout}\nstderr: {our_stderr}"
+    );
+    assert_eq!(
+        our_literal, block_size,
+        "stdout: {our_stdout}\nstderr: {our_stderr}"
+    );
 }
 
 #[test]
