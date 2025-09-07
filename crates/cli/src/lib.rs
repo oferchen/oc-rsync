@@ -27,11 +27,11 @@ mod utils;
 use crate::daemon::run_daemon;
 pub use daemon::spawn_daemon_session;
 use options::{ClientOpts, ProbeOpts};
-use utils::{
-    RemoteSpec, init_logging, parse_filters, parse_name_map, parse_remote_spec, parse_remote_specs,
-    parse_rsync_path,
+pub use utils::{
+    PathSpec, RemoteSpec, parse_iconv, parse_logging_flags, parse_remote_spec, parse_rsh,
+    print_version_if_requested,
 };
-pub use utils::{parse_iconv, parse_logging_flags, parse_rsh, print_version_if_requested};
+use utils::{init_logging, parse_filters, parse_name_map, parse_remote_specs, parse_rsync_path};
 
 use compress::{Codec, available_codecs};
 pub use engine::EngineError;

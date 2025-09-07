@@ -299,7 +299,7 @@ pub(crate) fn parse_name_map(specs: &[String], kind: IdKind) -> Result<Option<Id
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct PathSpec {
+pub struct PathSpec {
     pub path: PathBuf,
     pub trailing_slash: bool,
 }
@@ -314,21 +314,34 @@ pub enum RemoteSpec {
     },
 }
 
-pub(crate) fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec> {
-    let input = input.to_string_lossy();
-    let (trailing_slash, s) = if input != "/" && input.ends_with('/') {
-        (true, &input[..input.len() - 1])
+pub fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec> {
+    use std::ffi::OsString;
+
+    fn bytes_to_string(bytes: &[u8], what: &str) -> Result<String> {
+        std::str::from_utf8(bytes)
+            .map(|s| s.to_string())
+            .map_err(|_| EngineError::Other(format!("{what} not valid UTF-8")))
+    }
+
+    fn path_from_bytes(bytes: &[u8]) -> PathBuf {
+        PathBuf::from(unsafe { OsString::from_encoded_bytes_unchecked(bytes.to_vec()) })
+    }
+
+    let bytes = input.as_encoded_bytes();
+    let (trailing_slash, s) = if bytes != b"/" && bytes.ends_with(b"/") {
+        (true, &bytes[..bytes.len() - 1])
     } else {
-        (false, &*input)
+        (false, bytes)
     };
-    if let Some(rest) = s.strip_prefix("rsync://") {
-        let mut parts = rest.splitn(2, '/');
-        let host = parts.next().unwrap_or("");
-        let mod_path = parts.next().unwrap_or("");
-        let mut mp = mod_path.splitn(2, '/');
-        let module = mp.next().unwrap_or("");
-        let path = mp.next().unwrap_or("");
-        let path = if path.is_empty() { "." } else { path };
+
+    if let Some(rest) = s.strip_prefix(b"rsync://") {
+        let mut parts = rest.splitn(2, |&b| b == b'/');
+        let host = parts.next().unwrap_or(&[]);
+        let mod_path = parts.next().unwrap_or(&[]);
+        let mut mp = mod_path.splitn(2, |&b| b == b'/');
+        let module = mp.next().unwrap_or(&[]);
+        let path = mp.next().unwrap_or(&[]);
+        let path = if path.is_empty() { b"." } else { path };
         if host.is_empty() {
             return Err(EngineError::Other("remote host missing".into()));
         }
@@ -336,28 +349,30 @@ pub(crate) fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec> {
             return Err(EngineError::Other("remote module missing".into()));
         }
         return Ok(RemoteSpec::Remote {
-            host: host.to_string(),
+            host: bytes_to_string(host, "remote host")?,
             path: PathSpec {
-                path: PathBuf::from(path),
+                path: path_from_bytes(path),
                 trailing_slash,
             },
-            module: Some(module.to_string()),
+            module: Some(bytes_to_string(module, "remote module")?),
         });
     }
-    if let Some(rest) = s.strip_prefix('[') {
-        if let Some(end) = rest.find(']') {
-            let host = &rest[..end];
-            if let Some(path) = rest[end + 1..].strip_prefix(':') {
+
+    if !s.is_empty() && s[0] == b'[' {
+        if let Some(end) = s.iter().position(|&b| b == b']') {
+            let host = &s[1..end];
+            if s.get(end + 1) == Some(&b':') {
+                let path = &s[end + 2..];
                 if host.is_empty() {
                     return Err(EngineError::Other("remote host missing".into()));
                 }
-                if path.is_empty() || !path.starts_with('/') {
+                if path.is_empty() || path.first() != Some(&b'/') {
                     return Err(EngineError::Other("remote path missing".into()));
                 }
                 return Ok(RemoteSpec::Remote {
-                    host: host.to_string(),
+                    host: bytes_to_string(host, "remote host")?,
                     path: PathSpec {
-                        path: PathBuf::from(path),
+                        path: path_from_bytes(path),
                         trailing_slash,
                     },
                     module: None,
@@ -365,65 +380,65 @@ pub(crate) fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec> {
             }
         }
         return Ok(RemoteSpec::Local(PathSpec {
-            path: PathBuf::from(input.as_ref()),
+            path: path_from_bytes(s),
             trailing_slash,
         }));
     }
-    if let Some(idx) = s.find("::") {
+
+    if let Some(idx) = s.windows(2).position(|w| w == b"::") {
         let host = &s[..idx];
-        let mut rest = s[idx + 2..].splitn(2, '/');
-        let module = rest.next().unwrap_or("");
-        let path = rest.next().unwrap_or("");
+        let mod_path = &s[idx + 2..];
+        let mut parts = mod_path.splitn(2, |&b| b == b'/');
+        let module = parts.next().unwrap_or(&[]);
+        let path = parts.next().unwrap_or(&[]);
         if host.is_empty() {
             return Err(EngineError::Other("remote host missing".into()));
         }
         if module.is_empty() {
             return Err(EngineError::Other("remote module missing".into()));
         }
-        let path = if path.is_empty() { "." } else { path };
+        let path = if path.is_empty() { b"." } else { path };
         return Ok(RemoteSpec::Remote {
-            host: host.to_string(),
+            host: bytes_to_string(host, "remote host")?,
             path: PathSpec {
-                path: PathBuf::from(path),
+                path: path_from_bytes(path),
                 trailing_slash,
             },
-            module: Some(module.to_string()),
+            module: Some(bytes_to_string(module, "remote module")?),
         });
     }
-    if let Some(idx) = s.find(':') {
+
+    if let Some(idx) = s.iter().position(|&b| b == b':') {
         if idx == 1 {
-            let bytes = s.as_bytes();
-            if bytes[0].is_ascii_alphabetic()
-                && (bytes.len() == 2
-                    || bytes
-                        .get(2)
-                        .map(|c| *c == b'/' || *c == b'\\')
-                        .unwrap_or(false))
+            if s[0].is_ascii_alphabetic()
+                && (s.len() == 2 || matches!(s.get(2), Some(b'/') | Some(b'\\')))
             {
                 return Ok(RemoteSpec::Local(PathSpec {
-                    path: PathBuf::from(s),
+                    path: path_from_bytes(s),
                     trailing_slash,
                 }));
             }
         }
-        let (host, path) = s.split_at(idx);
+        let host = &s[..idx];
+        let path = &s[idx + 1..];
         if host.is_empty() {
             return Err(EngineError::Other("remote host missing".into()));
         }
-        if path[1..].is_empty() {
+        if path.is_empty() {
             return Err(EngineError::Other("remote path missing".into()));
         }
         return Ok(RemoteSpec::Remote {
-            host: host.to_string(),
+            host: bytes_to_string(host, "remote host")?,
             path: PathSpec {
-                path: PathBuf::from(&path[1..]),
+                path: path_from_bytes(path),
                 trailing_slash,
             },
             module: None,
         });
     }
+
     Ok(RemoteSpec::Local(PathSpec {
-        path: PathBuf::from(s),
+        path: path_from_bytes(s),
         trailing_slash,
     }))
 }
