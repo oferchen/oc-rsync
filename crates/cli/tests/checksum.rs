@@ -1,18 +1,10 @@
 // crates/cli/tests/checksum.rs
+
 use assert_cmd::Command;
 use filetime::{FileTime, set_file_mtime};
 use tempfile::tempdir;
-
-fn parse_literal(output: &str) -> usize {
-    for line in output.lines() {
-        let line = line.trim();
-        if let Some(rest) = line.strip_prefix("Literal data: ") {
-            let num_str = rest.split_whitespace().next().unwrap().replace(",", "");
-            return num_str.parse().unwrap();
-        }
-    }
-    panic!("no literal data in stats: {output}");
-}
+mod common;
+use common::parse_literal;
 
 #[test]
 fn checksum_transfers_when_timestamps_match() {
@@ -34,7 +26,6 @@ fn checksum_transfers_when_timestamps_match() {
     set_file_mtime(&src_file, mtime).unwrap();
     set_file_mtime(&dst_file, mtime).unwrap();
 
-    // With --checksum, differing content should be transferred
     let out = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
