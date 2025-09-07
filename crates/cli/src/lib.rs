@@ -38,7 +38,7 @@ pub use engine::EngineError;
 use engine::{DeleteMode, Result, Stats, StrongHash, SyncOptions};
 use filters::{Matcher, Rule, default_cvs_rules};
 pub use formatter::{ARG_ORDER, dump_help_body, render_help};
-use logging::{InfoFlag, human_bytes, parse_escapes, rate_formatter};
+use logging::{InfoFlag, human_bytes, parse_escapes, progress_formatter, rate_formatter};
 use meta::{IdKind, parse_chmod, parse_chown};
 use protocol::{ExitCode, SUPPORTED_PROTOCOLS, negotiate_version};
 use transport::{AddressFamily, parse_sockopts};
@@ -228,31 +228,42 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 }
 
 fn print_stats(stats: &Stats, opts: &ClientOpts) {
-    println!("Number of files: {}", stats.files_total);
+    let fmt_count = |n: u64| {
+        if opts.human_readable {
+            n.to_string()
+        } else {
+            progress_formatter(n, false)
+        }
+    };
+    let fmt_bytes = |n: u64| {
+        if opts.human_readable {
+            human_bytes(n)
+        } else {
+            format!("{} bytes", progress_formatter(n, false))
+        }
+    };
+
+    println!("Number of files: {}", fmt_count(stats.files_total as u64));
     println!(
         "Number of created files: {}",
-        stats.files_created - stats.dirs_created
+        fmt_count((stats.files_created - stats.dirs_created) as u64)
     );
-    println!("Number of deleted files: {}", stats.files_deleted);
+    println!(
+        "Number of deleted files: {}",
+        fmt_count(stats.files_deleted as u64)
+    );
     println!(
         "Number of regular files transferred: {}",
-        stats.files_transferred
+        fmt_count(stats.files_transferred as u64)
     );
-    let total_size = if opts.human_readable {
-        human_bytes(stats.total_file_size)
-    } else {
-        format!("{} bytes", stats.total_file_size)
-    };
-    println!("Total file size: {total_size}");
-    let transferred = if opts.human_readable {
-        human_bytes(stats.bytes_transferred)
-    } else {
-        format!("{} bytes", stats.bytes_transferred)
-    };
-    println!("Total transferred file size: {transferred}");
-    println!("Literal data: {} bytes", stats.literal_data);
-    println!("Matched data: {} bytes", stats.matched_data);
-    println!("File list size: {}", stats.file_list_size);
+    println!("Total file size: {}", fmt_bytes(stats.total_file_size));
+    println!(
+        "Total transferred file size: {}",
+        fmt_bytes(stats.bytes_transferred)
+    );
+    println!("Literal data: {}", fmt_bytes(stats.literal_data));
+    println!("Matched data: {}", fmt_bytes(stats.matched_data));
+    println!("File list size: {}", fmt_count(stats.file_list_size));
     println!(
         "File list generation time: {:.3} seconds",
         stats.file_list_gen_time.as_secs_f64()
@@ -261,8 +272,14 @@ fn print_stats(stats: &Stats, opts: &ClientOpts) {
         "File list transfer time: {:.3} seconds",
         stats.file_list_transfer_time.as_secs_f64()
     );
-    println!("Total bytes sent: {}", stats.bytes_sent);
-    println!("Total bytes received: {}", stats.bytes_received);
+    println!(
+        "Total bytes sent: {}",
+        progress_formatter(stats.bytes_sent, opts.human_readable)
+    );
+    println!(
+        "Total bytes received: {}",
+        progress_formatter(stats.bytes_received, opts.human_readable)
+    );
     let elapsed = stats.elapsed().as_secs_f64();
     let rate = if elapsed > 0.0 {
         let total = stats.bytes_sent + stats.bytes_received;
@@ -272,16 +289,22 @@ fn print_stats(stats: &Stats, opts: &ClientOpts) {
     };
     println!(
         "\nsent {} bytes  received {} bytes  {}",
-        stats.bytes_sent, stats.bytes_received, rate
+        progress_formatter(stats.bytes_sent, opts.human_readable),
+        progress_formatter(stats.bytes_received, opts.human_readable),
+        rate
     );
     if stats.bytes_transferred > 0 {
         let speedup = stats.total_file_size as f64 / stats.bytes_transferred as f64;
         println!(
             "total size is {}  speedup is {:.2}",
-            stats.total_file_size, speedup
+            progress_formatter(stats.total_file_size, opts.human_readable),
+            speedup
         );
     } else {
-        println!("total size is {}  speedup is 0.00", stats.total_file_size);
+        println!(
+            "total size is {}  speedup is 0.00",
+            progress_formatter(stats.total_file_size, opts.human_readable)
+        );
     }
     tracing::info!(
         target: InfoFlag::Stats.target(),
