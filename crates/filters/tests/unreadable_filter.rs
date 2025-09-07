@@ -8,7 +8,6 @@ use tempfile::tempdir;
 fn unreadable_filter_file_errors() {
     let tmp = tempdir().unwrap();
     let root = tmp.path();
-    // Create a directory named `.rsync-filter` so attempts to read it fail.
     fs::create_dir(root.join(".rsync-filter")).unwrap();
 
     let mut v = HashSet::new();
