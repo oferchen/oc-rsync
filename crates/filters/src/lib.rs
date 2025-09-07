@@ -243,6 +243,12 @@ fn expand_posix_classes(pat: &str) -> String {
             "lower" => Some("a-z"),
             "upper" => Some("A-Z"),
             "xdigit" => Some("0-9A-Fa-f"),
+            "space" => Some("\t\n\r\x0B\x0C "),
+            "punct" => Some("!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]\\^_`{|}~"),
+            "blank" => Some("\t "),
+            "cntrl" => Some("\x00-\x1F\x7F"),
+            "graph" => Some("!-~"),
+            "print" => Some(" -~"),
             _ => None,
         }
     }
