@@ -7,6 +7,27 @@ use serial_test::serial;
 use std::{fs, path::Path};
 use tempfile::{TempDir, tempdir};
 
+#[cfg(all(unix, not(feature = "nightly")))]
+use std::ffi::OsStr;
+
+#[cfg(all(unix, not(feature = "nightly")))]
+fn with_env_var<K, V, F, R>(key: K, value: V, f: F) -> R
+where
+    K: AsRef<OsStr>,
+    V: AsRef<OsStr>,
+    F: FnOnce() -> R,
+{
+    let key = key.as_ref();
+    let old = std::env::var_os(key);
+    unsafe { std::env::set_var(key, value) };
+    let result = f();
+    match old {
+        Some(v) => unsafe { std::env::set_var(key, v) },
+        None => unsafe { std::env::remove_var(key) },
+    }
+    result
+}
+
 fn setup_dirs() -> (TempDir, std::path::PathBuf, std::path::PathBuf) {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
@@ -299,30 +320,27 @@ fn custom_syslog_and_journald_settings() {
 
     let syslog_path = dir.path().join("syslog.sock");
     let syslog_server = UnixDatagram::bind(&syslog_path).unwrap();
-    unsafe { std::env::set_var("OC_RSYNC_SYSLOG_PATH", &syslog_path) };
 
     let journald_path = dir.path().join("journald.sock");
     let journald_server = UnixDatagram::bind(&journald_path).unwrap();
-    unsafe { std::env::set_var("OC_RSYNC_JOURNALD_PATH", &journald_path) };
 
-    let cfg = SyncConfig::builder()
-        .verbose(1)
-        .syslog(true)
-        .journald(true)
-        .build();
-    synchronize_with_config(src_dir, dst_dir, &cfg).unwrap();
+    with_env_var("OC_RSYNC_SYSLOG_PATH", &syslog_path, || {
+        with_env_var("OC_RSYNC_JOURNALD_PATH", &journald_path, || {
+            let cfg = SyncConfig::builder()
+                .verbose(1)
+                .syslog(true)
+                .journald(true)
+                .build();
+            synchronize_with_config(src_dir, dst_dir, &cfg).unwrap();
 
-    let mut buf = [0u8; 256];
-    let (n, _) = syslog_server.recv_from(&mut buf).unwrap();
-    let sys_msg = std::str::from_utf8(&buf[..n]).unwrap();
-    assert!(sys_msg.contains("rsync"));
+            let mut buf = [0u8; 256];
+            let (n, _) = syslog_server.recv_from(&mut buf).unwrap();
+            let sys_msg = std::str::from_utf8(&buf[..n]).unwrap();
+            assert!(sys_msg.contains("rsync"));
 
-    let (n, _) = journald_server.recv_from(&mut buf).unwrap();
-    let jour_msg = std::str::from_utf8(&buf[..n]).unwrap();
-    assert!(jour_msg.contains("MESSAGE"));
-
-    unsafe {
-        std::env::remove_var("OC_RSYNC_SYSLOG_PATH");
-        std::env::remove_var("OC_RSYNC_JOURNALD_PATH");
-    }
+            let (n, _) = journald_server.recv_from(&mut buf).unwrap();
+            let jour_msg = std::str::from_utf8(&buf[..n]).unwrap();
+            assert!(jour_msg.contains("MESSAGE"));
+        });
+    });
 }
