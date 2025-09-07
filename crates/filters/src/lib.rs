@@ -2076,7 +2076,6 @@ fn rooted_and_parents(pat: &str) -> (String, Vec<String>) {
         let has_glob = part.contains(['*', '?', '[', ']']);
         if has_glob {
             dirs.push(format!("/{base}/"));
-            dirs.push(format!("/{base}/**"));
             finished = false;
             break;
         }
@@ -2104,6 +2103,31 @@ pub fn parse_rule_list_from_bytes(
         }
         if sign == '+' && !pat.starts_with(['+', '-', ':']) {
             let (rooted, parents) = rooted_and_parents(&pat);
+            for dir in parents {
+                let glob = dir.trim_end_matches('/');
+                let matcher = compile_glob(glob)?;
+                let data = RuleData {
+                    matcher,
+                    invert: false,
+                    flags: RuleFlags::default(),
+                    source: source.clone(),
+                    dir_only: true,
+                };
+                rules.push(Rule::Include(data));
+
+                let mut exc_pat = dir.clone();
+                exc_pat.push('*');
+                let matcher = compile_glob(&exc_pat)?;
+                let data = RuleData {
+                    matcher,
+                    invert: false,
+                    flags: RuleFlags::default(),
+                    source: source.clone(),
+                    dir_only: false,
+                };
+                rules.push(Rule::Exclude(data));
+            }
+
             let line = if from0 {
                 format!("+{rooted}\n")
             } else {
@@ -2116,20 +2140,6 @@ pub fn parse_rule_list_from_bytes(
                 depth,
                 source.clone(),
             )?);
-            for dir in parents {
-                let rule = if from0 {
-                    format!("+{dir}\n")
-                } else {
-                    format!("+ {dir}\n")
-                };
-                rules.extend(parse_with_options(
-                    &rule,
-                    from0,
-                    visited,
-                    depth,
-                    source.clone(),
-                )?);
-            }
         } else {
             let line = if from0 {
                 format!("{sign}{pat}\n")
