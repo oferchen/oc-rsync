@@ -1999,6 +1999,7 @@ pub fn parse_with_options(
 
         let mut pats: Vec<(String, bool)> = Vec::new();
         for b in bases {
+            let b = if anchored { format!("/{}", b) } else { b };
             if dir_all || dir_only {
                 pats.push((b.clone(), false));
                 pats.push((format!("{}/**", b), false));
