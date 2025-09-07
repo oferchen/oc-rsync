@@ -107,6 +107,13 @@ fn character_class_confined_to_segment() {
 }
 
 #[test]
+fn character_class_does_not_cross_directories() {
+    let m = p("+ [0-9]/*\n- *\n");
+    assert!(m.is_included("1/keep.txt").unwrap());
+    assert!(!m.is_included("1/2/keep.txt").unwrap());
+}
+
+#[test]
 fn brace_expansion_limit_range() {
     let mut v = HashSet::new();
     let pattern = format!("+ file{{1..{}}}.txt\n- *\n", MAX_BRACE_EXPANSIONS + 1);
