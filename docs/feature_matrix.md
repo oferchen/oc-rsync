@@ -238,7 +238,6 @@ Classic `rsync` protocol versions 30–32 are supported.
 | Feature | Status | Tests | Source | Notes |
 | --- | --- | --- | --- | --- |
 | Workspace coverage via `cargo llvm-cov` | Implemented | [reports/metrics.md](../reports/metrics.md) | [Makefile](../Makefile) | |
-| Windows CI coverage gating | Missing | — | [codecov.yml](../codecov.yml) | [#989](https://github.com/oferchen/oc-rsync/issues/989) |
 
 ## Post-parity roadmap
 
