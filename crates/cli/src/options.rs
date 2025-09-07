@@ -9,7 +9,9 @@ use crate::utils::{
     RshCommand, parse_duration, parse_minutes, parse_nonzero_duration, parse_rsh, parse_size,
     parse_stop_at,
 };
-use clap::{Arg, ArgAction, Args, CommandFactory, Parser, ValueEnum};
+#[cfg(any(test, feature = "dump-help"))]
+use clap::Arg;
+use clap::{ArgAction, Args, CommandFactory, Parser, ValueEnum};
 use logging::{DebugFlag, InfoFlag, StderrMode};
 use protocol::SUPPORTED_PROTOCOLS;
 
