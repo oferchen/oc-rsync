@@ -597,6 +597,10 @@ impl SyncOptions {
         if self.one_file_system {
             self.remote_options.push("--one-file-system".into());
         }
+        if self.block_size > 0 {
+            self.remote_options
+                .push(format!("--block-size={}", self.block_size));
+        }
     }
 
     fn walk_links(&self) -> bool {
