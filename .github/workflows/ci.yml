@@ -31,7 +31,7 @@ jobs:
           grep -Fq 'rsync 3.4.1 (protocol 32)' README.md
 
   lint:
-    needs: [no-binaries, readme-version]
+    needs: [readme-version]
     # runs-on: self-hosted
     runs-on: ubuntu-latest
     steps:
