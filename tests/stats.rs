@@ -1,7 +1,5 @@
 // tests/stats.rs
 use assert_cmd::Command;
-use assert_cmd::prelude::*;
-use predicates::prelude::PredicateBooleanExt;
 use std::fs;
 use tempfile::tempdir;
 
@@ -10,12 +8,12 @@ fn stats_parity() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
     let dst_ours = dir.path().join("dst_ours");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::write(src.join("a.txt"), b"hello").unwrap();
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("a.txt"), b"hello").unwrap();
 
     let golden = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/golden/stats/stats_parity.stdout");
-    let up_stats: Vec<String> = std::fs::read_to_string(golden)
+    let up_stats: Vec<String> = fs::read_to_string(golden)
         .unwrap()
         .lines()
         .map(|l| l.to_string())
@@ -77,8 +75,8 @@ fn stats_are_printed() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
-    std::fs::create_dir_all(&src_dir).unwrap();
-    std::fs::write(src_dir.join("a.txt"), b"hello").unwrap();
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::write(src_dir.join("a.txt"), b"hello").unwrap();
 
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());

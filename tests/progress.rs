@@ -1,6 +1,5 @@
 // tests/progress.rs
 use assert_cmd::Command;
-use assert_cmd::prelude::*;
 use logging::progress_formatter;
 use std::fs;
 use tempfile::tempdir;
@@ -10,9 +9,9 @@ fn progress_flag_shows_output() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
-    std::fs::create_dir_all(&src_dir).unwrap();
-    std::fs::create_dir_all(&dst_dir).unwrap();
-    std::fs::write(src_dir.join("a.txt"), vec![0u8; 2048]).unwrap();
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
+    fs::write(src_dir.join("a.txt"), vec![0u8; 2048]).unwrap();
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     let assert = cmd
@@ -186,10 +185,10 @@ fn progress_flag_human_readable() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
-    std::fs::create_dir_all(&src_dir).unwrap();
-    std::fs::create_dir_all(&dst_dir).unwrap();
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dst_dir).unwrap();
 
-    std::fs::write(src_dir.join("a.txt"), vec![0u8; 2 * 1024]).unwrap();
+    fs::write(src_dir.join("a.txt"), vec![0u8; 2 * 1024]).unwrap();
     let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
     let src_arg = format!("{}/", src_dir.display());
     let assert = cmd
