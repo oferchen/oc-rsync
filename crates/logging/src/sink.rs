@@ -2,7 +2,6 @@
 
 use crate::flags::StderrMode;
 use std::fs::File;
-#[allow(unused_imports)]
 use std::io::{self, Write};
 use std::path::Path;
 use tracing::{Level, Metadata};
