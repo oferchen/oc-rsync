@@ -74,7 +74,7 @@ download_rsync() {
     mkdir -p "$ROOT/target/upstream"
     pushd "$ROOT/target/upstream" >/dev/null
     tarball="rsync-$ver.tar.gz"
-    curl -L "https://download.samba.org/pub/rsync/src/$tarball" -o "$tarball"
+    curl -fL --retry 3 -o "$tarball" "https://download.samba.org/pub/rsync/src/$tarball"
     sha256="${RSYNC_SHA256[$ver]}"
     if [[ -z "$sha256" ]]; then
       echo "Unknown SHA256 for rsync $ver" >&2
