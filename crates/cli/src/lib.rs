@@ -22,6 +22,7 @@ mod exec;
 mod formatter;
 pub mod options;
 mod session;
+mod transport_factory;
 mod utils;
 
 use crate::daemon::run_daemon;

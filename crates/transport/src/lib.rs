@@ -3,15 +3,19 @@ use std::io::{self, Read, Write};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+mod factory;
 mod rate;
 #[cfg(unix)]
 pub mod ssh;
 pub mod tcp;
+mod temp;
 
+pub use factory::TransportFactory;
 pub use rate::RateLimitedTransport;
 #[cfg(unix)]
 pub use ssh::SshStdioTransport;
 pub use tcp::TcpTransport;
+pub use temp::{TempFileGuard, TempSocketGuard};
 
 #[cfg(not(unix))]
 use compress::Codec;
