@@ -32,6 +32,8 @@ impl ProgressSink for MockSink {
     fn finish_file(&self) {
         self.events.lock().unwrap().push("finish".into());
     }
+
+    fn progress(&self, _line: &str) {}
 }
 
 #[test]
