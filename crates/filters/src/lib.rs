@@ -1320,6 +1320,8 @@ impl Matcher {
             Some(path.to_path_buf()),
         )?;
 
+        let mut next_index = if cvs { 0 } else { index };
+
         for r in parsed {
             match r {
                 Rule::DirMerge(pd) => {
@@ -1336,7 +1338,7 @@ impl Matcher {
                     if is_excluded(&rules, &dir_for_rule, true) {
                         continue;
                     }
-                    merges.push((index, pd.clone()));
+                    merges.push((next_index, pd.clone()));
                     if !visited.insert(nested.clone()) {
                         return Err(ParseError::RecursiveInclude(nested));
                     }
@@ -1368,13 +1370,14 @@ impl Matcher {
                         pd.sign,
                         visited,
                         depth + 1,
-                        index,
+                        next_index,
                     )?;
                     rules.append(&mut nr);
                     merges.append(&mut nm);
                 }
-                other => rules.push((index, other)),
+                other => rules.push((next_index, other)),
             }
+            next_index += 1;
         }
 
         Ok((rules, merges))
