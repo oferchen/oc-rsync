@@ -1842,40 +1842,33 @@ pub fn parse_with_options(
                             prefix.push_str(part);
                             ancestors.push(prefix.clone());
                         }
-                        let dir_count = if is_dir {
-                            ancestors.len()
-                        } else {
-                            ancestors.len().saturating_sub(1)
-                        };
-                        for anc in ancestors.iter().take(dir_count) {
-                            let line = if from0 {
-                                format!("+{anc}/\n")
-                            } else {
-                                format!("+ {anc}/\n")
-                            };
-                            rules.extend(parse_with_options(
-                                &line,
-                                from0,
-                                visited,
-                                depth + 1,
-                                Some(path.clone()),
-                            )?);
-                            dirs.insert(anc.clone());
-                        }
+                        let dir_count = ancestors.len().saturating_sub(1);
                         if let Some(last) = ancestors.last() {
                             if is_dir {
-                                let line = if from0 {
-                                    format!("+{}/***\n", last)
-                                } else {
-                                    format!("+ {}/***\n", last)
+                                let glob = format!("{last}/**");
+                                let matcher = compile_glob(&glob)?;
+                                let data = RuleData {
+                                    matcher,
+                                    invert: false,
+                                    flags: RuleFlags::default(),
+                                    source: Some(path.clone()),
+                                    dir_only: false,
+                                    has_slash: true,
+                                    pattern: glob.clone(),
                                 };
-                                rules.extend(parse_with_options(
-                                    &line,
-                                    from0,
-                                    visited,
-                                    depth + 1,
-                                    Some(path.clone()),
-                                )?);
+                                rules.push(Rule::Include(data));
+
+                                let matcher = compile_glob(last)?;
+                                let data = RuleData {
+                                    matcher,
+                                    invert: false,
+                                    flags: RuleFlags::default(),
+                                    source: Some(path.clone()),
+                                    dir_only: true,
+                                    has_slash: true,
+                                    pattern: last.to_string(),
+                                };
+                                rules.push(Rule::Include(data));
                                 dirs.insert(last.clone());
                             } else {
                                 let line = if from0 {
@@ -1891,6 +1884,20 @@ pub fn parse_with_options(
                                     Some(path.clone()),
                                 )?);
                             }
+                        }
+                        for anc in ancestors.iter().take(dir_count).rev() {
+                            let matcher = compile_glob(anc)?;
+                            let data = RuleData {
+                                matcher,
+                                invert: false,
+                                flags: RuleFlags::default(),
+                                source: Some(path.clone()),
+                                dir_only: true,
+                                has_slash: true,
+                                pattern: anc.clone(),
+                            };
+                            rules.push(Rule::Include(data));
+                            dirs.insert(anc.clone());
                         }
                     }
                     for d in dirs {
