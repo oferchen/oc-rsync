@@ -511,6 +511,7 @@ name = "filelist"
 version = "0.1.0"
 dependencies = [
  "meta",
+ "tempfile",
  "thiserror",
 ]
 
