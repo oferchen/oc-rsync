@@ -1,20 +1,16 @@
 // crates/transport/src/factory.rs
 use std::io;
+use std::iter;
 
 use crate::{LocalPipeTransport, SshStdioTransport, TcpTransport, Transport};
 
-
 pub enum TransportFactory {
-    
     Ssh { program: String, args: Vec<String> },
-    
     Tcp { host: String, port: u16 },
-    
     Stdio,
 }
 
 impl TransportFactory {
-    
     pub fn build(self) -> io::Result<Box<dyn Transport>> {
         match self {
             TransportFactory::Ssh { program, args } => {
@@ -29,13 +25,9 @@ impl TransportFactory {
                 let t = LocalPipeTransport::new(io::stdin(), io::stdout());
                 Ok(Box::new(t))
             }
-use std::iter;
+        }
+    }
 
-use crate::{SshStdioTransport, TcpTransport, Transport};
-
-pub struct TransportFactory;
-
-impl TransportFactory {
     pub fn from_uri(uri: &str) -> io::Result<Box<dyn Transport>> {
         let (scheme, rest) = uri
             .split_once("://")

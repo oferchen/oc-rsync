@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use engine::delta::Op;
+use engine::Op;
 use engine::{Receiver, SyncOptions};
 use logging::ProgressSink;
 use tempfile::tempdir;

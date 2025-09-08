@@ -59,7 +59,7 @@ impl Receiver {
             delayed: Vec::new(),
             #[cfg(unix)]
             link_map: meta::HardLinks::default(),
-            progress_sink: Arc::new(NopProgressSink::default()),
+            progress_sink: Arc::new(NopProgressSink),
         }
     }
 

@@ -217,7 +217,7 @@ mod tests {
         let reader = std::io::Cursor::new(b"\n".to_vec());
         let writer = io::sink();
         let mut t = LocalPipeTransport::new(reader, writer);
-        let err = authenticate::<LocalPipeTransport>(&mut t, None, None).unwrap_err();
+        let err = authenticate(&mut t, None, None).unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
     }
 

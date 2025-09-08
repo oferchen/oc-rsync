@@ -21,15 +21,13 @@ use tracing_subscriber::{
 
 mod flags;
 mod formatter;
+pub use formatter::RsyncFormatter;
 mod sink;
-
+use crate::sink::{FileWriter, LogWriter};
 pub use flags::{
     DebugFlag, InfoFlag, LogFormat, StderrMode, SubscriberConfig, SubscriberConfigBuilder,
 };
-pub use formatter::RsyncFormatter;
 pub use sink::{NopProgressSink, ProgressSink};
-
-use crate::sink::{FileWriter, LogWriter};
 
 #[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 struct MessageVisitor {
