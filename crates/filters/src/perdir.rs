@@ -1,4 +1,5 @@
-// crates/filters/src/perdir.rs
+// crates/filters/src/perdir.rs — extracted from lib.rs to model per-directory filter files; public API preserved via re-exports.
+
 use crate::rule::RuleFlags;
 
 #[derive(Clone, Hash, PartialEq, Eq)]

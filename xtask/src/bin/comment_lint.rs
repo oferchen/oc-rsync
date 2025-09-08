@@ -17,9 +17,14 @@ fn check_file(path: &Path, root: &Path) -> bool {
     let rel_str = rel.to_string_lossy().replace('\\', "/");
     let first = content.lines().next().unwrap_or("");
     let header = format!("// {}", rel_str);
-    if first.trim_end() != header {
-        eprintln!("{}: incorrect header", rel_str);
-        return false;
+    let trimmed = first.trim_end();
+    if trimmed != header {
+        let extended_prefix = format!("{} — extracted from lib.rs to ", header);
+        let extended_suffix = "; public API preserved via re-exports.";
+        if !(trimmed.starts_with(&extended_prefix) && trimmed.ends_with(extended_suffix)) {
+            eprintln!("{}: incorrect header", rel_str);
+            return false;
+        }
     }
     let mut pos = 0;
     let mut first_line = true;
