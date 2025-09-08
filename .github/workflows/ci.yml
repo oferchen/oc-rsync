@@ -84,7 +84,8 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: checkout
+        uses: actions/checkout@v4
 
       - name: Setup Rust (1.87 + llvm-tools)
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -93,8 +94,8 @@ jobs:
           components: llvm-tools-preview,clippy,rustfmt
           cache: true
 
-        - name: Install system dependencies
-          run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev libpopt-dev libxxhash-dev
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev libpopt-dev libxxhash-dev
 
       - name: Pre-flight check
         run: scripts/preflight.sh
