@@ -3,6 +3,9 @@ name = "compress"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+path = "src/mod.rs"
+
 [dependencies]
 flate2 = { version = "1", optional = true }
 zstd = { version = "0.13", optional = true }
