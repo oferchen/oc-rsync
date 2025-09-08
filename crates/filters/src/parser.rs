@@ -423,7 +423,11 @@ fn decode_line(raw: &str) -> Option<String> {
         last_non_space = out.len();
     }
     out.truncate(last_non_space);
-    if out.is_empty() { None } else { Some(out) }
+    if out.is_empty() {
+        None
+    } else {
+        Some(out)
+    }
 }
 
 pub fn parse_with_options(
@@ -644,7 +648,11 @@ pub fn parse_with_options(
             if m.contains('s') || m.contains('r') || m.contains('p') || m.contains('x') {
                 let inherited = RuleFlags::from_mods(m);
                 for rule in &mut sub {
-                    if let Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) = rule {
+                    if let Rule::Include(d)
+                    | Rule::Exclude(d)
+                    | Rule::Protect(d)
+                    | Rule::ImpliedDir(d) = rule
+                    {
                         d.flags = d.flags.union(&inherited);
                     }
                 }
@@ -861,7 +869,7 @@ pub fn parse_with_options(
                                 has_slash: true,
                                 pattern: anc.clone(),
                             };
-                            rules.push(Rule::Include(data));
+                            rules.push(Rule::ImpliedDir(data));
                             dirs.insert(anc.clone());
                         }
                     }
@@ -1128,7 +1136,9 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
     let mut rules = parse(&buf, &mut HashSet::new(), 0)?;
     for rule in &mut rules {
         match rule {
-            Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => d.flags.perishable = true,
+            Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) | Rule::ImpliedDir(d) => {
+                d.flags.perishable = true
+            }
             Rule::DirMerge(pd) => pd.flags.perishable = true,
             _ => {}
         }
@@ -1144,7 +1154,10 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
             let mut v = parse(&buf, &mut HashSet::new(), 0)?;
             for rule in &mut v {
                 match rule {
-                    Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => {
+                    Rule::Include(d)
+                    | Rule::Exclude(d)
+                    | Rule::Protect(d)
+                    | Rule::ImpliedDir(d) => {
                         d.flags.perishable = true;
                     }
                     Rule::DirMerge(pd) => pd.flags.perishable = true,
@@ -1163,7 +1176,7 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
         let mut v = parse(&buf, &mut HashSet::new(), 0)?;
         for rule in &mut v {
             match rule {
-                Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => {
+                Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) | Rule::ImpliedDir(d) => {
                     d.flags.perishable = true;
                 }
                 Rule::DirMerge(pd) => pd.flags.perishable = true,
@@ -1360,7 +1373,7 @@ pub fn parse_rule_list_from_bytes(
                     has_slash: true,
                     pattern: glob.clone(),
                 };
-                rules.push(Rule::Include(data));
+                rules.push(Rule::ImpliedDir(data));
             }
 
             if !skip_exclude && !has_globstar {
@@ -1415,7 +1428,7 @@ mod tests {
     #[cfg(unix)]
     use std::os::unix::io::IntoRawFd;
     use std::path::Path;
-    use tempfile::{NamedTempFile, tempfile};
+    use tempfile::{tempfile, NamedTempFile};
 
     #[test]
     fn reads_from_file() {

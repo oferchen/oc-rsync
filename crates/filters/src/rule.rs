@@ -126,6 +126,7 @@ pub enum Rule {
     Include(RuleData),
     Exclude(RuleData),
     Protect(RuleData),
+    ImpliedDir(RuleData),
     Clear,
     DirMerge(PerDir),
     Existing,

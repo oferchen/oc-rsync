@@ -72,10 +72,8 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | Additional rule modifiers | Implemented | [crates/filters/tests/rule_modifiers.rs](../crates/filters/tests/rule_modifiers.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | CVS ignore semantics (`--cvs-exclude`) | ✅ | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | Complex glob patterns | Implemented | [crates/filters/tests/advanced_globs.rs](../crates/filters/tests/advanced_globs.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
-| `--files-from` directory entries | Partial | [crates/filters/tests/files_from.rs](../crates/filters/tests/files_from.rs)<br>[tests/files_from_dirs.rs](../tests/files_from_dirs.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs)<br>[crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| `--files-from` directory entries | ✅ | [crates/filters/tests/files_from.rs](../crates/filters/tests/files_from.rs)<br>[tests/files_from_dirs.rs](../tests/files_from_dirs.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs)<br>[crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | Directory boundary handling | Implemented | [tests/cli_misc.rs](../tests/cli_misc.rs) (`single_star_does_not_cross_directories`<br>`segment_star_does_not_cross_directories`) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
-
-**Pending:** `--files-from` directory entries do not yet mirror upstream behavior; see [tests/files_from_dirs.rs](../tests/files_from_dirs.rs) and [#1457](https://github.com/oferchen/oc-rsync/issues/1457).
 
 ## File Selection
 | Feature | Status | Tests | Source |

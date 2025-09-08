@@ -33,21 +33,21 @@ pub mod options {
 use crate::daemon::run_daemon;
 use crate::options::{ClientOpts, ProbeOpts};
 pub use daemon::spawn_daemon_session;
-pub use utils::{
-    PathSpec, RemoteSpec, parse_iconv, parse_logging_flags, parse_remote_spec, parse_rsh,
-    print_version_if_requested,
-};
 use utils::{init_logging, parse_filters, parse_name_map, parse_remote_specs, parse_rsync_path};
+pub use utils::{
+    parse_iconv, parse_logging_flags, parse_remote_spec, parse_rsh, print_version_if_requested,
+    PathSpec, RemoteSpec,
+};
 
-use compress::{Codec, available_codecs};
+use compress::{available_codecs, Codec};
 pub use engine::EngineError;
 use engine::{DeleteMode, Result, Stats, StrongHash, SyncOptions};
-use filters::{Matcher, Rule, default_cvs_rules};
-pub use formatter::{ARG_ORDER, dump_help_body, render_help};
-use logging::{InfoFlag, parse_escapes};
-use meta::{IdKind, parse_chmod, parse_chown};
-use protocol::{SUPPORTED_PROTOCOLS, negotiate_version};
-use transport::{AddressFamily, parse_sockopts};
+use filters::{default_cvs_rules, Matcher, Rule};
+pub use formatter::{dump_help_body, render_help, ARG_ORDER};
+use logging::{parse_escapes, InfoFlag};
+use meta::{parse_chmod, parse_chown, IdKind};
+use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
+use transport::{parse_sockopts, AddressFamily};
 #[cfg(unix)]
 use users::get_user_by_uid;
 
@@ -118,6 +118,10 @@ fn run_single(
     }
     if opts.old_dirs {
         opts.dirs = true;
+    }
+    if !opts.files_from.is_empty() {
+        opts.dirs = true;
+        opts.relative = true;
     }
     let matcher = build_matcher(&opts, matches)?;
     let addr_family = if opts.ipv4 {
@@ -332,7 +336,11 @@ fn run_single(
                 }
                 list.push(codec);
             }
-            if list.is_empty() { None } else { Some(list) }
+            if list.is_empty() {
+                None
+            } else {
+                Some(list)
+            }
         }
         None => None,
     };
@@ -707,6 +715,9 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
     if opts.prune_empty_dirs {
         matcher = matcher.with_prune_empty_dirs();
     }
+    if opts.no_implied_dirs {
+        matcher = matcher.with_no_implied_dirs();
+    }
     Ok(matcher)
 }
 
@@ -736,9 +747,9 @@ fn run_probe(opts: ProbeOpts, quiet: bool) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::{RemoteSpec, parse_bool, parse_remote_spec};
-    use ::daemon::authenticate;
+    use crate::utils::{parse_bool, parse_remote_spec, RemoteSpec};
     use clap::Parser;
+    use daemon::authenticate;
     use engine::SyncOptions;
     use std::ffi::OsStr;
     use std::path::PathBuf;
