@@ -1,6 +1,6 @@
 // crates/filters/tests/files_from.rs
 #![allow(unused_doc_comments)]
-use filters::{Matcher, parse, parse_with_options};
+use filters::{parse, parse_with_options, Matcher};
 use std::collections::HashSet;
 use std::fs;
 use tempfile::tempdir;
@@ -137,15 +137,6 @@ fn files_from_parent_dirs_precede_file_entry() {
     let mut v = HashSet::new();
     let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
 
-    /// Expected rule sequence:
-    /// + /foo/
-    /// + /foo/***
-    /// + /foo/bar/
-    /// + /foo/bar/***
-    /// + /foo/bar/baz.txt
-    /// - /foo/*
-    /// - /foo/bar/*
-    /// - /**
     let file_idx = rules
         .iter()
         .rposition(|r| rule_matches(r, "foo/bar/baz.txt") && !rule_matches(r, "foo/bar"))

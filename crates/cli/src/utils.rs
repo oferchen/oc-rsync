@@ -8,15 +8,15 @@ use std::{ffi::OsStr, io, path::PathBuf};
 
 use clap::ArgMatches;
 use encoding_rs::Encoding;
-use filters::{Rule, parse_with_options};
+use filters::{parse_with_options, Rule};
 use logging::{DebugFlag, InfoFlag, StderrMode, SubscriberConfig};
-use meta::{IdKind, parse_id_map};
+use meta::{parse_id_map, IdKind};
 use protocol::CharsetConv;
 use shell_words::split as shell_split;
 
 use engine::{EngineError, IdMapper, Result};
 
-use time::{PrimitiveDateTime, macros::format_description};
+use time::{macros::format_description, PrimitiveDateTime};
 
 use crate::version;
 
