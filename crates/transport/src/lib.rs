@@ -3,11 +3,13 @@ use std::io::{self, Read, Write};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+mod config;
 mod rate;
 #[cfg(unix)]
 pub mod ssh;
 pub mod tcp;
 
+pub use config::TransportConfig;
 pub use rate::RateLimitedTransport;
 #[cfg(unix)]
 pub use ssh::SshStdioTransport;
