@@ -22,6 +22,7 @@ mod exec;
 mod formatter;
 mod print;
 mod session;
+mod transport_factory;
 mod utils;
 mod validate;
 

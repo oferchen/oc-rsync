@@ -10,6 +10,7 @@ mod rate;
 pub mod ssh;
 mod stdio;
 pub mod tcp;
+mod temp;
 
 pub use config::TransportConfig;
 pub use daemon::{DaemonTransport, SockOpt, daemon_remote_opts, parse_sockopts};
@@ -19,6 +20,7 @@ pub use rate::RateLimitedTransport;
 pub use ssh::SshStdioTransport;
 pub use stdio::{LocalPipeTransport, TimeoutTransport};
 pub use tcp::TcpTransport;
+pub use temp::{TempFileGuard, TempSocketGuard};
 
 #[cfg(not(unix))]
 use compress::Codec;
