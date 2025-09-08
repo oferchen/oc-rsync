@@ -7,7 +7,7 @@ fn tag_positions(bytes: &[u8]) -> (usize, usize) {
     let mut idx = 2 + suffix_len;
     let uid_pos = idx;
     if bytes[idx] == 0xFF {
-        idx += 5; // tag + 4-byte id
+        idx += 5;
     } else {
         idx += 1;
     }

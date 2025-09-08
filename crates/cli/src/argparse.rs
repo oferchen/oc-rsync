@@ -6,8 +6,8 @@ use std::{ffi::OsString, path::PathBuf};
 pub use crate::daemon::DaemonOpts;
 use crate::formatter;
 use crate::utils::{
-    RshCommand, parse_duration, parse_minutes, parse_nonzero_duration, parse_rsh, parse_size,
-    parse_stop_at,
+    parse_duration, parse_minutes, parse_nonzero_duration, parse_rsh, parse_size, parse_stop_at,
+    RshCommand,
 };
 #[cfg(any(test, feature = "dump-help"))]
 use clap::Arg;

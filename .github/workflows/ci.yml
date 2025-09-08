@@ -56,6 +56,9 @@ jobs:
       - name: Lint
         run: make lint
 
+      - name: Check comment stripping
+        run: cargo run --bin strip-rs-comments -- --check $(git ls-files '*.rs')
+
       - name: Verify comments
         run: bash tools/comment_lint.sh
 

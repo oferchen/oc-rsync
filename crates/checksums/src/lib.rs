@@ -24,9 +24,9 @@ pub enum StrongHash {
 pub mod rolling;
 pub mod strong;
 
-pub use rolling::{Rolling, RollingChecksum, rolling_checksum, rolling_checksum_seeded};
+pub use rolling::{rolling_checksum, rolling_checksum_seeded, Rolling, RollingChecksum};
 pub use strong::{
-    StrongChecksum, StrongHash, available_strong_hashes, negotiate_strong_hash, strong_digest,
+    available_strong_hashes, negotiate_strong_hash, strong_digest, StrongChecksum, StrongHash,
 };
 
 #[derive(Clone, Debug)]
@@ -581,4 +581,8 @@ impl ChecksumConfig {
     pub fn strong_hasher(&self) -> Box<dyn StrongChecksum> {
         strong::select_strong_checksum(self.strong, self.seed)
     }
+}
+
+pub fn strong_hasher(&self) -> Box<dyn StrongChecksum> {
+    strong::select_strong_checksum(self.strong, self.seed)
 }

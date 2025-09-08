@@ -2,7 +2,7 @@
 use std::env;
 use std::ffi::OsString;
 
-use clap::{ArgMatches, FromArgMatches, parser::ValueSource};
+use clap::{parser::ValueSource, ArgMatches, FromArgMatches};
 
 use crate::options::{ClientOpts, ProbeOpts};
 use crate::utils::parse_remote_spec;

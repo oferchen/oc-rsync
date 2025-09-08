@@ -5,7 +5,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use scopeguard::guard;
 use std::env;
-use textwrap::{Options as WrapOptions, wrap};
+use textwrap::{wrap, Options as WrapOptions};
 
 use crate::branding;
 
