@@ -12,6 +12,7 @@ pub trait ProgressSink: Send + Sync {
     fn start_file(&self, path: &Path, total: u64, written: u64);
     fn update(&self, written: u64);
     fn finish_file(&self);
+    fn progress(&self, line: &str);
 }
 
 #[derive(Debug, Default)]
@@ -21,6 +22,16 @@ impl ProgressSink for NopProgressSink {
     fn start_file(&self, _path: &Path, _total: u64, _written: u64) {}
     fn update(&self, _written: u64) {}
     fn finish_file(&self) {}
+    fn progress(&self, _line: &str) {}
+}
+
+impl<F> ProgressSink for F
+where
+    F: Fn(&str) + Send + Sync,
+{
+    fn progress(&self, line: &str) {
+        self(line);
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -59,7 +70,7 @@ pub(crate) struct FileWriter {
 
 pub(crate) struct FileWriterHandle(pub(crate) io::Result<File>);
 
-impl io::Write for FileWriterHandle {
+impl Write for FileWriterHandle {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match &mut self.0 {
             Ok(f) => f.write(buf),

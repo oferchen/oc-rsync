@@ -8,14 +8,15 @@ use std::os::unix::ffi::OsStrExt;
 #[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 use std::os::unix::net::UnixDatagram;
 use std::path::{Path, PathBuf};
-use time::{OffsetDateTime, macros::format_description};
+use time::{macros::format_description, OffsetDateTime};
 use tracing::field::{Field, Visit};
 use tracing::level_filters::LevelFilter;
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::{
-    EnvFilter, fmt as tracing_fmt,
+    fmt as tracing_fmt,
     layer::{Context, Layer, SubscriberExt},
     util::SubscriberInitExt,
+    EnvFilter,
 };
 
 mod flags;

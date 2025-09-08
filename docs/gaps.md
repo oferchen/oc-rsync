@@ -26,11 +26,11 @@ transfers across the following scenarios:
 ## Parser Parity
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
-| Comprehensive flag parsing and help text parity | ✅ | [tests/cli_misc.rs](../tests/cli_misc.rs)<br>[tests/help_output.rs](../tests/help_output.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| Comprehensive flag parsing and help text parity | ✅ | [tests/cli_flags.rs](../tests/cli_flags.rs)<br>[crates/cli/tests/help.rs](../crates/cli/tests/help.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | Composite `--archive` flag expansion | ✅ | [tests/archive.rs](../tests/archive.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | Remote-only option parsing (`--remote-option`) | ✅ | [tests/interop/remote_option.rs](../tests/interop/remote_option.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | `--version` output parity | ✅ | [tests/version_output.rs](../tests/version_output.rs) | [crates/cli/src/version.rs](../crates/cli/src/version.rs) |
-| Null-delimited list parsing (`--from0`) | ✅ | [tests/cli_misc.rs](../tests/cli_misc.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| Null-delimited list parsing (`--from0`) | ✅ | [tests/files_from.rs](../tests/files_from.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 
 Note: [tests/archive.rs](../tests/archive.rs) demonstrates the composite `--archive` flag expansion.
 
@@ -73,7 +73,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | CVS ignore semantics (`--cvs-exclude`) | ✅ | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | Complex glob patterns | Implemented | [crates/filters/tests/advanced_globs.rs](../crates/filters/tests/advanced_globs.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | `--files-from` directory entries | ✅ | [crates/filters/tests/files_from.rs](../crates/filters/tests/files_from.rs)<br>[tests/files_from_dirs.rs](../tests/files_from_dirs.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs)<br>[crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| Directory boundary handling | Implemented | [tests/cli_misc.rs](../tests/cli_misc.rs) (`single_star_does_not_cross_directories`<br>`segment_star_does_not_cross_directories`) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
+| Directory boundary handling | Implemented | [tests/misc.rs](../tests/misc.rs) (`single_star_does_not_cross_directories`<br>`segment_star_does_not_cross_directories`) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 
 ## File Selection
 | Feature | Status | Tests | Source |
@@ -142,11 +142,11 @@ _Future contributors: update this section when adding or fixing message behavior
 ## CLI
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
-| Comprehensive flag parsing via `clap` | ✅ | [tests/cli_misc.rs](../tests/cli_misc.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| Comprehensive flag parsing via `clap` | ✅ | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | `--log-file-format` | ✅ | [tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | `--munge-links` option | ✅ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | `--dry-run` prevents destination changes | ✅ | [tests/interop/dry_run.rs](../tests/interop/dry_run.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| Test-only `--dump-help-body` flag for help text verification | Internal | [tests/help_output.rs](../tests/help_output.rs) | [crates/cli/src/options.rs](../crates/cli/src/options.rs) |
+| Test-only `--dump-help-body` flag for help text verification | Internal | [crates/cli/tests/help.rs](../crates/cli/tests/help.rs) | [crates/cli/src/options.rs](../crates/cli/src/options.rs) |
 ### Outstanding Options
 
 All CLI flags now have interop coverage verifying parser and message parity with upstream `rsync`. See [tests/interop/outstanding_flags.rs](../tests/interop/outstanding_flags.rs).
