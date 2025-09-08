@@ -21,6 +21,14 @@ pub enum StrongHash {
     XxHash,
 }
 
+pub mod rolling;
+pub mod strong;
+
+pub use rolling::{Rolling, RollingChecksum, rolling_checksum, rolling_checksum_seeded};
+pub use strong::{
+    StrongChecksum, StrongHash, available_strong_hashes, negotiate_strong_hash, strong_digest,
+};
+
 #[derive(Clone, Debug)]
 pub struct ChecksumConfig {
     strong: StrongHash,
@@ -570,5 +578,7 @@ mod tests {
                 expected
             );
         }
+    pub fn strong_hasher(&self) -> Box<dyn StrongChecksum> {
+        strong::select_strong_checksum(self.strong, self.seed)
     }
 }

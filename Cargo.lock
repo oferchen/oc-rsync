@@ -198,6 +198,7 @@ dependencies = [
  "hex",
  "md-5",
  "md4",
+ "proptest",
  "rustversion",
  "sha1",
  "tempfile",
@@ -511,6 +512,7 @@ name = "filelist"
 version = "0.1.0"
 dependencies = [
  "meta",
+ "tempfile",
  "thiserror",
 ]
 
@@ -847,6 +849,7 @@ name = "logging"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "serde_json",
  "tempfile",
  "time",
  "tracing",

@@ -6,7 +6,8 @@ use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
 use transport::{
-    LocalPipeTransport, SshStdioTransport, TcpTransport, TimeoutTransport, Transport, pipe,
+    LocalPipeTransport, SshStdioTransport, TcpTransport, TimeoutTransport, Transport,
+    TransportConfig, pipe,
 };
 
 fn wait_for<F: Fn() -> bool>(cond: F) {
@@ -144,9 +145,17 @@ impl<W: Write> Transport for SlowSendTransport<W> {
 #[test]
 fn pipe_refreshes_timeouts_on_slow_receive() {
     let src_inner = SlowReceiveTransport::new(b"x".to_vec(), Duration::from_millis(100));
-    let mut src = TimeoutTransport::new(src_inner, Some(Duration::from_millis(50))).unwrap();
+    let cfg = TransportConfig::builder()
+        .timeout(Duration::from_millis(50))
+        .build()
+        .unwrap();
+    let mut src = TimeoutTransport::new(src_inner, cfg.timeout).unwrap();
     let dst_inner = LocalPipeTransport::new(std::io::empty(), Vec::new());
-    let mut dst = TimeoutTransport::new(dst_inner, Some(Duration::from_millis(50))).unwrap();
+    let cfg = TransportConfig::builder()
+        .timeout(Duration::from_millis(50))
+        .build()
+        .unwrap();
+    let mut dst = TimeoutTransport::new(dst_inner, cfg.timeout).unwrap();
 
     let bytes = pipe(&mut src, &mut dst).unwrap();
     assert_eq!(bytes, 1);
@@ -157,9 +166,17 @@ fn pipe_refreshes_timeouts_on_slow_receive() {
 #[test]
 fn pipe_refreshes_timeouts_on_slow_send() {
     let src_inner = LocalPipeTransport::new(&b"y"[..], std::io::sink());
-    let mut src = TimeoutTransport::new(src_inner, Some(Duration::from_millis(50))).unwrap();
+    let cfg = TransportConfig::builder()
+        .timeout(Duration::from_millis(50))
+        .build()
+        .unwrap();
+    let mut src = TimeoutTransport::new(src_inner, cfg.timeout).unwrap();
     let dst_inner = SlowSendTransport::new(Vec::new(), Duration::from_millis(100));
-    let mut dst = TimeoutTransport::new(dst_inner, Some(Duration::from_millis(50))).unwrap();
+    let cfg = TransportConfig::builder()
+        .timeout(Duration::from_millis(50))
+        .build()
+        .unwrap();
+    let mut dst = TimeoutTransport::new(dst_inner, cfg.timeout).unwrap();
 
     let bytes = pipe(&mut src, &mut dst).unwrap();
     assert_eq!(bytes, 1);

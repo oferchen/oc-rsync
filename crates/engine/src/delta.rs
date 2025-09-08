@@ -8,7 +8,8 @@ use std::path::Path;
 use std::time::Duration;
 
 use checksums::ChecksumConfig;
-use logging::{InfoFlag, progress_formatter, rate_formatter};
+use logging::{InfoFlag, ProgressSink, progress_formatter, rate_formatter};
+use std::sync::Arc;
 
 use crate::{EngineError, Result, SyncOptions, ensure_max_alloc};
 
@@ -198,6 +199,7 @@ pub(crate) struct Progress {
     human_readable: bool,
     quiet: bool,
     file_idx: usize,
+    sink: Arc<dyn ProgressSink>,
 }
 
 pub(crate) static TOTAL_FILES: AtomicUsize = AtomicUsize::new(0);
@@ -213,6 +215,7 @@ impl Progress {
         human_readable: bool,
         initial: u64,
         quiet: bool,
+        sink: Arc<dyn ProgressSink>,
     ) -> Self {
         if !quiet {
             use std::io::Write as _;
@@ -226,6 +229,7 @@ impl Progress {
             }
             let _ = std::io::stdout().flush();
         }
+        sink.start_file(dest, total, initial);
         let now = std::time::Instant::now();
         let idx = FILE_COUNTER.fetch_add(1, Ordering::SeqCst) + 1;
         Self {
@@ -236,11 +240,13 @@ impl Progress {
             human_readable,
             quiet,
             file_idx: idx,
+            sink,
         }
     }
 
     fn add(&mut self, bytes: u64) {
         self.written += bytes;
+        self.sink.update(self.written);
         if !self.quiet
             && self.last_print.elapsed() >= PROGRESS_UPDATE_INTERVAL
             && self.written < self.total
@@ -251,6 +257,7 @@ impl Progress {
     }
 
     pub(crate) fn finish(&mut self) {
+        self.sink.finish_file();
         if !self.quiet {
             self.print(true);
         }

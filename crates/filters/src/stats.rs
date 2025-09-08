@@ -1,3 +1,5 @@
+// crates/filters/src/stats.rs — extracted from lib.rs to collect filter match statistics; public API preserved via re-exports.
+
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Default)]
