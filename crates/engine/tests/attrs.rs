@@ -1,6 +1,13 @@
 // crates/engine/tests/attrs.rs
 
 #![cfg(unix)]
+#![allow(
+    clippy::needless_return,
+    clippy::single_match,
+    clippy::collapsible_if,
+    clippy::redundant_pattern_matching,
+    clippy::needless_borrows_for_generic_args
+)]
 
 use std::convert::TryInto;
 use std::fs::{self, File};

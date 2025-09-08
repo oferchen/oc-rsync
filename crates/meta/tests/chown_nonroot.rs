@@ -1,4 +1,5 @@
 // crates/meta/tests/chown_nonroot.rs
+#![allow(clippy::collapsible_if)]
 use std::fs::{self, Permissions};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 

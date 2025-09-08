@@ -1,7 +1,9 @@
 // crates/meta/tests/acl_prune.rs
 #![cfg(feature = "acl")]
 
-use meta::{encode_acl, read_acl, write_acl};
+#[cfg(feature = "xattr")]
+use meta::encode_acl;
+use meta::{read_acl, write_acl};
 use posix_acl::{ACL_READ, PosixACL, Qualifier};
 use std::fs;
 use tempfile::tempdir;
