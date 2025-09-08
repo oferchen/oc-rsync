@@ -1,41 +1,20 @@
 // crates/logging/src/sink.rs
-use std::path::Path;
 
-
-
-
+use crate::flags::StderrMode;
+use std::fs::File;
+use std::io::{self, Write};
+use tracing::{Level, Metadata};
+use tracing_subscriber::fmt::MakeWriter;
 
 pub trait ProgressSink: Send + Sync {
-    
-    fn start_file(&self, path: &Path, total: u64, written: u64);
-
-    
-    fn update(&self, written: u64);
-
-    
-    fn finish_file(&self);
+    fn progress(&self, line: &str);
 }
-
 
 #[derive(Debug, Default)]
 pub struct NopProgressSink;
 
 impl ProgressSink for NopProgressSink {
-    fn start_file(&self, _path: &Path, _total: u64, _written: u64) {}
-    fn update(&self, _written: u64) {}
-    fn finish_file(&self) {}
-
-use crate::flags::StderrMode;
-use std::fs::File;
-#[allow(unused_imports)]
-use std::io::{self, Write};
-use tracing::{Level, Metadata};
-use tracing_subscriber::fmt::MakeWriter;
-
-
-pub trait ProgressSink: Send + Sync {
-    
-    fn progress(&self, line: &str);
+    fn progress(&self, _line: &str) {}
 }
 
 impl<F> ProgressSink for F
@@ -83,7 +62,7 @@ pub(crate) struct FileWriter {
 
 pub(crate) struct FileWriterHandle(pub(crate) io::Result<File>);
 
-impl io::Write for FileWriterHandle {
+impl Write for FileWriterHandle {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match &mut self.0 {
             Ok(f) => f.write(buf),
