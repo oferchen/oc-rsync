@@ -4,38 +4,80 @@ This document expands on the [README architecture section](../README.md#architec
 and the [in-scope features](../README.md#in-scope-features) with a deeper look at
 crate boundaries, data flow, and the key algorithms that power `oc-rsync`.
 
-## Crate boundaries
+## Crates and module hierarchy
 
-- [`protocol`](../crates/protocol) – defines frame formats, negotiates versions,
-  and encodes/decodes messages on the wire.
-- [`transport`](../crates/transport) – abstracts local and remote I/O,
-  multiplexing channels over SSH, TCP, or other transports.
-- [`walk`](../crates/walk) – traverses directories and produces the file list
-  fed into the engine.
-- [`checksums`](../crates/checksums) – computes rolling and strong checksums for
-  block matching.
-- [`engine`](../crates/engine) – orchestrates scanning, delta calculation, and
-  application of differences between sender and receiver. It also maintains a
-  content-defined chunking manifest at `~/.oc-rsync/manifest`. Users upgrading
-  from older versions should move any existing manifest from
-  `~/.rsync-rs/manifest` to this path.
-- [`compress`](../crates/compress) – offers optional compression of file data
-  during transfer.
-- [`filters`](../crates/filters) – parses include/exclude rules controlling
-  which files participate in a transfer.
-- [`meta`](../crates/meta) – models file metadata (permissions, timestamps,
-  ownership) and provides helper utilities.
-- [`oc-rsync-cli`](../crates/cli) – exposes a user-facing command line built on top of
-  the engine and transport layers.
-- [`fuzz`](../fuzz) – houses fuzz targets that stress protocol and parser
-  logic for robustness.
+### [`protocol`](../crates/protocol)
 
-### Transport
+- `mux` and `demux` split and join channel traffic.
+- `server` drives version negotiation and framing.
+- **Design patterns**: builder for handshake settings; factory for message
+  creation.
 
-The [`transport`](../crates/transport) crate abstracts local and remote I/O.
-It can spawn `ssh` in server mode (`--server` arguments) and capture the
-process's stderr for diagnostics. Child stdio is wrapped in buffered readers and
-writers to ensure bounded I/O when communicating with remote peers.
+### [`transport`](../crates/transport)
+
+- `ssh` and `tcp` modules provide concrete transports with optional `rate`
+  limiting.
+- **Design patterns**: strategy pattern selects the transport, while a small
+  factory instantiates the chosen backend.
+
+### [`walk`](../crates/walk)
+
+- Single `lib` module exposing a filesystem iterator.
+- **Design patterns**: a lightweight builder configures traversal options.
+
+### [`checksums`](../crates/checksums)
+
+- Houses rolling and strong checksum logic.
+- `ChecksumConfigBuilder` constructs settings and a strategy dispatches between
+  supported algorithms.
+- **Design patterns**: builder and strategy.
+
+### [`engine`](../crates/engine)
+
+- Modules: `batch`, `block`, `cleanup`, `delta`, `flist`, `io`, `receiver`,
+  `sender`, and `session`.
+- **Design patterns**: factory methods assemble sender/receiver pieces.
+
+### [`compress`](../crates/compress)
+
+- Single module selecting compression algorithms.
+- **Design patterns**: strategy for codec choice.
+
+### [`filters`](../crates/filters)
+
+- Modules: `parser`, `rule`, `matcher`, `perdir`, and `stats`.
+- **Design patterns**: strategy governs rule evaluation.
+
+### [`filelist`](../crates/filelist)
+
+- Encodes and decodes file lists exchanged over the wire.
+- **Design patterns**: factory routines build entries as data is streamed.
+
+### [`meta`](../crates/meta)
+
+- Modules: `parse`, `unix`, `windows`, and `stub` for platform-specific
+  metadata handling.
+- **Design patterns**: builder assembles preservation options.
+
+### [`daemon`](../crates/daemon)
+
+- Runs the rsync-style daemon with module configuration via a builder.
+
+### [`logging`](../crates/logging)
+
+- `lib` wires structured logging; `formatter` tweaks output styles.
+- **Design patterns**: observer pattern fans logs out to multiple sinks.
+
+### [`oc-rsync-cli`](../crates/cli)
+
+- Modules: `options`, `session`, `exec`, `daemon`, `formatter`, `utils`,
+  `version`, and `branding`.
+- **Design patterns**: builder validates user options and a small factory
+  prepares sessions.
+
+### [`fuzz`](../fuzz)
+
+- Contains fuzz targets exercising protocol and parser logic for parity.
 
 ## Version and capability negotiation
 
