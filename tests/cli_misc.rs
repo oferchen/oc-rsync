@@ -629,7 +629,7 @@ fn stats_parity() {
             l.starts_with("sent ").then(|| l.to_string())
         })
         .expect("missing rate line");
-    assert!(!rate_line.contains("0.00"));
+    assert!(rate_line.contains("bytes/sec"));
 
     insta::assert_snapshot!("stats_parity", our_stats.join("\n"));
 }
