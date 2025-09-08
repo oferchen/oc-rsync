@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Requires network access to download the upstream rsync source release.
 # Build a known upstream rsync release and verify its checksum before use.
 ROOT="$(git rev-parse --show-toplevel)"
 OUT_DIR="$ROOT/target/upstream"
@@ -26,7 +27,11 @@ apt-get update
 apt-get install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev >/dev/null
 
 tarball="rsync-$VER.tar.gz"
-curl -L -O "https://download.samba.org/pub/rsync/src/$tarball"
+url="https://download.samba.org/pub/rsync/src/$tarball"
+if ! curl --fail --location --silent --show-error -O "$url"; then
+  echo "Failed to download $tarball from $url" >&2
+  exit 1
+fi
 echo "$SHA256  $tarball" | sha256sum -c -
 tar xzf "$tarball"
 cd "rsync-$VER"
