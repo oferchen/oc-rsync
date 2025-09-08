@@ -658,3 +658,65 @@ fn files_from_list_includes_directories() {
 
     assert!(dst.join("dir/sub/file.txt").exists());
 }
+#[test]
+fn files_from_from0_trailing_slash_semantics() {
+    let (tmp, src, dst) =
+        setup_files_from_env(&[("dir/sub/file.txt", b"k"), ("dir/other.txt", b"o")]);
+
+    let list = tmp.path().join("files.lst");
+    fs::write(&list, b"dir\0dir/sub/file.txt\0").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--from0",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(
+        dst.join("dir/sub/file.txt").is_file(),
+        "path {}",
+        dst.join("dir/sub/file.txt").display()
+    );
+    assert!(
+        !dst.join("dir/other.txt").exists(),
+        "path {}",
+        dst.join("dir/other.txt").display()
+    );
+
+    let dst2 = tmp.path().join("dst2");
+    fs::create_dir_all(&dst2).unwrap();
+    let list2 = tmp.path().join("files2.lst");
+    fs::write(&list2, b"dir/\0").unwrap();
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--from0",
+            "--files-from",
+            list2.to_str().unwrap(),
+            &src_arg,
+            dst2.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(
+        dst2.join("dir/sub/file.txt").is_file(),
+        "path {}",
+        dst2.join("dir/sub/file.txt").display()
+    );
+    assert!(
+        dst2.join("dir/other.txt").is_file(),
+        "path {}",
+        dst2.join("dir/other.txt").display()
+    );
+}
