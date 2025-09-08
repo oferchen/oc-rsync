@@ -17,7 +17,7 @@ use predicates::str::contains;
 use protocol::{CAP_CODECS, Demux, ExitCode};
 use tempfile::tempdir;
 use transport::{
-    LocalPipeTransport, TcpTransport, TimeoutTransport, Transport, rate_limited,
+    LocalPipeTransport, TcpTransport, TimeoutTransport, Transport, TransportConfig, rate_limited,
     ssh::SshStdioTransport,
 };
 
@@ -25,11 +25,12 @@ use transport::{
 fn connection_inactivity_timeout() {
     let reader = Cursor::new(Vec::new());
     let writer = Cursor::new(Vec::new());
-    let mut t = TimeoutTransport::new(
-        LocalPipeTransport::new(reader, writer),
-        Some(Duration::from_millis(100)),
-    )
-    .unwrap();
+    let cfg = TransportConfig::builder()
+        .timeout(Duration::from_millis(100))
+        .build()
+        .unwrap();
+    let mut t =
+        TimeoutTransport::new(LocalPipeTransport::new(reader, writer), cfg.timeout).unwrap();
     thread::sleep(Duration::from_millis(200));
     let err = t.send(b"ping").err().expect("error");
     assert_eq!(err.kind(), io::ErrorKind::TimedOut);
@@ -39,11 +40,12 @@ fn connection_inactivity_timeout() {
 fn idle_inactivity_timeout() {
     let reader = Cursor::new(Vec::new());
     let writer = Cursor::new(Vec::new());
-    let mut t = TimeoutTransport::new(
-        LocalPipeTransport::new(reader, writer),
-        Some(Duration::from_millis(100)),
-    )
-    .unwrap();
+    let cfg = TransportConfig::builder()
+        .timeout(Duration::from_millis(100))
+        .build()
+        .unwrap();
+    let mut t =
+        TimeoutTransport::new(LocalPipeTransport::new(reader, writer), cfg.timeout).unwrap();
     t.send(b"ping").unwrap();
     thread::sleep(Duration::from_millis(200));
     let err = t.send(b"pong").err().expect("error");
@@ -54,7 +56,9 @@ fn idle_inactivity_timeout() {
 fn timeout_can_be_updated() {
     let reader = Cursor::new(Vec::new());
     let writer = Cursor::new(Vec::new());
-    let mut t = TimeoutTransport::new(LocalPipeTransport::new(reader, writer), None).unwrap();
+    let cfg = TransportConfig::builder().no_timeout().build().unwrap();
+    let mut t =
+        TimeoutTransport::new(LocalPipeTransport::new(reader, writer), cfg.timeout).unwrap();
     t.send(b"ping").unwrap();
     t.set_read_timeout(Some(Duration::from_millis(100)))
         .unwrap();
@@ -69,12 +73,14 @@ fn timeout_can_be_updated() {
 fn rate_limited_respects_timeout() {
     let reader = Cursor::new(Vec::new());
     let writer = Cursor::new(Vec::new());
-    let inner = TimeoutTransport::new(
-        LocalPipeTransport::new(reader, writer),
-        Some(Duration::from_millis(50)),
-    )
-    .unwrap();
-    let mut t = rate_limited(inner, 10);
+    let cfg = TransportConfig::builder()
+        .timeout(Duration::from_millis(50))
+        .rate_limit(10)
+        .build()
+        .unwrap();
+    let inner =
+        TimeoutTransport::new(LocalPipeTransport::new(reader, writer), cfg.timeout).unwrap();
+    let mut t = rate_limited(inner, cfg.rate_limit.unwrap());
     t.send(&[0]).unwrap();
     let res = t.send(&[0]);
     assert!(res.is_ok());
@@ -188,8 +194,11 @@ fn daemon_handshake_timeout_message() {
     thread::spawn(move || {
         let (stream, _) = listener.accept().unwrap();
         let transport = TcpTransport::from_stream(stream);
-        let timeout = Some(Duration::from_millis(100));
-        let mut t = TimeoutTransport::new(transport, timeout).unwrap();
+        let cfg = TransportConfig::builder()
+            .timeout(Duration::from_millis(100))
+            .build()
+            .unwrap();
+        let mut t = TimeoutTransport::new(transport, cfg.timeout).unwrap();
         let _ = handle_connection(
             &mut t,
             &modules,
@@ -204,7 +213,7 @@ fn daemon_handshake_timeout_message() {
             0,
             0,
             &handler,
-            timeout,
+            cfg.timeout,
         );
     });
     let mut sock = TcpStream::connect(addr).unwrap();

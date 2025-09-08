@@ -2,6 +2,7 @@
 use std::io;
 use std::time::Duration;
 
+mod config;
 mod daemon;
 mod factory;
 mod rate;
@@ -10,6 +11,7 @@ pub mod ssh;
 mod stdio;
 pub mod tcp;
 
+pub use config::TransportConfig;
 pub use daemon::{DaemonTransport, SockOpt, daemon_remote_opts, parse_sockopts};
 pub use factory::TransportFactory;
 pub use rate::RateLimitedTransport;
