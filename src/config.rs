@@ -3,7 +3,6 @@
 use logging::{DebugFlag, InfoFlag, LogFormat};
 use std::path::PathBuf;
 
-/// Configuration for a synchronization run.
 #[derive(Clone, Debug)]
 pub struct SyncConfig {
     pub log_format: LogFormat,
@@ -62,13 +61,11 @@ impl Default for SyncConfig {
 }
 
 impl SyncConfig {
-    /// Create a new builder for [`SyncConfig`].
     pub fn builder() -> SyncConfigBuilder {
         SyncConfigBuilder::default()
     }
 }
 
-/// Builder for [`SyncConfig`].
 #[derive(Debug, Default)]
 #[must_use]
 pub struct SyncConfigBuilder {
