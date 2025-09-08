@@ -23,6 +23,7 @@ use crate::delta::{Op, Progress, apply_delta};
 use crate::io::{io_context, is_device, preallocate};
 use crate::{EngineError, ReadSeek, Result, SyncOptions, ensure_max_alloc, last_good_block};
 use checksums::ChecksumConfigBuilder;
+use logging::{NopProgressSink, ProgressSink};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReceiverState {
@@ -39,6 +40,7 @@ pub struct Receiver {
     delayed: Vec<(PathBuf, PathBuf, PathBuf)>,
     #[cfg(unix)]
     link_map: meta::HardLinks,
+    progress_sink: Arc<dyn ProgressSink>,
 }
 
 impl Default for Receiver {
@@ -57,7 +59,12 @@ impl Receiver {
             delayed: Vec::new(),
             #[cfg(unix)]
             link_map: meta::HardLinks::default(),
+            progress_sink: Arc::new(NopProgressSink::default()),
         }
+    }
+
+    pub fn set_progress_sink(&mut self, sink: Arc<dyn ProgressSink>) {
+        self.progress_sink = sink;
     }
 
     #[cfg(unix)]
@@ -291,6 +298,7 @@ impl Receiver {
                 self.opts.human_readable,
                 resume,
                 self.opts.quiet,
+                self.progress_sink.clone(),
             ))
         } else {
             None
