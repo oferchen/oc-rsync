@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
-use std::io::{self, Read, Write};
+use std::io::{Read, Write};
 use std::net::TcpStream;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -774,10 +774,6 @@ fn run_single(
 }
 
 fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
-    fn load_patterns(path: &Path, from0: bool) -> io::Result<Vec<String>> {
-        filters::parse_list_file(path, from0).map_err(|e| io::Error::other(format!("{:?}", e)))
-    }
-
     let mut entries: Vec<(usize, usize, Rule)> = Vec::new();
     let mut seq = 0;
     let mut add_rules = |idx: usize, rs: Vec<Rule>| {
@@ -877,61 +873,10 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             .indices_of("files_from")
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
-            for pat in load_patterns(file, opts.from0)? {
-                let anchored = if pat.starts_with('/') {
-                    pat.clone()
-                } else {
-                    format!("/{}", pat)
-                };
-                let (rooted, parents) = filters::rooted_and_parents(&anchored);
-                if rooted.is_empty() {
-                    continue;
-                }
-                for anc in parents.iter() {
-                    let path = format!("/{}", anc);
-                    let rule = if opts.from0 {
-                        format!("+{path}")
-                    } else {
-                        format!("+ {path}")
-                    };
-                    add_rules(
-                        idx + 1,
-                        parse_filters(&rule, opts.from0)
-                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                    );
-                }
-
-                let last = format!("/{}", rooted);
-                let rule = if opts.from0 {
-                    format!("+{last}")
-                } else {
-                    format!("+ {last}")
-                };
-                add_rules(
-                    idx + 1,
-                    parse_filters(&rule, opts.from0)
-                        .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                );
-                let src_base = PathBuf::from(&opts.paths[0]);
-                let fs_path = if Path::new(&pat).is_absolute() {
-                    PathBuf::from(pat.trim_end_matches('/'))
-                } else {
-                    src_base.join(pat.trim_end_matches('/'))
-                };
-                let is_dir = pat.ends_with('/') || fs_path.is_dir();
-                if is_dir {
-                    let rule = if opts.from0 {
-                        format!("+{last}/***")
-                    } else {
-                        format!("+ {last}/***")
-                    };
-                    add_rules(
-                        idx + 1,
-                        parse_filters(&rule, opts.from0)
-                            .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-                    );
-                }
-            }
+            let mut vset = HashSet::new();
+            let rs = filters::parse_rule_list_file(file, opts.from0, '+', &mut vset, 0)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+            add_rules(idx + 1, rs);
         }
     }
     if matches.contains_id("filter_shorthand") {
@@ -1394,7 +1339,7 @@ mod tests {
         let mut t = TcpTransport::from_stream(stream);
 
         let err = authenticate(&mut t, None, None).unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+        assert_eq!(err.kind(), std::io::ErrorKind::PermissionDenied);
 
         env::set_current_dir(prev).unwrap();
         handle.join().unwrap();

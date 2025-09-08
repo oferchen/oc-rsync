@@ -25,8 +25,8 @@ fn block_size_literal_data_matches() {
 
         let size = 8 << 20;
         let mut basis = vec![0u8; size];
-        for i in 0..size {
-            basis[i] = (i % 256) as u8;
+        for (i, b) in basis.iter_mut().enumerate() {
+            *b = (i % 256) as u8;
         }
         let mut target = basis.clone();
         let off = size / 2;

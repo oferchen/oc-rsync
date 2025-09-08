@@ -236,6 +236,89 @@ fn exclude_from_from0_matches_rsync() {
 }
 
 #[test]
+fn files_from_dirs_and_nested_paths() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("foo/bar")).unwrap();
+    fs::create_dir_all(src.join("qux/sub")).unwrap();
+    fs::create_dir_all(src.join("other")).unwrap();
+    fs::write(src.join("foo/bar/baz.txt"), b"data").unwrap();
+    fs::write(src.join("foo/bar/skip.txt"), b"no").unwrap();
+    fs::write(src.join("foo/other.txt"), b"no").unwrap();
+    fs::write(src.join("qux/sub/keep.txt"), b"data").unwrap();
+    fs::write(src.join("qux/junk.txt"), b"data").unwrap();
+    fs::write(src.join("other/file.txt"), b"no").unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let list = tmp.path().join("list");
+    fs::write(&list, "foo/bar/baz.txt\nqux/\n").unwrap();
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert!(dst.join("foo").is_dir());
+    assert!(dst.join("foo/bar").is_dir());
+    assert!(dst.join("foo/bar/baz.txt").is_file());
+    assert!(!dst.join("foo/bar/skip.txt").exists());
+    assert!(!dst.join("foo/other.txt").exists());
+    assert!(dst.join("qux").is_dir());
+    assert!(dst.join("qux/sub").is_dir());
+    assert!(dst.join("qux/sub/keep.txt").is_file());
+    assert!(dst.join("qux/junk.txt").is_file());
+    assert!(!dst.join("other").exists());
+}
+
+#[test]
+fn files_from_dirs_and_nested_paths_from0() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(src.join("foo/bar")).unwrap();
+    fs::create_dir_all(src.join("qux/sub")).unwrap();
+    fs::create_dir_all(src.join("other")).unwrap();
+    fs::write(src.join("foo/bar/baz.txt"), b"data").unwrap();
+    fs::write(src.join("foo/bar/skip.txt"), b"no").unwrap();
+    fs::write(src.join("foo/other.txt"), b"no").unwrap();
+    fs::write(src.join("qux/sub/keep.txt"), b"data").unwrap();
+    fs::write(src.join("qux/junk.txt"), b"data").unwrap();
+    fs::write(src.join("other/file.txt"), b"no").unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let list = tmp.path().join("list");
+    fs::write(&list, b"foo/bar/baz.txt\0qux/\0").unwrap();
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--from0",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert!(dst.join("foo").is_dir());
+    assert!(dst.join("foo/bar").is_dir());
+    assert!(dst.join("foo/bar/baz.txt").is_file());
+    assert!(!dst.join("foo/bar/skip.txt").exists());
+    assert!(!dst.join("foo/other.txt").exists());
+    assert!(dst.join("qux").is_dir());
+    assert!(dst.join("qux/sub").is_dir());
+    assert!(dst.join("qux/sub/keep.txt").is_file());
+    assert!(dst.join("qux/junk.txt").is_file());
+    assert!(!dst.join("other").exists());
+}
+
+#[test]
 fn include_exclude_from_order() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
