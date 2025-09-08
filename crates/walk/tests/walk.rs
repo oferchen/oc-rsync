@@ -1,12 +1,12 @@
 // crates/walk/tests/walk.rs
 use std::fs;
 use tempfile::tempdir;
-use walk::{walk, walk_with_max_size};
+use walk::walk;
 
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
 #[cfg(windows)]
-use std::os::windows::fs::symlink_file;
+use std::os::windows::fs::{symlink_dir, symlink_file};
 
 #[test]
 fn walk_includes_files_dirs_and_symlinks() {
@@ -23,7 +23,7 @@ fn walk_includes_files_dirs_and_symlinks() {
 
     let mut entries = Vec::new();
     let mut state = String::new();
-    for batch in walk(root, 10, true, false).unwrap() {
+    for batch in walk(root, 10, None, true, false, &[]).unwrap() {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
@@ -66,7 +66,7 @@ fn walk_preserves_order_and_bounds_batches() {
 
     let mut paths = Vec::new();
     let mut state = String::new();
-    for batch in walk(root, 2, false, false).unwrap() {
+    for batch in walk(root, 2, None, false, false, &[]).unwrap() {
         let batch = batch.unwrap();
         assert!(batch.len() <= 2);
         for e in batch {
@@ -96,7 +96,7 @@ fn walk_skips_files_over_threshold() {
 
     let mut paths = Vec::new();
     let mut state = String::new();
-    for batch in walk_with_max_size(root, 10, 1024, false, false).unwrap() {
+    for batch in walk(root, 10, Some(1024), false, false, &[]).unwrap() {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
@@ -118,7 +118,7 @@ fn walk_skips_cross_device_entries() {
 
     let mut state = String::new();
     let mut found_pts = false;
-    for batch in walk(root, 100, false, false).unwrap() {
+    for batch in walk(root, 100, None, false, false, &[]).unwrap() {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
@@ -134,11 +134,83 @@ fn walk_skips_cross_device_entries() {
     assert!(found_pts, "expected to see /dev/pts without restriction");
 
     state.clear();
-    for batch in walk(root, 100, false, true).unwrap() {
+    for batch in walk(root, 100, None, false, true, &[]).unwrap() {
         let batch = batch.unwrap();
         for e in batch {
             let path = e.apply(&mut state);
             assert!(!path.starts_with("/dev/pts"));
         }
     }
+}
+
+#[test]
+fn walk_skips_ignored_paths() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path();
+    fs::create_dir(root.join("keep")).unwrap();
+    fs::create_dir(root.join("skip")).unwrap();
+    fs::write(root.join("keep/file.txt"), b"a").unwrap();
+    fs::write(root.join("skip/file.txt"), b"b").unwrap();
+
+    let ignores = vec![root.join("skip")];
+    let mut paths = Vec::new();
+    let mut state = String::new();
+    for batch in walk(root, 10, None, false, false, &ignores).unwrap() {
+        let batch = batch.unwrap();
+        for e in batch {
+            let path = e.apply(&mut state);
+            paths.push(path);
+        }
+    }
+
+    assert!(paths.contains(&root.join("keep")));
+    assert!(paths.contains(&root.join("keep/file.txt")));
+    assert!(!paths.iter().any(|p| p.starts_with(root.join("skip"))));
+}
+
+#[cfg(unix)]
+#[test]
+fn walk_handles_symlink_loops() {
+    use std::path::PathBuf;
+    let tmp = tempdir().unwrap();
+    let root = tmp.path();
+    fs::create_dir(root.join("a")).unwrap();
+    symlink(root, root.join("a/loop")).unwrap();
+
+    let mut count = 0;
+    let mut state = String::new();
+    for batch in walk(root, 10, None, true, false, &[]).unwrap() {
+        let batch = batch.unwrap();
+        for e in batch {
+            let _ = e.apply(&mut state);
+            count += 1;
+        }
+    }
+    assert_eq!(count, 3);
+}
+
+#[cfg(windows)]
+#[test]
+fn walk_normalizes_verbatim_paths() {
+    use std::path::PathBuf;
+    let tmp = tempdir().unwrap();
+    let root_str = tmp.path().to_string_lossy().to_string();
+    let verbatim = format!(r"\\\\?\\\\{}", root_str);
+    let root = PathBuf::from(&verbatim);
+    fs::write(root.join("file.txt"), b"a").unwrap();
+
+    let mut paths = Vec::new();
+    let mut state = String::new();
+    for batch in walk(&root, 10, None, false, false, &[]).unwrap() {
+        let batch = batch.unwrap();
+        for e in batch {
+            let p = e.apply(&mut state);
+            paths.push(p);
+        }
+    }
+    assert!(
+        paths
+            .iter()
+            .all(|p| !p.to_string_lossy().starts_with(r"\\\\?\\\\"))
+    );
 }
