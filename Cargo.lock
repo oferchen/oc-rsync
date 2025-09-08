@@ -198,6 +198,7 @@ dependencies = [
  "hex",
  "md-5",
  "md4",
+ "proptest",
  "rustversion",
  "sha1",
  "tempfile",
