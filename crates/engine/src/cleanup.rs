@@ -3,11 +3,11 @@
 use rand::{Rng, distributions::Alphanumeric};
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use tempfile::Builder;
 
-use crate::{Result, SyncOptions, io_context};
+use crate::io::io_context;
+use crate::{Result, SyncOptions};
 
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
@@ -230,41 +230,4 @@ pub(crate) fn open_for_read(path: &Path, _opts: &SyncOptions) -> std::io::Result
         }
     }
     File::open(path)
-}
-
-pub(crate) fn files_identical(a: &Path, b: &Path, opts: &SyncOptions) -> bool {
-    if let (Ok(ma), Ok(mb)) = (fs::metadata(a), fs::metadata(b)) {
-        if ma.len() != mb.len() {
-            return false;
-        }
-        let mut fa = match open_for_read(a, opts) {
-            Ok(f) => f,
-            Err(_) => return false,
-        };
-        let mut fb = match open_for_read(b, opts) {
-            Ok(f) => f,
-            Err(_) => return false,
-        };
-        let mut ba = [0u8; 8192];
-        let mut bb = [0u8; 8192];
-        loop {
-            match (fa.read(&mut ba), fb.read(&mut bb)) {
-                (Ok(ra), Ok(rb)) => {
-                    if ra != rb {
-                        return false;
-                    }
-                    if ra == 0 {
-                        break;
-                    }
-                    if ba[..ra] != bb[..rb] {
-                        return false;
-                    }
-                }
-                _ => return false,
-            }
-        }
-        true
-    } else {
-        false
-    }
 }

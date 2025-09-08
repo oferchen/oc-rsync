@@ -13,12 +13,14 @@ use md5::Md5;
 use sha1::Sha1;
 use xxhash_rust::xxh64::Xxh64;
 
+use crate::block::block_size;
 use crate::cleanup::{atomic_rename, fuzzy_match, open_for_read, partial_paths};
 use crate::delta::{DEFAULT_BASIS_WINDOW, Op, compute_delta};
+use crate::io::{io_context, is_device};
 use crate::receiver::Receiver;
 use crate::{
-    EngineError, ReadSeek, Result, Stats, StrongHash, SyncOptions, block_size, ensure_max_alloc,
-    io_context, is_device, last_good_block,
+    EngineError, ReadSeek, Result, Stats, StrongHash, SyncOptions, ensure_max_alloc,
+    last_good_block,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
