@@ -1,5 +1,8 @@
 // crates/meta/src/lib.rs
 #![allow(clippy::collapsible_if)]
+mod types;
+pub use types::*;
+
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod unix;
 #[cfg(any(target_os = "linux", target_os = "macos"))]

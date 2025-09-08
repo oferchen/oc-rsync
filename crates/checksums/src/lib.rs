@@ -2,7 +2,17 @@
 use md4::{Digest, Md4};
 use md5::Md5;
 use sha1::Sha1;
-use xxhash_rust::xxh64::{Xxh64, xxh64};
+use xxhash_rust::xxh64::Xxh64;
+
+pub trait StrongHasher {
+    fn update(&mut self, data: &[u8]);
+    fn finalize(self: Box<Self>) -> Vec<u8>;
+}
+
+pub trait RollingHasher {
+    fn roll(&mut self, out: u8, inp: u8);
+    fn digest(&self) -> u32;
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StrongHash {
     Md4,
@@ -10,6 +20,14 @@ pub enum StrongHash {
     Sha1,
     XxHash,
 }
+
+pub mod rolling;
+pub mod strong;
+
+pub use rolling::{Rolling, RollingChecksum, rolling_checksum, rolling_checksum_seeded};
+pub use strong::{
+    StrongChecksum, StrongHash, available_strong_hashes, negotiate_strong_hash, strong_digest,
+};
 
 #[derive(Clone, Debug)]
 pub struct ChecksumConfig {
@@ -76,94 +94,87 @@ impl ChecksumConfig {
         }
     }
 
-    pub fn strong_hasher(&self) -> StrongHasher {
-        match self.strong {
-            StrongHash::Md4 => StrongHasher {
-                inner: StrongHasherInner::Md4(Md4::new()),
-                seed: self.seed,
-            },
-            StrongHash::Md5 => {
-                let mut h = Md5::new();
-                h.update(self.seed.to_le_bytes());
-                StrongHasher {
-                    inner: StrongHasherInner::Md5(h),
-                    seed: self.seed,
-                }
-            }
-            StrongHash::Sha1 => {
-                let mut h = Sha1::new();
-                h.update(self.seed.to_le_bytes());
-                StrongHasher {
-                    inner: StrongHasherInner::Sha1(h),
-                    seed: self.seed,
-                }
-            }
-            StrongHash::XxHash => StrongHasher {
-                inner: StrongHasherInner::XxHash(Xxh64::new(self.seed as u64)),
-                seed: self.seed,
-            },
-        }
+    pub fn strong_hasher(&self) -> Box<dyn StrongHasher> {
+        strong_hasher_from_alg(self.strong, self.seed)
     }
 }
 
-pub struct StrongHasher {
-    inner: StrongHasherInner,
+struct Md4Strong {
+    hasher: Md4,
     seed: u32,
 }
 
-enum StrongHasherInner {
-    Md4(Md4),
-    Md5(Md5),
-    Sha1(Sha1),
-    XxHash(Xxh64),
-}
+struct Md5Strong(Md5);
 
-impl StrongHasher {
-    pub fn update(&mut self, data: &[u8]) {
-        match &mut self.inner {
-            StrongHasherInner::Md4(h) => h.update(data),
-            StrongHasherInner::Md5(h) => h.update(data),
-            StrongHasherInner::Sha1(h) => h.update(data),
-            StrongHasherInner::XxHash(h) => h.update(data),
-        }
+struct Sha1Strong(Sha1);
+
+struct XxHashStrong(Xxh64);
+
+impl StrongHasher for Md4Strong {
+    fn update(&mut self, data: &[u8]) {
+        self.hasher.update(data);
     }
 
-    pub fn finalize(self) -> Vec<u8> {
-        match self.inner {
-            StrongHasherInner::Md4(mut h) => {
-                h.update(self.seed.to_le_bytes());
-                h.finalize().to_vec()
-            }
-            StrongHasherInner::Md5(h) => h.finalize().to_vec(),
-            StrongHasherInner::Sha1(h) => h.finalize().to_vec(),
-            StrongHasherInner::XxHash(h) => h.digest().to_le_bytes().to_vec(),
-        }
+    fn finalize(mut self: Box<Self>) -> Vec<u8> {
+        self.hasher.update(self.seed.to_le_bytes());
+        self.hasher.finalize().to_vec()
     }
 }
 
-#[allow(clippy::needless_borrows_for_generic_args)]
-pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
+impl StrongHasher for Md5Strong {
+    fn update(&mut self, data: &[u8]) {
+        self.0.update(data);
+    }
+
+    fn finalize(self: Box<Self>) -> Vec<u8> {
+        self.0.finalize().to_vec()
+    }
+}
+
+impl StrongHasher for Sha1Strong {
+    fn update(&mut self, data: &[u8]) {
+        self.0.update(data);
+    }
+
+    fn finalize(self: Box<Self>) -> Vec<u8> {
+        self.0.finalize().to_vec()
+    }
+}
+
+impl StrongHasher for XxHashStrong {
+    fn update(&mut self, data: &[u8]) {
+        self.0.update(data);
+    }
+
+    fn finalize(self: Box<Self>) -> Vec<u8> {
+        self.0.digest().to_le_bytes().to_vec()
+    }
+}
+
+fn strong_hasher_from_alg(alg: StrongHash, seed: u32) -> Box<dyn StrongHasher> {
     match alg {
-        StrongHash::Md4 => {
-            let mut hasher = Md4::new();
-            hasher.update(data);
-            hasher.update(seed.to_le_bytes());
-            hasher.finalize().to_vec()
-        }
+        StrongHash::Md4 => Box::new(Md4Strong {
+            hasher: Md4::new(),
+            seed,
+        }),
         StrongHash::Md5 => {
-            let mut hasher = Md5::new();
-            hasher.update(seed.to_le_bytes());
-            hasher.update(data);
-            hasher.finalize().to_vec()
+            let mut h = Md5::new();
+            h.update(seed.to_le_bytes());
+            Box::new(Md5Strong(h))
         }
         StrongHash::Sha1 => {
-            let mut hasher = Sha1::new();
-            hasher.update(seed.to_le_bytes());
-            hasher.update(data);
-            hasher.finalize().to_vec()
+            let mut h = Sha1::new();
+            h.update(seed.to_le_bytes());
+            Box::new(Sha1Strong(h))
         }
-        StrongHash::XxHash => xxh64(data, seed as u64).to_le_bytes().to_vec(),
+        StrongHash::XxHash => Box::new(XxHashStrong(Xxh64::new(seed as u64))),
     }
+}
+
+pub fn strong_digest(data: &[u8], alg: StrongHash, seed: u32) -> Vec<u8> {
+    let mut h = strong_hasher_from_alg(alg, seed);
+    h.update(data);
+    h.finalize()
 }
 
 pub fn available_strong_hashes() -> &'static [StrongHash] {
@@ -459,6 +470,24 @@ impl Rolling {
     }
 }
 
+impl RollingHasher for Rolling {
+    fn roll(&mut self, out: u8, inp: u8) {
+        self.s1 = self.s1.wrapping_sub(out as u32).wrapping_add(inp as u32);
+        self.s2 = self
+            .s2
+            .wrapping_sub(self.len as u32 * out as u32)
+            .wrapping_add(self.s1);
+    }
+
+    fn digest(&self) -> u32 {
+        let s1 = self.s1.wrapping_add(self.seed);
+        let s2 = self
+            .s2
+            .wrapping_add((self.len as u32).wrapping_mul(self.seed));
+        (s1 & 0xffff) | (s2 << 16)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -549,5 +578,7 @@ mod tests {
                 expected
             );
         }
+    pub fn strong_hasher(&self) -> Box<dyn StrongChecksum> {
+        strong::select_strong_checksum(self.strong, self.seed)
     }
 }
