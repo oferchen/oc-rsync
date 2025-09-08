@@ -9,6 +9,8 @@ use tempfile::tempdir;
 use walk::walk;
 mod util;
 use util::setup_files_from_env;
+mod common;
+use common::read_golden;
 
 #[test]
 fn files_from_mixed_entries_integration() {
@@ -85,22 +87,9 @@ fn walker_files_from_enumerates_parent_dirs() {
             }
         }
     }
-
-    let output = StdCommand::new("rsync")
-        .current_dir(&src)
-        .args([
-            "-n",
-            "-r",
-            "--out-format=%n",
-            "--files-from",
-            list.to_str().unwrap(),
-            ".",
-            "dest",
-        ])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let rsync_paths: Vec<String> = String::from_utf8_lossy(&output.stdout)
+    let (stdout, _stderr, _exit) =
+        read_golden("files_from/walker_files_from_enumerates_parent_dirs");
+    let rsync_paths: Vec<String> = String::from_utf8_lossy(&stdout)
         .lines()
         .map(|l| l.trim().to_string())
         .filter(|l| !l.is_empty())
@@ -118,23 +107,8 @@ fn files_from_dirs_matches_rsync() {
     let list = tmp.path().join("list");
     fs::write(&list, "foo/bar/baz\nqux/\n").unwrap();
 
-    let rsync_dst = tmp.path().join("rsync");
     let ours_dst = tmp.path().join("ours");
-    fs::create_dir_all(&rsync_dst).unwrap();
     fs::create_dir_all(&ours_dst).unwrap();
-
-    let status = StdCommand::new("rsync")
-        .current_dir(&src)
-        .args([
-            "-r",
-            "--files-from",
-            list.to_str().unwrap(),
-            ".",
-            rsync_dst.to_str().unwrap(),
-        ])
-        .status()
-        .unwrap();
-    assert!(status.success());
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -149,9 +123,11 @@ fn files_from_dirs_matches_rsync() {
         .assert()
         .success();
 
+    let golden = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/golden/files_from/dirs_matches_rsync");
     let diff = StdCommand::new("diff")
         .arg("-r")
-        .arg(&rsync_dst)
+        .arg(&golden)
         .arg(&ours_dst)
         .status()
         .unwrap();

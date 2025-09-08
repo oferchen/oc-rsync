@@ -2,12 +2,12 @@
 #![allow(unused_imports)]
 
 use assert_cmd::prelude::*;
-use assert_cmd::{Command, cargo::cargo_bin};
+use assert_cmd::{cargo::cargo_bin, Command};
 use engine::SyncOptions;
-use filetime::{FileTime, set_file_mtime};
+use filetime::{set_file_mtime, FileTime};
 use logging::progress_formatter;
 #[cfg(unix)]
-use nix::unistd::{Gid, Uid, chown, mkfifo};
+use nix::unistd::{chown, mkfifo, Gid, Uid};
 use oc_rsync_cli::{parse_iconv, spawn_daemon_session};
 use predicates::prelude::PredicateBooleanExt;
 use protocol::SUPPORTED_PROTOCOLS;
@@ -21,7 +21,7 @@ use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
-use tempfile::{TempDir, tempdir, tempdir_in};
+use tempfile::{tempdir, tempdir_in, TempDir};
 #[cfg(unix)]
 use users::{get_current_gid, get_current_uid, get_group_by_gid, get_user_by_uid};
 mod common;
@@ -453,28 +453,14 @@ fn files_from_zero_separated_list_includes_directories() {
 fn files_from_single_file_creates_implied_directories() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
-    let rsync_dst = dir.path().join("rsync");
     let oc_dst = dir.path().join("oc");
     fs::create_dir_all(src.join("foo/bar")).unwrap();
     fs::write(src.join("foo/bar/baz.txt"), b"k").unwrap();
-    fs::create_dir_all(&rsync_dst).unwrap();
     fs::create_dir_all(&oc_dst).unwrap();
     let list = dir.path().join("files.lst");
     fs::write(&list, "foo/bar/baz.txt\n").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    let status = std::process::Command::new("rsync")
-        .args([
-            "-r",
-            "--files-from",
-            list.to_str().unwrap(),
-            &src_arg,
-            rsync_dst.to_str().unwrap(),
-        ])
-        .status()
-        .unwrap();
-    assert!(status.success());
-
     let out = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([
@@ -512,9 +498,11 @@ fn files_from_single_file_creates_implied_directories() {
     assert!(oc_dst.join("foo/bar").is_dir());
     assert!(oc_dst.join("foo/bar/baz.txt").is_file());
 
+    let golden = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/golden/files_from/single_file_creates_implied_dirs");
     let diff = std::process::Command::new("diff")
         .arg("-r")
-        .arg(&rsync_dst)
+        .arg(&golden)
         .arg(&oc_dst)
         .status()
         .unwrap();
@@ -524,28 +512,15 @@ fn files_from_single_file_creates_implied_directories() {
 fn files_from_single_file_no_implied_dirs_fails_like_rsync() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
-    let rsync_dst = dir.path().join("rsync");
     let oc_dst = dir.path().join("oc");
     fs::create_dir_all(src.join("foo/bar")).unwrap();
     fs::write(src.join("foo/bar/baz.txt"), b"k").unwrap();
-    fs::create_dir_all(&rsync_dst).unwrap();
     fs::create_dir_all(&oc_dst).unwrap();
     let list = dir.path().join("files.lst");
     fs::write(&list, "foo/bar/baz.txt\n").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    let rsync_status = std::process::Command::new("rsync")
-        .args([
-            "-r",
-            "--no-implied-dirs",
-            "--files-from",
-            list.to_str().unwrap(),
-            &src_arg,
-            rsync_dst.to_str().unwrap(),
-        ])
-        .status()
-        .unwrap();
-    assert!(!rsync_status.success());
+    let (_exp_stdout, _exp_stderr, exp_exit) = read_golden("files_from/no_implied_dirs");
 
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -558,16 +533,9 @@ fn files_from_single_file_no_implied_dirs_fails_like_rsync() {
             oc_dst.to_str().unwrap(),
         ])
         .assert()
-        .failure();
+        .code(exp_exit);
 
-    let diff = std::process::Command::new("diff")
-        .arg("-r")
-        .arg(&rsync_dst)
-        .arg(&oc_dst)
-        .status()
-        .unwrap();
-    assert!(diff.success(), "directory trees differ");
-    assert!(!oc_dst.join("foo/bar/baz.txt").exists());
+    assert!(fs::read_dir(&oc_dst).unwrap().next().is_none());
 }
 #[test]
 fn files_from_zero_separated_list_directory_without_slash_excludes_siblings() {
