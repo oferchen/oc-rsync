@@ -1,5 +1,5 @@
 ---
-source: tests/cli.rs
+source: tests/cli_misc.rs
 expression: "our_stats.join(\"\\n\")"
 ---
 Number of files: 1
