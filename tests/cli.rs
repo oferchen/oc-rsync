@@ -3850,6 +3850,27 @@ fn files_from_single_file_creates_implied_directories() {
         .unwrap();
     assert!(status.success());
 
+    let out = Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "-n",
+            "--recursive",
+            "--files-from",
+            list.to_str().unwrap(),
+            "--out-format=%n",
+            &src_arg,
+            oc_dst.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let paths: Vec<String> = String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|l| l.to_string())
+        .collect();
+    assert_eq!(paths, vec!["foo/", "foo/bar/", "foo/bar/baz.txt"]);
+
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([

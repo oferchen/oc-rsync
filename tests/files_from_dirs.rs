@@ -15,13 +15,17 @@ fn files_from_mixed_entries_integration() {
     let mut v = HashSet::new();
     let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
     let m = Matcher::new(rules);
-    assert!(m.is_included("foo").unwrap());
-    assert!(m.is_included("foo/bar").unwrap());
+    let foo = m.is_included_with_dir("foo").unwrap();
+    assert!(foo.include && foo.descend);
+    let foo_bar = m.is_included_with_dir("foo/bar").unwrap();
+    assert!(foo_bar.include && foo_bar.descend);
     assert!(m.is_included("foo/bar/baz").unwrap());
     assert!(!m.is_included("foo/bar/qux").unwrap());
     assert!(!m.is_included("foo/other").unwrap());
-    assert!(m.is_included("qux").unwrap());
-    assert!(m.is_included("qux/sub").unwrap());
+    let qux = m.is_included_with_dir("qux").unwrap();
+    assert!(qux.include && qux.descend);
+    let qux_sub = m.is_included_with_dir("qux/sub").unwrap();
+    assert!(qux_sub.include && qux_sub.descend);
     assert!(!m.is_included("other").unwrap());
     assert!(!m.is_included("qux/other").unwrap());
 }
@@ -58,6 +62,7 @@ fn walker_files_from_enumerates_parent_dirs() {
             let result = matcher.is_included_with_dir(&rel).unwrap();
             if result.include {
                 if entry.file_type.is_dir() {
+                    assert!(result.descend);
                     visited.push(format!("{rel}/"));
                 } else {
                     visited.push(rel.clone());
