@@ -7,6 +7,8 @@ use walk::{walk, walk_with_max_size};
 use std::os::unix::fs::symlink;
 #[cfg(windows)]
 use std::os::windows::fs::symlink_file;
+#[cfg(windows)]
+use walk::normalize_path;
 
 #[test]
 fn walk_includes_files_dirs_and_symlinks() {
@@ -141,4 +143,76 @@ fn walk_skips_cross_device_entries() {
             assert!(!path.starts_with("/dev/pts"));
         }
     }
+}
+
+#[test]
+fn walk_skips_ignored_directory() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path();
+    fs::create_dir(root.join("keep")).unwrap();
+    fs::write(root.join("keep/file.txt"), b"k").unwrap();
+    fs::create_dir(root.join("skip")).unwrap();
+    fs::write(root.join("skip/ignored.txt"), b"i").unwrap();
+
+    let mut walker = walk(root, 1, false, false).unwrap();
+    let mut state = String::new();
+    let mut seen = Vec::new();
+    while let Some(batch) = walker.next() {
+        let batch = batch.unwrap();
+        for e in batch {
+            let path = e.apply(&mut state);
+            if path == root.join("skip") {
+                walker.skip_current_dir();
+            }
+            seen.push(path);
+        }
+    }
+    assert!(seen.contains(&root.join("keep")));
+    assert!(seen.contains(&root.join("keep/file.txt")));
+    assert!(seen.contains(&root.join("skip")));
+    assert!(!seen.contains(&root.join("skip/ignored.txt")));
+}
+
+#[cfg(unix)]
+#[test]
+fn walk_detects_hardlinks() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path();
+    fs::write(root.join("base.txt"), b"x").unwrap();
+    fs::hard_link(root.join("base.txt"), root.join("hl.txt")).unwrap();
+
+    let mut entries = Vec::new();
+    let mut walker = walk(root, 10, false, false).unwrap();
+    let mut state = String::new();
+    while let Some(batch) = walker.next() {
+        let batch = batch.unwrap();
+        for e in batch {
+            let path = e.apply(&mut state);
+            entries.push((path, e.dev, e.inode));
+        }
+    }
+    let base = root.join("base.txt");
+    let hl = root.join("hl.txt");
+    let dev_ino_base = entries
+        .iter()
+        .find(|(p, _, _)| p == &base)
+        .map(|(_, d, i)| (*d, *i))
+        .unwrap();
+    let dev_ino_hl = entries
+        .iter()
+        .find(|(p, _, _)| p == &hl)
+        .map(|(_, d, i)| (*d, *i))
+        .unwrap();
+    assert_eq!(dev_ino_base, dev_ino_hl);
+}
+
+#[cfg(windows)]
+#[test]
+fn normalize_path_handles_verbatim_prefix() {
+    let tmp = tempdir().unwrap();
+    let norm = normalize_path(tmp.path());
+    let s = norm.to_str().unwrap();
+    assert!(s.starts_with(r"\\?\\"));
+    let again = normalize_path(&norm);
+    assert_eq!(norm, again);
 }
