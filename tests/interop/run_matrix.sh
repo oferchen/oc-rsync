@@ -121,7 +121,22 @@ CFG
   mkdir -p "$tmp/root"
   "$server_bin" --daemon --no-detach --port "$port" --config "$tmp/rsyncd.conf" &
   local pid=$!
-  printf '%s\t%s\t%s\n' "$port" "$tmp/root" "$pid"
+  for _ in {1..50}; do
+    if nc -z localhost "$port" >/dev/null 2>&1; then
+      printf '%s\t%s\t%s\n' "$port" "$tmp/root" "$pid"
+      return 0
+    fi
+    if ! kill -0 "$pid" >/dev/null 2>&1; then
+      wait "$pid" >/dev/null 2>&1 || true
+      echo "daemon exited before opening port" >&2
+      return 1
+    fi
+    sleep 0.1
+  done
+  echo "timeout waiting for port $port" >&2
+  kill "$pid" >/dev/null 2>&1 || true
+  wait "$pid" >/dev/null 2>&1 || true
+  return 1
 }
 
 verify_tree() {
