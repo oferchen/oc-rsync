@@ -21,6 +21,8 @@ use tracing_subscriber::{
 
 mod formatter;
 pub use formatter::RsyncFormatter;
+mod sink;
+pub use sink::{NopProgressSink, ProgressSink};
 
 use clap::ValueEnum;
 
