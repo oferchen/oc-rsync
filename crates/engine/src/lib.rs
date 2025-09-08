@@ -691,7 +691,7 @@ fn count_entries(
                 }
                 if entry.file_type.is_dir() {
                     dirs += 1;
-                    if !res.descend {
+                    if !res.descend && !rel.as_os_str().is_empty() {
                         walker.skip_current_dir();
                         skip_dirs.push(path.clone());
                     }
@@ -1238,7 +1238,7 @@ pub fn sync(
             if let Ok(rel) = path.strip_prefix(&src_root) {
                 let res = matcher.is_included_with_dir(rel)?;
                 if !res.include {
-                    if !res.descend && file_type.is_dir() {
+                    if !res.descend && file_type.is_dir() && !rel.as_os_str().is_empty() {
                         walker.skip_current_dir();
                         skip_dirs.push(path.clone());
                     }
@@ -1250,7 +1250,7 @@ pub fn sync(
                         dest_path.push(name);
                     }
                 }
-                if file_type.is_dir() && !res.descend {
+                if file_type.is_dir() && !res.descend && !rel.as_os_str().is_empty() {
                     walker.skip_current_dir();
                     skip_dirs.push(path.clone());
                 }
