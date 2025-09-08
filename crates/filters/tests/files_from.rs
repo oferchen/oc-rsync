@@ -1,4 +1,5 @@
 // crates/filters/tests/files_from.rs
+#![allow(unused_doc_comments)]
 use filters::{Matcher, parse, parse_with_options};
 use std::collections::HashSet;
 use std::fs;
@@ -7,6 +8,10 @@ use tempfile::tempdir;
 fn p(s: &str) -> Vec<filters::Rule> {
     let mut v = HashSet::new();
     parse(s, &mut v, 0).unwrap()
+}
+
+fn rule_matches(rule: &filters::Rule, path: &str) -> bool {
+    Matcher::new(vec![rule.clone()]).is_included(path).unwrap()
 }
 
 #[test]
@@ -118,6 +123,39 @@ fn files_from_directory_entry_prunes_siblings() {
     assert!(m.is_included("dir").unwrap());
     assert!(m.is_included("dir/sub/file").unwrap());
     assert!(!m.is_included("other/file").unwrap());
+}
+
+#[test]
+fn files_from_parent_dirs_precede_file_entry() {
+    let tmp = tempdir().unwrap();
+    fs::create_dir_all(tmp.path().join("foo/bar")).unwrap();
+    fs::write(tmp.path().join("foo/bar/baz.txt"), b"b").unwrap();
+
+    let list = tmp.path().join("list");
+    fs::write(&list, "foo\nfoo/bar/\nfoo/bar/baz.txt\n").unwrap();
+    let filter = format!("files-from {}\n", list.display());
+    let mut v = HashSet::new();
+    let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
+
+    /// Expected rule sequence:
+    /// + /foo/
+    /// + /foo/***
+    /// + /foo/bar/
+    /// + /foo/bar/***
+    /// + /foo/bar/baz.txt
+    /// - /foo/*
+    /// - /foo/bar/*
+    /// - /**
+    let file_idx = rules
+        .iter()
+        .rposition(|r| rule_matches(r, "foo/bar/baz.txt") && !rule_matches(r, "foo/bar"))
+        .expect("file rule not found");
+
+    assert!(rule_matches(&rules[file_idx - 2], "foo"));
+    assert!(!rule_matches(&rules[file_idx - 2], "foo/bar"));
+    assert!(rule_matches(&rules[file_idx - 1], "foo/bar"));
+    assert!(!rule_matches(&rules[file_idx - 1], "foo/bar/baz.txt"));
+    assert!(rule_matches(&rules[file_idx], "foo/bar/baz.txt"));
 }
 
 #[test]
