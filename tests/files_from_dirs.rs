@@ -5,6 +5,8 @@ use std::fs;
 use std::process::Command;
 use tempfile::tempdir;
 use walk::walk;
+mod util;
+use util::setup_files_from_env;
 
 #[test]
 fn files_from_mixed_entries_integration() {
@@ -32,10 +34,7 @@ fn files_from_mixed_entries_integration() {
 
 #[test]
 fn walker_files_from_enumerates_parent_dirs() {
-    let tmp = tempdir().unwrap();
-    let src = tmp.path().join("src");
-    fs::create_dir_all(src.join("foo/bar")).unwrap();
-    fs::write(src.join("foo/bar/baz"), b"data").unwrap();
+    let (tmp, src, _) = setup_files_from_env(&[("foo/bar/baz", b"data")]);
 
     let list = tmp.path().join("list");
     fs::write(&list, "foo/bar/baz\n").unwrap();
