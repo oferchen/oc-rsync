@@ -34,7 +34,6 @@ fn checksum_transfers_when_timestamps_match() {
     set_file_mtime(&src_file, mtime).unwrap();
     set_file_mtime(&dst_file, mtime).unwrap();
 
-    // With --checksum, differing content should be transferred
     let out = Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([

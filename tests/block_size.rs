@@ -437,3 +437,50 @@ fn cli_block_size_errors_match_rsync() {
         assert_eq!(rsync_second_prefix, sanitize(ours_second_lhs));
     }
 }
+
+#[test]
+fn cli_block_size_zero_errors_match_rsync() {
+    let tmp = tempdir().unwrap();
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&dst).unwrap();
+
+    let expected_code: i32 =
+        fs::read_to_string("tests/golden/block_size/cli_block_size_zero_errors_match_rsync.exit")
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+    let rsync_err =
+        fs::read_to_string("tests/golden/block_size/cli_block_size_zero_errors_match_rsync.stderr")
+            .unwrap();
+    fn sanitize(line: &str) -> &str {
+        line.split_once(' ').map(|(_, rhs)| rhs).unwrap_or(line)
+    }
+    let rsync_lines: Vec<_> = rsync_err.lines().collect();
+    let rsync_first = sanitize(rsync_lines[0]);
+    let rsync_second_lhs = rsync_lines[1]
+        .split_once(" at ")
+        .map(|(lhs, _)| lhs)
+        .unwrap_or(rsync_lines[1]);
+    let rsync_second_prefix = sanitize(rsync_second_lhs);
+
+    for args in [&["--block-size=0"][..], &["-B0"][..], &["-B", "0"][..]] {
+        let ours = Command::cargo_bin("oc-rsync")
+            .unwrap()
+            .args(args)
+            .arg("/dev/null")
+            .arg("--")
+            .arg(dst.to_str().unwrap())
+            .output()
+            .unwrap();
+        assert_eq!(ours.status.code(), Some(expected_code));
+        let ours_err = String::from_utf8(ours.stderr).unwrap();
+        let ours_lines: Vec<_> = ours_err.lines().collect();
+        assert_eq!(rsync_first, sanitize(ours_lines[0]));
+        let ours_second_lhs = ours_lines[1]
+            .split_once(" at ")
+            .map(|(lhs, _)| lhs)
+            .unwrap_or(ours_lines[1]);
+        assert_eq!(rsync_second_prefix, sanitize(ours_second_lhs));
+    }
+}
