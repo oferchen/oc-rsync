@@ -1,7 +1,7 @@
 // crates/engine/tests/block_size.rs
 
 use checksums::ChecksumConfigBuilder;
-use engine::{compute_delta, Op, Stats, SyncOptions};
+use engine::{Op, Stats, SyncOptions, compute_delta};
 use std::io::Cursor;
 
 #[test]
@@ -28,7 +28,7 @@ fn block_size_literal_stats() {
         &SyncOptions::default(),
     )
     .unwrap()
-    .collect::<Result<_>>()
+    .collect::<Result<_, _>>()
     .unwrap();
 
     let mut stats = Stats::default();
@@ -66,7 +66,7 @@ fn block_size_unaligned_literal_stats() {
         &SyncOptions::default(),
     )
     .unwrap()
-    .collect::<Result<_>>()
+    .collect::<Result<_, _>>()
     .unwrap();
 
     let mut stats = Stats::default();

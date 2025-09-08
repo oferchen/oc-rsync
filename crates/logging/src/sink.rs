@@ -1,21 +1,18 @@
 // crates/logging/src/sink.rs
+
+use crate::flags::StderrMode;
+use std::fs::File;
+#[allow(unused_imports)]
+use std::io::{self, Write};
 use std::path::Path;
-
-
-
-
+use tracing::{Level, Metadata};
+use tracing_subscriber::fmt::MakeWriter;
 
 pub trait ProgressSink: Send + Sync {
-    
     fn start_file(&self, path: &Path, total: u64, written: u64);
-
-    
     fn update(&self, written: u64);
-
-    
     fn finish_file(&self);
 }
-
 
 #[derive(Debug, Default)]
 pub struct NopProgressSink;
@@ -24,27 +21,6 @@ impl ProgressSink for NopProgressSink {
     fn start_file(&self, _path: &Path, _total: u64, _written: u64) {}
     fn update(&self, _written: u64) {}
     fn finish_file(&self) {}
-
-use crate::flags::StderrMode;
-use std::fs::File;
-#[allow(unused_imports)]
-use std::io::{self, Write};
-use tracing::{Level, Metadata};
-use tracing_subscriber::fmt::MakeWriter;
-
-
-pub trait ProgressSink: Send + Sync {
-    
-    fn progress(&self, line: &str);
-}
-
-impl<F> ProgressSink for F
-where
-    F: Fn(&str) + Send + Sync,
-{
-    fn progress(&self, line: &str) {
-        self(line);
-    }
 }
 
 #[derive(Clone, Copy)]

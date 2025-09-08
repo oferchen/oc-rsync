@@ -11,8 +11,8 @@ impl From<&ClientOpts> for TransportFactory {
                 port: 873,
             }
         } else if let Some(rsh) = &opts.rsh {
-            let mut parts = rsh.cmd.clone();
-            let program = parts.get(0).cloned().unwrap_or_else(|| "ssh".to_string());
+            let parts = rsh.cmd.clone();
+            let program = parts.first().cloned().unwrap_or_else(|| "ssh".to_string());
             let args = if parts.len() > 1 {
                 parts[1..].to_vec()
             } else {

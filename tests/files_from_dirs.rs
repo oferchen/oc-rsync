@@ -1,7 +1,6 @@
 // tests/files_from_dirs.rs
-use assert_cmd::prelude::*;
 use assert_cmd::Command;
-use filters::{parse_with_options, Matcher};
+use filters::{Matcher, parse_with_options};
 use std::collections::HashSet;
 use std::fs;
 use std::process::Command as StdCommand;
