@@ -93,10 +93,6 @@ impl ChecksumConfig {
             strong: strong_digest(data, self.strong, self.seed),
         }
     }
-
-    pub fn strong_hasher(&self) -> Box<dyn StrongHasher> {
-        strong_hasher_from_alg(self.strong, self.seed)
-    }
 }
 
 struct Md4Strong {
@@ -578,6 +574,12 @@ mod tests {
                 expected
             );
         }
+    }
+}
+
+impl ChecksumConfig {
+    pub fn strong_hasher(&self) -> Box<dyn StrongChecksum> {
+        strong::select_strong_checksum(self.strong, self.seed)
     }
 }
 
