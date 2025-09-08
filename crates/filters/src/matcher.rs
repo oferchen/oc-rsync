@@ -1,3 +1,6 @@
+// crates/filters/src/matcher.rs
+#![allow(clippy::collapsible_if)]
+
 use crate::{
     parser::{MAX_PARSE_DEPTH, ParseError, parse_with_options},
     perdir::PerDir,
