@@ -2,7 +2,7 @@
 #![allow(clippy::collapsible_if)]
 
 use crate::{
-    parser::{MAX_PARSE_DEPTH, ParseError, parse_with_options},
+    parser::{parse_with_options, ParseError, MAX_PARSE_DEPTH},
     perdir::PerDir,
     rule::Rule,
     stats::FilterStats,
@@ -41,6 +41,7 @@ pub struct Matcher {
     existing: bool,
     prune_empty_dirs: bool,
     from0: bool,
+    no_implied_dirs: bool,
     stats: RefCell<FilterStats>,
 }
 
@@ -69,6 +70,7 @@ impl Matcher {
             existing,
             prune_empty_dirs,
             from0: false,
+            no_implied_dirs: false,
             stats: RefCell::new(FilterStats::default()),
         }
     }
@@ -90,6 +92,11 @@ impl Matcher {
 
     pub fn with_from0(mut self) -> Self {
         self.from0 = true;
+        self
+    }
+
+    pub fn with_no_implied_dirs(mut self) -> Self {
+        self.no_implied_dirs = true;
         self
     }
 
@@ -301,6 +308,47 @@ impl Matcher {
                         }
                         matched_source = data.source.clone();
                         break;
+                    } else if may_desc {
+                        descend = true;
+                    }
+                }
+                Rule::ImpliedDir(data) => {
+                    if !data.flags.applies(for_delete, xattr) {
+                        continue;
+                    }
+                    if data.dir_only {
+                        if let Some(root) = &self.root {
+                            if !root.join(path).is_dir() {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+                    }
+                    if for_delete && data.flags.perishable {
+                        continue;
+                    }
+                    let matched_rule = data.is_match(path, is_dir);
+                    let rule_match =
+                        (data.invert && !matched_rule) || (!data.invert && matched_rule);
+                    let may_desc = is_dir && data.may_match_descendant(path);
+                    self.stats
+                        .borrow_mut()
+                        .record(data.source.as_deref(), rule_match);
+                    if rule_match {
+                        if self.no_implied_dirs {
+                            include.get_or_insert(false);
+                            if may_desc {
+                                descend = true;
+                            }
+                        } else {
+                            include = Some(true);
+                            if may_desc {
+                                descend = true;
+                            }
+                            matched_source = data.source.clone();
+                            break;
+                        }
                     } else if may_desc {
                         descend = true;
                     }
@@ -542,7 +590,10 @@ impl Matcher {
             for (ridx, rule) in state.rules.iter() {
                 let mut r = rule.clone();
                 match &mut r {
-                    Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) => {
+                    Rule::Include(d)
+                    | Rule::Exclude(d)
+                    | Rule::Protect(d)
+                    | Rule::ImpliedDir(d) => {
                         d.flags = d.flags.union(&pd.flags);
                     }
                     Rule::DirMerge(sub) => {
@@ -783,7 +834,7 @@ impl Matcher {
             for (_, r) in rules {
                 match r {
                     Rule::Clear => state = None,
-                    Rule::Include(d) | Rule::Protect(d) => {
+                    Rule::Include(d) | Rule::Protect(d) | Rule::ImpliedDir(d) => {
                         if d.dir_only && !is_dir {
                             continue;
                         }
