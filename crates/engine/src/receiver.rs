@@ -14,15 +14,14 @@ use std::sync::Arc;
 use compress::{Codec, Decompressor, ZlibX, Zstd, should_compress};
 use filters::Matcher;
 
+use crate::block::block_size;
 use crate::cleanup::{
     TempFileGuard, atomic_rename, open_for_read, partial_paths, remove_basename_partial,
     tmp_file_path,
 };
 use crate::delta::{Op, Progress, apply_delta};
-use crate::{
-    EngineError, ReadSeek, Result, SyncOptions, block_size, ensure_max_alloc, io_context,
-    is_device, last_good_block, preallocate,
-};
+use crate::io::{io_context, is_device, preallocate};
+use crate::{EngineError, ReadSeek, Result, SyncOptions, ensure_max_alloc, last_good_block};
 use checksums::ChecksumConfigBuilder;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
