@@ -107,7 +107,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | In-place updates and resume | ✅ | [crates/engine/tests/resume.rs](../crates/engine/tests/resume.rs) | [crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |
 | Delete policies | ✅ | [crates/engine/tests/delete.rs](../crates/engine/tests/delete.rs) | [crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |
 | `--read-batch` replay | ✅ | [crates/engine/tests/upstream_batch.rs](../crates/engine/tests/upstream_batch.rs) | [crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |
-| `--block-size` semantics | ✅ | [tests/block_size.rs](../tests/block_size.rs) | [crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |
+| `--block-size` semantics | Partial | [tests/block_size.rs](../tests/block_size.rs) | [crates/engine/src/lib.rs](../crates/engine/src/lib.rs) |
 
 `--block-size` adjusts the delta algorithm's chunk size. To mirror upstream
 behavior, it is typically combined with `--checksum` and `--no-whole-file` so
@@ -119,6 +119,7 @@ Literal data: 4,096 bytes
 ```
 
 The stats output shows that only a single 4 KiB block was sent.
+**Pending:** Engine stats do not yet report literal byte counts accurately; see [#1522](https://github.com/oferchen/oc-rsync/issues/1522) and [tests/block_size.rs](../tests/block_size.rs).
 
 ## Daemon Features
 | Feature | Status | Tests | Source |
