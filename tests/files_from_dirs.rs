@@ -43,7 +43,7 @@ fn walker_files_from_enumerates_parent_dirs() {
     let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
     let matcher = Matcher::new(rules);
 
-    let mut walker = walk(&src, 1, false, false).unwrap();
+    let mut walker = walk(&src, 1, None, false, false, &[]).unwrap();
     let mut state = String::new();
     let mut visited = Vec::new();
     while let Some(batch) = walker.next() {

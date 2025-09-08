@@ -1,16 +1,8 @@
 // crates/compress/tests/codecs.rs
 use compress::{
-    Codec, available_codecs, decode_codecs, encode_codecs, negotiate_codec, should_compress,
+    Codec, available_codecs, compressor, decode_codecs, decompressor, encode_codecs,
+    negotiate_codec, should_compress,
 };
-
-#[cfg(any(feature = "zlib", feature = "zstd"))]
-use compress::{Compressor, Decompressor};
-
-#[cfg(feature = "zlib")]
-use compress::{Zlib, ZlibX};
-
-#[cfg(feature = "zstd")]
-use compress::Zstd;
 
 use std::collections::HashSet;
 use std::io;
@@ -22,13 +14,14 @@ const DATA: &[u8] = b"The quick brown fox jumps over the lazy dog";
 #[cfg(feature = "zlib")]
 #[test]
 fn zlib_roundtrip() {
-    let codec = Zlib::default();
+    let comp = compressor(Codec::Zlib).expect("compressor");
     let mut compressed = Vec::new();
     let mut src = DATA;
-    codec.compress(&mut src, &mut compressed).expect("compress");
+    comp.compress(&mut src, &mut compressed).expect("compress");
+    let decomp = decompressor(Codec::Zlib).expect("decompressor");
     let mut decompressed = Vec::new();
     let mut c_slice = compressed.as_slice();
-    codec
+    decomp
         .decompress(&mut c_slice, &mut decompressed)
         .expect("decompress");
     assert_eq!(DATA, decompressed.as_slice());
@@ -37,13 +30,14 @@ fn zlib_roundtrip() {
 #[cfg(feature = "zlib")]
 #[test]
 fn zlibx_roundtrip() {
-    let codec = ZlibX::default();
+    let comp = compressor(Codec::ZlibX).expect("compressor");
     let mut compressed = Vec::new();
     let mut src = DATA;
-    codec.compress(&mut src, &mut compressed).expect("compress");
+    comp.compress(&mut src, &mut compressed).expect("compress");
+    let decomp = decompressor(Codec::ZlibX).expect("decompressor");
     let mut decompressed = Vec::new();
     let mut c_slice = compressed.as_slice();
-    codec
+    decomp
         .decompress(&mut c_slice, &mut decompressed)
         .expect("decompress");
     assert_eq!(DATA, decompressed.as_slice());
@@ -52,13 +46,14 @@ fn zlibx_roundtrip() {
 #[cfg(feature = "zstd")]
 #[test]
 fn zstd_roundtrip() {
-    let codec = Zstd::default();
+    let comp = compressor(Codec::Zstd).expect("compressor");
     let mut compressed = Vec::new();
     let mut src = DATA;
-    codec.compress(&mut src, &mut compressed).expect("compress");
+    comp.compress(&mut src, &mut compressed).expect("compress");
+    let decomp = decompressor(Codec::Zstd).expect("decompressor");
     let mut decompressed = Vec::new();
     let mut c_slice = compressed.as_slice();
-    codec
+    decomp
         .decompress(&mut c_slice, &mut decompressed)
         .expect("decompress");
     assert_eq!(DATA, decompressed.as_slice());

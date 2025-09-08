@@ -19,6 +19,7 @@ nightly = []
 hex = "0.4"
 criterion = { version = "0.5", default-features = false }
 tempfile = "3"
+proptest = "1"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(rustversion, values("nightly"))'] }

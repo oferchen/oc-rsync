@@ -1,5 +1,4 @@
 // crates/filters/src/perdir.rs
-
 use crate::rule::RuleFlags;
 
 #[derive(Clone, Hash, PartialEq, Eq)]

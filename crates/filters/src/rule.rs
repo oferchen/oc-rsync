@@ -1,5 +1,4 @@
 // crates/filters/src/rule.rs
-
 use globset::{GlobBuilder, GlobMatcher};
 use std::path::{Path, PathBuf};
 
