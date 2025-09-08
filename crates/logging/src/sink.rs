@@ -2,7 +2,6 @@
 
 use crate::flags::StderrMode;
 use std::fs::File;
-#[allow(unused_imports)]
 use std::io::{self, Write};
 use std::path::Path;
 use tracing::{Level, Metadata};
@@ -29,6 +28,9 @@ impl<F> ProgressSink for F
 where
     F: Fn(&str) + Send + Sync,
 {
+    fn start_file(&self, _path: &Path, _total: u64, _written: u64) {}
+    fn update(&self, _written: u64) {}
+    fn finish_file(&self) {}
     fn progress(&self, line: &str) {
         self(line);
     }
