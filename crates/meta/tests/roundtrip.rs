@@ -107,8 +107,6 @@ fn default_skips_owner_group_perms() -> std::io::Result<()> {
 #[cfg(feature = "xattr")]
 #[test]
 fn roundtrip_xattrs() -> std::io::Result<()> {
-    use xattr;
-
     let dir = tempdir()?;
     let src = dir.path().join("src");
     let dst = dir.path().join("dst");
