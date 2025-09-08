@@ -10,12 +10,9 @@ N=${#FLAGS[@]}
 
 cmp_trees() {
   local a="$1" b="$2" diff_file="$3"
-  if ! rsync -an --delete -rlptgoD --acls --xattrs "$a/" "$b/" >"$diff_file"; then
-    cat "$diff_file" >&2 || true
-    return 1
-  fi
-  if [ -s "$diff_file" ]; then
-    cat "$diff_file" >&2
+  rsync -an --delete -rlptgoD --acls --xattrs "$a/" "$b/" | tee "$diff_file"
+  if [[ -s "$diff_file" ]]; then
+    echo "Trees differ" >&2
     return 1
   fi
 }
