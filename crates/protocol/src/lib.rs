@@ -1,4 +1,9 @@
 // crates/protocol/src/lib.rs
+//! Implementation of the rsync protocol.
+#![deny(unsafe_op_in_unsafe_fn, rust_2018_idioms)]
+#![deny(warnings)]
+#![warn(missing_docs)]
+
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use encoding_rs::Encoding;
 use filelist::{Decoder as FlistDecoder, Encoder as FlistEncoder, Entry as FlistEntry};

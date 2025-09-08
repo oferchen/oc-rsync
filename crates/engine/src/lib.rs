@@ -1,4 +1,8 @@
 // crates/engine/src/lib.rs
+//! Core synchronization engine applying file deltas.
+#![deny(unsafe_op_in_unsafe_fn, rust_2018_idioms)]
+#![deny(warnings)]
+#![warn(missing_docs)]
 #![allow(clippy::collapsible_if)]
 
 use std::io::{Read, Seek};

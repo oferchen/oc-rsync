@@ -1,4 +1,9 @@
 // crates/transport/src/lib.rs
+//! Transport implementations for network I/O.
+#![deny(unsafe_op_in_unsafe_fn, rust_2018_idioms)]
+#![deny(warnings)]
+#![warn(missing_docs)]
+
 use std::io::{self, Read, Write};
 use std::path::Path;
 use std::time::{Duration, Instant};

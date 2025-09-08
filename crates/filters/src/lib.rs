@@ -1,3 +1,9 @@
+// crates/filters/src/lib.rs
+//! Filtering engine for include/exclude rules.
+#![deny(unsafe_op_in_unsafe_fn, rust_2018_idioms)]
+#![deny(warnings)]
+#![warn(missing_docs)]
+
 pub mod matcher;
 pub mod parser;
 pub mod perdir;

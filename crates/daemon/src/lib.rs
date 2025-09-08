@@ -1,4 +1,8 @@
 // crates/daemon/src/lib.rs
+//! Rsync daemon implementation for serving modules.
+#![deny(unsafe_op_in_unsafe_fn, rust_2018_idioms)]
+#![deny(warnings)]
+#![warn(missing_docs)]
 #![allow(clippy::collapsible_if)]
 use std::collections::HashMap;
 use std::env;

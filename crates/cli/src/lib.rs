@@ -1,5 +1,8 @@
 // crates/cli/src/lib.rs
-
+//! Command-line interface helpers for oc-rsync.
+#![deny(unsafe_op_in_unsafe_fn, rust_2018_idioms)]
+#![deny(warnings)]
+#![warn(missing_docs)]
 #![allow(clippy::collapsible_if)]
 use std::collections::HashSet;
 use std::env;

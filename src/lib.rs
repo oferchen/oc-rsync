@@ -1,4 +1,8 @@
 // src/lib.rs
+//! Top-level library for oc-rsync synchronization configuration.
+#![deny(unsafe_op_in_unsafe_fn, rust_2018_idioms)]
+#![deny(warnings)]
+#![warn(missing_docs)]
 
 use compress::available_codecs;
 use engine::{Result, SyncOptions};

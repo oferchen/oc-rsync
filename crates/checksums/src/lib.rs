@@ -1,4 +1,9 @@
 // crates/checksums/src/lib.rs
+//! Checksum algorithms for oc-rsync.
+#![deny(unsafe_op_in_unsafe_fn, rust_2018_idioms)]
+#![deny(warnings)]
+#![warn(missing_docs)]
+
 use md4::{Digest, Md4};
 use md5::Md5;
 use sha1::Sha1;

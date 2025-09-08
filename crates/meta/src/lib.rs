@@ -1,4 +1,8 @@
 // crates/meta/src/lib.rs
+//! File metadata management utilities.
+#![deny(unsafe_op_in_unsafe_fn, rust_2018_idioms)]
+#![deny(warnings)]
+#![warn(missing_docs)]
 #![allow(clippy::collapsible_if)]
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod unix;
