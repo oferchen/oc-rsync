@@ -198,4 +198,42 @@ mod tests {
         let old_sum = sender.cfg.checksum(&data).strong;
         assert_eq!(new_sum, old_sum);
     }
+
+    #[test]
+    fn block_size_stats_literal_matches() {
+        let cfg = ChecksumConfigBuilder::new().build();
+        let block_size = 2048usize;
+        let len = block_size * 4;
+        let mut basis = vec![0u8; len];
+        for i in 0..len {
+            basis[i] = (i % 256) as u8;
+        }
+        let mut target = basis.clone();
+        let off = len / 2;
+        target[off..off + block_size].fill(0xAB);
+
+        let mut basis_f = Cursor::new(basis);
+        let mut target_f = Cursor::new(target);
+        let ops: Vec<Op> = compute_delta(
+            &cfg,
+            &mut basis_f,
+            &mut target_f,
+            block_size,
+            usize::MAX,
+            &SyncOptions::default(),
+        )
+        .unwrap()
+        .collect::<Result<_>>()
+        .unwrap();
+
+        let mut stats = Stats::default();
+        for op in ops {
+            match op {
+                Op::Data(d) => stats.literal_data += d.len() as u64,
+                Op::Copy { len, .. } => stats.matched_data += len as u64,
+            }
+        }
+
+        assert_eq!(stats.literal_data, block_size as u64);
+    }
 }
