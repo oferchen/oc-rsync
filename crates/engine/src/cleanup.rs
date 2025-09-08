@@ -2,7 +2,7 @@
 
 use rand::{Rng, distributions::Alphanumeric};
 use std::ffi::{OsStr, OsString};
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use tempfile::Builder;
@@ -222,7 +222,7 @@ pub(crate) fn open_for_read(path: &Path, _opts: &SyncOptions) -> std::io::Result
     {
         use std::os::unix::fs::OpenOptionsExt;
         if _opts.open_noatime {
-            let mut o = OpenOptions::new();
+            let mut o = std::fs::OpenOptions::new();
             o.read(true).custom_flags(libc::O_NOATIME);
             if let Ok(f) = o.open(path) {
                 return Ok(f);
