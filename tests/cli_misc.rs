@@ -472,7 +472,7 @@ fn progress_flag_shows_output() {
     assert!(stdout.contains(progress_line_raw));
 }
 
-fn sanitize_progress_line(line: &str) -> String {
+fn normalize_progress_line(line: &str) -> String {
     let mut parts: Vec<_> = line.split_whitespace().collect();
     if parts.len() >= 4 {
         parts[2] = "XKB/s";
@@ -483,13 +483,7 @@ fn sanitize_progress_line(line: &str) -> String {
     }
 }
 
-#[test]
-fn progress_parity() {
-    let norm = progress_parity_impl(&["-r", "--progress"], "progress");
-    insta::assert_snapshot!("progress_parity", norm);
-}
-
-fn progress_parity_impl(flags: &[&str], fixture: &str) -> String {
+fn progress_parity_impl(flags: &[&str], fixture: &str) -> (Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>) {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
     let dst_ours = dir.path().join("dst_ours");
@@ -515,32 +509,39 @@ fn progress_parity_impl(flags: &[&str], fixture: &str) -> String {
         .parse()
         .unwrap();
 
-    assert_eq!(Some(up_status), ours.status.code());
+    assert_eq!(Some(up_status), ours.status.code(), "exit status mismatch");
 
-    let extract = |stdout: &[u8], stderr: &[u8]| {
-        let stdout_txt = String::from_utf8_lossy(stdout).replace('\r', "\n");
-        let stderr_txt = String::from_utf8_lossy(stderr).replace('\r', "\n");
-        let find = |txt: &str| {
-            txt.lines()
-                .rev()
-                .find(|l| l.contains('%'))
-                .map(|l| l.to_string())
-        };
-        if let Some(line) = find(&stdout_txt) {
-            (line, stdout_txt, stderr_txt, "stdout")
-        } else if let Some(line) = find(&stderr_txt) {
-            (line, stdout_txt, stderr_txt, "stderr")
-        } else {
-            panic!("no progress line found");
-        }
+    (up_stdout, up_stderr, ours.stdout, ours.stderr)
+}
+
+fn extract_progress_line(stdout: &[u8], stderr: &[u8]) -> (String, String, String, &'static str) {
+    let stdout_txt = String::from_utf8_lossy(stdout).replace('\r', "\n");
+    let stderr_txt = String::from_utf8_lossy(stderr).replace('\r', "\n");
+    let find = |txt: &str| {
+        txt.lines()
+            .rev()
+            .find(|l| l.contains('%'))
+            .map(|l| l.to_string())
     };
+    if let Some(line) = find(&stdout_txt) {
+        (line, stdout_txt, stderr_txt, "stdout")
+    } else if let Some(line) = find(&stderr_txt) {
+        (line, stdout_txt, stderr_txt, "stderr")
+    } else {
+        panic!("no progress line found");
+    }
+}
 
-    let (up_line, up_stdout_txt, up_stderr_txt, up_stream) = extract(&up_stdout, &up_stderr);
-    let (our_line, our_stdout_txt, our_stderr_txt, our_stream) =
-        extract(&ours.stdout, &ours.stderr);
+fn assert_progress_stream(expected: &str, actual: &str) {
+    assert_eq!(expected, actual, "progress output stream mismatch");
+}
 
-    assert_eq!(up_stream, our_stream, "progress output stream mismatch");
-
+fn assert_non_progress_output(
+    up_stdout_txt: &str,
+    up_stderr_txt: &str,
+    our_stdout_txt: &str,
+    our_stderr_txt: &str,
+) {
     fn strip_progress(s: &str) -> String {
         s.lines()
             .filter(|l| !l.contains('%'))
@@ -548,23 +549,69 @@ fn progress_parity_impl(flags: &[&str], fixture: &str) -> String {
             .join("\n")
     }
     assert_eq!(
-        strip_progress(&up_stdout_txt),
-        strip_progress(&our_stdout_txt)
+        strip_progress(up_stdout_txt),
+        strip_progress(our_stdout_txt),
+        "stdout mismatch without progress lines",
     );
     assert_eq!(
-        strip_progress(&up_stderr_txt),
-        strip_progress(&our_stderr_txt)
+        strip_progress(up_stderr_txt),
+        strip_progress(our_stderr_txt),
+        "stderr mismatch without progress lines",
+    );
+}
+
+#[test]
+fn progress_parity() {
+    let (up_stdout, up_stderr, our_stdout, our_stderr) =
+        progress_parity_impl(&["-r", "--progress"], "progress");
+
+    let (up_line, up_stdout_txt, up_stderr_txt, up_stream) =
+        extract_progress_line(&up_stdout, &up_stderr);
+    let (our_line, our_stdout_txt, our_stderr_txt, our_stream) =
+        extract_progress_line(&our_stdout, &our_stderr);
+
+    assert_progress_stream(up_stream, our_stream);
+    assert_non_progress_output(
+        &up_stdout_txt,
+        &up_stderr_txt,
+        &our_stdout_txt,
+        &our_stderr_txt,
     );
 
-    let normalized = sanitize_progress_line(&our_line);
-    assert_eq!(sanitize_progress_line(&up_line), normalized);
-    normalized
+    let normalized = normalize_progress_line(&our_line);
+    assert_eq!(
+        normalize_progress_line(&up_line),
+        normalized,
+        "progress line mismatch",
+    );
+    insta::assert_snapshot!("progress_parity", normalized);
 }
 
 #[test]
 fn progress_parity_p() {
-    let norm = progress_parity_impl(&["-r", "-P"], "progress_p");
-    insta::assert_snapshot!("progress_parity_p", norm);
+    let (up_stdout, up_stderr, our_stdout, our_stderr) =
+        progress_parity_impl(&["-r", "-P"], "progress_p");
+
+    let (up_line, up_stdout_txt, up_stderr_txt, up_stream) =
+        extract_progress_line(&up_stdout, &up_stderr);
+    let (our_line, our_stdout_txt, our_stderr_txt, our_stream) =
+        extract_progress_line(&our_stdout, &our_stderr);
+
+    assert_progress_stream(up_stream, our_stream);
+    assert_non_progress_output(
+        &up_stdout_txt,
+        &up_stderr_txt,
+        &our_stdout_txt,
+        &our_stderr_txt,
+    );
+
+    let normalized = normalize_progress_line(&our_line);
+    assert_eq!(
+        normalize_progress_line(&up_line),
+        normalized,
+        "progress line mismatch",
+    );
+    insta::assert_snapshot!("progress_parity_p", normalized);
 }
 
 #[test]
