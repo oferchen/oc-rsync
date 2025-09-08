@@ -13,20 +13,25 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use clap::parser::ValueSource;
-use clap::{ArgMatches, FromArgMatches};
+use clap::ArgMatches;
 
+mod argparse;
 pub mod branding;
 pub mod daemon;
 mod exec;
 mod formatter;
-pub mod options;
+mod print;
 mod session;
 mod utils;
+mod validate;
+
+pub mod options {
+    pub use super::argparse::*;
+}
 
 use crate::daemon::run_daemon;
+use crate::options::{ClientOpts, ProbeOpts};
 pub use daemon::spawn_daemon_session;
-use options::{ClientOpts, ProbeOpts};
 pub use utils::{
     PathSpec, RemoteSpec, parse_iconv, parse_logging_flags, parse_remote_spec, parse_rsh,
     print_version_if_requested,
@@ -38,9 +43,9 @@ pub use engine::EngineError;
 use engine::{DeleteMode, Result, Stats, StrongHash, SyncOptions};
 use filters::{Matcher, Rule, default_cvs_rules};
 pub use formatter::{ARG_ORDER, dump_help_body, render_help};
-use logging::{InfoFlag, human_bytes, parse_escapes, progress_formatter, rate_formatter};
+use logging::{InfoFlag, parse_escapes};
 use meta::{IdKind, parse_chmod, parse_chown};
-use protocol::{ExitCode, SUPPORTED_PROTOCOLS, negotiate_version};
+use protocol::{SUPPORTED_PROTOCOLS, negotiate_version};
 use transport::{AddressFamily, parse_sockopts};
 #[cfg(unix)]
 use users::get_user_by_uid;
@@ -48,160 +53,24 @@ use users::get_user_by_uid;
 pub mod version;
 
 pub use options::cli_command;
-
-pub fn exit_code_from_error_kind(kind: clap::error::ErrorKind) -> ExitCode {
-    use clap::error::ErrorKind::*;
-    match kind {
-        InvalidValue => ExitCode::Unsupported,
-        UnknownArgument => ExitCode::SyntaxOrUsage,
-        InvalidSubcommand => ExitCode::SyntaxOrUsage,
-        NoEquals => ExitCode::SyntaxOrUsage,
-        ValueValidation => ExitCode::SyntaxOrUsage,
-        TooManyValues => ExitCode::SyntaxOrUsage,
-        TooFewValues => ExitCode::SyntaxOrUsage,
-        WrongNumberOfValues => ExitCode::SyntaxOrUsage,
-        ArgumentConflict => ExitCode::SyntaxOrUsage,
-        MissingRequiredArgument => ExitCode::SyntaxOrUsage,
-        MissingSubcommand => ExitCode::SyntaxOrUsage,
-        InvalidUtf8 => ExitCode::SyntaxOrUsage,
-        DisplayHelp => ExitCode::Ok,
-        DisplayHelpOnMissingArgumentOrSubcommand => ExitCode::SyntaxOrUsage,
-        DisplayVersion => ExitCode::Ok,
-        Io => ExitCode::FileIo,
-        Format => ExitCode::FileIo,
-        #[allow(unreachable_patterns)]
-        _ => ExitCode::SyntaxOrUsage,
-    }
-}
-
-pub fn exit_code_from_engine_error(e: &EngineError) -> ExitCode {
-    use std::io::ErrorKind;
-    match e {
-        EngineError::Io(err) => match err.kind() {
-            ErrorKind::TimedOut | ErrorKind::WouldBlock => ExitCode::ConnTimeout,
-            ErrorKind::ConnectionRefused
-            | ErrorKind::AddrNotAvailable
-            | ErrorKind::NetworkUnreachable
-            | ErrorKind::ConnectionAborted
-            | ErrorKind::ConnectionReset
-            | ErrorKind::NotConnected
-            | ErrorKind::HostUnreachable
-            | ErrorKind::NetworkDown => ExitCode::SocketIo,
-            _ => ExitCode::Protocol,
-        },
-        EngineError::MaxAlloc => ExitCode::Malloc,
-        EngineError::Exit(code, _) => *code,
-        _ => ExitCode::Protocol,
-    }
-}
-
-pub fn handle_clap_error(cmd: &clap::Command, e: clap::Error) -> ! {
-    use clap::error::ErrorKind;
-    let kind = e.kind();
-    let code = exit_code_from_error_kind(kind);
-    if kind == ErrorKind::DisplayHelp {
-        println!("{}", render_help(cmd));
-    } else {
-        let mut msg = e.to_string();
-        if matches!(kind, ErrorKind::ValueValidation | ErrorKind::InvalidValue) {
-            let first = msg.lines().next().unwrap_or("");
-            if first.contains("--block-size") || first.contains("'-B") {
-                let val = first.split('\'').nth(1).unwrap_or("");
-                msg = format!("--block-size={val} is invalid");
-            } else if let Some(rest) = first.strip_prefix("error: invalid value '") {
-                if let Some((val, rest)) = rest.split_once('\'') {
-                    if let Some(rest) = rest.strip_prefix(" for '") {
-                        if let Some((opt, _)) = rest.split_once('\'') {
-                            let opt_name = opt.split_whitespace().next().unwrap_or("");
-                            let kind = if first.contains("invalid digit") {
-                                "invalid numeric value"
-                            } else {
-                                "invalid value"
-                            };
-                            msg = format!("{opt_name}={val}: {kind}");
-                        }
-                    }
-                }
-            }
-        } else if kind == ErrorKind::UnknownArgument {
-            let first = msg.lines().next().unwrap_or("");
-            let arg = first.split('\'').nth(1).unwrap_or("");
-            msg = format!("{arg}: unknown option");
-        } else if let Some(stripped) = msg.strip_prefix("error: ") {
-            msg = stripped.to_string();
-        }
-        msg = msg.trim_end().to_string();
-        let desc = match code {
-            ExitCode::Unsupported => "requested action not supported",
-            _ => "syntax or usage error",
-        };
-        let code_num = u8::from(code);
-        let prog = branding::program_name();
-        let mut lines = msg.lines();
-        if let Some(first) = lines.next() {
-            eprintln!("{prog}: {first}");
-            for line in lines {
-                eprintln!("{line}");
-            }
-        }
-        let version = option_env!("UPSTREAM_VERSION").unwrap_or("3.4.1");
-        let line_no = option_env!("MAIN_C_SYNTAX_LINE").unwrap_or("1836");
-        eprintln!("{prog} error: {desc} (code {code_num}) at main.c({line_no}) [client={version}]",);
-    }
-    std::process::exit(u8::from(code) as i32);
-}
+pub use print::handle_clap_error;
+pub use validate::{exit_code_from_engine_error, exit_code_from_error_kind};
 
 pub fn run(matches: &clap::ArgMatches) -> Result<()> {
-    let mut opts =
-        ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
-    if opts.no_D {
-        opts.no_devices = true;
-        opts.no_specials = true;
-    }
+    let (opts, probe_opts) = validate::parse_matches(matches)?;
     if opts.daemon.daemon {
         return run_daemon(opts.daemon, matches);
     }
     let log_file_fmt = opts.log_file_format.clone().map(|s| parse_escapes(&s));
     init_logging(matches, log_file_fmt)?;
-    let probe_opts =
-        ProbeOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
     if matches.contains_id("probe") {
         return run_probe(probe_opts, matches.get_flag("quiet"));
-    }
-    if !opts.old_args && matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
-        if let Ok(val) = env::var("RSYNC_PROTECT_ARGS") {
-            if val != "0" {
-                opts.secluded_args = true;
-            }
-        }
     }
     run_client(opts, matches)
 }
 
 fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
-    if opts.paths.len() < 2 {
-        return Err(EngineError::Other("missing SRC or DST".into()));
-    }
-    let dst_arg = opts
-        .paths
-        .last()
-        .cloned()
-        .ok_or_else(|| EngineError::Other("missing SRC or DST".into()))?;
-    let srcs = opts.paths[..opts.paths.len() - 1].to_vec();
-    if opts.fuzzy && srcs.len() == 1 {
-        if let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(&dst_arg) {
-            if ps.path.is_dir() {
-                return Err(EngineError::Other("Not a directory".into()));
-            }
-        }
-    }
-    if srcs.len() > 1 {
-        if let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(dst_arg.as_os_str()) {
-            if !ps.path.is_dir() {
-                return Err(EngineError::Other("destination must be a directory".into()));
-            }
-        }
-    }
+    let (srcs, dst_arg) = validate::validate_paths(&opts)?;
     let mut total = Stats::default();
     for src in srcs {
         let stats = run_single(opts.clone(), matches, src.as_os_str(), dst_arg.as_os_str())?;
@@ -222,96 +91,9 @@ fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
         total.bytes_received += stats.bytes_received;
     }
     if opts.stats && !opts.quiet {
-        print_stats(&total, &opts);
+        print::print_stats(&total, &opts);
     }
     Ok(())
-}
-
-fn print_stats(stats: &Stats, opts: &ClientOpts) {
-    let fmt_count = |n: u64| {
-        if opts.human_readable {
-            n.to_string()
-        } else {
-            progress_formatter(n, false)
-        }
-    };
-    let fmt_bytes = |n: u64| {
-        if opts.human_readable {
-            human_bytes(n)
-        } else {
-            format!("{} bytes", progress_formatter(n, false))
-        }
-    };
-
-    println!("Number of files: {}", fmt_count(stats.files_total as u64));
-    println!(
-        "Number of created files: {}",
-        fmt_count((stats.files_created - stats.dirs_created) as u64)
-    );
-    println!(
-        "Number of deleted files: {}",
-        fmt_count(stats.files_deleted as u64)
-    );
-    println!(
-        "Number of regular files transferred: {}",
-        fmt_count(stats.files_transferred as u64)
-    );
-    println!("Total file size: {}", fmt_bytes(stats.total_file_size));
-    println!(
-        "Total transferred file size: {}",
-        fmt_bytes(stats.bytes_transferred)
-    );
-    println!("Literal data: {}", fmt_bytes(stats.literal_data));
-    println!("Matched data: {}", fmt_bytes(stats.matched_data));
-    println!("File list size: {}", fmt_count(stats.file_list_size));
-    println!(
-        "File list generation time: {:.3} seconds",
-        stats.file_list_gen_time.as_secs_f64()
-    );
-    println!(
-        "File list transfer time: {:.3} seconds",
-        stats.file_list_transfer_time.as_secs_f64()
-    );
-    println!(
-        "Total bytes sent: {}",
-        progress_formatter(stats.bytes_sent, opts.human_readable)
-    );
-    println!(
-        "Total bytes received: {}",
-        progress_formatter(stats.bytes_received, opts.human_readable)
-    );
-    let elapsed = stats.elapsed().as_secs_f64();
-    let rate = if elapsed > 0.0 {
-        let total = stats.bytes_sent + stats.bytes_received;
-        rate_formatter(total as f64 / elapsed)
-    } else {
-        rate_formatter(0.0)
-    };
-    println!(
-        "\nsent {} bytes  received {} bytes  {}",
-        progress_formatter(stats.bytes_sent, opts.human_readable),
-        progress_formatter(stats.bytes_received, opts.human_readable),
-        rate
-    );
-    if stats.bytes_transferred > 0 {
-        let speedup = stats.total_file_size as f64 / stats.bytes_transferred as f64;
-        println!(
-            "total size is {}  speedup is {:.2}",
-            progress_formatter(stats.total_file_size, opts.human_readable),
-            speedup
-        );
-    } else {
-        println!(
-            "total size is {}  speedup is 0.00",
-            progress_formatter(stats.total_file_size, opts.human_readable)
-        );
-    }
-    tracing::info!(
-        target: InfoFlag::Stats.target(),
-        files_transferred = stats.files_transferred,
-        files_deleted = stats.files_deleted,
-        bytes = stats.bytes_transferred
-    );
 }
 
 fn run_single(
@@ -1343,68 +1125,5 @@ mod tests {
 
         env::set_current_dir(prev).unwrap();
         handle.join().unwrap();
-    }
-
-    #[test]
-    fn exit_code_handles_unknown_error_kind() {
-        let kind = clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand;
-        assert_eq!(exit_code_from_error_kind(kind), ExitCode::SyntaxOrUsage);
-    }
-
-    #[test]
-    fn maps_error_kinds_to_exit_codes() {
-        use clap::error::ErrorKind::*;
-        let cases = [
-            (InvalidValue, ExitCode::Unsupported),
-            (UnknownArgument, ExitCode::SyntaxOrUsage),
-            (InvalidSubcommand, ExitCode::SyntaxOrUsage),
-            (NoEquals, ExitCode::SyntaxOrUsage),
-            (ValueValidation, ExitCode::SyntaxOrUsage),
-            (TooManyValues, ExitCode::SyntaxOrUsage),
-            (TooFewValues, ExitCode::SyntaxOrUsage),
-            (WrongNumberOfValues, ExitCode::SyntaxOrUsage),
-            (ArgumentConflict, ExitCode::SyntaxOrUsage),
-            (MissingRequiredArgument, ExitCode::SyntaxOrUsage),
-            (MissingSubcommand, ExitCode::SyntaxOrUsage),
-            (InvalidUtf8, ExitCode::SyntaxOrUsage),
-            (
-                DisplayHelpOnMissingArgumentOrSubcommand,
-                ExitCode::SyntaxOrUsage,
-            ),
-            (DisplayHelp, ExitCode::Ok),
-            (DisplayVersion, ExitCode::Ok),
-            (Io, ExitCode::FileIo),
-            (Format, ExitCode::FileIo),
-        ];
-
-        for (kind, expected) in cases {
-            assert_eq!(exit_code_from_error_kind(kind), expected);
-        }
-    }
-
-    #[test]
-    fn transient_network_errors_map_to_conn_timeout() {
-        use std::io::ErrorKind;
-        let kinds = [
-            ErrorKind::TimedOut,
-            ErrorKind::ConnectionRefused,
-            ErrorKind::AddrNotAvailable,
-            ErrorKind::NetworkUnreachable,
-            ErrorKind::WouldBlock,
-            ErrorKind::ConnectionAborted,
-            ErrorKind::ConnectionReset,
-            ErrorKind::NotConnected,
-            ErrorKind::HostUnreachable,
-            ErrorKind::NetworkDown,
-        ];
-
-        for kind in kinds {
-            let err = EngineError::Io(std::io::Error::from(kind));
-            assert_eq!(
-                exit_code_from_engine_error(&err),
-                ExitCode::ConnTimeout,
-                "{kind:?} did not map to ConnTimeout",
-            );
-        }
     }
 }
