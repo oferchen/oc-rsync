@@ -8,6 +8,18 @@ UPSTREAM="${UPSTREAM_RSYNC:-rsync}"
 FLAGS=(--archive --compress --delete)
 N=${#FLAGS[@]}
 
+cmp_trees() {
+  local a="$1" b="$2" diff_file="$3"
+  if ! rsync -an --delete -rlptgoD --acls --xattrs "$a/" "$b/" >"$diff_file"; then
+    cat "$diff_file" >&2 || true
+    return 1
+  fi
+  if [ -s "$diff_file" ]; then
+    cat "$diff_file" >&2
+    return 1
+  fi
+}
+
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
@@ -71,14 +83,7 @@ for ((mask=0; mask< (1<<N); mask++)); do
   diff "$RSYNC_EXIT" "$OC_EXIT"
 
   DIR_DIFF="$OUT_DIR/${prefix}.dir.diff"
-  if ! rsync -an --delete --acls --xattrs "$RSYNC_DST/" "$OC_DST/" >"$DIR_DIFF"; then
-    cat "$DIR_DIFF" >&2 || true
-    exit 1
-  fi
-  if [ -s "$DIR_DIFF" ]; then
-    cat "$DIR_DIFF" >&2
-    exit 1
-  fi
+  cmp_trees "$RSYNC_DST" "$OC_DST" "$DIR_DIFF"
 
   rm -rf "$RSYNC_DST" "$OC_DST"
 done
