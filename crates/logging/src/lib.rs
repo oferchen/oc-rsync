@@ -1,7 +1,7 @@
 // crates/logging/src/lib.rs
 
 use std::fmt;
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 use std::io;
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt;
@@ -14,11 +14,11 @@ use tracing::level_filters::LevelFilter;
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::{
     EnvFilter, fmt as tracing_fmt,
-    fmt::MakeWriter,
     layer::{Context, Layer, SubscriberExt},
     util::SubscriberInitExt,
 };
 
+mod flags;
 mod formatter;
 pub use formatter::RsyncFormatter;
 mod sink;
@@ -301,36 +301,15 @@ impl SubscriberConfigBuilder {
         self.cfg.stderr = stderr;
         self
     }
+mod sink;
 
-    pub fn log_file(mut self, log_file: Option<(PathBuf, Option<String>)>) -> Self {
-        self.cfg.log_file = log_file;
-        self
-    }
+pub use flags::{
+    DebugFlag, InfoFlag, LogFormat, StderrMode, SubscriberConfig, SubscriberConfigBuilder,
+};
+pub use formatter::RsyncFormatter;
+pub use sink::ProgressSink;
 
-    pub fn syslog(mut self, syslog: bool) -> Self {
-        self.cfg.syslog = syslog;
-        self
-    }
-
-    pub fn journald(mut self, journald: bool) -> Self {
-        self.cfg.journald = journald;
-        self
-    }
-
-    pub fn colored(mut self, colored: bool) -> Self {
-        self.cfg.colored = colored;
-        self
-    }
-
-    pub fn timestamps(mut self, timestamps: bool) -> Self {
-        self.cfg.timestamps = timestamps;
-        self
-    }
-
-    pub fn build(self) -> SubscriberConfig {
-        self.cfg
-    }
-}
+use crate::sink::{FileWriter, LogWriter};
 
 #[cfg(all(unix, any(feature = "syslog", feature = "journald")))]
 struct MessageVisitor {
@@ -461,66 +440,6 @@ where
             v.msg
         );
         let _ = self.sock.send(data.as_bytes());
-    }
-}
-
-#[derive(Clone, Copy)]
-struct LogWriter {
-    mode: StderrMode,
-}
-
-impl<'a> MakeWriter<'a> for LogWriter {
-    type Writer = Box<dyn io::Write + Send + 'a>;
-
-    fn make_writer(&'a self) -> Self::Writer {
-        match self.mode {
-            StderrMode::All => Box::new(io::stderr()),
-            _ => Box::new(io::stdout()),
-        }
-    }
-
-    fn make_writer_for(&'a self, meta: &tracing::Metadata<'_>) -> Self::Writer {
-        match self.mode {
-            StderrMode::All => Box::new(io::stderr()),
-            StderrMode::Client => Box::new(io::stdout()),
-            StderrMode::Errors => {
-                if meta.level() == &Level::ERROR {
-                    Box::new(io::stderr())
-                } else {
-                    Box::new(io::stdout())
-                }
-            }
-        }
-    }
-}
-
-struct FileWriter {
-    file: File,
-}
-
-struct FileWriterHandle(io::Result<File>);
-
-impl io::Write for FileWriterHandle {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match &mut self.0 {
-            Ok(f) => f.write(buf),
-            Err(e) => Err(io::Error::new(e.kind(), e.to_string())),
-        }
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        match &mut self.0 {
-            Ok(f) => f.flush(),
-            Err(e) => Err(io::Error::new(e.kind(), e.to_string())),
-        }
-    }
-}
-
-impl<'a> MakeWriter<'a> for FileWriter {
-    type Writer = FileWriterHandle;
-
-    fn make_writer(&'a self) -> Self::Writer {
-        FileWriterHandle(self.file.try_clone())
     }
 }
 

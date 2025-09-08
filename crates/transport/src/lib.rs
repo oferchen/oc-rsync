@@ -1,16 +1,23 @@
 // crates/transport/src/lib.rs
-use std::io::{self, Read, Write};
-use std::path::Path;
-use std::time::{Duration, Instant};
+use std::io;
+use std::time::Duration;
 
+mod config;
+mod daemon;
+mod factory;
 mod rate;
 #[cfg(unix)]
 pub mod ssh;
+mod stdio;
 pub mod tcp;
 
+pub use config::TransportConfig;
+pub use daemon::{DaemonTransport, SockOpt, daemon_remote_opts, parse_sockopts};
+pub use factory::TransportFactory;
 pub use rate::RateLimitedTransport;
 #[cfg(unix)]
 pub use ssh::SshStdioTransport;
+pub use stdio::{LocalPipeTransport, TimeoutTransport};
 pub use tcp::TcpTransport;
 
 #[cfg(not(unix))]
@@ -165,15 +172,6 @@ pub fn rate_limited<T: Transport>(inner: T, bwlimit: u64) -> RateLimitedTranspor
     RateLimitedTransport::new(inner, bwlimit)
 }
 
-#[doc = "Append a daemon path specification to a set of remote options."]
-pub fn daemon_remote_opts(base: &[String], path: &Path) -> Vec<String> {
-    let mut opts = base.to_vec();
-    if path != Path::new(".") {
-        opts.push(path.to_string_lossy().into_owned());
-    }
-    opts
-}
-
 pub fn pipe<S, D>(src: &mut S, dst: &mut D) -> io::Result<u64>
 where
     S: Transport,
@@ -238,264 +236,4 @@ pub trait Transport {
     fn update_timeout(&mut self) {}
 }
 
-pub struct LocalPipeTransport<R, W> {
-    reader: R,
-    writer: W,
-}
-
-impl<R, W> LocalPipeTransport<R, W> {
-    pub fn new(reader: R, writer: W) -> Self {
-        Self { reader, writer }
-    }
-
-    pub fn into_inner(self) -> (R, W) {
-        (self.reader, self.writer)
-    }
-
-    pub fn reader_mut(&mut self) -> &mut R {
-        &mut self.reader
-    }
-
-    pub fn writer_mut(&mut self) -> &mut W {
-        &mut self.writer
-    }
-}
-
-impl<R: Read, W: Write> Transport for LocalPipeTransport<R, W> {
-    fn send(&mut self, data: &[u8]) -> io::Result<()> {
-        self.writer.write_all(data)?;
-        self.writer.flush()
-    }
-
-    fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.reader.read(buf)
-    }
-
-    fn close(&mut self) -> io::Result<()> {
-        self.writer.flush()
-    }
-}
-
-pub struct TimeoutTransport<T> {
-    inner: T,
-    timeout: Option<Duration>,
-    last: Instant,
-}
-
-impl<T: Transport> TimeoutTransport<T> {
-    pub fn new(mut inner: T, timeout: Option<Duration>) -> io::Result<Self> {
-        if let Some(dur) = timeout {
-            inner.set_read_timeout(Some(dur))?;
-            inner.set_write_timeout(Some(dur))?;
-        }
-        Ok(Self {
-            inner,
-            timeout,
-            last: Instant::now(),
-        })
-    }
-
-    pub fn into_inner(self) -> T {
-        self.inner
-    }
-
-    pub fn refresh(&mut self) {
-        self.last = Instant::now();
-    }
-
-    fn check_timeout(&self) -> io::Result<()> {
-        if let Some(dur) = self.timeout
-            && self.last.elapsed() >= dur
-        {
-            return Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "connection timed out",
-            ));
-        }
-        Ok(())
-    }
-}
-
-impl<T: Transport> Transport for TimeoutTransport<T> {
-    fn send(&mut self, data: &[u8]) -> io::Result<()> {
-        self.check_timeout()?;
-        self.inner.send(data)?;
-        self.refresh();
-        Ok(())
-    }
-
-    fn receive(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.check_timeout()?;
-        let n = self.inner.receive(buf)?;
-        if n > 0 {
-            self.refresh();
-        }
-        Ok(n)
-    }
-
-    fn set_read_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
-        self.inner.set_read_timeout(dur)?;
-        self.timeout = dur;
-        Ok(())
-    }
-
-    fn set_write_timeout(&mut self, dur: Option<Duration>) -> io::Result<()> {
-        self.inner.set_write_timeout(dur)
-    }
-
-    fn update_timeout(&mut self) {
-        self.refresh();
-    }
-}
-
 pub trait SshTransport: Transport {}
-
-pub trait DaemonTransport: Transport {}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SockOpt {
-    KeepAlive(bool),
-    SendBuf(usize),
-    RecvBuf(usize),
-    IpTtl(u32),
-    IpTos(u32),
-    TcpNoDelay(bool),
-    ReuseAddr(bool),
-    BindToDevice(String),
-    IpHopLimit(u32),
-    Linger(Option<Duration>),
-    Broadcast(bool),
-    RcvTimeout(Duration),
-    SndTimeout(Duration),
-}
-
-pub fn parse_sockopts(opts: &[String]) -> Result<Vec<SockOpt>, String> {
-    opts.iter().map(|s| parse_sockopt(s)).collect()
-}
-
-fn parse_sockopt(s: &str) -> Result<SockOpt, String> {
-    if let Some((prefix, rest)) = s.split_once(':') {
-        return parse_prefixed_sockopt(prefix, rest);
-    }
-
-    let (name, value) = match s.split_once('=') {
-        Some((n, v)) => (n.trim(), Some(v.trim())),
-        None => (s.trim(), None),
-    };
-    match name {
-        "SO_KEEPALIVE" => {
-            let enabled = value.map(|v| v != "0").unwrap_or(true);
-            Ok(SockOpt::KeepAlive(enabled))
-        }
-        "SO_SNDBUF" => {
-            let v = value.ok_or_else(|| "SO_SNDBUF requires a value".to_string())?;
-            let size = v
-                .parse::<usize>()
-                .map_err(|_| "invalid SO_SNDBUF value".to_string())?;
-            Ok(SockOpt::SendBuf(size))
-        }
-        "SO_RCVBUF" => {
-            let v = value.ok_or_else(|| "SO_RCVBUF requires a value".to_string())?;
-            let size = v
-                .parse::<usize>()
-                .map_err(|_| "invalid SO_RCVBUF value".to_string())?;
-            Ok(SockOpt::RecvBuf(size))
-        }
-        "TCP_NODELAY" => {
-            let enabled = value.map(|v| v != "0").unwrap_or(true);
-            Ok(SockOpt::TcpNoDelay(enabled))
-        }
-        "SO_REUSEADDR" => {
-            let enabled = value.map(|v| v != "0").unwrap_or(true);
-            Ok(SockOpt::ReuseAddr(enabled))
-        }
-        "SO_BINDTODEVICE" => {
-            let v = value.ok_or_else(|| "SO_BINDTODEVICE requires a value".to_string())?;
-            if v.is_empty() {
-                return Err("SO_BINDTODEVICE requires a non-empty value".to_string());
-            }
-            Ok(SockOpt::BindToDevice(v.to_string()))
-        }
-        "SO_LINGER" => {
-            let dur = value
-                .map(|v| parse_u64(v).map(Duration::from_secs))
-                .transpose()?;
-            Ok(SockOpt::Linger(dur))
-        }
-        "SO_BROADCAST" => {
-            let enabled = value.map(|v| v != "0").unwrap_or(true);
-            Ok(SockOpt::Broadcast(enabled))
-        }
-        "SO_RCVTIMEO" => {
-            let v = value.ok_or_else(|| "SO_RCVTIMEO requires a value".to_string())?;
-            let secs = parse_u64(v)?;
-            Ok(SockOpt::RcvTimeout(Duration::from_secs(secs)))
-        }
-        "SO_SNDTIMEO" => {
-            let v = value.ok_or_else(|| "SO_SNDTIMEO requires a value".to_string())?;
-            let secs = parse_u64(v)?;
-            Ok(SockOpt::SndTimeout(Duration::from_secs(secs)))
-        }
-        _ => Err(format!("unknown socket option: {name}")),
-    }
-}
-
-fn parse_prefixed_sockopt(prefix: &str, rest: &str) -> Result<SockOpt, String> {
-    match prefix.to_ascii_lowercase().as_str() {
-        "ip" => {
-            let (name, value) = rest
-                .split_once('=')
-                .ok_or_else(|| "ip option requires a value".to_string())?;
-            let val = parse_u32(value)?;
-            match name.to_ascii_lowercase().as_str() {
-                "ttl" => Ok(SockOpt::IpTtl(val)),
-                "tos" => Ok(SockOpt::IpTos(val)),
-                "hoplimit" => Ok(SockOpt::IpHopLimit(val)),
-                _ => Err(format!("unknown ip socket option: {name}")),
-            }
-        }
-        _ => Err(format!("unknown socket option: {prefix}:{rest}")),
-    }
-}
-
-fn parse_u32(s: &str) -> Result<u32, String> {
-    let s = s.trim();
-    if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
-        u32::from_str_radix(hex, 16).map_err(|_| "invalid numeric value".to_string())
-    } else {
-        s.parse::<u32>()
-            .map_err(|_| "invalid numeric value".to_string())
-    }
-}
-
-fn parse_u64(s: &str) -> Result<u64, String> {
-    let s = s.trim();
-    if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
-        u64::from_str_radix(hex, 16).map_err(|_| "invalid numeric value".to_string())
-    } else {
-        s.parse::<u64>()
-            .map_err(|_| "invalid numeric value".to_string())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::{self, Cursor};
-
-    #[test]
-    fn timeout_errors_at_exact_duration() {
-        let reader = Cursor::new(Vec::new());
-        let writer = Cursor::new(Vec::new());
-        let dur = Duration::from_millis(100);
-        let mut t =
-            TimeoutTransport::new(LocalPipeTransport::new(reader, writer), Some(dur)).unwrap();
-
-        t.last = Instant::now() - dur + Duration::from_millis(1);
-        t.send(b"ok").unwrap();
-
-        t.last = Instant::now() - dur;
-        let err = t.send(b"fail").expect_err("timeout error");
-        assert_eq!(err.kind(), io::ErrorKind::TimedOut);
-    }
-}
