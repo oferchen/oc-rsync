@@ -3825,6 +3825,107 @@ fn files_from_zero_separated_list_includes_directories() {
 }
 
 #[test]
+fn files_from_single_file_creates_implied_directories() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let rsync_dst = dir.path().join("rsync");
+    let oc_dst = dir.path().join("oc");
+    fs::create_dir_all(src.join("foo/bar")).unwrap();
+    fs::write(src.join("foo/bar/baz.txt"), b"k").unwrap();
+    fs::create_dir_all(&rsync_dst).unwrap();
+    fs::create_dir_all(&oc_dst).unwrap();
+    let list = dir.path().join("files.lst");
+    fs::write(&list, "foo/bar/baz.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    let status = std::process::Command::new("rsync")
+        .args([
+            "-r",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            rsync_dst.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            oc_dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(oc_dst.join("foo").is_dir());
+    assert!(oc_dst.join("foo/bar").is_dir());
+    assert!(oc_dst.join("foo/bar/baz.txt").is_file());
+
+    let diff = std::process::Command::new("diff")
+        .arg("-r")
+        .arg(&rsync_dst)
+        .arg(&oc_dst)
+        .status()
+        .unwrap();
+    assert!(diff.success(), "directory trees differ");
+}
+
+#[test]
+fn files_from_single_file_no_implied_dirs_fails_like_rsync() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let rsync_dst = dir.path().join("rsync");
+    let oc_dst = dir.path().join("oc");
+    fs::create_dir_all(src.join("foo/bar")).unwrap();
+    fs::write(src.join("foo/bar/baz.txt"), b"k").unwrap();
+    fs::create_dir_all(&rsync_dst).unwrap();
+    fs::create_dir_all(&oc_dst).unwrap();
+    let list = dir.path().join("files.lst");
+    fs::write(&list, "foo/bar/baz.txt\n").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    let rsync_status = std::process::Command::new("rsync")
+        .args([
+            "-r",
+            "--no-implied-dirs",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            rsync_dst.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(!rsync_status.success());
+
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--no-implied-dirs",
+            "--files-from",
+            list.to_str().unwrap(),
+            &src_arg,
+            oc_dst.to_str().unwrap(),
+        ])
+        .assert()
+        .failure();
+
+    let diff = std::process::Command::new("diff")
+        .arg("-r")
+        .arg(&rsync_dst)
+        .arg(&oc_dst)
+        .status()
+        .unwrap();
+    assert!(diff.success(), "directory trees differ");
+    assert!(!oc_dst.join("foo/bar/baz.txt").exists());
+}
+
+#[test]
 fn files_from_zero_separated_list_directory_without_slash_excludes_siblings() {
     let dir = tempdir().unwrap();
     let src = dir.path().join("src");
