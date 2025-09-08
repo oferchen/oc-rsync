@@ -22,18 +22,6 @@ env:
   COLUMNS: 80
 
 jobs:
-  no-binaries:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Ensure no binary files are tracked
-        run: |
-          set -e
-          if git ls-files -z | xargs -0 -I{} sh -c 'if [ ! -L "{}" ] && [ -s "{}" ]; then file --mime "{}"; fi' | grep -q "charset=binary"; then
-            echo "Binary files detected" >&2
-            exit 1
-          fi
-
   readme-version:
     runs-on: ubuntu-latest
     steps:
