@@ -9,7 +9,7 @@ use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 
 use compress::available_codecs;
 use engine::{IdMapper, SyncOptions, sync};
-use filetime::{FileTime, set_file_atime, set_file_mtime, set_file_times, set_symlink_file_times};
+use filetime::{FileTime, set_file_mtime, set_file_times, set_symlink_file_times};
 use filters::Matcher;
 use meta::{IdKind, parse_chmod, parse_chown, parse_id_map};
 use nix::sys::stat::{Mode, SFlag, mknod};
@@ -17,8 +17,6 @@ use nix::unistd::{Gid, Uid, chown, mkfifo};
 #[cfg(feature = "acl")]
 use posix_acl::{ACL_READ, ACL_WRITE, PosixACL, Qualifier};
 use tempfile::tempdir;
-#[cfg(feature = "xattr")]
-use xattr;
 
 #[test]
 fn perms_roundtrip() {
@@ -925,7 +923,7 @@ fn metadata_matches_source() {
     assert!(cr_dst.is_some());
 }
 
-#[cfg(all(feature = "xattr"))]
+#[cfg(feature = "xattr")]
 #[test]
 fn fake_super_stores_xattrs() {
     let tmp = tempdir().unwrap();
@@ -980,7 +978,7 @@ fn super_overrides_fake_super() {
     assert!(xattr::get(&dst_file, "user.rsync.uid").unwrap().is_none());
 }
 
-#[cfg(all(feature = "xattr"))]
+#[cfg(feature = "xattr")]
 #[test]
 fn xattrs_roundtrip_fake_super() {
     let tmp = tempdir().unwrap();
@@ -1006,7 +1004,7 @@ fn xattrs_roundtrip_fake_super() {
     assert_eq!(&val[..], b"val");
 }
 
-#[cfg(all(feature = "acl"))]
+#[cfg(feature = "acl")]
 #[test]
 fn acls_roundtrip_default_acl() {
     let tmp = tempdir().unwrap();

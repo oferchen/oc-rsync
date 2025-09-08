@@ -64,8 +64,6 @@ fn write_prunes_and_removes_default() -> std::io::Result<()> {
 #[cfg(feature = "xattr")]
 #[test]
 fn fake_super_stores_acls() -> std::io::Result<()> {
-    use xattr;
-
     let dir = tempdir()?;
     let file = dir.path().join("f");
     fs::write(&file, b"hi")?;

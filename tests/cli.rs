@@ -23,8 +23,6 @@ use std::time::Duration;
 use tempfile::{TempDir, tempdir, tempdir_in};
 #[cfg(unix)]
 use users::{get_current_gid, get_current_uid, get_group_by_gid, get_user_by_uid};
-#[cfg(all(unix, feature = "xattr"))]
-use xattr as _;
 mod common;
 use common::read_golden;
 
