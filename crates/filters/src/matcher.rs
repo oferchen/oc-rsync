@@ -1,3 +1,4 @@
+// crates/filters/src/matcher.rs — extracted from lib.rs to handle rule matching and caching; public API preserved via re-exports.
 #![allow(clippy::collapsible_if)]
 
 use crate::{
