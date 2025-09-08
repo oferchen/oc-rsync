@@ -23,6 +23,15 @@ fn parse_rsh_arg(value: &str) -> Result<RshCommand, String> {
     parse_rsh(Some(value.to_string())).map_err(|e| e.to_string())
 }
 
+fn parse_nonzero_size(value: &str) -> Result<usize, String> {
+    let size = parse_size::<usize>(value)?;
+    if size == 0 {
+        Err("value must be greater than 0".into())
+    } else {
+        Ok(size)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 #[clap(rename_all = "UPPER")]
 pub enum OutBuf {
@@ -577,7 +586,7 @@ pub(crate) struct ClientOpts {
         long = "block-size",
         value_name = "SIZE",
         help_heading = "Misc",
-        value_parser = parse_size::<usize>,
+        value_parser = parse_nonzero_size,
     )]
     pub block_size: Option<usize>,
     #[arg(
