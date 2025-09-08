@@ -26,19 +26,15 @@ use tempfile::{TempDir, tempdir, tempdir_in};
 use users::{get_current_gid, get_current_uid, get_group_by_gid, get_user_by_uid};
 mod common;
 use common::read_golden;
+mod util;
+use util::setup_files_from_env;
 
 #[test]
 fn files_from_from0_matches_rsync() {
-    let tmp = tempdir().unwrap();
-    let src = tmp.path().join("src");
+    let (tmp, src, ours_dst) =
+        setup_files_from_env(&[("include_me.txt", b"hi"), ("omit.log", b"nope")]);
     let rsync_dst = tmp.path().join("rsync");
-    let ours_dst = tmp.path().join("ours");
-    fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&rsync_dst).unwrap();
-    fs::create_dir_all(&ours_dst).unwrap();
-
-    fs::write(src.join("include_me.txt"), "hi").unwrap();
-    fs::write(src.join("omit.log"), "nope").unwrap();
 
     let list = tmp.path().join("list");
     fs::write(&list, b"include_me.txt\0omit.log\0").unwrap();
@@ -84,19 +80,14 @@ fn files_from_from0_matches_rsync() {
 }
 #[test]
 fn files_from_nested_file_creates_parent_dirs() {
-    let tmp = tempdir().unwrap();
-    let src = tmp.path().join("src");
-    let dst = tmp.path().join("dst");
-    fs::create_dir_all(src.join("foo/bar")).unwrap();
-    fs::create_dir_all(src.join("qux/sub")).unwrap();
-    fs::create_dir_all(src.join("other")).unwrap();
-    fs::write(src.join("foo/bar/baz.txt"), b"data").unwrap();
-    fs::write(src.join("foo/bar/skip.txt"), b"no").unwrap();
-    fs::write(src.join("foo/other.txt"), b"no").unwrap();
-    fs::write(src.join("qux/sub/keep.txt"), b"data").unwrap();
-    fs::write(src.join("qux/junk.txt"), b"data").unwrap();
-    fs::write(src.join("other/file.txt"), b"no").unwrap();
-    fs::create_dir_all(&dst).unwrap();
+    let (tmp, src, dst) = setup_files_from_env(&[
+        ("foo/bar/baz.txt", b"data"),
+        ("foo/bar/skip.txt", b"no"),
+        ("foo/other.txt", b"no"),
+        ("qux/sub/keep.txt", b"data"),
+        ("qux/junk.txt", b"data"),
+        ("other/file.txt", b"no"),
+    ]);
     let list = tmp.path().join("list");
     fs::write(&list, "foo/bar/baz.txt\n").unwrap();
     let src_arg = format!("{}/", src.display());
@@ -149,19 +140,14 @@ fn files_from_nested_file_creates_parent_dirs() {
 }
 #[test]
 fn files_from_directory_copies_entire_tree() {
-    let tmp = tempdir().unwrap();
-    let src = tmp.path().join("src");
-    let dst = tmp.path().join("dst");
-    fs::create_dir_all(src.join("foo/bar")).unwrap();
-    fs::create_dir_all(src.join("qux/sub")).unwrap();
-    fs::create_dir_all(src.join("other")).unwrap();
-    fs::write(src.join("foo/bar/baz.txt"), b"data").unwrap();
-    fs::write(src.join("foo/bar/skip.txt"), b"no").unwrap();
-    fs::write(src.join("foo/other.txt"), b"no").unwrap();
-    fs::write(src.join("qux/sub/keep.txt"), b"data").unwrap();
-    fs::write(src.join("qux/junk.txt"), b"data").unwrap();
-    fs::write(src.join("other/file.txt"), b"no").unwrap();
-    fs::create_dir_all(&dst).unwrap();
+    let (tmp, src, dst) = setup_files_from_env(&[
+        ("foo/bar/baz.txt", b"data"),
+        ("foo/bar/skip.txt", b"no"),
+        ("foo/other.txt", b"no"),
+        ("qux/sub/keep.txt", b"data"),
+        ("qux/junk.txt", b"data"),
+        ("other/file.txt", b"no"),
+    ]);
     let list = tmp.path().join("list");
     fs::write(&list, "qux/\n").unwrap();
     let src_arg = format!("{}/", src.display());
@@ -209,19 +195,14 @@ fn files_from_directory_copies_entire_tree() {
 }
 #[test]
 fn files_from_dirs_and_nested_paths_from0() {
-    let tmp = tempdir().unwrap();
-    let src = tmp.path().join("src");
-    let dst = tmp.path().join("dst");
-    fs::create_dir_all(src.join("foo/bar")).unwrap();
-    fs::create_dir_all(src.join("qux/sub")).unwrap();
-    fs::create_dir_all(src.join("other")).unwrap();
-    fs::write(src.join("foo/bar/baz.txt"), b"data").unwrap();
-    fs::write(src.join("foo/bar/skip.txt"), b"no").unwrap();
-    fs::write(src.join("foo/other.txt"), b"no").unwrap();
-    fs::write(src.join("qux/sub/keep.txt"), b"data").unwrap();
-    fs::write(src.join("qux/junk.txt"), b"data").unwrap();
-    fs::write(src.join("other/file.txt"), b"no").unwrap();
-    fs::create_dir_all(&dst).unwrap();
+    let (tmp, src, dst) = setup_files_from_env(&[
+        ("foo/bar/baz.txt", b"data"),
+        ("foo/bar/skip.txt", b"no"),
+        ("foo/other.txt", b"no"),
+        ("qux/sub/keep.txt", b"data"),
+        ("qux/junk.txt", b"data"),
+        ("other/file.txt", b"no"),
+    ]);
     let list = tmp.path().join("list");
     fs::write(&list, b"foo/bar/baz.txt\0qux/\0").unwrap();
     let src_arg = format!("{}/", src.display());
@@ -250,14 +231,11 @@ fn files_from_dirs_and_nested_paths_from0() {
 }
 #[test]
 fn files_from_list_transfers_only_listed_files() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    fs::create_dir_all(&src).unwrap();
-    fs::create_dir_all(&dst).unwrap();
-    fs::write(src.join("keep.txt"), b"k").unwrap();
-    fs::write(src.join("other file.txt"), b"o").unwrap();
-    fs::write(src.join("skip.txt"), b"s").unwrap();
+    let (dir, src, dst) = setup_files_from_env(&[
+        ("keep.txt", b"k"),
+        ("other file.txt", b"o"),
+        ("skip.txt", b"s"),
+    ]);
     let list = dir.path().join("files.txt");
     fs::write(&list, "keep.txt\nother\\ file.txt\n#comment\n").unwrap();
 
@@ -280,15 +258,12 @@ fn files_from_list_transfers_only_listed_files() {
 }
 #[test]
 fn files_from_list_transfers_nested_paths() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    fs::create_dir_all(src.join("a/b")).unwrap();
-    fs::create_dir_all(src.join("a/d/sub")).unwrap();
-    fs::write(src.join("a/b/file.txt"), b"f").unwrap();
-    fs::write(src.join("a/b/other.txt"), b"o").unwrap();
-    fs::write(src.join("a/d/sub/nested.txt"), b"n").unwrap();
-    fs::write(src.join("unlisted.txt"), b"u").unwrap();
+    let (dir, src, dst) = setup_files_from_env(&[
+        ("a/b/file.txt", b"f"),
+        ("a/b/other.txt", b"o"),
+        ("a/d/sub/nested.txt", b"n"),
+        ("unlisted.txt", b"u"),
+    ]);
     let list = dir.path().join("files.txt");
     fs::write(&list, "a/b/file.txt\na/d/\n").unwrap();
 
@@ -312,14 +287,11 @@ fn files_from_list_transfers_nested_paths() {
 }
 #[test]
 fn files_from_list_nested_file_excludes_siblings() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    fs::create_dir_all(src.join("a/b")).unwrap();
-    fs::create_dir_all(src.join("a/c")).unwrap();
-    fs::write(src.join("a/b/file.txt"), b"f").unwrap();
-    fs::write(src.join("a/b/other.txt"), b"o").unwrap();
-    fs::write(src.join("a/c/unrelated.txt"), b"u").unwrap();
+    let (dir, src, dst) = setup_files_from_env(&[
+        ("a/b/file.txt", b"f"),
+        ("a/b/other.txt", b"o"),
+        ("a/c/unrelated.txt", b"u"),
+    ]);
     let list = dir.path().join("files.txt");
     fs::write(&list, "a/b/file.txt\n").unwrap();
 
@@ -342,13 +314,8 @@ fn files_from_list_nested_file_excludes_siblings() {
 }
 #[test]
 fn files_from_list_directory_excludes_siblings() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    fs::create_dir_all(src.join("dir/sub")).unwrap();
-    fs::create_dir_all(src.join("other")).unwrap();
-    fs::write(src.join("dir/sub/file.txt"), b"k").unwrap();
-    fs::write(src.join("other/file.txt"), b"o").unwrap();
+    let (dir, src, dst) =
+        setup_files_from_env(&[("dir/sub/file.txt", b"k"), ("other/file.txt", b"o")]);
     let list = dir.path().join("files.txt");
     fs::write(&list, "dir/\n").unwrap();
 
@@ -370,13 +337,8 @@ fn files_from_list_directory_excludes_siblings() {
 }
 #[test]
 fn files_from_list_directory_without_slash_excludes_siblings() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    fs::create_dir_all(src.join("dir/sub")).unwrap();
-    fs::create_dir_all(src.join("other")).unwrap();
-    fs::write(src.join("dir/sub/file.txt"), b"k").unwrap();
-    fs::write(src.join("other/file.txt"), b"o").unwrap();
+    let (dir, src, dst) =
+        setup_files_from_env(&[("dir/sub/file.txt", b"k"), ("other/file.txt", b"o")]);
     let list = dir.path().join("files.txt");
     fs::write(&list, "dir\n").unwrap();
 
@@ -398,12 +360,7 @@ fn files_from_list_directory_without_slash_excludes_siblings() {
 }
 #[test]
 fn files_from_zero_separated_list() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::write(src.join("keep me.txt"), b"k").unwrap();
-    std::fs::write(src.join("skip.txt"), b"s").unwrap();
+    let (dir, src, dst) = setup_files_from_env(&[("keep me.txt", b"k"), ("skip.txt", b"s")]);
     let list = dir.path().join("files.lst");
     std::fs::write(&list, b"keep me.txt\0").unwrap();
 
@@ -426,12 +383,7 @@ fn files_from_zero_separated_list() {
 }
 #[test]
 fn files_from_zero_separated_list_with_crlf() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::write(src.join("keep me.txt"), b"k").unwrap();
-    std::fs::write(src.join("skip.txt"), b"s").unwrap();
+    let (dir, src, dst) = setup_files_from_env(&[("keep me.txt", b"k"), ("skip.txt", b"s")]);
     let list = dir.path().join("files.lst");
     std::fs::write(&list, b"keep me.txt\r\n\0").unwrap();
 
@@ -454,12 +406,7 @@ fn files_from_zero_separated_list_with_crlf() {
 }
 #[test]
 fn files_from_zero_separated_list_allows_hash() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::write(src.join("#keep.txt"), b"k").unwrap();
-    std::fs::write(src.join("skip.txt"), b"s").unwrap();
+    let (dir, src, dst) = setup_files_from_env(&[("#keep.txt", b"k"), ("skip.txt", b"s")]);
     let list = dir.path().join("files.lst");
     std::fs::write(&list, b"#keep.txt\0").unwrap();
 
@@ -482,11 +429,7 @@ fn files_from_zero_separated_list_allows_hash() {
 }
 #[test]
 fn files_from_zero_separated_list_includes_directories() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    std::fs::create_dir_all(src.join("dir/sub")).unwrap();
-    std::fs::write(src.join("dir/sub/file.txt"), b"k").unwrap();
+    let (dir, src, dst) = setup_files_from_env(&[("dir/sub/file.txt", b"k")]);
     let list = dir.path().join("files.lst");
     std::fs::write(&list, b"dir\0").unwrap();
 
@@ -628,13 +571,8 @@ fn files_from_single_file_no_implied_dirs_fails_like_rsync() {
 }
 #[test]
 fn files_from_zero_separated_list_directory_without_slash_excludes_siblings() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    fs::create_dir_all(src.join("dir/sub")).unwrap();
-    fs::create_dir_all(src.join("other")).unwrap();
-    fs::write(src.join("dir/sub/file.txt"), b"k").unwrap();
-    fs::write(src.join("other/file.txt"), b"o").unwrap();
+    let (dir, src, dst) =
+        setup_files_from_env(&[("dir/sub/file.txt", b"k"), ("other/file.txt", b"o")]);
     let list = dir.path().join("files.lst");
     fs::write(&list, b"dir\0").unwrap();
 
@@ -657,12 +595,7 @@ fn files_from_zero_separated_list_directory_without_slash_excludes_siblings() {
 }
 #[test]
 fn files_from_list_file() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::write(src.join("keep.txt"), b"k").unwrap();
-    std::fs::write(src.join("skip.txt"), b"s").unwrap();
+    let (dir, src, dst) = setup_files_from_env(&[("keep.txt", b"k"), ("skip.txt", b"s")]);
     let list = dir.path().join("files.lst");
     std::fs::write(&list, "# comment\nkeep.txt\n\n").unwrap();
 
@@ -684,12 +617,7 @@ fn files_from_list_file() {
 }
 #[test]
 fn files_from_list_handles_crlf_and_comment_spaces() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::write(src.join("keep.txt"), b"k").unwrap();
-    std::fs::write(src.join("skip.txt"), b"s").unwrap();
+    let (dir, src, dst) = setup_files_from_env(&[("keep.txt", b"k"), ("skip.txt", b"s")]);
     let list = dir.path().join("files.lst");
     std::fs::write(&list, "  # comment\r\nkeep.txt\r\n\r\n").unwrap();
 
@@ -711,11 +639,7 @@ fn files_from_list_handles_crlf_and_comment_spaces() {
 }
 #[test]
 fn files_from_list_includes_directories() {
-    let dir = tempdir().unwrap();
-    let src = dir.path().join("src");
-    let dst = dir.path().join("dst");
-    std::fs::create_dir_all(src.join("dir/sub")).unwrap();
-    std::fs::write(src.join("dir/sub/file.txt"), b"k").unwrap();
+    let (dir, src, dst) = setup_files_from_env(&[("dir/sub/file.txt", b"k")]);
     let list = dir.path().join("files.lst");
     std::fs::write(&list, "dir\n").unwrap();
 
