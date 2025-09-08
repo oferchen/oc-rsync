@@ -71,6 +71,7 @@ insta = { version = "1", features = ["json"] }
 hex = "0.4"
 oc-rsync-cli = { path = "crates/cli", features = ["dump-help"] }
 walkdir = "2"
+walk = { path = "crates/walk" }
 
 [target.'cfg(unix)'.dev-dependencies]
 nix = { version = "0.30.1", features = ["user", "fs", "process"] }
