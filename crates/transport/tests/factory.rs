@@ -25,3 +25,13 @@ fn ssh_spawn_failure() {
     };
     assert_eq!(err.kind(), io::ErrorKind::NotFound);
 }
+
+#[test]
+fn rsync_missing_host() {
+    for uri in ["rsync://", "rsync://:873"] {
+        let err = TransportFactory::from_uri(uri)
+            .err()
+            .expect("expected error");
+        assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+    }
+}

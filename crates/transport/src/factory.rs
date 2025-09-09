@@ -55,7 +55,12 @@ impl TransportFactory {
                     return Err(io::Error::new(io::ErrorKind::InvalidInput, "missing host"));
                 }
                 let mut parts = host_port.split(':');
-                let host = parts.next().unwrap();
+                let host = parts
+                    .next()
+                    .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "missing host"))?;
+                if host.is_empty() {
+                    return Err(io::Error::new(io::ErrorKind::InvalidInput, "missing host"));
+                }
                 let port = parts.next().and_then(|p| p.parse().ok()).unwrap_or(873);
                 let transport = TcpTransport::connect(host, port, None, None)?;
                 Ok(Box::new(transport))
