@@ -3,7 +3,7 @@
 #[cfg(unix)]
 use nix::unistd::{Gid, Uid, chown};
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufReader, Cursor, Seek, SeekFrom};
+use std::io::{self, BufReader, Cursor, ErrorKind, Seek, SeekFrom};
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
@@ -290,31 +290,15 @@ impl Receiver {
         } else {
             File::create(&tmp_dest).map_err(|e| io_context(&tmp_dest, e))?
         };
-        if !self.opts.write_devices {
-            out.set_len(resume)?;
-            out.seek(SeekFrom::Start(resume))?;
-            if self.opts.preallocate {
-                preallocate(&out, src_len)?;
-            }
-        }
         let file_codec = if should_compress(src, &self.opts.skip_compress) {
             self.codec
         } else {
             None
         };
-        let mut progress = if self.opts.progress {
-            Some(Progress::new(
-                &dest,
-                src_len,
-                self.opts.human_readable,
-                resume,
-                self.opts.quiet,
-                self.progress_sink.clone(),
-            ))
-        } else {
-            None
-        };
-        let ops = delta.into_iter().map(|op_res| {
+
+        let mut ops_vec = Vec::new();
+        let mut dest_len = 0u64;
+        for op_res in delta {
             let mut op = op_res?;
             if let Some(codec) = file_codec {
                 if let Op::Data(ref mut d) = op {
@@ -338,9 +322,42 @@ impl Receiver {
                     };
                 }
             }
-            Ok(op)
-        });
-        if let Err(e) = apply_delta(&mut basis, ops, &mut out, &self.opts, 0, &mut progress) {
+            dest_len += match &op {
+                Op::Data(d) => d.len() as u64,
+                Op::Copy { len, .. } => *len as u64,
+            };
+            ops_vec.push(op);
+        }
+
+        if !self.opts.write_devices {
+            out.set_len(resume)?;
+            out.seek(SeekFrom::Start(resume))?;
+            if self.opts.preallocate {
+                preallocate(&out, dest_len)?;
+            }
+        }
+
+        let mut progress = if self.opts.progress {
+            Some(Progress::new(
+                &dest,
+                dest_len,
+                self.opts.human_readable,
+                resume,
+                self.opts.quiet,
+                self.progress_sink.clone(),
+            ))
+        } else {
+            None
+        };
+
+        if let Err(e) = apply_delta(
+            &mut basis,
+            ops_vec.into_iter().map(Ok),
+            &mut out,
+            &self.opts,
+            0,
+            &mut progress,
+        ) {
             if let EngineError::Io(ref io) = e {
                 if io.kind() == ErrorKind::UnexpectedEof || io.kind() == ErrorKind::NotFound {
                     return Err(EngineError::Other(format!(
