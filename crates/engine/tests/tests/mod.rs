@@ -91,7 +91,8 @@ pub fn requires_capability(cap: CapabilityCheck) -> bool {
                 fs::write(&file, b"hi").unwrap();
                 match PosixACL::read_acl(&file) {
                     Ok(mut acl) => {
-                        if acl.set(Qualifier::User(12345), ACL_READ).is_ok() {
+                        acl.set(Qualifier::User(12345), ACL_READ);
+                        if acl.write_acl(&file).is_ok() {
                             return true;
                         }
                         println!("Skipping test: ACLs not supported");
