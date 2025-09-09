@@ -126,9 +126,11 @@ impl Receiver {
         } else if (self.opts.partial || self.opts.append || self.opts.append_verify)
             && existing_partial.is_some()
         {
-            existing_partial
-                .clone()
-                .expect("existing partial path should exist when resuming transfers")
+            existing_partial.clone().ok_or_else(|| {
+                EngineError::Other(
+                    "existing partial path should exist when resuming transfers".into(),
+                )
+            })?
         } else {
             dest.clone()
         };
@@ -155,9 +157,11 @@ impl Receiver {
         } else if (self.opts.partial || self.opts.append || self.opts.append_verify)
             && existing_partial.is_some()
         {
-            existing_partial
-                .clone()
-                .expect("existing partial path should exist when resuming transfers")
+            existing_partial.clone().ok_or_else(|| {
+                EngineError::Other(
+                    "existing partial path should exist when resuming transfers".into(),
+                )
+            })?
         } else if self.opts.partial {
             partial.clone()
         } else {
@@ -336,7 +340,17 @@ impl Receiver {
             }
             Ok(op)
         });
-        apply_delta(&mut basis, ops, &mut out, &self.opts, 0, &mut progress)?;
+        if let Err(e) = apply_delta(&mut basis, ops, &mut out, &self.opts, 0, &mut progress) {
+            if let EngineError::Io(ref io) = e {
+                if io.kind() == ErrorKind::UnexpectedEof || io.kind() == ErrorKind::NotFound {
+                    return Err(EngineError::Other(format!(
+                        "basis file '{}' is missing or too short",
+                        basis_path.display(),
+                    )));
+                }
+            }
+            return Err(e);
+        }
         if let Some(mut p) = progress {
             p.finish();
         }
