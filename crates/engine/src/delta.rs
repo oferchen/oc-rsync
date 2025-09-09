@@ -8,7 +8,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use checksums::ChecksumConfig;
-use logging::{InfoFlag, ProgressSink, progress_formatter, rate_formatter};
+use logging::{InfoFlag, Observer, progress_formatter, rate_formatter};
 use std::sync::Arc;
 
 use crate::{EngineError, Result, SyncOptions, ensure_max_alloc};
@@ -199,7 +199,7 @@ pub(crate) struct Progress {
     human_readable: bool,
     quiet: bool,
     file_idx: usize,
-    sink: Arc<dyn ProgressSink>,
+    sink: Arc<dyn Observer>,
 }
 
 pub(crate) static TOTAL_FILES: AtomicUsize = AtomicUsize::new(0);
@@ -215,7 +215,7 @@ impl Progress {
         human_readable: bool,
         initial: u64,
         quiet: bool,
-        sink: Arc<dyn ProgressSink>,
+        sink: Arc<dyn Observer>,
     ) -> Self {
         if !quiet {
             use std::io::Write as _;

@@ -1,4 +1,5 @@
 // crates/logging/src/flags.rs
+#![allow(missing_docs)]
 
 use clap::ValueEnum;
 use std::path::PathBuf;

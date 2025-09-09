@@ -1,4 +1,5 @@
 // crates/logging/src/sink.rs
+#![allow(missing_docs)]
 
 use crate::flags::StderrMode;
 use std::fs::File;
@@ -7,24 +8,30 @@ use std::path::Path;
 use tracing::{Level, Metadata};
 use tracing_subscriber::fmt::MakeWriter;
 
-pub trait ProgressSink: Send + Sync {
+/// Observer for progress events produced by the engine.
+pub trait Observer: Send + Sync {
+    /// A new file transfer is starting.
     fn start_file(&self, path: &Path, total: u64, written: u64);
+    /// Progress for the current file has been updated.
     fn update(&self, written: u64);
+    /// The current file transfer has finished.
     fn finish_file(&self);
+    /// Emit a formatted progress line.
     fn progress(&self, line: &str);
 }
 
+/// Observer that discards all progress events.
 #[derive(Debug, Default)]
-pub struct NopProgressSink;
+pub struct NopObserver;
 
-impl ProgressSink for NopProgressSink {
+impl Observer for NopObserver {
     fn start_file(&self, _path: &Path, _total: u64, _written: u64) {}
     fn update(&self, _written: u64) {}
     fn finish_file(&self) {}
     fn progress(&self, _line: &str) {}
 }
 
-impl<F> ProgressSink for F
+impl<F> Observer for F
 where
     F: Fn(&str) + Send + Sync,
 {

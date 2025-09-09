@@ -1,4 +1,5 @@
 // crates/logging/src/formatter.rs
+#![allow(missing_docs)]
 use crate::parse_escapes;
 use std::collections::HashMap;
 use std::fmt;
