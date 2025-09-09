@@ -7,8 +7,6 @@ use tracing::{Event, Subscriber};
 use tracing_serde::{AsSerde, fields::AsMap};
 use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields, format::Writer};
 use tracing_subscriber::registry::LookupSpan;
-
-/// Formats tracing events as newline-delimited JSON objects.
 #[derive(Default)]
 pub struct JsonFormatter;
 
