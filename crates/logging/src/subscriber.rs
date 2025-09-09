@@ -3,6 +3,7 @@
 
 use crate::flags::{LogFormat, SubscriberConfig};
 use crate::formatter::RsyncFormatter;
+use crate::json_format::JsonFormatter;
 use crate::sink::{FileWriter, LogWriter};
 use std::fmt;
 use std::fs::OpenOptions;
@@ -213,13 +214,13 @@ pub fn subscriber(cfg: SubscriberConfig) -> io::Result<Box<dyn tracing::Subscrib
     let base = if colored { base } else { base.with_ansi(false) };
     let fmt_layer = if timestamps {
         match format {
-            LogFormat::Json => base.json().boxed(),
+            LogFormat::Json => base.event_format(JsonFormatter).boxed(),
             LogFormat::Text => base.event_format(RsyncFormatter::new(None)).boxed(),
         }
     } else {
         let base = base.without_time();
         match format {
-            LogFormat::Json => base.json().boxed(),
+            LogFormat::Json => base.event_format(JsonFormatter).boxed(),
             LogFormat::Text => base.event_format(RsyncFormatter::new(None)).boxed(),
         }
     };
@@ -268,7 +269,7 @@ pub fn subscriber(cfg: SubscriberConfig) -> io::Result<Box<dyn tracing::Subscrib
             .with_writer(FileWriter { file })
             .with_ansi(false);
         let layer = match fmt.as_deref() {
-            Some("json") => base.json().boxed(),
+            Some("json") => base.event_format(JsonFormatter).boxed(),
             Some(spec) => base
                 .event_format(RsyncFormatter::new(Some(spec.to_string())))
                 .boxed(),

@@ -1,7 +1,7 @@
 // crates/logging/tests/json_format.rs
 use logging::{LogFormat, SubscriberConfig, subscriber};
-use serde_json::Value;
-use std::fs;
+use serde_json::{Deserializer, Value};
+use std::fs::File;
 use tempfile::tempdir;
 use tracing::info;
 
@@ -17,9 +17,13 @@ fn json_formatting_works() {
     let subscriber = subscriber(cfg).unwrap();
     tracing::subscriber::with_default(subscriber, || {
         info!(target: "test", foo = 1, "hello");
+        info!(target: "test", bar = 2, "world");
     });
-    let contents = fs::read_to_string(path).unwrap();
-    let v: Value = serde_json::from_str(&contents).unwrap();
-    assert_eq!(v["fields"]["message"], "hello");
-    assert_eq!(v["fields"]["foo"], 1);
+    let file = File::open(path).unwrap();
+    let stream = Deserializer::from_reader(file).into_iter::<Value>();
+    let values: Vec<Value> = stream.collect::<Result<_, _>>().unwrap();
+    assert_eq!(values[0]["fields"]["message"], "hello");
+    assert_eq!(values[0]["fields"]["foo"], 1);
+    assert_eq!(values[1]["fields"]["message"], "world");
+    assert_eq!(values[1]["fields"]["bar"], 2);
 }
