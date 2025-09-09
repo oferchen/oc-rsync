@@ -122,7 +122,7 @@ CFG
   "$server_bin" --daemon --no-detach --port "$port" --config "$tmp/rsyncd.conf" &
   local pid=$!
   for _ in {1..50}; do
-    if nc -z localhost "$port" >/dev/null 2>&1; then
+    if nc -z 127.0.0.1 "$port" >/dev/null 2>&1; then
       printf '%s\t%s\t%s\n' "$port" "$tmp/root" "$pid"
       return 0
     fi
@@ -168,10 +168,10 @@ for ver in "${RSYNC_VERSIONS[@]}"; do
       vanished) (sleep 0.1 && rm -f "$src/file.txt") & ;;
     esac
     if [[ "$name" == resume ]]; then
-      timeout 1 "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null 2>&1 || true
+      timeout 1 "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://127.0.0.1:$port/mod" >/dev/null 2>&1 || true
     fi
     set +e
-    "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" > /tmp/oc.stdout 2> /tmp/oc.stderr
+    "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://127.0.0.1:$port/mod" > /tmp/oc.stdout 2> /tmp/oc.stderr
     status_oc=$?
     set -e
     if [[ "$name" == vanished ]]; then
@@ -193,10 +193,10 @@ for ver in "${RSYNC_VERSIONS[@]}"; do
       vanished) (sleep 0.1 && rm -f "$src/file.txt") & ;;
     esac
     if [[ "$name" == resume ]]; then
-      timeout 1 "$UPSTREAM" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" >/dev/null 2>&1 || true
+      timeout 1 "$UPSTREAM" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://127.0.0.1:$port/mod" >/dev/null 2>&1 || true
     fi
     set +e
-    "$UPSTREAM" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://localhost:$port/mod" > /tmp/up.stdout 2> /tmp/up.stderr
+    "$UPSTREAM" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://127.0.0.1:$port/mod" > /tmp/up.stdout 2> /tmp/up.stderr
     status_up=$?
     set -e
     if [[ "$name" == vanished ]]; then
