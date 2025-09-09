@@ -20,6 +20,7 @@ pub enum CapabilityCheck {
     Acls,
 }
 
+#[allow(clippy::needless_return)]
 pub fn requires_capability(cap: CapabilityCheck) -> bool {
     match cap {
         CapabilityCheck::CapChown => {

@@ -1,7 +1,11 @@
 // crates/meta/tests/apply.rs
+#[cfg(any(all(unix, feature = "xattr"), windows))]
 use filetime::FileTime;
+#[cfg(any(all(unix, feature = "xattr"), windows))]
 use meta::{Metadata, Options};
+#[cfg(any(all(unix, feature = "xattr"), windows))]
 use std::fs;
+#[cfg(any(all(unix, feature = "xattr"), windows))]
 use tempfile::tempdir;
 
 #[cfg(all(unix, feature = "xattr"))]

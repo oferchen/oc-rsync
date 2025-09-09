@@ -9,8 +9,8 @@ fn block_size_literal_stats() {
     let block_size = 1024usize;
     let len = block_size * 2;
     let mut basis = vec![0u8; len];
-    for i in 0..len {
-        basis[i] = (i % 256) as u8;
+    for (i, b) in basis.iter_mut().enumerate().take(len) {
+        *b = (i % 256) as u8;
     }
     let mut target = basis.clone();
     let off = len / 2;
@@ -47,8 +47,8 @@ fn block_size_unaligned_literal_stats() {
     let block_size = 1024usize;
     let len = block_size * 2;
     let mut basis = vec![0u8; len];
-    for i in 0..len {
-        basis[i] = (i % 256) as u8;
+    for (i, b) in basis.iter_mut().enumerate().take(len) {
+        *b = (i % 256) as u8;
     }
     let mut target = basis.clone();
     let off = block_size / 2;
