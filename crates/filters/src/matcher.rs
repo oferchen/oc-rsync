@@ -225,6 +225,8 @@ impl Matcher {
             seq += 1;
         }
 
+        let per_dir_offset = self.rules.iter().map(|(i, _)| *i).max().unwrap_or(0) + 1;
+
         if let Some(root) = &self.root {
             let mut dirs = vec![root.clone()];
             if let Some(parent) = path.parent() {
@@ -243,7 +245,7 @@ impl Matcher {
             for (depth_idx, d) in dirs.iter().enumerate() {
                 let depth = depth_idx + 1;
                 for (idx, rule) in self.dir_rules_at(d, for_delete, xattr)? {
-                    let mut idx_adj = idx;
+                    let mut idx_adj = per_dir_offset + idx;
                     if let Some(ref f) = fname {
                         let mut is_merge = self.per_dir.iter().any(|(_, pd)| pd.file == *f);
                         if !is_merge {
