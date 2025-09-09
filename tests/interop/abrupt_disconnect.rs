@@ -20,7 +20,7 @@ fn ssh_abrupt_disconnect_matches_rsync() {
     fs::write(&rsh, b"#!/bin/sh\nexit 0\n").unwrap();
     fs::set_permissions(&rsh, fs::Permissions::from_mode(0o755)).unwrap();
 
-    let src_spec = format!("localhost:{}/", src_dir.display());
+    let src_spec = format!("127.0.0.1:{}/", src_dir.display());
     let dst_spec = dst_dir.to_str().unwrap();
 
     let ours = Command::cargo_bin("oc-rsync")

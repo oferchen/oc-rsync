@@ -100,13 +100,13 @@ for ver in "${VERSIONS[@]}"; do
 
   RSYNC_LOG="$TMP/rsync-$ver.log"
   RSYNC_LIST="$TMP/rsync-$ver.list"
-  "$BIN" "${FLAGS[@]}" -e "$SSH" "$SRC/" "root@localhost:/tmp/rsync_dst_$ver" >"$RSYNC_LOG" 2>&1
-  "$BIN" "${FLAGS[@]}" -n --list-only -e "$SSH" "$SRC/" "root@localhost:/tmp/rsync_dst_$ver" >"$RSYNC_LIST" 2>&1
+  "$BIN" "${FLAGS[@]}" -e "$SSH" "$SRC/" "root@127.0.0.1:/tmp/rsync_dst_$ver" >"$RSYNC_LOG" 2>&1
+  "$BIN" "${FLAGS[@]}" -n --list-only -e "$SSH" "$SRC/" "root@127.0.0.1:/tmp/rsync_dst_$ver" >"$RSYNC_LIST" 2>&1
 
   OC_RSYNC_LOG="$TMP/oc_rsync-$ver.log"
   OC_RSYNC_LIST="$TMP/oc_rsync-$ver.list"
-  "$OC_RSYNC" "${FLAGS[@]}" "$SRC/" "root@localhost:/tmp/oc_rsync_dst_$ver" >"$OC_RSYNC_LOG" 2>&1
-  "$OC_RSYNC" --list-only "${FLAGS[@]}" "$SRC/" "root@localhost:/tmp/oc_rsync_dst_$ver" >"$OC_RSYNC_LIST" 2>&1
+  "$OC_RSYNC" "${FLAGS[@]}" "$SRC/" "root@127.0.0.1:/tmp/oc_rsync_dst_$ver" >"$OC_RSYNC_LOG" 2>&1
+  "$OC_RSYNC" --list-only "${FLAGS[@]}" "$SRC/" "root@127.0.0.1:/tmp/oc_rsync_dst_$ver" >"$OC_RSYNC_LIST" 2>&1
 
   if [ "${UPDATE:-0}" = "1" ]; then
     cp "$RSYNC_LOG" "$WIRE_DIR/rsync-$ver.log"
