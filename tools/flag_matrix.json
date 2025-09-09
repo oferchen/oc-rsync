@@ -426,7 +426,7 @@
   },
   {
     "flag": "--no-implied-dirs",
-    "status": "Ignored",
+    "status": "Supported",
     "notes": ""
   },
   {

@@ -86,7 +86,7 @@
 | --munge-links | Ignored |  |
 | --no-OPTION | Ignored |  |
 | --no-detach | Supported |  |
-| --no-implied-dirs | Ignored |  |
+| --no-implied-dirs | Supported |  |
 | --no-motd | Supported |  |
 | --numeric-ids | Supported |  |
 | --old-args | Supported |  |
