@@ -31,8 +31,6 @@ impl Metadata {
             mtime,
             atime,
             crtime,
-            #[cfg(feature = "xattr")]
-            xattrs: Vec::new(),
             #[cfg(feature = "acl")]
             acl: Vec::new(),
             #[cfg(feature = "acl")]

@@ -4,12 +4,12 @@ use meta::{Metadata, Options};
 use std::fs;
 use tempfile::tempdir;
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "xattr"))]
 use nix::unistd::{getgid, getuid};
-#[cfg(unix)]
+#[cfg(all(unix, feature = "xattr"))]
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "xattr"))]
 #[test]
 fn apply_permissions_and_ownership() -> std::io::Result<()> {
     let dir = tempdir()?;
@@ -24,7 +24,6 @@ fn apply_permissions_and_ownership() -> std::io::Result<()> {
         mtime: FileTime::from_unix_time(0, 0),
         atime: None,
         crtime: None,
-        #[cfg(feature = "xattr")]
         xattrs: Vec::new(),
         #[cfg(feature = "acl")]
         acl: Vec::new(),
@@ -60,8 +59,6 @@ fn apply_permissions_and_ownership() -> std::io::Result<()> {
         mtime: FileTime::from_unix_time(0, 0),
         atime: None,
         crtime: None,
-        #[cfg(feature = "xattr")]
-        xattrs: Vec::new(),
         #[cfg(feature = "acl")]
         acl: Vec::new(),
         #[cfg(feature = "acl")]
