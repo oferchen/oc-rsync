@@ -1,7 +1,7 @@
-// crates/filters/tests/rsync_special_chars.rs
+// tests/interop/rsync_special_chars.rs
 #![cfg(all(unix, feature = "interop"))]
 
-use filters::{Matcher, parse};
+use filters::{parse, Matcher};
 use proptest::prelude::*;
 use std::collections::HashSet;
 use std::fs;

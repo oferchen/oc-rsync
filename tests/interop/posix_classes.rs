@@ -1,7 +1,7 @@
-// crates/filters/tests/posix_classes.rs
+// tests/interop/posix_classes.rs
 #![cfg(all(unix, feature = "interop"))]
 
-use filters::{Matcher, parse};
+use filters::{parse, Matcher};
 use std::collections::HashSet;
 use std::fs;
 use std::process::Command;
