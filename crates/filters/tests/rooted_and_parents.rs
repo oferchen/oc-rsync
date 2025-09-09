@@ -21,3 +21,10 @@ fn trailing_double_star() {
     assert_eq!(rooted, "dir/sub/**");
     assert_eq!(parents, vec!["dir/".to_string(), "dir/sub/".to_string()]);
 }
+
+#[test]
+fn single_segment_with_question_mark_has_no_parents() {
+    let (rooted, parents) = rooted_and_parents("file?.log");
+    assert_eq!(rooted, "file?.log");
+    assert!(parents.is_empty());
+}

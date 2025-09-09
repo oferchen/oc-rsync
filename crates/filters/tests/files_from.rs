@@ -150,6 +150,25 @@ fn files_from_parent_dirs_precede_file_entry() {
 }
 
 #[test]
+fn files_from_directory_prune_order_preserves_input() {
+    let tmp = tempdir().unwrap();
+    let list = tmp.path().join("list");
+    fs::write(&list, "b/\na/\n").unwrap();
+    let filter = format!("files-from {}\n", list.display());
+    let mut v = HashSet::new();
+    let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
+    let idx_b = rules
+        .iter()
+        .position(|r| matches!(r, filters::Rule::Exclude(d) if d.pattern == "/b/*"))
+        .expect("missing /b/* rule");
+    let idx_a = rules
+        .iter()
+        .position(|r| matches!(r, filters::Rule::Exclude(d) if d.pattern == "/a/*"))
+        .expect("missing /a/* rule");
+    assert!(idx_b < idx_a);
+}
+
+#[test]
 fn files_from_directory_merges_rsync_filter() {
     let tmp = tempdir().unwrap();
     fs::create_dir_all(tmp.path().join("dir")).unwrap();

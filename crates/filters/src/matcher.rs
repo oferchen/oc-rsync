@@ -38,14 +38,18 @@ fn rule_matches(data: &RuleData, path: &Path, is_dir: bool) -> bool {
         .trim_start_matches("./");
     if matched && pat_core.starts_with("**/") {
         let rest = &pat_core[3..];
-        if rest.contains('*')
+        if (rest.contains('*') || rest.contains('?'))
             && !rest.contains("**")
             && path.components().count() > 1
             && rest != "*"
+            && rest != "?"
         {
             matched = false;
         }
-    } else if matched && pat_core.contains('*') && !pat_core.contains("**") {
+    } else if matched
+        && (pat_core.contains('*') || pat_core.contains('?'))
+        && !pat_core.contains("**")
+    {
         if data.has_slash {
             let pat_segments = pat_core
                 .trim_matches('/')
@@ -56,7 +60,7 @@ fn rule_matches(data: &RuleData, path: &Path, is_dir: bool) -> bool {
             if path_segments != pat_segments {
                 matched = false;
             }
-        } else if path.components().count() > 1 && pat_core != "*" {
+        } else if path.components().count() > 1 && pat_core != "*" && pat_core != "?" {
             matched = false;
         }
     }
