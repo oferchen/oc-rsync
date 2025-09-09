@@ -14,6 +14,11 @@ fn uid_gid_mapping() -> std::io::Result<()> {
     fs::write(&src, b"hello")?;
     fs::write(&dst, b"world")?;
 
+    if !Uid::effective().is_root() {
+        eprintln!("skipping uid_gid_mapping: requires root");
+        return Ok(());
+    }
+
     chown(&src, Some(Uid::from_raw(1)), Some(Gid::from_raw(1)))?;
     chown(&dst, Some(Uid::from_raw(0)), Some(Gid::from_raw(0)))?;
 

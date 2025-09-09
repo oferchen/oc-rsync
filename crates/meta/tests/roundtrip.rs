@@ -6,7 +6,7 @@ use std::os::unix::fs::PermissionsExt;
 use filetime::FileTime;
 use meta::{Metadata, Options};
 use nix::fcntl::AT_FDCWD;
-use nix::unistd::{Gid, Uid, chown, geteuid};
+use nix::unistd::{Gid, Uid, chown};
 use std::time::SystemTime;
 use tempfile::tempdir;
 
@@ -44,7 +44,7 @@ fn roundtrip_full_metadata() -> std::io::Result<()> {
         FileTime::from_unix_time(1, 0),
         FileTime::from_unix_time(1, 0),
     )?;
-    if geteuid().as_raw() != 0 {
+    if !Uid::effective().is_root() {
         eprintln!("skipping roundtrip_full_metadata: requires root");
         return Ok(());
     }
@@ -87,7 +87,7 @@ fn default_skips_owner_group_perms() -> std::io::Result<()> {
         nix::sys::stat::Mode::from_bits_truncate(0o600),
         nix::sys::stat::FchmodatFlags::NoFollowSymlink,
     )?;
-    if geteuid().as_raw() != 0 {
+    if !Uid::effective().is_root() {
         eprintln!("skipping default_skips_owner_group_perms: requires root");
         return Ok(());
     }
