@@ -205,8 +205,8 @@ mod tests {
         let block_size = 2048usize;
         let len = block_size * 4;
         let mut basis = vec![0u8; len];
-        for i in 0..len {
-            basis[i] = (i % 256) as u8;
+        for (i, b) in basis.iter_mut().enumerate().take(len) {
+            *b = (i % 256) as u8;
         }
         let mut target = basis.clone();
         let off = len / 2;

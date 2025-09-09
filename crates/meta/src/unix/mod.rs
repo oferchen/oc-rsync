@@ -20,7 +20,7 @@ use std::os::unix::ffi::OsStrExt;
 
 use std::ffi::OsStr;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "xattr"))]
 mod xattr {
     pub use real_xattr::{get, get_deref, remove, remove_deref, set};
     use std::ffi::OsString;
@@ -964,13 +964,12 @@ pub fn gid_to_name(gid: u32) -> Option<String> {
     get_group_by_gid(gid).map(|g| g.name().to_string_lossy().into_owned())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "xattr"))]
 mod tests {
     use super::*;
     use std::fs;
     use tempfile::tempdir;
 
-    #[cfg(feature = "xattr")]
     #[test]
     fn missing_xattr_between_list_and_get() -> io::Result<()> {
         let dir = tempdir()?;

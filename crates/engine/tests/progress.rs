@@ -47,10 +47,14 @@ fn receiver_emits_progress_events() {
     let dest_path = dir.path().join("dest");
 
     let sink = Arc::new(MockSink::default());
-    let mut opts = SyncOptions::default();
-    opts.progress = true;
-    opts.quiet = true;
-    let mut recv = Receiver::new(None, opts);
+    let mut recv = Receiver::new(
+        None,
+        SyncOptions {
+            progress: true,
+            quiet: true,
+            ..Default::default()
+        },
+    );
     recv.set_progress_sink(sink.clone());
 
     let delta = vec![Ok(Op::Data(b"abcd".to_vec()))];
