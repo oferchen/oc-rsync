@@ -1,6 +1,5 @@
 // crates/filters/tests/special_chars.rs
-// Verify handling of negated character classes and rule modifiers without relying on rsync.
-use filters::{parse, Matcher};
+use filters::{Matcher, parse};
 use std::collections::HashSet;
 
 fn m(rules_src: &str) -> Matcher {
