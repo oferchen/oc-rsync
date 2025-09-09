@@ -1,5 +1,5 @@
 // crates/engine/tests/attrs.rs
-
+#![doc = "Ownership tests require `CAP_CHOWN`. Device tests require `CAP_MKNOD`. \\nXattr and ACL tests skip when unsupported."]
 #![cfg(unix)]
 #![allow(
     clippy::needless_return,
@@ -24,6 +24,8 @@ use nix::unistd::{Gid, Uid, chown, mkfifo};
 #[cfg(feature = "acl")]
 use posix_acl::{ACL_READ, ACL_WRITE, PosixACL, Qualifier};
 use tempfile::tempdir;
+
+mod tests;
 
 #[test]
 fn perms_roundtrip() {
@@ -78,6 +80,9 @@ fn chmod_applies() {
 
 #[test]
 fn chown_applies() {
+    if !tests::requires_capability(tests::CapabilityCheck::CapChown) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -105,8 +110,7 @@ fn chown_applies() {
 
 #[test]
 fn chown_matches_rsync() {
-    if !Uid::effective().is_root() {
-        println!("Skipping chown_matches_rsync test: requires root");
+    if !tests::requires_capability(tests::CapabilityCheck::CapChown) {
         return;
     }
     let tmp = tempdir().unwrap();
@@ -338,6 +342,9 @@ fn crtimes_roundtrip() {
 
 #[test]
 fn owner_roundtrip() {
+    if !tests::requires_capability(tests::CapabilityCheck::CapChown) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -364,6 +371,9 @@ fn owner_roundtrip() {
 
 #[test]
 fn group_roundtrip() {
+    if !tests::requires_capability(tests::CapabilityCheck::CapChown) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -446,6 +456,9 @@ fn hard_links_roundtrip() {
 #[cfg(feature = "xattr")]
 #[test]
 fn xattrs_roundtrip() {
+    if !tests::requires_capability(tests::CapabilityCheck::Xattrs) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -472,6 +485,9 @@ fn xattrs_roundtrip() {
 #[cfg(feature = "xattr")]
 #[test]
 fn symlink_xattrs_roundtrip() {
+    if !tests::requires_capability(tests::CapabilityCheck::Xattrs) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -479,10 +495,7 @@ fn symlink_xattrs_roundtrip() {
     fs::create_dir_all(&dst).unwrap();
     fs::write(src.join("file"), b"hi").unwrap();
     std::os::unix::fs::symlink("file", src.join("link")).unwrap();
-    if xattr::set(src.join("link"), "user.test", b"val").is_err() {
-        eprintln!("Skipping symlink_xattrs_roundtrip test: xattrs not supported");
-        return;
-    }
+    xattr::set(src.join("link"), "user.test", b"val").unwrap();
     sync(
         &src,
         &dst,
@@ -495,19 +508,16 @@ fn symlink_xattrs_roundtrip() {
         },
     )
     .unwrap();
-    let val = match xattr::get(dst.join("link"), "user.test") {
-        Ok(Some(v)) => v,
-        _ => {
-            eprintln!("Skipping symlink_xattrs_roundtrip test: xattrs not supported");
-            return;
-        }
-    };
+    let val = xattr::get(dst.join("link"), "user.test").unwrap().unwrap();
     assert_eq!(&val[..], b"val");
 }
 
 #[cfg(feature = "acl")]
 #[test]
 fn acls_roundtrip() {
+    if !tests::requires_capability(tests::CapabilityCheck::Acls) {
+        return;
+    }
     use posix_acl::{ACL_READ, PosixACL, Qualifier};
 
     let tmp = tempdir().unwrap();
@@ -592,6 +602,9 @@ fn acls_roundtrip() {
 #[cfg(feature = "acl")]
 #[test]
 fn acls_imply_perms() {
+    if !tests::requires_capability(tests::CapabilityCheck::Acls) {
+        return;
+    }
     use posix_acl::{ACL_READ, PosixACL, Qualifier};
     use std::os::unix::fs::PermissionsExt;
 
@@ -633,6 +646,9 @@ fn acls_imply_perms() {
 
 #[test]
 fn devices_roundtrip() {
+    if !tests::requires_capability(tests::CapabilityCheck::CapMknod) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -665,6 +681,9 @@ fn devices_roundtrip() {
 
 #[test]
 fn copy_devices_creates_regular_files() {
+    if !tests::requires_capability(tests::CapabilityCheck::CapMknod) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -698,6 +717,9 @@ fn copy_devices_creates_regular_files() {
 
 #[test]
 fn copy_devices_handles_zero() {
+    if !tests::requires_capability(tests::CapabilityCheck::CapMknod) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -933,6 +955,9 @@ fn metadata_matches_source() {
 #[cfg(feature = "xattr")]
 #[test]
 fn fake_super_stores_xattrs() {
+    if !tests::requires_capability(tests::CapabilityCheck::Xattrs) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -958,8 +983,9 @@ fn fake_super_stores_xattrs() {
 #[cfg(all(unix, feature = "xattr"))]
 #[test]
 fn super_overrides_fake_super() {
-    if !Uid::effective().is_root() {
-        println!("Skipping super_overrides_fake_super test: requires root");
+    if !tests::requires_capability(tests::CapabilityCheck::CapChown)
+        || !tests::requires_capability(tests::CapabilityCheck::Xattrs)
+    {
         return;
     }
     let tmp = tempdir().unwrap();
@@ -988,6 +1014,9 @@ fn super_overrides_fake_super() {
 #[cfg(feature = "xattr")]
 #[test]
 fn xattrs_roundtrip_fake_super() {
+    if !tests::requires_capability(tests::CapabilityCheck::Xattrs) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -1014,6 +1043,9 @@ fn xattrs_roundtrip_fake_super() {
 #[cfg(feature = "acl")]
 #[test]
 fn acls_roundtrip_default_acl() {
+    if !tests::requires_capability(tests::CapabilityCheck::Acls) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
@@ -1042,6 +1074,9 @@ fn acls_roundtrip_default_acl() {
 
 #[test]
 fn usermap_groupmap_names() {
+    if !tests::requires_capability(tests::CapabilityCheck::CapChown) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");

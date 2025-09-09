@@ -1,4 +1,5 @@
 // crates/engine/tests/write_devices.rs
+#![doc = "Requires `CAP_MKNOD` to create device nodes."]
 #![cfg(unix)]
 
 use std::fs;
@@ -9,9 +10,13 @@ use engine::{SyncOptions, sync};
 use filters::Matcher;
 use nix::sys::stat::{Mode, SFlag, mknod};
 use tempfile::tempdir;
+mod tests;
 
 #[test]
 fn requires_flag_to_write_devices() {
+    if !tests::requires_capability(tests::CapabilityCheck::CapMknod) {
+        return;
+    }
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let dst = tmp.path().join("dst");
