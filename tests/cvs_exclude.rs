@@ -61,6 +61,7 @@ fn cvs_exclude_parity() {
 
 #[test]
 fn cvs_exclude_nested_override() {
+    /* Regression test for duplicate :C rules with --cvs-exclude (GH-1667) */
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     fs::create_dir_all(&src).unwrap();

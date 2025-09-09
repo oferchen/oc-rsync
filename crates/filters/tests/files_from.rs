@@ -159,11 +159,11 @@ fn files_from_directory_prune_order_preserves_input() {
     let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
     let idx_b = rules
         .iter()
-        .position(|r| matches!(r, filters::Rule::Exclude(d) if d.pattern == "/b/*"))
+        .position(|r| matches!(r, filters::Rule::Exclude(d) if d.pattern() == "/b/*"))
         .expect("missing /b/* rule");
     let idx_a = rules
         .iter()
-        .position(|r| matches!(r, filters::Rule::Exclude(d) if d.pattern == "/a/*"))
+        .position(|r| matches!(r, filters::Rule::Exclude(d) if d.pattern() == "/a/*"))
         .expect("missing /a/* rule");
     assert!(idx_b < idx_a);
 }
