@@ -790,8 +790,7 @@ pub fn parse_with_options(
                         return Err(ParseError::RecursiveInclude(path));
                     }
                     let pats = parse_list_file(&path, from0)?;
-                    let mut dirs: std::collections::BTreeSet<String> =
-                        std::collections::BTreeSet::new();
+                    let mut dirs: Vec<String> = Vec::new();
                     for pat in pats {
                         let anchored = if pat.starts_with('/') {
                             pat.clone()
@@ -828,7 +827,9 @@ pub fn parse_with_options(
                                 pattern: anc.clone(),
                             };
                             rules.push(Rule::ImpliedDir(data));
-                            dirs.insert(anc.clone());
+                            if !dirs.contains(anc) {
+                                dirs.push(anc.clone());
+                            }
                         }
                         if let Some(last) = ancestors.last() {
                             if is_dir {
@@ -856,7 +857,9 @@ pub fn parse_with_options(
                                     pattern: last.to_string(),
                                 };
                                 rules.push(Rule::Include(data));
-                                dirs.insert(last.clone());
+                                if !dirs.contains(last) {
+                                    dirs.push(last.clone());
+                                }
                             } else {
                                 let line = if from0 {
                                     format!("+{last}\n")
@@ -1320,7 +1323,9 @@ pub fn rooted_and_parents(pat: &str) -> (String, Vec<String>) {
             break;
         }
     }
-    if finished {
+    if !trimmed.contains('/') {
+        dirs.clear();
+    } else if finished {
         dirs.pop();
     }
     (rooted, dirs)
