@@ -456,7 +456,8 @@ fn hard_links_roundtrip() {
 #[cfg(feature = "xattr")]
 #[test]
 fn xattrs_roundtrip() {
-    if !tests::requires_capability(tests::CapabilityCheck::Xattrs) {
+    if let Err(e) = engine::xattrs::ensure_supported() {
+        println!("Skipping test: {e}");
         return;
     }
     let tmp = tempdir().unwrap();
@@ -485,7 +486,8 @@ fn xattrs_roundtrip() {
 #[cfg(feature = "xattr")]
 #[test]
 fn symlink_xattrs_roundtrip() {
-    if !tests::requires_capability(tests::CapabilityCheck::Xattrs) {
+    if let Err(e) = engine::xattrs::ensure_supported() {
+        println!("Skipping test: {e}");
         return;
     }
     let tmp = tempdir().unwrap();
@@ -955,7 +957,8 @@ fn metadata_matches_source() {
 #[cfg(feature = "xattr")]
 #[test]
 fn fake_super_stores_xattrs() {
-    if !tests::requires_capability(tests::CapabilityCheck::Xattrs) {
+    if let Err(e) = engine::xattrs::ensure_supported() {
+        println!("Skipping test: {e}");
         return;
     }
     let tmp = tempdir().unwrap();
@@ -983,9 +986,11 @@ fn fake_super_stores_xattrs() {
 #[cfg(all(unix, feature = "xattr"))]
 #[test]
 fn super_overrides_fake_super() {
-    if !tests::requires_capability(tests::CapabilityCheck::CapChown)
-        || !tests::requires_capability(tests::CapabilityCheck::Xattrs)
-    {
+    if !tests::requires_capability(tests::CapabilityCheck::CapChown) {
+        return;
+    }
+    if let Err(e) = engine::xattrs::ensure_supported() {
+        println!("Skipping test: {e}");
         return;
     }
     let tmp = tempdir().unwrap();
@@ -1014,7 +1019,8 @@ fn super_overrides_fake_super() {
 #[cfg(feature = "xattr")]
 #[test]
 fn xattrs_roundtrip_fake_super() {
-    if !tests::requires_capability(tests::CapabilityCheck::Xattrs) {
+    if let Err(e) = engine::xattrs::ensure_supported() {
+        println!("Skipping test: {e}");
         return;
     }
     let tmp = tempdir().unwrap();
