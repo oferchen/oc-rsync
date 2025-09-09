@@ -99,6 +99,29 @@ fn walker_files_from_enumerates_parent_dirs() {
 }
 
 #[test]
+fn files_from_parent_dirs_precede_file_entry() {
+    let (tmp, _src, _dst) = setup_files_from_env(&[("foo/bar/baz.txt", b"data")]);
+    let list = tmp.path().join("list");
+    fs::write(&list, "foo\nfoo/bar/\nfoo/bar/baz.txt\n").unwrap();
+    let filter = format!("files-from {}\n", list.display());
+    let mut v = HashSet::new();
+    let rules = parse_with_options(&filter, false, &mut v, 0, None).unwrap();
+    fn rule_matches(r: &filters::Rule, path: &str) -> bool {
+        let matcher = Matcher::new(vec![r.clone()]);
+        matcher.is_included(path).unwrap()
+    }
+    let file_idx = rules
+        .iter()
+        .rposition(|r| rule_matches(r, "foo/bar/baz.txt") && !rule_matches(r, "foo/bar"))
+        .expect("file rule not found");
+    assert!(rule_matches(&rules[file_idx - 2], "foo"));
+    assert!(!rule_matches(&rules[file_idx - 2], "foo/bar"));
+    assert!(rule_matches(&rules[file_idx - 1], "foo/bar"));
+    assert!(!rule_matches(&rules[file_idx - 1], "foo/bar/baz.txt"));
+    assert!(rule_matches(&rules[file_idx], "foo/bar/baz.txt"));
+}
+
+#[test]
 fn files_from_dirs_matches_rsync() {
     let (tmp, src, _) =
         setup_files_from_env(&[("foo/bar/baz", b"data"), ("qux/sub/keep.txt", b"data")]);
