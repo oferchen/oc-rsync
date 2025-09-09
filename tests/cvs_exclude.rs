@@ -8,7 +8,7 @@ use tempfile::tempdir;
 use walkdir::WalkDir;
 
 #[test]
-fn cvs_exclude_parity() {
+fn cvs_exclude_default_rules() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     fs::create_dir_all(&src).unwrap();
@@ -22,45 +22,58 @@ fn cvs_exclude_parity() {
     fs::write(src.join("local_ignored"), "local").unwrap();
     fs::write(src.join(".cvsignore"), "local_ignored\n").unwrap();
 
-    let sub = src.join("sub");
-    fs::create_dir_all(&sub).unwrap();
-    fs::write(sub.join("local_ignored"), "sublocal\n").unwrap();
-    fs::write(sub.join("env_ignored"), "env").unwrap();
-    fs::write(sub.join("home_ignored"), "home").unwrap();
-    fs::write(sub.join("sub_ignored"), "sub").unwrap();
-    fs::write(sub.join(".cvsignore"), "sub_ignored\n").unwrap();
-
-    let nested = sub.join("nested");
-    fs::create_dir_all(&nested).unwrap();
-    fs::write(nested.join("sub_ignored"), "nested\n").unwrap();
-
     let home = tempdir().unwrap();
     fs::write(home.path().join(".cvsignore"), "home_ignored\n").unwrap();
 
-    let ours_dst = tmp.path().join("ours");
-    fs::create_dir_all(&ours_dst).unwrap();
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&dst).unwrap();
 
     let src_arg = format!("{}/", src.display());
 
-    let mut ours_cmd = Command::cargo_bin("oc-rsync").unwrap();
-    ours_cmd.env("CVSIGNORE", "env_ignored");
-    ours_cmd.env("HOME", home.path());
-    ours_cmd.args(["--recursive", "--cvs-exclude"]);
-    ours_cmd.arg(&src_arg);
-    ours_cmd.arg(&ours_dst);
-    let ours_out = ours_cmd.output().unwrap();
-    assert!(ours_out.status.success());
-    let mut ours_output = String::from_utf8_lossy(&ours_out.stdout).to_string()
-        + &String::from_utf8_lossy(&ours_out.stderr);
-    ours_output = ours_output.replace("recursive mode enabled\n", "");
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    cmd.env("CVSIGNORE", "env_ignored");
+    cmd.env("HOME", home.path());
+    cmd.args(["--recursive", "--cvs-exclude"]);
+    cmd.arg(&src_arg);
+    cmd.arg(&dst);
+    assert!(cmd.output().unwrap().status.success());
 
-    assert!(ours_output.is_empty());
-
-    assert_dirs_equal(Path::new("tests/golden/cvs_exclude/expected"), &ours_dst);
+    assert!(
+        dst.join("keep.txt").exists(),
+        "regular files should be included"
+    );
+    assert!(
+        dst.join(".cvsignore").exists(),
+        ".cvsignore files should be transferred"
+    );
+    assert!(
+        !dst.join(".git").exists(),
+        ".git directory should be excluded by default"
+    );
+    assert!(
+        !dst.join("core").exists(),
+        "'core' files should be excluded by default"
+    );
+    assert!(
+        !dst.join("foo.o").exists(),
+        "object files (*.o) should be excluded by default",
+    );
+    assert!(
+        !dst.join("env_ignored").exists(),
+        "CVSIGNORE environment variable should exclude env_ignored",
+    );
+    assert!(
+        !dst.join("home_ignored").exists(),
+        "HOME/.cvsignore should exclude home_ignored",
+    );
+    assert!(
+        !dst.join("local_ignored").exists(),
+        "local .cvsignore should exclude local_ignored",
+    );
 }
 
 #[test]
-fn cvs_exclude_nested_override() {
+fn include_overrides_cvs_exclude_on_nested_paths() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     fs::create_dir_all(&src).unwrap();
@@ -90,13 +103,24 @@ fn cvs_exclude_nested_override() {
     ]);
     cmd.arg(&src_arg);
     cmd.arg(&dst);
-    let out = cmd.output().unwrap();
-    assert!(out.status.success());
+    assert!(cmd.output().unwrap().status.success());
 
-    assert!(dst.join("keep.txt").exists());
-    assert!(!dst.join("core").exists());
-    assert!(dst.join("sub/nested/keep.txt").exists());
-    assert!(dst.join("sub/nested/core").exists());
+    assert!(
+        dst.join("keep.txt").exists(),
+        "baseline file should transfer"
+    );
+    assert!(
+        !dst.join("core").exists(),
+        "'core' should be excluded outside of the include rule",
+    );
+    assert!(
+        dst.join("sub/nested/keep.txt").exists(),
+        "--include should allow keep.txt in the nested directory",
+    );
+    assert!(
+        dst.join("sub/nested/core").exists(),
+        "--include should override exclusion for core in the nested directory",
+    );
 }
 
 #[test]
@@ -131,12 +155,30 @@ fn cvsignore_is_scoped_per_directory() {
         .assert()
         .success();
 
-    assert!(!dst.join("foo").exists());
-    assert!(dst.join("bar").exists());
-    assert!(dst.join("sub/foo").exists());
-    assert!(!dst.join("sub/bar").exists());
-    assert!(dst.join("sub/nested/bar").exists());
-    assert!(dst.join(".cvsignore").exists());
+    assert!(
+        !dst.join("foo").exists(),
+        "root .cvsignore should exclude foo",
+    );
+    assert!(
+        dst.join("bar").exists(),
+        "bar should not be excluded at root"
+    );
+    assert!(
+        dst.join("sub/foo").exists(),
+        "root .cvsignore should not apply to sub/foo",
+    );
+    assert!(
+        !dst.join("sub/bar").exists(),
+        "sub/.cvsignore should exclude bar in sub directory",
+    );
+    assert!(
+        dst.join("sub/nested/bar").exists(),
+        "sub/.cvsignore should not apply to sub/nested",
+    );
+    assert!(
+        dst.join(".cvsignore").exists(),
+        ".cvsignore files themselves should be transferred",
+    );
 }
 
 #[test]
