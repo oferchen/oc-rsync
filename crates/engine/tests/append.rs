@@ -26,3 +26,25 @@ fn append_errors_when_destination_missing() {
         panic!("unexpected error type: {err:?}");
     }
 }
+
+#[test]
+fn append_verify_errors_when_destination_missing() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    fs::write(src.join("file"), b"data").unwrap();
+
+    let opts = SyncOptions {
+        append_verify: true,
+        ..Default::default()
+    };
+    let err = sync(&src, &dst, &Matcher::default(), &available_codecs(), &opts)
+        .expect_err("expected error when append-verify without destination");
+    if let EngineError::Io(e) = err {
+        assert_eq!(e.kind(), std::io::ErrorKind::NotFound);
+    } else {
+        panic!("unexpected error type: {err:?}");
+    }
+}

@@ -3,7 +3,7 @@
 #[cfg(unix)]
 use nix::unistd::{Gid, Uid, chown};
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufReader, Cursor, Seek, SeekFrom};
+use std::io::{self, BufReader, Cursor, Seek, SeekFrom};
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
@@ -114,6 +114,13 @@ impl Receiver {
         } else {
             None
         };
+        if (self.opts.append || self.opts.append_verify)
+            && existing_partial.is_none()
+            && !dest.exists()
+        {
+            return Err(io_context(&dest, io::Error::from(io::ErrorKind::NotFound)));
+        }
+
         let basis_path = if self.opts.inplace {
             dest.clone()
         } else if (self.opts.partial || self.opts.append || self.opts.append_verify)
