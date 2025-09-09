@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify README version string
         run: |
-          grep -Fq 'rsync 3.4.1 (protocol 32)' README.md
+          grep -E 'rsync[[:space:]]+3\.4\.1.*protocol[[:space:]]+32' README.md
 
   lint:
     needs: [readme-version]
