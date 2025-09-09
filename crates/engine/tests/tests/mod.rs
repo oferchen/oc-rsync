@@ -12,21 +12,14 @@ use posix_acl::{ACL_READ, PosixACL, Qualifier};
 #[cfg(target_os = "linux")]
 use caps::{CapSet, Capability};
 
-/// Capabilities or features required by certain tests.
 #[derive(Clone, Copy)]
 pub enum CapabilityCheck {
-    /// Ability to change file ownership (CAP_CHOWN or root).
     CapChown,
-    /// Ability to create device nodes (CAP_MKNOD or root).
     CapMknod,
-    /// Support for extended attributes on the filesystem.
     Xattrs,
-    /// Support for POSIX ACLs on the filesystem.
     Acls,
 }
 
-/// Returns `true` if the current environment supports the requested capability.
-/// Prints a message and returns `false` if the capability is missing.
 pub fn requires_capability(cap: CapabilityCheck) -> bool {
     match cap {
         CapabilityCheck::CapChown => {

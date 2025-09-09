@@ -4,7 +4,6 @@
 use std::path::Path;
 use time::{OffsetDateTime, macros::format_description};
 
-/// Format a byte count using human-friendly units.
 pub fn human_bytes(bytes: u64) -> String {
     const UNITS: [&str; 9] = ["", "K", "M", "G", "T", "P", "E", "Z", "Y"];
     let mut size = bytes as f64;
@@ -20,7 +19,6 @@ pub fn human_bytes(bytes: u64) -> String {
     }
 }
 
-/// Format progress using either human-readable units or comma-separated groups.
 pub fn progress_formatter(bytes: u64, human_readable: bool) -> String {
     if human_readable {
         human_bytes(bytes)
@@ -37,7 +35,6 @@ pub fn progress_formatter(bytes: u64, human_readable: bool) -> String {
     }
 }
 
-/// Format a transfer rate using sensible units.
 pub fn rate_formatter(bytes_per_sec: f64) -> String {
     let mut rate = bytes_per_sec / 1024.0;
     let mut units = "KB/s";
@@ -64,7 +61,6 @@ fn escape_bytes(bytes: &[u8], eight_bit_output: bool) -> String {
     out
 }
 
-/// Escape a filesystem path for log output.
 pub fn escape_path(path: &Path, eight_bit_output: bool) -> String {
     #[cfg(unix)]
     {
@@ -77,7 +73,6 @@ pub fn escape_path(path: &Path, eight_bit_output: bool) -> String {
     }
 }
 
-/// Parse escape sequences in a formatting string.
 pub fn parse_escapes(input: &str) -> String {
     let mut out = String::new();
     let mut chars = input.chars().peekable();
@@ -155,7 +150,6 @@ pub fn parse_escapes(input: &str) -> String {
     out
 }
 
-/// Options for rendering rsync-style output formats.
 pub struct OutFormatOptions<'a> {
     name: &'a Path,
     link: Option<&'a Path>,
@@ -164,7 +158,6 @@ pub struct OutFormatOptions<'a> {
 }
 
 impl<'a> OutFormatOptions<'a> {
-    /// Create a new set of options.
     pub fn new(name: &'a Path) -> Self {
         Self {
             name,
@@ -174,26 +167,22 @@ impl<'a> OutFormatOptions<'a> {
         }
     }
 
-    /// Set the target of a symbolic link.
     pub fn link(mut self, link: Option<&'a Path>) -> Self {
         self.link = link;
         self
     }
 
-    /// Set the itemized string for this entry.
     pub fn itemized(mut self, itemized: Option<&'a str>) -> Self {
         self.itemized = itemized;
         self
     }
 
-    /// Enable or disable eight bit output.
     pub fn eight_bit_output(mut self, eight_bit_output: bool) -> Self {
         self.eight_bit_output = eight_bit_output;
         self
     }
 }
 
-/// Render a formatted output line using rsync's percent escapes.
 pub fn render_out_format(format: &str, opts: &OutFormatOptions<'_>) -> String {
     let fmt = parse_escapes(format);
     let mut out = String::new();

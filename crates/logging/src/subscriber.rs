@@ -153,7 +153,6 @@ where
     }
 }
 
-/// Build a [`tracing`] subscriber configured for rsync logging semantics.
 pub fn subscriber(cfg: SubscriberConfig) -> io::Result<Box<dyn tracing::Subscriber + Send + Sync>> {
     let SubscriberConfig {
         format,
@@ -284,7 +283,6 @@ pub fn subscriber(cfg: SubscriberConfig) -> io::Result<Box<dyn tracing::Subscrib
     Ok(Box::new(registry))
 }
 
-/// Initialise the global [`tracing`] subscriber.
 pub fn init(cfg: SubscriberConfig) -> io::Result<()> {
     subscriber(cfg)?.init();
     Ok(())
