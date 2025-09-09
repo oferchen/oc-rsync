@@ -267,15 +267,7 @@ pub fn handle_connection(
         let mut name_buf = [0u8; 256];
         let n = transport.receive(&mut name_buf)?;
         let name = String::from_utf8_lossy(&name_buf[..n]).trim().to_string();
-        if name.is_empty() {
-            let _ = transport.send(b"@ERROR: no module specified");
-            finish_session(transport);
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "no module specified",
-            ));
-        }
-        if name == "#list" {
+        if name.is_empty() || name == "#list" {
             if !list {
                 let _ = transport.send(b"@ERROR: list denied");
             } else {
