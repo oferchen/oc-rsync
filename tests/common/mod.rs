@@ -18,15 +18,15 @@ where
 {
     let key_os = key.as_ref().to_os_string();
     let old = env::var_os(&key_os);
-    env::set_var(&key_os, value);
+    unsafe { env::set_var(&key_os, value) };
     EnvVarGuard { key: key_os, old }
 }
 
 impl Drop for EnvVarGuard {
     fn drop(&mut self) {
         match self.old.take() {
-            Some(val) => env::set_var(&self.key, val),
-            None => env::remove_var(&self.key),
+            Some(val) => unsafe { env::set_var(&self.key, val) },
+            None => unsafe { env::remove_var(&self.key) },
         }
     }
 }
