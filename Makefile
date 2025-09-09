@@ -28,6 +28,7 @@ doc:
 	cargo doc --no-deps --all-features
 
 test:
+	command -v cargo-nextest >/dev/null || cargo install cargo-nextest --locked
 	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo nextest run --workspace --no-fail-fast
 	env LC_ALL=C LANG=C COLUMNS=80 TZ=UTC cargo nextest run --workspace --no-fail-fast --features "cli nightly"
 
