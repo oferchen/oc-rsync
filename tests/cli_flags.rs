@@ -76,14 +76,30 @@ fn blocking_io_flag_enables_blocking_mode() {
 }
 
 #[test]
-fn outbuf_flag_accepts_modes() {
-    for mode in ["N", "L", "B"] {
-        Command::cargo_bin("oc-rsync")
-            .unwrap()
-            .args([&format!("--outbuf={mode}"), "--version"])
-            .assert()
-            .success();
-    }
+fn outbuf_flag_accepts_mode_n() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--outbuf=N", "--version"])
+        .assert()
+        .success();
+}
+
+#[test]
+fn outbuf_flag_accepts_mode_l() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--outbuf=L", "--version"])
+        .assert()
+        .success();
+}
+
+#[test]
+fn outbuf_flag_accepts_mode_b() {
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--outbuf=B", "--version"])
+        .assert()
+        .success();
 }
 
 #[test]
