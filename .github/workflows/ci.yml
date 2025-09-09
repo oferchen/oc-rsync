@@ -118,6 +118,13 @@ jobs:
         if: steps.install_nextest.outcome == 'success' && steps.install_llvm_cov.outcome == 'success'
         run: ls -l coverage.lcov
 
+      - name: Upload coverage artifact
+        if: steps.install_nextest.outcome == 'success' && steps.install_llvm_cov.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage.lcov
+
 
   interop:
     needs: test-linux
