@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use engine::Op;
 use engine::{Receiver, SyncOptions};
-use logging::ProgressSink;
+use logging::Observer;
 use tempfile::tempdir;
 
 #[derive(Default)]
@@ -14,7 +14,7 @@ struct MockSink {
     events: Mutex<Vec<String>>,
 }
 
-impl ProgressSink for MockSink {
+impl Observer for MockSink {
     fn start_file(&self, _path: &Path, total: u64, written: u64) {
         self.events
             .lock()
