@@ -1,3 +1,4 @@
+// crates/transport/tests/raii_cleanup.rs
 use std::fs;
 use tempfile::tempdir;
 use transport::{TempFileGuard, TempSocketGuard};
