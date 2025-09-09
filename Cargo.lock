@@ -458,6 +458,7 @@ dependencies = [
 name = "engine"
 version = "0.1.0"
 dependencies = [
+ "caps",
  "checksums",
  "compress",
  "criterion",
@@ -473,6 +474,7 @@ dependencies = [
  "meta",
  "nix",
  "posix-acl",
+ "proptest",
  "protocol",
  "rand 0.8.5",
  "sha1",
