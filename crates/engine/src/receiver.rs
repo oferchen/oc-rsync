@@ -3,7 +3,7 @@
 #[cfg(unix)]
 use nix::unistd::{Gid, Uid, chown};
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufReader, Cursor, Seek, SeekFrom};
+use std::io::{self, BufReader, Cursor, ErrorKind, Seek, SeekFrom};
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
