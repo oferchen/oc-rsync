@@ -2,7 +2,7 @@
 use std::env;
 use std::ffi::OsString;
 
-use clap::{parser::ValueSource, ArgMatches, FromArgMatches};
+use clap::{ArgMatches, FromArgMatches, parser::ValueSource};
 
 use crate::options::{ClientOpts, ProbeOpts};
 use crate::utils::parse_remote_spec;
@@ -10,23 +10,45 @@ use crate::{EngineError, RemoteSpec};
 use engine::Result;
 use protocol::ExitCode;
 
-pub fn parse_matches(matches: &ArgMatches) -> Result<(ClientOpts, ProbeOpts)> {
-    let mut opts =
-        ClientOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
-    if opts.no_D {
-        opts.no_devices = true;
-        opts.no_specials = true;
+pub struct ClientOptsBuilder<'a> {
+    matches: &'a ArgMatches,
+}
+
+impl<'a> ClientOptsBuilder<'a> {
+    pub fn from_matches(matches: &'a ArgMatches) -> Self {
+        Self { matches }
     }
-    if !opts.old_args && matches.value_source("secluded_args") != Some(ValueSource::CommandLine) {
-        if let Ok(val) = env::var("RSYNC_PROTECT_ARGS") {
-            if val != "0" {
-                opts.secluded_args = true;
-            }
+
+    pub fn build(self) -> Result<ClientOpts> {
+        let mut opts = ClientOpts::from_arg_matches(self.matches)
+            .map_err(|e| EngineError::Other(e.to_string()))?;
+        if opts.no_D {
+            opts.no_devices = true;
+            opts.no_specials = true;
         }
+        if !opts.old_args
+            && self.matches.value_source("secluded_args") != Some(ValueSource::CommandLine)
+            && let Ok(val) = env::var("RSYNC_PROTECT_ARGS")
+            && val != "0"
+        {
+            opts.secluded_args = true;
+        }
+        Ok(opts)
     }
-    let probe_opts =
-        ProbeOpts::from_arg_matches(matches).map_err(|e| EngineError::Other(e.to_string()))?;
-    Ok((opts, probe_opts))
+}
+
+pub struct ProbeOptsBuilder<'a> {
+    matches: &'a ArgMatches,
+}
+
+impl<'a> ProbeOptsBuilder<'a> {
+    pub fn from_matches(matches: &'a ArgMatches) -> Self {
+        Self { matches }
+    }
+
+    pub fn build(self) -> Result<ProbeOpts> {
+        ProbeOpts::from_arg_matches(self.matches).map_err(|e| EngineError::Other(e.to_string()))
+    }
 }
 
 pub fn validate_paths(opts: &ClientOpts) -> Result<(Vec<OsString>, OsString)> {
@@ -39,19 +61,18 @@ pub fn validate_paths(opts: &ClientOpts) -> Result<(Vec<OsString>, OsString)> {
         .cloned()
         .ok_or_else(|| EngineError::Other("missing SRC or DST".into()))?;
     let srcs = opts.paths[..opts.paths.len() - 1].to_vec();
-    if opts.fuzzy && srcs.len() == 1 {
-        if let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(&dst_arg) {
-            if ps.path.is_dir() {
-                return Err(EngineError::Other("Not a directory".into()));
-            }
-        }
+    if opts.fuzzy
+        && srcs.len() == 1
+        && let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(&dst_arg)
+        && ps.path.is_dir()
+    {
+        return Err(EngineError::Other("Not a directory".into()));
     }
-    if srcs.len() > 1 {
-        if let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(dst_arg.as_os_str()) {
-            if !ps.path.is_dir() {
-                return Err(EngineError::Other("destination must be a directory".into()));
-            }
-        }
+    if srcs.len() > 1
+        && let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(dst_arg.as_os_str())
+        && !ps.path.is_dir()
+    {
+        return Err(EngineError::Other("destination must be a directory".into()));
     }
     Ok((srcs, dst_arg))
 }

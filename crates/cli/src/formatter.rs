@@ -219,7 +219,7 @@ pub fn render_help(_cmd: &Command) -> String {
     for s in [&mut help_prefix, &mut help_suffix] {
         let haystack = s.clone();
         *s = RSYNC_RE
-            .replace_all(&haystack, |caps: &regex::Captures| {
+            .replace_all(&haystack, |caps: &regex::Captures<'_>| {
                 let m = caps.get(0).unwrap();
                 let start = m.start();
                 let end = m.end();
