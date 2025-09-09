@@ -196,12 +196,16 @@ pub fn subscriber(cfg: SubscriberConfig) -> io::Result<Box<dyn tracing::Subscrib
     if !quiet {
         for flag in &info {
             let directive: tracing_subscriber::filter::Directive =
-                format!("{}=info", flag.target()).parse().unwrap();
+                format!("{}=info", flag.target())
+                    .parse()
+                    .expect("valid directive");
             filter = filter.add_directive(directive);
         }
         for flag in &debug {
             let directive: tracing_subscriber::filter::Directive =
-                format!("{}=trace", flag.target()).parse().unwrap();
+                format!("{}=trace", flag.target())
+                    .parse()
+                    .expect("valid directive");
             filter = filter.add_directive(directive);
         }
     }

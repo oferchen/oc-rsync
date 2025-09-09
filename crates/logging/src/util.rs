@@ -220,7 +220,7 @@ pub fn render_out_format(format: &str, opts: &OutFormatOptions<'_>) -> String {
                             .unwrap_or_else(|_| OffsetDateTime::now_utc());
                         let fmt =
                             format_description!("[year]/[month]/[day] [hour]:[minute]:[second]");
-                        out.push_str(&now.format(&fmt).unwrap());
+                        out.push_str(&now.format(&fmt).expect("timestamp format should be valid"));
                     }
                     '%' => out.push('%'),
                     other => {
