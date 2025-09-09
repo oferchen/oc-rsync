@@ -19,6 +19,7 @@ pub mod block;
 pub mod flist;
 pub mod io;
 pub mod session;
+pub mod xattrs;
 
 pub use batch::{Batch, decode_batch, encode_batch};
 pub use block::block_size;
