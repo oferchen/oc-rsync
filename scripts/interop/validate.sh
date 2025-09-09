@@ -4,7 +4,21 @@ set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 OUT_DIR="$ROOT/tests/interop/streams"
 OC_RSYNC="$ROOT/target/debug/oc-rsync"
-UPSTREAM="${UPSTREAM_RSYNC:-rsync}"
+# Use a specific upstream rsync if provided. Attempt to download a pinned
+# release if RSYNC_BIN is not set and fall back to the system binary if the
+# download fails.
+UPSTREAM="${RSYNC_BIN:-}"
+if [[ -z "$UPSTREAM" ]]; then
+  UPSTREAM_DIR="$ROOT/target/upstream"
+  mkdir -p "$UPSTREAM_DIR"
+  pushd "$UPSTREAM_DIR" >/dev/null
+  "$ROOT/scripts/fetch-rsync.sh" >/dev/null || true
+  popd >/dev/null
+  UPSTREAM="$UPSTREAM_DIR/rsync-3.4.1/rsync"
+  if [[ ! -x "$UPSTREAM" ]]; then
+    UPSTREAM=rsync
+  fi
+fi
 
 # Build oc-rsync if the binary is missing so we can determine its version
 if [ ! -x "$OC_RSYNC" ]; then
