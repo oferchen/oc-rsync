@@ -1,3 +1,4 @@
+// crates/protocol/src/types.rs
 use byteorder::{BigEndian, ReadBytesExt};
 use encoding_rs::Encoding;
 use filelist::{Decoder as FlistDecoder, Encoder as FlistEncoder, Entry as FlistEntry};

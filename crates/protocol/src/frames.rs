@@ -1,3 +1,4 @@
+// crates/protocol/src/frames.rs
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{self, Read, Write};
 
