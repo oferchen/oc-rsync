@@ -1,10 +1,6 @@
+// crates/engine/src/xattrs.rs
 use crate::{EngineError, Result};
 
-/// Ensure that extended attributes are supported at runtime.
-///
-/// Returns `Ok(())` when xattrs are available.  When the feature is
-/// disabled at compile time or the filesystem does not support xattrs,
-/// a descriptive `EngineError` is returned instead of panicking.
 pub fn ensure_supported() -> Result<()> {
     #[cfg(feature = "xattr")]
     {
@@ -34,7 +30,6 @@ mod tests {
         if meta::xattrs_supported() {
             ensure_supported().unwrap();
         } else {
-            // Skip when the underlying filesystem lacks xattr support.
             println!("skipping: xattrs unsupported");
         }
     }
@@ -43,7 +38,6 @@ mod tests {
     #[test]
     fn unsupported_fs_returns_err() {
         if meta::xattrs_supported() {
-            // Skip because the filesystem actually supports xattrs.
             println!("skipping: xattrs supported");
         } else {
             assert!(ensure_supported().is_err());
