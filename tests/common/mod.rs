@@ -31,6 +31,16 @@ impl Drop for EnvVarGuard {
     }
 }
 
+pub fn with_env_var<K, V, F, R>(key: K, value: V, f: F) -> R
+where
+    K: AsRef<OsStr>,
+    V: AsRef<OsStr>,
+    F: FnOnce() -> R,
+{
+    let _guard = temp_env(key, value);
+    f()
+}
+
 pub fn read_golden(name: &str) -> (Vec<u8>, Vec<u8>, i32) {
     let base = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/golden")

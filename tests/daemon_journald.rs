@@ -3,29 +3,11 @@
 
 use daemon::init_logging;
 use serial_test::serial;
-use std::ffi::OsStr;
 use std::os::unix::net::UnixDatagram;
 use tempfile::tempdir;
 use tracing::warn;
 mod common;
-use common::temp_env;
-
-fn with_env_var<K, V, F, R>(key: K, value: V, f: F) -> R
-where
-    K: AsRef<OsStr>,
-    V: AsRef<OsStr>,
-    F: FnOnce() -> R,
-{
-    let key = key.as_ref();
-    let old = std::env::var_os(key);
-    unsafe { std::env::set_var(key, value) };
-    let result = f();
-    match old {
-        Some(v) => unsafe { std::env::set_var(key, v) },
-        None => unsafe { std::env::remove_var(key) },
-    }
-    result
-}
+use common::{temp_env, with_env_var};
 
 #[test]
 #[serial]
