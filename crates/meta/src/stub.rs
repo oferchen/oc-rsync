@@ -14,7 +14,7 @@ mod non_unix {
 
     impl HardLinks {
         pub fn register(&mut self, _id: u64, _path: &Path) -> bool {
-            unimplemented!("hard links are not supported on this platform")
+            false
         }
 
         pub fn finalize(&mut self) -> io::Result<()> {
@@ -25,8 +25,11 @@ mod non_unix {
         }
     }
 
-    pub fn hard_link_id(_dev: u64, _ino: u64) -> u64 {
-        unimplemented!("hard links are not supported on this platform")
+    pub fn hard_link_id(_dev: u64, _ino: u64) -> io::Result<u64> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "hard links are not supported on this platform",
+        ))
     }
 
     pub fn read_acl(_path: &Path, _fake_super: bool) -> io::Result<(Vec<()>, Vec<()>)> {
@@ -49,8 +52,11 @@ mod non_unix {
         ))
     }
 
-    pub fn store_fake_super(_path: &Path, _uid: u32, _gid: u32, _mode: u32) {
-        unimplemented!("fake super is not supported on this platform")
+    pub fn store_fake_super(_path: &Path, _uid: u32, _gid: u32, _mode: u32) -> io::Result<()> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "fake super is not supported on this platform",
+        ))
     }
 
     impl Metadata {

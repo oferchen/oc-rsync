@@ -2,7 +2,6 @@
 #![cfg(all(not(unix), not(target_os = "windows")))]
 
 use std::io::ErrorKind;
-use std::panic::catch_unwind;
 use std::path::Path;
 
 use filetime::FileTime;
@@ -32,11 +31,13 @@ fn metadata_apply_is_unsupported() {
 }
 
 #[test]
-fn hard_link_operations_panic() {
+fn hard_link_operations_are_unsupported() {
     let mut hl = HardLinks::default();
-    assert!(catch_unwind(|| hl.register(1, Path::new("foo"))).is_err());
-    assert!(catch_unwind(|| hard_link_id(0, 0)).is_err());
-    assert!(catch_unwind(|| store_fake_super(Path::new("foo"), 0, 0, 0)).is_err());
+    assert!(!hl.register(1, Path::new("foo")));
+    let err = hard_link_id(0, 0).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::Unsupported);
+    let err = store_fake_super(Path::new("foo"), 0, 0, 0).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::Unsupported);
 }
 
 #[test]
