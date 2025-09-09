@@ -10,10 +10,11 @@ when available. Do not exceed functionality of upstream at <https://rsync.samba.
 ## Interop matrix scenarios
 
 The interoperability matrix builds upstream `rsync 3.4.1` via
-[tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh) and exercises real
+[scripts/interop/run.sh](../scripts/interop/run.sh) and validates behavior with
+[scripts/interop/validate.sh](../scripts/interop/validate.sh). It exercises real
 transfers across the following scenarios:
 
-  - `base`: baseline transfer using [tests/interop/run_matrix.sh](../tests/interop/run_matrix.sh)
+  - `base`: baseline transfer using [scripts/interop/run.sh](../scripts/interop/run.sh)
   - `delete`: `--delete` removes extraneous files
   - `compress_zlib`: zlib negotiation using [codec_negotiation.rs](../tests/interop/codec_negotiation.rs)
   - `compress_zstd`: zstd negotiation using [codec_negotiation.rs](../tests/interop/codec_negotiation.rs)
@@ -58,7 +59,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 ## Compression
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
-| zstd and zlib codecs | Implemented | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/lib.rs](../crates/compress/src/lib.rs) |
+| zstd and zlib codecs | Implemented | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/mod.rs](../crates/compress/src/mod.rs) |
 | `--skip-compress` suffix handling | Implemented | [tests/skip_compress.rs](../tests/skip_compress.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | LZ4 codec | Planned post-parity ([#873](https://github.com/oferchen/oc-rsync/pull/873)); `liblz4-dev` no longer required for interop builds | — | — |
 
@@ -88,10 +89,10 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 ## Metadata Fidelity
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
-| Permissions and ownership restoration | Implemented | [crates/meta/tests/chmod.rs](../crates/meta/tests/chmod.rs) | [crates/meta/src/unix.rs](../crates/meta/src/unix.rs) |
-| `--fake-super` xattr fallback | Implemented | [crates/meta/tests/fake_super.rs](../crates/meta/tests/fake_super.rs) | [crates/meta/src/unix.rs](../crates/meta/src/unix.rs) |
-| POSIX ACL preservation | Implemented | [crates/meta/tests/acl_roundtrip.rs](../crates/meta/tests/acl_roundtrip.rs) | [crates/meta/src/unix.rs](../crates/meta/src/unix.rs) |
-| Windows metadata preservation | Implemented | [tests/windows.rs](../tests/windows.rs) | [crates/meta/src/windows.rs](../crates/meta/src/windows.rs) |
+| Permissions and ownership restoration | Implemented | [crates/meta/tests/chmod.rs](../crates/meta/tests/chmod.rs) | [crates/meta/src/unix/mod.rs](../crates/meta/src/unix/mod.rs) |
+| `--fake-super` xattr fallback | Implemented | [crates/meta/tests/fake_super.rs](../crates/meta/tests/fake_super.rs) | [crates/meta/src/unix/mod.rs](../crates/meta/src/unix/mod.rs) |
+| POSIX ACL preservation | Implemented | [crates/meta/tests/acl_roundtrip.rs](../crates/meta/tests/acl_roundtrip.rs) | [crates/meta/src/unix/mod.rs](../crates/meta/src/unix/mod.rs) |
+| Windows metadata preservation | Implemented | [tests/windows.rs](../tests/windows.rs) | [crates/meta/src/windows/mod.rs](../crates/meta/src/windows/mod.rs) |
 
 ## Transport
 | Feature | Status | Tests | Source |
@@ -146,7 +147,7 @@ _Future contributors: update this section when adding or fixing message behavior
 | `--log-file-format` | ✅ | [tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | `--munge-links` option | ✅ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
 | `--dry-run` prevents destination changes | ✅ | [tests/interop/dry_run.rs](../tests/interop/dry_run.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| Test-only `--dump-help-body` flag for help text verification | Internal | [crates/cli/tests/help.rs](../crates/cli/tests/help.rs) | [crates/cli/src/options.rs](../crates/cli/src/options.rs) |
+| Test-only `--dump-help-body` flag for help text verification | Internal | [crates/cli/tests/help.rs](../crates/cli/tests/help.rs) | [crates/cli/src/argparse.rs](../crates/cli/src/argparse.rs) |
 ### Outstanding Options
 
 All CLI flags now have interop coverage verifying parser and message parity with upstream `rsync`. See [tests/interop/outstanding_flags.rs](../tests/interop/outstanding_flags.rs).
