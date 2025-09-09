@@ -1,4 +1,5 @@
 // crates/engine/tests/delete_errors.rs
+#![doc = "Requires `CAP_CHOWN` to adjust directory ownership."]
 use std::env;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -10,10 +11,14 @@ use compress::available_codecs;
 use engine::{DeleteMode, SyncOptions, sync};
 use filters::Matcher;
 use nix::unistd::{Gid, Uid, chown};
+mod tests;
 use tempfile::tempdir;
 
 #[test]
 fn continues_deleting_after_io_errors() {
+    if !tests::requires_capability(tests::CapabilityCheck::CapChown) {
+        return;
+    }
     if env::var("ENGINE_DELETE_CHILD").is_ok() {
         let src = PathBuf::from(env::var("SRC").unwrap());
         let dst = PathBuf::from(env::var("DST").unwrap());
