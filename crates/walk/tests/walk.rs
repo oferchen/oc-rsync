@@ -191,11 +191,10 @@ fn walk_handles_symlink_loops() {
 #[cfg(windows)]
 #[test]
 fn walk_normalizes_verbatim_paths() {
-    use std::path::PathBuf;
     let tmp = tempdir().unwrap();
     let root_str = tmp.path().to_string_lossy().to_string();
     let verbatim = format!(r"\\\\?\\\\{}", root_str);
-    let root = PathBuf::from(&verbatim);
+    let root = std::path::PathBuf::from(&verbatim);
     fs::write(root.join("file.txt"), b"a").unwrap();
 
     let mut paths = Vec::new();
