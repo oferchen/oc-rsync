@@ -6,10 +6,8 @@ RSYNC_UPSTREAM_VER ?= $(UPSTREAM)
 OFFICIAL_BUILD     ?= $(OFFICIAL)
 BUILD_REVISION     ?= $(shell git rev-parse --short=12 HEAD)
 
-VERIFY_COMMENT_FILES := $(shell git ls-files '*.rs')
-
 verify-comments:
-	@bash tools/comment_lint.sh $(VERIFY_COMMENT_FILES)
+	@bash tools/comment_lint.sh
 
 lint:
 	cargo fmt --all --check
