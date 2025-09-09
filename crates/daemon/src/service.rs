@@ -555,7 +555,9 @@ pub fn run_daemon(
         }
     }
 
-    let (listener, _port) = TcpTransport::listen(address, port, family)?;
+    let (listener, port) = TcpTransport::listen(address, port, family)?;
+    let _ = writeln!(io::stdout(), "{port}");
+    let _ = io::stdout().flush();
     #[cfg(unix)]
     let _ = sd_notify::notify(false, &[NotifyState::Ready]);
 

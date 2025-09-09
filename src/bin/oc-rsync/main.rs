@@ -23,6 +23,11 @@ fn main() {
             eprintln!("failed to set stdio buffers: {err}");
             std::process::exit(u8::from(ExitCode::FileIo) as i32);
         }
+    } else if matches.get_flag("daemon") {
+        if let Err(err) = stdio::set_std_buffering(OutBuf::L) {
+            eprintln!("failed to set stdio buffers: {err}");
+            std::process::exit(u8::from(ExitCode::FileIo) as i32);
+        }
     }
     if let Err(e) = oc_rsync_cli::run(&matches) {
         eprintln!("{e}");
