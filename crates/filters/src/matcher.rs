@@ -568,7 +568,6 @@ impl Matcher {
                     .as_ref()
                     .and_then(|r| dir.strip_prefix(r).ok())
                     .map(|p| p.to_path_buf())
-                    .filter(|p| !p.as_os_str().is_empty())
             };
 
             let key = (path.clone(), pd.sign, pd.word_split);
@@ -692,7 +691,9 @@ impl Matcher {
         };
 
         let adjusted = if cvs {
-            let rel_str = rel.map(|p| p.to_string_lossy().to_string());
+            let rel_str = rel
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default();
             let mut buf = String::new();
             for token in content.split_whitespace() {
                 if token.is_empty() || token.starts_with('#') {
@@ -701,16 +702,11 @@ impl Matcher {
                 if token.starts_with('!') {
                     return Err(ParseError::InvalidRule(token.to_string()));
                 }
-                let pat = if let Some(rel_str) = &rel_str {
-                    if token.starts_with('/') {
-                        format!("{}/{}", rel_str, token.trim_start_matches('/'))
-                    } else {
-                        format!("{}/{}", rel_str, token)
-                    }
-                } else if token.starts_with('/') {
-                    token.trim_start_matches('/').to_string()
+                let tok = token.trim_start_matches('/');
+                let pat = if rel_str.is_empty() {
+                    format!("/{tok}")
                 } else {
-                    token.to_string()
+                    format!("/{rel_str}/{tok}")
                 };
                 buf.push_str("- ");
                 buf.push_str(&pat);

@@ -100,6 +100,46 @@ fn cvs_exclude_nested_override() {
 }
 
 #[test]
+fn cvsignore_is_scoped_per_directory() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join(".cvsignore"), "foo\n").unwrap();
+    fs::write(src.join("foo"), b"root").unwrap();
+    fs::write(src.join("bar"), b"rootbar").unwrap();
+
+    let sub = src.join("sub");
+    fs::create_dir_all(&sub).unwrap();
+    fs::write(sub.join(".cvsignore"), "bar\n").unwrap();
+    fs::write(sub.join("foo"), b"subfoo").unwrap();
+    fs::write(sub.join("bar"), b"subbar").unwrap();
+    fs::create_dir_all(sub.join("nested")).unwrap();
+    fs::write(sub.join("nested/bar"), b"nestedbar").unwrap();
+
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&dst).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--recursive",
+            "--cvs-exclude",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!dst.join("foo").exists());
+    assert!(dst.join("bar").exists());
+    assert!(dst.join("sub/foo").exists());
+    assert!(!dst.join("sub/bar").exists());
+    assert!(dst.join("sub/nested/bar").exists());
+    assert!(dst.join(".cvsignore").exists());
+}
+
+#[test]
 fn filter_c_equivalent_to_filters() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");

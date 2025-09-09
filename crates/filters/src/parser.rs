@@ -816,6 +816,20 @@ pub fn parse_with_options(
                             ancestors.push(prefix.clone());
                         }
                         let dir_count = ancestors.len().saturating_sub(1);
+                        for anc in ancestors.iter().take(dir_count) {
+                            let matcher = compile_glob(anc)?;
+                            let data = RuleData {
+                                matcher,
+                                invert: false,
+                                flags: RuleFlags::default(),
+                                source: Some(path.clone()),
+                                dir_only: true,
+                                has_slash: true,
+                                pattern: anc.clone(),
+                            };
+                            rules.push(Rule::ImpliedDir(data));
+                            dirs.insert(anc.clone());
+                        }
                         if let Some(last) = ancestors.last() {
                             if is_dir {
                                 let glob = format!("{last}/**");
@@ -857,20 +871,6 @@ pub fn parse_with_options(
                                     Some(path.clone()),
                                 )?);
                             }
-                        }
-                        for anc in ancestors.iter().take(dir_count).rev() {
-                            let matcher = compile_glob(anc)?;
-                            let data = RuleData {
-                                matcher,
-                                invert: false,
-                                flags: RuleFlags::default(),
-                                source: Some(path.clone()),
-                                dir_only: true,
-                                has_slash: true,
-                                pattern: anc.clone(),
-                            };
-                            rules.push(Rule::ImpliedDir(data));
-                            dirs.insert(anc.clone());
                         }
                     }
                     for d in dirs {
