@@ -70,9 +70,7 @@ impl<T: Transport> TimeoutTransport<T> {
     }
 
     fn check_timeout(&self) -> io::Result<()> {
-        if let Some(dur) = self.timeout
-            && self.last.elapsed() >= dur
-        {
+        if self.timeout.is_some_and(|dur| self.last.elapsed() >= dur) {
             return Err(io::Error::new(
                 io::ErrorKind::TimedOut,
                 "connection timed out",
