@@ -2,12 +2,12 @@
 #![allow(unused_imports)]
 
 use assert_cmd::prelude::*;
-use assert_cmd::{cargo::cargo_bin, Command};
+use assert_cmd::{Command, cargo::cargo_bin};
 use engine::SyncOptions;
-use filetime::{set_file_mtime, FileTime};
+use filetime::{FileTime, set_file_mtime};
 use logging::progress_formatter;
 #[cfg(unix)]
-use nix::unistd::{chown, mkfifo, Gid, Uid};
+use nix::unistd::{Gid, Uid, chown, mkfifo};
 use oc_rsync_cli::{parse_iconv, spawn_daemon_session};
 use predicates::prelude::PredicateBooleanExt;
 use protocol::SUPPORTED_PROTOCOLS;
@@ -21,7 +21,7 @@ use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
-use tempfile::{tempdir, tempdir_in, TempDir};
+use tempfile::{TempDir, tempdir, tempdir_in};
 #[cfg(unix)]
 use users::{get_current_gid, get_current_uid, get_group_by_gid, get_user_by_uid};
 mod common;

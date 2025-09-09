@@ -4,7 +4,7 @@ use crate::formatter::render_help;
 use crate::options::ClientOpts;
 use crate::validate::exit_code_from_error_kind;
 use engine::Stats;
-use logging::{human_bytes, progress_formatter, rate_formatter, InfoFlag};
+use logging::{InfoFlag, human_bytes, progress_formatter, rate_formatter};
 use protocol::ExitCode;
 
 pub fn handle_clap_error(cmd: &clap::Command, e: clap::Error) -> ! {

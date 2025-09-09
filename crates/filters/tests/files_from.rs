@@ -1,6 +1,6 @@
 // crates/filters/tests/files_from.rs
 #![allow(unused_doc_comments)]
-use filters::{parse, parse_with_options, Matcher};
+use filters::{Matcher, parse, parse_with_options};
 use std::collections::HashSet;
 use std::fs;
 use tempfile::tempdir;
