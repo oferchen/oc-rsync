@@ -3,7 +3,9 @@ use filetime::FileTime;
 #[cfg(all(unix, feature = "acl"))]
 use posix_acl::ACLEntry;
 #[cfg(unix)]
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
+#[cfg(all(unix, feature = "xattr"))]
+use std::ffi::OsString;
 use std::fmt;
 #[cfg(unix)]
 use std::rc::Rc;
@@ -111,7 +113,7 @@ pub struct Metadata {
     pub mtime: FileTime,
     pub atime: Option<FileTime>,
     pub crtime: Option<FileTime>,
-    #[cfg(unix)]
+    #[cfg(all(unix, feature = "xattr"))]
     pub xattrs: Vec<(OsString, Vec<u8>)>,
     #[cfg(all(unix, feature = "acl"))]
     pub acl: Vec<ACLEntry>,

@@ -141,6 +141,7 @@ impl Metadata {
             (uid, gid, mode)
         };
 
+        #[cfg(feature = "xattr")]
         let xattrs = if opts.xattrs || opts.fake_super {
             let mut attrs = Vec::new();
             match xattr::list(path) {
@@ -199,6 +200,7 @@ impl Metadata {
             mtime,
             atime,
             crtime,
+            #[cfg(feature = "xattr")]
             xattrs,
             acl,
             default_acl,
@@ -419,6 +421,7 @@ impl Metadata {
             }
         }
 
+        #[cfg(feature = "xattr")]
         if opts.xattrs || opts.fake_super {
             crate::apply_xattrs(
                 path,
@@ -967,6 +970,7 @@ mod tests {
     use std::fs;
     use tempfile::tempdir;
 
+    #[cfg(feature = "xattr")]
     #[test]
     fn missing_xattr_between_list_and_get() -> io::Result<()> {
         let dir = tempdir()?;
