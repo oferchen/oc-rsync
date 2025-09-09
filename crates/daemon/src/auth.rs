@@ -136,12 +136,13 @@ pub fn authenticate(
         }
         Ok((Some(token_str), Vec::new(), no_motd))
     } else {
-        let token_opt = if token_str.is_empty() {
-            None
-        } else {
-            Some(token_str)
-        };
-        Ok((token_opt, Vec::new(), no_motd))
+        if token_str.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "missing token",
+            ));
+        }
+        Ok((Some(token_str), Vec::new(), no_motd))
     }
 }
 
