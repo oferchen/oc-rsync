@@ -118,10 +118,7 @@ fn run_single(
     if opts.no_links {
         opts.links = false;
     }
-    if opts.old_dirs {
-        opts.dirs = true;
-        opts.recursive = true;
-    }
+
     if !opts.files_from.is_empty() {
         opts.dirs = true;
         opts.relative = true;
@@ -178,10 +175,6 @@ fn run_single(
     }
     if opts.old_args {
         remote_opts.push("--old-args".into());
-    }
-    if opts.old_dirs {
-        remote_opts.push("-r".into());
-        remote_opts.push("--exclude=/*/*".into());
     }
 
     if let Some(cfg) = &opts.config {
@@ -413,7 +406,7 @@ fn run_single(
         preallocate: opts.preallocate,
         checksum: opts.checksum,
         compress,
-        dirs: opts.dirs,
+        dirs_only: opts.dirs,
         no_implied_dirs: opts.no_implied_dirs,
         dry_run: opts.dry_run,
         list_only: opts.list_only,

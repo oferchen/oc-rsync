@@ -5,7 +5,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use scopeguard::guard;
 use std::env;
-use textwrap::{wrap, Options as WrapOptions};
+use textwrap::{Options as WrapOptions, wrap};
 
 use crate::branding;
 
@@ -63,7 +63,6 @@ pub const ARG_ORDER: &[&str] = &[
     "append",
     "append_verify",
     "dirs",
-    "old_dirs",
     "mkpath",
     "links",
     "copy_links",

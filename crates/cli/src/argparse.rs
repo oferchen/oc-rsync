@@ -6,8 +6,8 @@ use std::{ffi::OsString, path::PathBuf};
 pub use crate::daemon::DaemonOpts;
 use crate::formatter;
 use crate::utils::{
-    parse_duration, parse_minutes, parse_nonzero_duration, parse_rsh, parse_size, parse_stop_at,
-    RshCommand,
+    RshCommand, parse_duration, parse_minutes, parse_nonzero_duration, parse_rsh, parse_size,
+    parse_stop_at,
 };
 #[cfg(any(test, feature = "dump-help"))]
 use clap::Arg;
@@ -49,15 +49,13 @@ pub(crate) struct ClientOpts {
     pub archive: bool,
     #[arg(short, long, help_heading = "Selection")]
     pub recursive: bool,
-    #[arg(short = 'd', long, help_heading = "Selection")]
-    pub dirs: bool,
     #[arg(
-        long = "old-dirs",
-        visible_alias = "old-d",
+        short = 'd',
+        long,
+        visible_aliases = ["old-d", "old-dirs"],
         help_heading = "Selection",
-        help = "works like --dirs when talking to old rsync"
     )]
-    pub old_dirs: bool,
+    pub dirs: bool,
     #[arg(short = 'R', long, help_heading = "Selection")]
     pub relative: bool,
     #[arg(long = "no-implied-dirs", help_heading = "Selection")]

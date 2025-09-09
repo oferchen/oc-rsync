@@ -56,7 +56,7 @@ pub struct SyncOptions {
     pub preallocate: bool,
     pub checksum: bool,
     pub compress: bool,
-    pub dirs: bool,
+    pub dirs_only: bool,
     pub no_implied_dirs: bool,
     pub dry_run: bool,
     pub list_only: bool,
@@ -160,7 +160,7 @@ impl Default for SyncOptions {
             preallocate: false,
             checksum: false,
             compress: false,
-            dirs: false,
+            dirs_only: false,
             no_implied_dirs: false,
             dry_run: false,
             list_only: false,
@@ -605,11 +605,19 @@ fn count_entries(
                 }
                 if entry.file_type.is_dir() {
                     dirs += 1;
+                    if opts.dirs_only && !rel.as_os_str().is_empty() {
+                        walker.skip_current_dir();
+                        skip_dirs.push(path.clone());
+                        continue;
+                    }
                     if !res.descend && !rel.as_os_str().is_empty() {
                         walker.skip_current_dir();
                         skip_dirs.push(path.clone());
                     }
                 } else if entry.file_type.is_file() {
+                    if opts.dirs_only {
+                        continue;
+                    }
                     files += 1;
                     if let Ok(meta) = fs::metadata(&path) {
                         size += meta.len();
@@ -771,11 +779,17 @@ pub fn sync(
                         continue;
                     }
                     if entry.file_type.is_dir() {
-                        if !res.descend && !rel.as_os_str().is_empty() {
+                        if opts.dirs_only && !rel.as_os_str().is_empty() {
+                            walker.skip_current_dir();
+                            skip_dirs.push(path.clone());
+                        } else if !res.descend && !rel.as_os_str().is_empty() {
                             walker.skip_current_dir();
                             skip_dirs.push(path.clone());
                         }
                     } else if entry.file_type.is_file() {
+                        if opts.dirs_only {
+                            continue;
+                        }
                         let len = fs::metadata(&path).map_err(|e| io_context(&path, e))?.len();
                         if outside_size_bounds(len, opts) {
                             continue;
@@ -911,11 +925,24 @@ pub fn sync(
                     continue;
                 }
                 if entry.file_type.is_dir() {
+                    if opts.dirs_only {
+                        let dest_path = dst.join(rel);
+                        fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
+                        receiver.copy_metadata_now(&path, &dest_path)?;
+                        stats.files_created += 1;
+                        stats.dirs_created += 1;
+                        walker.skip_current_dir();
+                        skip_dirs.push(path.clone());
+                        continue;
+                    }
                     if !res.descend && !rel.as_os_str().is_empty() {
                         walker.skip_current_dir();
                         skip_dirs.push(path.clone());
                     }
                 } else if entry.file_type.is_file() {
+                    if opts.dirs_only {
+                        continue;
+                    }
                     let len = fs::metadata(&path).map_err(|e| io_context(&path, e))?.len();
                     if outside_size_bounds(len, opts) {
                         continue;

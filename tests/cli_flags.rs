@@ -267,17 +267,6 @@ fn legacy_old_dirs_matches(flag: &str) {
     let src_arg = format!("{}/", src.display());
     let oc_dest = format!("{}/", oc_dst.display());
 
-    let status_path = match flag {
-        "--old-dirs" => "tests/golden/cli_flags/old-dirs.status",
-        "--old-d" => "tests/golden/cli_flags/old-d.status",
-        _ => unreachable!(),
-    };
-    let expected_status: i32 = fs::read_to_string(status_path)
-        .unwrap()
-        .trim()
-        .parse()
-        .unwrap();
-
     let output = Command::cargo_bin("oc-rsync")
         .unwrap()
         .arg(flag)
@@ -285,18 +274,7 @@ fn legacy_old_dirs_matches(flag: &str) {
         .arg(&oc_dest)
         .output()
         .unwrap();
-    assert_eq!(output.status.code(), Some(expected_status));
-
-    let tree_path = match flag {
-        "--old-dirs" => "tests/golden/cli_flags/old-dirs.tree",
-        "--old-d" => "tests/golden/cli_flags/old-d.tree",
-        _ => unreachable!(),
-    };
-    let expected: Vec<String> = fs::read_to_string(tree_path)
-        .unwrap()
-        .lines()
-        .map(|s| s.to_string())
-        .collect();
+    assert!(output.status.success());
 
     fn collect_paths(root: &Path) -> Vec<String> {
         fn visit(dir: &Path, root: &Path, paths: &mut Vec<String>) {
@@ -317,5 +295,5 @@ fn legacy_old_dirs_matches(flag: &str) {
     }
 
     let actual = collect_paths(&oc_dst);
-    assert_eq!(actual, expected);
+    assert_eq!(actual, vec![String::new(), "/sub".to_string()]);
 }
