@@ -89,38 +89,44 @@ fn include_overrides_cvs_exclude_on_nested_paths() {
     fs::write(nested.join("keep.txt"), "keep\n").unwrap();
     fs::write(nested.join("core"), "core\n").unwrap();
 
-    let dst = tmp.path().join("dst");
-    fs::create_dir_all(&dst).unwrap();
-
     let src_arg = format!("{}/", src.display());
 
-    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
-    cmd.args([
-        "--recursive",
-        "--cvs-exclude",
-        "--include=sub/nested/",
-        "--include=sub/nested/***",
-    ]);
-    cmd.arg(&src_arg);
-    cmd.arg(&dst);
-    assert!(cmd.output().unwrap().status.success());
+    let cases = vec![
+        (
+            vec!["--include=sub/nested/", "--include=sub/nested/***"],
+            vec!["keep.txt", "sub/nested/keep.txt", "sub/nested/core"],
+            vec!["core"],
+        ),
+        (
+            vec!["--include=sub/nested/core"],
+            vec!["keep.txt", "sub/nested/core"],
+            vec!["core", "sub/nested/keep.txt"],
+        ),
+    ];
 
-    assert!(
-        dst.join("keep.txt").exists(),
-        "baseline file should transfer"
-    );
-    assert!(
-        !dst.join("core").exists(),
-        "'core' should be excluded outside of the include rule",
-    );
-    assert!(
-        dst.join("sub/nested/keep.txt").exists(),
-        "--include should allow keep.txt in the nested directory",
-    );
-    assert!(
-        dst.join("sub/nested/core").exists(),
-        "--include should override exclusion for core in the nested directory",
-    );
+    for (idx, (args, should_exist, should_not_exist)) in cases.into_iter().enumerate() {
+        let dst = tmp.path().join(format!("dst{}", idx));
+        fs::create_dir_all(&dst).unwrap();
+
+        let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+        cmd.args(["--recursive", "--cvs-exclude"]);
+        for a in args {
+            cmd.arg(a);
+        }
+        cmd.arg(&src_arg);
+        cmd.arg(&dst);
+        assert!(cmd.output().unwrap().status.success());
+
+        for p in should_exist {
+            assert!(dst.join(p).exists(), "{p} should be transferred");
+        }
+        for p in should_not_exist {
+            assert!(
+                !dst.join(p).exists(),
+                "{p} should be excluded despite nested includes",
+            );
+        }
+    }
 }
 
 #[test]
