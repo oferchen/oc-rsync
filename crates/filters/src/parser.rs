@@ -939,16 +939,6 @@ pub fn parse_with_options(
 
         if matches!(kind, Some(RuleKind::Exclude)) && mods.contains('C') && rest.is_empty() {
             rules.extend(default_cvs_rules()?);
-            rules.push(Rule::DirMerge(PerDir {
-                file: ".cvsignore".into(),
-                anchored: false,
-                root_only: false,
-                inherit: true,
-                cvs: true,
-                word_split: false,
-                sign: None,
-                flags: RuleFlags::default(),
-            }));
             continue;
         }
 

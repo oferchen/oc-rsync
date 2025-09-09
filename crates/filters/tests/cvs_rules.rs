@@ -19,6 +19,21 @@ fn cvs_excludes_can_be_overridden() {
 }
 
 #[test]
+fn filter_minus_c_ignores_local_cvsignore() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path();
+    fs::write(root.join(".cvsignore"), "foo\n").unwrap();
+    fs::write(root.join("foo"), b"foo").unwrap();
+    fs::write(root.join("core"), b"core").unwrap();
+
+    let rules = p("-C\n");
+    let matcher = Matcher::new(rules).with_root(root);
+
+    assert!(matcher.is_included("foo").unwrap());
+    assert!(!matcher.is_included("core").unwrap());
+}
+
+#[test]
 fn cvsignore_is_scoped_per_directory() {
     let tmp = tempdir().unwrap();
     let root = tmp.path();
@@ -27,7 +42,8 @@ fn cvsignore_is_scoped_per_directory() {
     fs::create_dir_all(&sub).unwrap();
     fs::write(sub.join(".cvsignore"), "bar\n").unwrap();
 
-    let rules = p("-C\n");
+    let mut rules = default_cvs_rules().unwrap();
+    rules.extend(p(":C\n"));
     let matcher = Matcher::new(rules).with_root(root);
 
     assert!(!matcher.is_included("foo").unwrap());
