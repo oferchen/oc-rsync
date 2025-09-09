@@ -1,7 +1,7 @@
 // crates/meta/tests/acl_gid.rs
 #![cfg(feature = "acl")]
 use meta::{Metadata, Options};
-use nix::unistd::{Gid, chown};
+use nix::unistd::{Gid, Uid, chown};
 use posix_acl::{ACL_READ, PosixACL, Qualifier};
 use std::fs;
 use tempfile::tempdir;
@@ -25,6 +25,11 @@ fn roundtrip_acl_and_gid() -> std::io::Result<()> {
     let dst = dir.path().join("dst");
     fs::write(&src, b"hello")?;
     fs::write(&dst, b"world")?;
+
+    if !Uid::effective().is_root() {
+        eprintln!("skipping roundtrip_acl_and_gid: requires root");
+        return Ok(());
+    }
 
     chown(&src, None, Some(Gid::from_raw(12345)))?;
     let mut acl = PosixACL::read_acl(&src).map_err(acl_to_io)?;

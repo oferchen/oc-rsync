@@ -95,6 +95,8 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | Hard link detection and recreation | Implemented | [tests/hard_links.rs](../tests/hard_links.rs)<br>[crates/engine/tests/links.rs](../crates/engine/tests/links.rs) | [crates/meta/src/lib.rs](../crates/meta/src/lib.rs) |
 | Windows metadata preservation | Implemented | [tests/windows.rs](../tests/windows.rs) | [crates/meta/src/windows/mod.rs](../crates/meta/src/windows/mod.rs) |
 
+Note: Full metadata coverage requires root privileges; unprivileged environments skip ownership changes and related tests.
+
 ## Transport
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
