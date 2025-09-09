@@ -117,6 +117,10 @@ impl RuleData {
 
         idx < pat_segments.len()
     }
+
+    pub fn pattern(&self) -> &str {
+        &self.pattern
+    }
 }
 
 use crate::perdir::PerDir;

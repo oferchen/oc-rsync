@@ -657,12 +657,13 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
         );
     }
     if opts.cvs_exclude {
-        let mut cvs = default_cvs_rules().map_err(|e| EngineError::Other(format!("{:?}", e)))?;
-        cvs.extend(
+        let mut cvs_rules =
+            default_cvs_rules().map_err(|e| EngineError::Other(format!("{:?}", e)))?;
+        cvs_rules.extend(
             parse_filters(":C\n", opts.from0)
                 .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
         );
-        add_rules(usize::MAX, cvs);
+        add_rules(usize::MAX, cvs_rules);
     }
 
     entries.sort_by(|a, b| {
