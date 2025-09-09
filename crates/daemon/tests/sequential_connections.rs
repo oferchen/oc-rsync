@@ -4,7 +4,7 @@ use daemon::{Handler, Module, handle_connection};
 use nix::unistd::geteuid;
 use protocol::SUPPORTED_PROTOCOLS;
 use std::collections::HashMap;
-use std::io::Cursor;
+use std::io::{self, Cursor, Read};
 use std::sync::Arc;
 use tempfile::tempdir;
 use transport::LocalPipeTransport;
@@ -29,13 +29,41 @@ fn handle_sequential_chrooted_connections() {
     modules.insert(module.name.clone(), module);
     let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
     let cwd = std::env::current_dir().unwrap();
+    struct MultiReader {
+        parts: Vec<Vec<u8>>,
+        idx: usize,
+        pos: usize,
+    }
+
+    impl Read for MultiReader {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            if self.idx >= self.parts.len() {
+                return Ok(0);
+            }
+            let part = &self.parts[self.idx];
+            let remaining = &part[self.pos..];
+            let len = remaining.len().min(buf.len());
+            buf[..len].copy_from_slice(&remaining[..len]);
+            self.pos += len;
+            if self.pos >= part.len() {
+                self.idx += 1;
+                self.pos = 0;
+            }
+            Ok(len)
+        }
+    }
+
     for _ in 0..3 {
-        let mut input = Vec::new();
-        input.extend_from_slice(&SUPPORTED_PROTOCOLS[0].to_be_bytes());
-        input.extend_from_slice(b"\n");
-        input.extend_from_slice(b"data\n");
-        input.extend_from_slice(b"\n");
-        let reader = Cursor::new(input);
+        let parts = vec![
+            SUPPORTED_PROTOCOLS[0].to_be_bytes().to_vec(),
+            b"auth\n".to_vec(),
+            b"data\n\n".to_vec(),
+        ];
+        let reader = MultiReader {
+            parts,
+            idx: 0,
+            pos: 0,
+        };
         let writer = Cursor::new(Vec::new());
         let mut transport = LocalPipeTransport::new(reader, writer);
         handle_connection(
