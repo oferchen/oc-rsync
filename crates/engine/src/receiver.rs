@@ -3,7 +3,7 @@
 #[cfg(unix)]
 use nix::unistd::{Gid, Uid, chown};
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufReader, Cursor, ErrorKind, Seek, SeekFrom};
+use std::io::{self, BufReader, Cursor, Seek, SeekFrom};
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
@@ -106,14 +106,21 @@ impl Receiver {
                 dest.push(rel);
             }
         }
+        let src_len = fs::metadata(src).map(|m| m.len()).unwrap_or(0);
         let (partial, basename_partial) = partial_paths(&dest, self.opts.partial_dir.as_deref());
-        let existing_partial = if partial.exists() {
+        let mut existing_partial = if partial.exists() {
             Some(partial.clone())
         } else if let Some(bp) = basename_partial.as_ref() {
             if bp.exists() { Some(bp.clone()) } else { None }
         } else {
             None
         };
+        if let Some(ref p) = existing_partial {
+            let len = fs::metadata(p).map(|m| m.len()).unwrap_or(0);
+            if len < src_len {
+                existing_partial = None;
+            }
+        }
         if (self.opts.append || self.opts.append_verify)
             && existing_partial.is_none()
             && !dest.exists()
@@ -195,7 +202,6 @@ impl Receiver {
             .strong(self.opts.strong)
             .seed(self.opts.checksum_seed)
             .build();
-        let src_len = fs::metadata(src).map(|m| m.len()).unwrap_or(0);
         let block_size = if self.opts.block_size > 0 {
             self.opts.block_size
         } else {
@@ -350,24 +356,14 @@ impl Receiver {
             None
         };
 
-        if let Err(e) = apply_delta(
+        apply_delta(
             &mut basis,
             ops_vec.into_iter().map(Ok),
             &mut out,
             &self.opts,
             0,
             &mut progress,
-        ) {
-            if let EngineError::Io(ref io) = e {
-                if io.kind() == ErrorKind::UnexpectedEof || io.kind() == ErrorKind::NotFound {
-                    return Err(EngineError::Other(format!(
-                        "basis file '{}' is missing or too short",
-                        basis_path.display(),
-                    )));
-                }
-            }
-            return Err(e);
-        }
+        )?;
         if let Some(mut p) = progress {
             p.finish();
         }
