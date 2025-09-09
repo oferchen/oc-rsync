@@ -4,6 +4,7 @@
 
 mod flags;
 mod formatter;
+mod json_format;
 mod sink;
 mod subscriber;
 mod util;
