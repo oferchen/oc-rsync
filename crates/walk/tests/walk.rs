@@ -171,7 +171,6 @@ fn walk_skips_ignored_paths() {
 #[cfg(unix)]
 #[test]
 fn walk_handles_symlink_loops() {
-    use std::path::PathBuf;
     let tmp = tempdir().unwrap();
     let root = tmp.path();
     fs::create_dir(root.join("a")).unwrap();

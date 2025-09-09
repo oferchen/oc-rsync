@@ -696,13 +696,11 @@ pub fn load_config(path: Option<&Path>) -> io::Result<DaemonConfig> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-    use std::io;
     use std::time::Duration;
     use tempfile::tempdir;
 
     #[cfg(unix)]
-    use std::os::unix::fs::{PermissionsExt, symlink};
+    use std::os::unix::fs::symlink;
 
     #[test]
     fn parse_config_invalid_port() {
