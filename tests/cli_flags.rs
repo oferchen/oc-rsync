@@ -258,8 +258,8 @@ fn old_d_alias_matches_rsync() {
 fn legacy_old_dirs_matches(flag: &str) {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
-    fs::create_dir_all(src.join("sub")).unwrap();
-    fs::write(src.join("sub/file.txt"), b"data").unwrap();
+    fs::create_dir_all(src.join("sub/nested")).unwrap();
+    fs::write(src.join("sub/nested/file.txt"), b"data").unwrap();
 
     let oc_dst = tmp.path().join("oc");
     fs::create_dir_all(&oc_dst).unwrap();
@@ -295,5 +295,8 @@ fn legacy_old_dirs_matches(flag: &str) {
     }
 
     let actual = collect_paths(&oc_dst);
-    assert_eq!(actual, vec![String::new(), "/sub".to_string()]);
+    assert_eq!(
+        actual,
+        vec![String::new(), "/sub".to_string(), "/sub/nested".to_string()]
+    );
 }
