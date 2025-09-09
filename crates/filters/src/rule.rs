@@ -1,4 +1,4 @@
-// crates/filters/src/rule.rs — extracted from lib.rs to define filter rules and flags; public API preserved via re-exports.
+// crates/filters/src/rule.rs
 
 use globset::{GlobBuilder, GlobMatcher};
 use std::path::{Path, PathBuf};
