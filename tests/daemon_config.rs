@@ -5,7 +5,6 @@ use daemon::{Handler, handle_connection, load_config, parse_config};
 use protocol::LATEST_VERSION;
 use serial_test::serial;
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -17,14 +16,8 @@ use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
 use transport::{LocalPipeTransport, TcpTransport, Transport};
-
-fn set_env_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, val: V) {
-    unsafe { std::env::set_var(key, val) }
-}
-
-fn remove_env_var<K: AsRef<OsStr>>(key: K) {
-    unsafe { std::env::remove_var(key) }
-}
+mod common;
+use common::with_env_var;
 
 fn read_port(child: &mut Child) -> u16 {
     let stdout = child.stdout.as_mut().unwrap();
@@ -481,15 +474,10 @@ fn load_config_default_path() {
     let cfg_path = dir.path().join("rsyncd.conf");
     fs::write(&cfg_path, "port = 873\n").unwrap();
     let var = "OC_RSYNC_CONFIG_PATH";
-    let prev = std::env::var(var).ok();
-    set_env_var(var, &cfg_path);
-    let cfg = load_config(None).unwrap();
-    assert_eq!(cfg.port, Some(873));
-    if let Some(v) = prev {
-        set_env_var(var, v);
-    } else {
-        remove_env_var(var);
-    }
+    with_env_var(var, &cfg_path, || {
+        let cfg = load_config(None).unwrap();
+        assert_eq!(cfg.port, Some(873));
+    });
 }
 
 #[test]

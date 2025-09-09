@@ -5,6 +5,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use scopeguard::guard;
 use std::env;
+use std::ffi::{OsStr, OsString};
 use textwrap::{Options as WrapOptions, wrap};
 
 use crate::branding;
@@ -283,17 +284,27 @@ pub fn render_help(_cmd: &Command) -> String {
     out
 }
 
-pub fn dump_help_body(cmd: &Command) -> String {
-    let prev = env::var("COLUMNS").ok();
-    unsafe { env::set_var("COLUMNS", "80") };
-    let _guard = guard(prev, |prev| unsafe {
-        if let Some(v) = prev {
-            env::set_var("COLUMNS", &v);
+fn with_env_var<K, V, F, R>(key: K, value: V, f: F) -> R
+where
+    K: AsRef<OsStr>,
+    V: AsRef<OsStr>,
+    F: FnOnce() -> R,
+{
+    let key_os: OsString = key.as_ref().to_os_string();
+    let old = env::var_os(&key_os);
+    unsafe { env::set_var(&key_os, value) };
+    let _guard = guard((key_os.clone(), old), |(key, old)| unsafe {
+        if let Some(v) = old {
+            env::set_var(&key, v);
         } else {
-            env::remove_var("COLUMNS");
+            env::remove_var(&key);
         }
     });
-    let help = render_help(cmd);
+    f()
+}
+
+pub fn dump_help_body(cmd: &Command) -> String {
+    let help = with_env_var("COLUMNS", "80", || render_help(cmd));
 
     let mut out = String::new();
     let mut in_options = false;
