@@ -19,14 +19,15 @@ filesystem trees for interoperability tests.
   verify their SHA256 checksums before extraction.
 
 The committed goldens were recorded in a controlled environment using upstream
-`rsync 3.4.1` and the local `oc-rsync` build. To record fresh goldens, point
-`UPSTREAM_RSYNC` at a built `rsync` binary and limit the scenarios to `base`:
+`rsync 3.4.1` and the local `oc-rsync` build.  The `scripts/fetch-rsync.sh`
+helper downloads and verifies this release.  To record fresh goldens, point
+`RSYNC_BIN` at a built `rsync` binary and limit the scenarios to `base`:
 
 ```
 SCENARIOS=base UPDATE=1 \
   CLIENT_VERSIONS="upstream oc-rsync" \
   SERVER_VERSIONS="upstream oc-rsync" \
-  UPSTREAM_RSYNC=/path/to/rsync scripts/interop.sh
+  RSYNC_BIN=/path/to/rsync scripts/interop.sh
 ```
 - `interop-grid.log` is produced by `scripts/interop-grid.sh` and records
   stdout, stderr, exit codes, and metadata checks for key flag combinations.

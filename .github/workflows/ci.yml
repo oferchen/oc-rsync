@@ -140,12 +140,17 @@ jobs:
           mkdir -p target/debug
           cp target/release/oc-rsync target/debug/oc-rsync
 
-      - name: Build upstream rsync 3.4.1
-        run: echo "UPSTREAM_RSYNC=$(tests/interop/build_upstream.sh)" >> $GITHUB_ENV
+      - name: Fetch upstream rsync 3.4.1
+        run: |
+          mkdir -p target/upstream
+          pushd target/upstream >/dev/null
+          ../../scripts/fetch-rsync.sh
+          echo "RSYNC_BIN=$(pwd)/rsync-3.4.1/rsync" >> $GITHUB_ENV
+          popd >/dev/null
 
       - name: Collect interop snapshots
         env:
-          UPSTREAM_RSYNC: ${{ env.UPSTREAM_RSYNC }}
+          RSYNC_BIN: ${{ env.RSYNC_BIN }}
         run: scripts/interop/run.sh
 
       - name: Install cargo-nextest
