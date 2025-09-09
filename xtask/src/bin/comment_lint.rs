@@ -27,26 +27,27 @@ fn check_file(path: &Path, root: &Path) -> bool {
         }
     }
     let mut pos = 0;
-    let mut first_line = true;
+    let mut line = 1;
     for token in tokenize(&content) {
         let text = &content[pos..pos + token.len];
         if matches!(
             token.kind,
             TokenKind::LineComment | TokenKind::BlockComment { .. }
         ) {
-            if first_line {
+            if line == 1 {
                 if text.starts_with("///") {
-                    eprintln!("{}: doc comment", rel_str);
+                    eprintln!("{}:{}: doc comment", rel_str, line);
                     return false;
                 }
-            } else if !text.starts_with("///") {
-                eprintln!("{}: additional comments", rel_str);
+            } else if text.starts_with("///") {
+                eprintln!("{}:{}: doc comment", rel_str, line);
+                return false;
+            } else {
+                eprintln!("{}:{}: additional comments", rel_str, line);
                 return false;
             }
         }
-        if text.contains('\n') {
-            first_line = false;
-        }
+        line += text.matches('\n').count();
         pos += token.len;
     }
     true
