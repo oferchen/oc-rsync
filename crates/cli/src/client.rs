@@ -153,10 +153,10 @@ fn run_single(
         remote_opts.push("--old-args".into());
     }
 
-    if let Some(cfg) = &opts.config
-        && !opts.quiet
-    {
-        println!("using config file {}", cfg.display());
+    if let Some(cfg) = &opts.config {
+        if !opts.quiet {
+            println!("using config file {}", cfg.display());
+        }
     }
     if opts.verbose > 0 && !opts.quiet {
         tracing::info!(
