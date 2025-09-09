@@ -12,11 +12,11 @@ use std::time::{Duration, Instant};
 
 use crate::utils::{parse_bool, parse_dparam};
 use clap::{ArgMatches, Args};
-use daemon::{parse_config_file, parse_module, Module};
+use daemon::{Module, parse_config_file, parse_module};
 use engine::{EngineError, Result, SyncOptions};
 use logging::parse_escapes;
-use protocol::{negotiate_version, CharsetConv, ExitCode};
-use transport::{parse_sockopts, AddressFamily, SockOpt, TcpTransport, Transport};
+use protocol::{CharsetConv, ExitCode, negotiate_version};
+use transport::{AddressFamily, SockOpt, TcpTransport, Transport, parse_sockopts};
 
 #[derive(Args, Debug, Clone)]
 pub struct DaemonOpts {
@@ -86,10 +86,10 @@ pub fn spawn_daemon_session(
         .map_err(EngineError::from)?;
     t.set_write_timeout(handshake_timeout)
         .map_err(EngineError::from)?;
-    if let Some(p) = early_input {
-        if let Ok(data) = fs::read(p) {
-            t.send(&data).map_err(EngineError::from)?;
-        }
+    if let Some(p) = early_input
+        && let Ok(data) = fs::read(p)
+    {
+        t.send(&data).map_err(EngineError::from)?;
     }
     t.send(&version.to_be_bytes()).map_err(EngineError::from)?;
     let mut buf = [0u8; 4];

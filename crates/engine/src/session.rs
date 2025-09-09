@@ -779,10 +779,7 @@ pub fn sync(
                         continue;
                     }
                     if entry.file_type.is_dir() {
-                        if opts.dirs_only && !rel.as_os_str().is_empty() {
-                            walker.skip_current_dir();
-                            skip_dirs.push(path.clone());
-                        } else if !res.descend && !rel.as_os_str().is_empty() {
+                        if !rel.as_os_str().is_empty() && (opts.dirs_only || !res.descend) {
                             walker.skip_current_dir();
                             skip_dirs.push(path.clone());
                         }

@@ -42,7 +42,7 @@ pub enum OutBuf {
 
 #[allow(non_snake_case)]
 #[derive(Parser, Debug, Clone)]
-pub(crate) struct ClientOpts {
+pub struct ClientOpts {
     #[command(flatten)]
     pub daemon: DaemonOpts,
     #[arg(short = 'a', long, help_heading = "Selection")]
@@ -741,7 +741,7 @@ pub(crate) struct ClientOpts {
 
 #[doc(hidden)]
 #[derive(Parser, Debug)]
-pub(crate) struct ProbeOpts {
+pub struct ProbeOpts {
     #[arg(long, value_name = "ADDR", num_args = 0..=1)]
     pub probe: Option<String>,
     #[arg(long, default_value_t = SUPPORTED_PROTOCOLS[0], value_name = "VER")]
