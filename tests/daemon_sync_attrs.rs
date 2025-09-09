@@ -176,8 +176,10 @@ fn daemon_preserves_xattrs() {
             Err(e) => panic!("get security.test: {e}"),
         }
     }
-    if keep_ok && let Ok(Some(keep)) = xattr::get(srv.join("file"), "security.keep") {
-        assert_eq!(&keep[..], b"dest");
+    if keep_ok {
+        if let Ok(Some(keep)) = xattr::get(srv.join("file"), "security.keep") {
+            assert_eq!(&keep[..], b"dest");
+        }
     }
 
     let _ = child.kill();
@@ -265,8 +267,10 @@ fn daemon_preserves_xattrs_rr_client() {
             Err(e) => panic!("get security.test: {e}"),
         }
     }
-    if keep_ok && let Ok(Some(keep)) = xattr::get(srv.join("file"), "security.keep") {
-        assert_eq!(&keep[..], b"dest");
+    if keep_ok {
+        if let Ok(Some(keep)) = xattr::get(srv.join("file"), "security.keep") {
+            assert_eq!(&keep[..], b"dest");
+        }
     }
 
     let _ = child.kill();
@@ -318,8 +322,10 @@ fn daemon_preserves_xattrs_rr_daemon() {
             Err(e) => panic!("get security.test: {e}"),
         }
     }
-    if keep_ok && let Ok(Some(keep)) = xattr::get(srv.join("file"), "security.keep") {
-        assert_eq!(&keep[..], b"dest");
+    if keep_ok {
+        if let Ok(Some(keep)) = xattr::get(srv.join("file"), "security.keep") {
+            assert_eq!(&keep[..], b"dest");
+        }
     }
 
     let _ = child.kill();

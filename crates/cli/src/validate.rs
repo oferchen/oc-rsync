@@ -28,10 +28,12 @@ impl<'a> ClientOptsBuilder<'a> {
         }
         if !opts.old_args
             && self.matches.value_source("secluded_args") != Some(ValueSource::CommandLine)
-            && let Ok(val) = env::var("RSYNC_PROTECT_ARGS")
-            && val != "0"
         {
-            opts.secluded_args = true;
+            if let Ok(val) = env::var("RSYNC_PROTECT_ARGS") {
+                if val != "0" {
+                    opts.secluded_args = true;
+                }
+            }
         }
         Ok(opts)
     }
@@ -61,18 +63,19 @@ pub fn validate_paths(opts: &ClientOpts) -> Result<(Vec<OsString>, OsString)> {
         .cloned()
         .ok_or_else(|| EngineError::Other("missing SRC or DST".into()))?;
     let srcs = opts.paths[..opts.paths.len() - 1].to_vec();
-    if opts.fuzzy
-        && srcs.len() == 1
-        && let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(&dst_arg)
-        && ps.path.is_dir()
-    {
-        return Err(EngineError::Other("Not a directory".into()));
+    if opts.fuzzy && srcs.len() == 1 {
+        if let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(&dst_arg) {
+            if ps.path.is_dir() {
+                return Err(EngineError::Other("Not a directory".into()));
+            }
+        }
     }
-    if srcs.len() > 1
-        && let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(dst_arg.as_os_str())
-        && !ps.path.is_dir()
-    {
-        return Err(EngineError::Other("destination must be a directory".into()));
+    if srcs.len() > 1 {
+        if let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(dst_arg.as_os_str()) {
+            if !ps.path.is_dir() {
+                return Err(EngineError::Other("destination must be a directory".into()));
+            }
+        }
     }
     Ok((srcs, dst_arg))
 }

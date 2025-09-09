@@ -86,10 +86,10 @@ pub fn spawn_daemon_session(
         .map_err(EngineError::from)?;
     t.set_write_timeout(handshake_timeout)
         .map_err(EngineError::from)?;
-    if let Some(p) = early_input
-        && let Ok(data) = fs::read(p)
-    {
-        t.send(&data).map_err(EngineError::from)?;
+    if let Some(p) = early_input {
+        if let Ok(data) = fs::read(p) {
+            t.send(&data).map_err(EngineError::from)?;
+        }
     }
     t.send(&version.to_be_bytes()).map_err(EngineError::from)?;
     let mut buf = [0u8; 4];

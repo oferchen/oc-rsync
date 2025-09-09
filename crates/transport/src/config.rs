@@ -68,14 +68,10 @@ impl TransportConfigBuilder {
     }
 
     pub fn build(self) -> Result<TransportConfig> {
-        if let Some(t) = self.timeout
-            && t.is_zero()
-        {
+        if self.timeout.is_some_and(|t| t.is_zero()) {
             return Err(TransportConfigError("timeout must be nonzero"));
         }
-        if let Some(rl) = self.rate_limit
-            && rl == 0
-        {
+        if self.rate_limit.is_some_and(|rl| rl == 0) {
             return Err(TransportConfigError("rate limit must be nonzero"));
         }
         Ok(TransportConfig {

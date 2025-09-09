@@ -638,16 +638,16 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
             add_rules(idx + 1, rs);
         }
     }
-    if matches.contains_id("filter_shorthand")
-        && let Some(idx) = matches.index_of("filter_shorthand")
-    {
-        let count = matches.get_count("filter_shorthand");
-        let rule_str = if count >= 2 { "-FF" } else { "-F" };
-        add_rules(
-            idx + 1,
-            parse_filters(rule_str, opts.from0)
-                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
-        );
+    if matches.contains_id("filter_shorthand") {
+        if let Some(idx) = matches.index_of("filter_shorthand") {
+            let count = matches.get_count("filter_shorthand");
+            let rule_str = if count >= 2 { "-FF" } else { "-F" };
+            add_rules(
+                idx + 1,
+                parse_filters(rule_str, opts.from0)
+                    .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+            );
+        }
     }
     if !opts.files_from.is_empty() {
         add_rules(
