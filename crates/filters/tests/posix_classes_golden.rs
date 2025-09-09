@@ -1,6 +1,5 @@
 // crates/filters/tests/posix_classes_golden.rs
-// Verifies POSIX character classes against precomputed expectations
-use filters::{parse, Matcher};
+use filters::{Matcher, parse};
 use std::collections::HashSet;
 use std::fs;
 use tempfile::tempdir;
