@@ -3,7 +3,7 @@
 
 use std::fs;
 use std::path::PathBuf;
-use tempfile::{tempdir, TempDir};
+use tempfile::{TempDir, tempdir};
 
 pub fn setup_files_from_env(entries: &[(&str, &[u8])]) -> (TempDir, PathBuf, PathBuf) {
     let dir = tempdir().unwrap();

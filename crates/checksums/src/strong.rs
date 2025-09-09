@@ -3,7 +3,7 @@
 use md4::{Digest, Md4};
 use md5::Md5;
 use sha1::Sha1;
-use xxhash_rust::xxh64::{xxh64, Xxh64};
+use xxhash_rust::xxh64::{Xxh64, xxh64};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StrongHash {
