@@ -2,9 +2,9 @@
 #![allow(clippy::collapsible_if)]
 
 use crate::{
-    parser::{parse_with_options, ParseError, MAX_PARSE_DEPTH},
+    parser::{MAX_PARSE_DEPTH, ParseError, parse_with_options},
     perdir::PerDir,
-    rule::Rule,
+    rule::{Rule, RuleData},
     stats::FilterStats,
 };
 use logging::InfoFlag;
@@ -28,6 +28,39 @@ struct Cached {
 pub struct MatchResult {
     pub include: bool,
     pub descend: bool,
+}
+
+fn rule_matches(data: &RuleData, path: &Path, is_dir: bool) -> bool {
+    let mut matched = data.is_match(path, is_dir);
+    let pat_core = data
+        .pattern
+        .trim_start_matches('/')
+        .trim_start_matches("./");
+    if matched && pat_core.starts_with("**/") {
+        let rest = &pat_core[3..];
+        if rest.contains('*')
+            && !rest.contains("**")
+            && path.components().count() > 1
+            && rest != "*"
+        {
+            matched = false;
+        }
+    } else if matched && pat_core.contains('*') && !pat_core.contains("**") {
+        if data.has_slash {
+            let pat_segments = pat_core
+                .trim_matches('/')
+                .split('/')
+                .filter(|s| !s.is_empty() && *s != ".")
+                .count();
+            let path_segments = path.components().count();
+            if path_segments != pat_segments {
+                matched = false;
+            }
+        } else if path.components().count() > 1 && pat_core != "*" {
+            matched = false;
+        }
+    }
+    matched
 }
 
 #[derive(Clone, Default)]
@@ -260,7 +293,7 @@ impl Matcher {
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched_rule = data.is_match(path, is_dir);
+                    let matched_rule = rule_matches(data, path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
                     let may_desc = is_dir && data.may_match_descendant(path);
@@ -294,7 +327,7 @@ impl Matcher {
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched_rule = data.is_match(path, is_dir);
+                    let matched_rule = rule_matches(data, path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
                     let may_desc = is_dir && data.may_match_descendant(path);
@@ -328,7 +361,7 @@ impl Matcher {
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched_rule = data.is_match(path, is_dir);
+                    let matched_rule = rule_matches(data, path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
                     let may_desc = is_dir && data.may_match_descendant(path);
@@ -369,7 +402,7 @@ impl Matcher {
                     if for_delete && data.flags.perishable {
                         continue;
                     }
-                    let matched_rule = data.is_match(path, is_dir);
+                    let matched_rule = rule_matches(data, path, is_dir);
                     let rule_match =
                         (data.invert && !matched_rule) || (!data.invert && matched_rule);
                     let may_desc = is_dir && data.may_match_descendant(path);
@@ -838,7 +871,7 @@ impl Matcher {
                         if d.dir_only && !is_dir {
                             continue;
                         }
-                        let matched = d.is_match(path, is_dir);
+                        let matched = rule_matches(d, path, is_dir);
                         if (d.invert && !matched)
                             || (!d.invert && matched)
                             || (is_dir && d.may_match_descendant(path))
@@ -851,7 +884,7 @@ impl Matcher {
                         if d.dir_only && !is_dir {
                             continue;
                         }
-                        let matched = d.is_match(path, is_dir);
+                        let matched = rule_matches(d, path, is_dir);
                         if (d.invert && !matched)
                             || (!d.invert && matched)
                             || (is_dir && d.may_match_descendant(path))

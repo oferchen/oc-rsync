@@ -74,8 +74,12 @@ fn compile_glob(pat: &str) -> Result<GlobMatcher, ParseError> {
         }
     }
 
+    let translated = translated.replace("\\[", "\u{1}").replace("\\]", "\u{2}");
+
     let pat = expand_posix_classes(&translated);
     let pat = confine_char_classes(&pat);
+    let pat = pat.replace('\u{1}', "\\[").replace('\u{2}', "\\]");
+
     Ok(GlobBuilder::new(&pat)
         .literal_separator(true)
         .backslash_escape(true)
@@ -423,11 +427,7 @@ fn decode_line(raw: &str) -> Option<String> {
         last_non_space = out.len();
     }
     out.truncate(last_non_space);
-    if out.is_empty() {
-        None
-    } else {
-        Some(out)
-    }
+    if out.is_empty() { None } else { Some(out) }
 }
 
 pub fn parse_with_options(
@@ -1428,7 +1428,7 @@ mod tests {
     #[cfg(unix)]
     use std::os::unix::io::IntoRawFd;
     use std::path::Path;
-    use tempfile::{tempfile, NamedTempFile};
+    use tempfile::{NamedTempFile, tempfile};
 
     #[test]
     fn reads_from_file() {
