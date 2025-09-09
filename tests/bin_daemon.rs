@@ -4,30 +4,58 @@ use std::fs;
 use std::io::{BufRead, BufReader, Read};
 use std::net::TcpStream;
 use std::process::{Child, Command, Stdio};
+use std::sync::mpsc;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tempfile::tempdir;
 
-fn wait_for_daemon(port: u16) {
-    for _ in 0..50 {
+struct ChildGuard(Child);
+
+impl Drop for ChildGuard {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
+fn wait_for_daemon(port: u16, timeout: Duration) {
+    let start = Instant::now();
+    while start.elapsed() < timeout {
         if TcpStream::connect(("127.0.0.1", port)).is_ok() {
             return;
         }
         sleep(Duration::from_millis(50));
     }
-    panic!("daemon did not start");
+    panic!("daemon did not start within {timeout:?}");
 }
 
-fn read_port(child: &mut Child) -> u16 {
+fn read_port(child: &mut Child, timeout: Duration) -> u16 {
     let stdout = child.stdout.take().unwrap();
-    let mut reader = BufReader::new(stdout);
-    let mut line = String::new();
-    reader.read_line(&mut line).unwrap();
+    let (tx, rx) = mpsc::channel();
+    let handle = std::thread::spawn(move || {
+        let mut reader = BufReader::new(stdout);
+        let mut line = String::new();
+        let _ = reader.read_line(&mut line);
+        tx.send(line).ok();
+    });
+
+    let line = match rx.recv_timeout(timeout) {
+        Ok(line) => {
+            let _ = handle.join();
+            line
+        }
+        Err(_) => {
+            let _ = child.kill();
+            let _ = handle.join();
+            let _ = child.wait();
+            panic!("daemon did not print a port number within {timeout:?}");
+        }
+    };
+
     let trimmed = line.trim();
     if !trimmed.chars().all(|c| c.is_ascii_digit()) {
         let _ = child.kill();
-        let mut stdout = line;
-        reader.read_to_string(&mut stdout).unwrap();
+        let stdout = line;
         let mut stderr = String::new();
         if let Some(mut e) = child.stderr.take() {
             e.read_to_string(&mut stderr).unwrap();
@@ -41,27 +69,26 @@ fn read_port(child: &mut Child) -> u16 {
 #[test]
 fn starts_daemon() {
     let tmp = tempdir().unwrap();
-    let mut child = Command::cargo_bin("oc-rsyncd")
-        .unwrap()
-        .env("OC_RSYNC_BIN", cargo_bin("oc-rsync"))
-        .args([
-            "--no-detach",
-            "--port=0",
-            "--address=127.0.0.1",
-            "--module",
-            &format!("data={}", tmp.path().display()),
-        ])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
+    let mut child = ChildGuard(
+        Command::cargo_bin("oc-rsyncd")
+            .unwrap()
+            .env("OC_RSYNC_BIN", cargo_bin("oc-rsync"))
+            .args([
+                "--no-detach",
+                "--port=0",
+                "--address=127.0.0.1",
+                "--module",
+                &format!("data={}", tmp.path().display()),
+            ])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap(),
+    );
 
-    let port = read_port(&mut child);
+    let port = read_port(&mut child.0, Duration::from_secs(5));
 
-    wait_for_daemon(port);
-
-    let _ = child.kill();
-    let _ = child.wait();
+    wait_for_daemon(port, Duration::from_secs(5));
 }
 
 #[test]
@@ -79,26 +106,25 @@ fn accepts_config_option() {
     )
     .unwrap();
 
-    let mut child = Command::cargo_bin("oc-rsyncd")
-        .unwrap()
-        .env("OC_RSYNC_BIN", cargo_bin("oc-rsync"))
-        .args([
-            "--no-detach",
-            "--port=0",
-            "--address=127.0.0.1",
-            "--config",
-            cfg_path.to_str().unwrap(),
-        ])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
+    let mut child = ChildGuard(
+        Command::cargo_bin("oc-rsyncd")
+            .unwrap()
+            .env("OC_RSYNC_BIN", cargo_bin("oc-rsync"))
+            .args([
+                "--no-detach",
+                "--port=0",
+                "--address=127.0.0.1",
+                "--config",
+                cfg_path.to_str().unwrap(),
+            ])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap(),
+    );
 
-    let port = read_port(&mut child);
+    let port = read_port(&mut child.0, Duration::from_secs(5));
 
-    wait_for_daemon(port);
+    wait_for_daemon(port, Duration::from_secs(5));
     assert!(pid_file.exists());
-
-    let _ = child.kill();
-    let _ = child.wait();
 }

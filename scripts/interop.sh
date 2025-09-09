@@ -15,6 +15,12 @@ declare -A RSYNC_SHA256=(
   ["3.4.1"]="2924bcb3a1ed8b551fc101f740b9f0fe0a202b115027647cf69850d65fd88c52"
 )
 
+# Samba release signing key used to verify upstream rsync sources.
+# Fingerprint: A490 D0F9 62D5 B3F8 7246 2E33 0556 6B47 2553 49F5
+# Key import URL: https://download.samba.org/pub/rsync/rsync-pubkey.asc
+RSYNC_GPG_FPR="A490D0F962D5B3F872462E3305566B47255349F5"
+RSYNC_GPG_KEY_URL="https://download.samba.org/pub/rsync/rsync-pubkey.asc"
+
 mkdir -p "$WIRE_DIR" "$FILELIST_DIR"
 
 ensure_build_deps() {
@@ -23,7 +29,7 @@ ensure_build_deps() {
     apt-get install -y build-essential >/dev/null
   fi
   apt-get update >/dev/null
-  apt-get install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev >/dev/null
+  apt-get install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev gnupg >/dev/null
 }
 
 # Build oc-rsync binary
@@ -73,14 +79,22 @@ download_rsync() {
     mkdir -p "$ROOT/target/upstream"
     pushd "$ROOT/target/upstream" >/dev/null
     tarball="rsync-$ver.tar.gz"
+    sig="$tarball.asc"
     curl --fail --silent --show-error -L "https://download.samba.org/pub/rsync/src/$tarball" -o "$tarball" \
       || { echo "failed to download $tarball" >&2; return 1; }
+    curl --fail --silent --show-error -L "https://download.samba.org/pub/rsync/src/$sig" -o "$sig" \
+      || { echo "failed to download $sig" >&2; return 1; }
     sha="${RSYNC_SHA256[$ver]}"
     if [[ -z "$sha" ]]; then
       echo "missing checksum for rsync $ver" >&2
       exit 1
     fi
     echo "$sha  $tarball" | sha256sum -c -
+    if ! gpg --list-keys "$RSYNC_GPG_FPR" >/dev/null 2>&1; then
+      curl --fail --silent --show-error -L "$RSYNC_GPG_KEY_URL" | gpg --import
+    fi
+    gpg --batch --verify "$sig" "$tarball" \
+      || { echo "signature verification failed for $tarball" >&2; exit 1; }
     tar xzf "$tarball"
     pushd "rsync-$ver" >/dev/null
     ./configure --prefix="$prefix" >/dev/null
