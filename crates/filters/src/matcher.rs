@@ -911,7 +911,7 @@ impl Matcher {
             Some(path.to_path_buf()),
         )?;
 
-        let mut next_index = if cvs { 0 } else { index };
+        let mut next_index = index;
 
         for r in parsed {
             match r {
