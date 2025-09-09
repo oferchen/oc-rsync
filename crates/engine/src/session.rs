@@ -605,11 +605,6 @@ fn count_entries(
                 }
                 if entry.file_type.is_dir() {
                     dirs += 1;
-                    if opts.dirs_only && !rel.as_os_str().is_empty() {
-                        walker.skip_current_dir();
-                        skip_dirs.push(path.clone());
-                        continue;
-                    }
                     if !res.descend && !rel.as_os_str().is_empty() {
                         walker.skip_current_dir();
                         skip_dirs.push(path.clone());
@@ -779,7 +774,7 @@ pub fn sync(
                         continue;
                     }
                     if entry.file_type.is_dir() {
-                        if !rel.as_os_str().is_empty() && (opts.dirs_only || !res.descend) {
+                        if !rel.as_os_str().is_empty() && !res.descend {
                             walker.skip_current_dir();
                             skip_dirs.push(path.clone());
                         }
@@ -928,13 +923,17 @@ pub fn sync(
                         receiver.copy_metadata_now(&path, &dest_path)?;
                         stats.files_created += 1;
                         stats.dirs_created += 1;
-                        walker.skip_current_dir();
-                        skip_dirs.push(path.clone());
                         continue;
                     }
                     if !res.descend && !rel.as_os_str().is_empty() {
+                        let dest_path = dst.join(rel);
+                        fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
+                        receiver.copy_metadata_now(&path, &dest_path)?;
+                        stats.files_created += 1;
+                        stats.dirs_created += 1;
                         walker.skip_current_dir();
                         skip_dirs.push(path.clone());
+                        continue;
                     }
                 } else if entry.file_type.is_file() {
                     if opts.dirs_only {
