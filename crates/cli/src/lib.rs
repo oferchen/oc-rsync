@@ -120,6 +120,7 @@ fn run_single(
     }
     if opts.old_dirs {
         opts.dirs = true;
+        opts.recursive = true;
     }
     if !opts.files_from.is_empty() {
         opts.dirs = true;
@@ -693,6 +694,13 @@ fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<Matcher> {
                 .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
         );
         add_rules(usize::MAX, cvs);
+    }
+    if opts.old_dirs {
+        add_rules(
+            usize::MAX,
+            parse_filters("- /*/*", opts.from0)
+                .map_err(|e| EngineError::Other(format!("{:?}", e)))?,
+        );
     }
 
     entries.sort_by(|a, b| {
