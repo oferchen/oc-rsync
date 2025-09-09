@@ -27,11 +27,11 @@ transfers across the following scenarios:
 ## Parser Parity
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
-| Comprehensive flag parsing and help text parity | ✅ | [tests/cli_flags.rs](../tests/cli_flags.rs)<br>[crates/cli/tests/help.rs](../crates/cli/tests/help.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| Composite `--archive` flag expansion | ✅ | [tests/archive.rs](../tests/archive.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| Remote-only option parsing (`--remote-option`) | ✅ | [tests/interop/remote_option.rs](../tests/interop/remote_option.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| Comprehensive flag parsing and help text parity | ✅ | [tests/cli_flags.rs](../tests/cli_flags.rs)<br>[crates/cli/tests/help.rs](../crates/cli/tests/help.rs) | [crates/cli/src/argparse.rs](../crates/cli/src/argparse.rs) |
+| Composite `--archive` flag expansion | ✅ | [tests/archive.rs](../tests/archive.rs) | [crates/cli/src/client.rs](../crates/cli/src/client.rs) |
+| Remote-only option parsing (`--remote-option`) | ✅ | [tests/interop/remote_option.rs](../tests/interop/remote_option.rs) | [crates/cli/src/client.rs](../crates/cli/src/client.rs) |
 | `--version` output parity | ✅ | [tests/version_output.rs](../tests/version_output.rs) | [crates/cli/src/version.rs](../crates/cli/src/version.rs) |
-| Null-delimited list parsing (`--from0`) | ✅ | [tests/files_from.rs](../tests/files_from.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| Null-delimited list parsing (`--from0`) | ✅ | [tests/files_from.rs](../tests/files_from.rs) | [crates/cli/src/client.rs](../crates/cli/src/client.rs) |
 
 Note: [tests/archive.rs](../tests/archive.rs) demonstrates the composite `--archive` flag expansion.
 
@@ -60,7 +60,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
 | zstd and zlib codecs | Implemented | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/mod.rs](../crates/compress/src/mod.rs) |
-| `--skip-compress` suffix handling | Implemented | [tests/skip_compress.rs](../tests/skip_compress.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| `--skip-compress` suffix handling | Implemented | [tests/skip_compress.rs](../tests/skip_compress.rs) | [crates/cli/src/client.rs](../crates/cli/src/client.rs) |
 | LZ4 codec | Planned post-parity ([#873](https://github.com/oferchen/oc-rsync/pull/873)); `liblz4-dev` no longer required for interop builds | — | — |
 
 ## Filters
@@ -73,7 +73,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | Additional rule modifiers | Implemented | [crates/filters/tests/rule_modifiers.rs](../crates/filters/tests/rule_modifiers.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | CVS ignore semantics (`--cvs-exclude`) | ✅ | [tests/cvs_exclude.rs](../tests/cvs_exclude.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 | Complex glob patterns | Implemented | [crates/filters/tests/advanced_globs.rs](../crates/filters/tests/advanced_globs.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
-| `--files-from` directory entries | ✅ | [crates/filters/tests/files_from.rs](../crates/filters/tests/files_from.rs)<br>[tests/files_from_dirs.rs](../tests/files_from_dirs.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs)<br>[crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| `--files-from` directory entries | ✅ | [crates/filters/tests/files_from.rs](../crates/filters/tests/files_from.rs)<br>[tests/files_from_dirs.rs](../tests/files_from_dirs.rs) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs)<br>[crates/cli/src/client.rs](../crates/cli/src/client.rs) |
 | Directory boundary handling | Implemented | [tests/misc.rs](../tests/misc.rs) (`single_star_does_not_cross_directories`<br>`segment_star_does_not_cross_directories`) | [crates/filters/src/lib.rs](../crates/filters/src/lib.rs) |
 
 ## File Selection
@@ -92,6 +92,7 @@ _Future contributors: update this section when adding or fixing CLI parser behav
 | Permissions and ownership restoration | Implemented | [crates/meta/tests/chmod.rs](../crates/meta/tests/chmod.rs) | [crates/meta/src/unix/mod.rs](../crates/meta/src/unix/mod.rs) |
 | `--fake-super` xattr fallback | Implemented | [crates/meta/tests/fake_super.rs](../crates/meta/tests/fake_super.rs) | [crates/meta/src/unix/mod.rs](../crates/meta/src/unix/mod.rs) |
 | POSIX ACL preservation | Implemented | [crates/meta/tests/acl_roundtrip.rs](../crates/meta/tests/acl_roundtrip.rs) | [crates/meta/src/unix/mod.rs](../crates/meta/src/unix/mod.rs) |
+| Hard link detection and recreation | Implemented | [tests/hard_links.rs](../tests/hard_links.rs)<br>[crates/engine/tests/links.rs](../crates/engine/tests/links.rs) | [crates/meta/src/lib.rs](../crates/meta/src/lib.rs) |
 | Windows metadata preservation | Implemented | [tests/windows.rs](../tests/windows.rs) | [crates/meta/src/windows/mod.rs](../crates/meta/src/windows/mod.rs) |
 
 ## Transport
@@ -133,7 +134,7 @@ The stats output shows that only a single 4 KiB block was sent.
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
 | Custom out-format and log file messages | Implemented | [tests/out_format.rs](../tests/out_format.rs)<br>[tests/log_file.rs](../tests/log_file.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs) |
-| System log integration (syslog/journald) | Implemented | [crates/logging/tests/syslog.rs](../crates/logging/tests/syslog.rs)<br>[crates/logging/tests/journald.rs](../crates/logging/tests/journald.rs)<br>[tests/daemon_syslog.rs](../tests/daemon_syslog.rs)<br>[tests/daemon_journald.rs](../tests/daemon_journald.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs)<br>[crates/cli/src/lib.rs](../crates/cli/src/lib.rs)<br>[crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
+| System log integration (syslog/journald) | Implemented | [crates/logging/tests/syslog.rs](../crates/logging/tests/syslog.rs)<br>[crates/logging/tests/journald.rs](../crates/logging/tests/journald.rs)<br>[tests/daemon_syslog.rs](../tests/daemon_syslog.rs)<br>[tests/daemon_journald.rs](../tests/daemon_journald.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs)<br>[crates/cli/src/argparse.rs](../crates/cli/src/argparse.rs)<br>[crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
 | Daemon MOTD/greeting messages | Implemented | [tests/daemon.rs](../tests/daemon.rs) | [crates/daemon/src/lib.rs](../crates/daemon/src/lib.rs) |
 | Info and debug flag routing | Implemented | [crates/logging/tests/info_flags.rs](../crates/logging/tests/info_flags.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs) |
 | JSON and text formatters | Implemented | [crates/logging/tests/levels.rs](../crates/logging/tests/levels.rs) | [crates/logging/src/lib.rs](../crates/logging/src/lib.rs) |
@@ -143,10 +144,10 @@ _Future contributors: update this section when adding or fixing message behavior
 ## CLI
 | Feature | Status | Tests | Source |
 | --- | --- | --- | --- |
-| Comprehensive flag parsing via `clap` | ✅ | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| `--log-file-format` | ✅ | [tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| `--munge-links` option | ✅ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
-| `--dry-run` prevents destination changes | ✅ | [tests/interop/dry_run.rs](../tests/interop/dry_run.rs) | [crates/cli/src/lib.rs](../crates/cli/src/lib.rs) |
+| Comprehensive flag parsing via `clap` | ✅ | [tests/cli_flags.rs](../tests/cli_flags.rs) | [crates/cli/src/argparse.rs](../crates/cli/src/argparse.rs) |
+| `--log-file-format` | ✅ | [tests/log_file.rs](../tests/log_file.rs) | [crates/cli/src/client.rs](../crates/cli/src/client.rs) |
+| `--munge-links` option | ✅ | [tests/symlink_resolution.rs](../tests/symlink_resolution.rs) | [crates/cli/src/argparse.rs](../crates/cli/src/argparse.rs) |
+| `--dry-run` prevents destination changes | ✅ | [tests/interop/dry_run.rs](../tests/interop/dry_run.rs) | [crates/cli/src/client.rs](../crates/cli/src/client.rs) |
 | Test-only `--dump-help-body` flag for help text verification | Internal | [crates/cli/tests/help.rs](../crates/cli/tests/help.rs) | [crates/cli/src/argparse.rs](../crates/cli/src/argparse.rs) |
 ### Outstanding Options
 
