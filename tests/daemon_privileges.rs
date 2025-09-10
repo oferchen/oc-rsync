@@ -40,7 +40,7 @@ fn chroot_drops_privileges() {
 #[ignore = "requires root privileges"]
 fn chroot_requires_root() {
     use nix::sys::wait::waitpid;
-    use nix::unistd::{ForkResult, fork, geteuid};
+    use nix::unistd::{ForkResult, fork};
 
     let _ = oc_cmd();
     let dir = tempdir().unwrap();

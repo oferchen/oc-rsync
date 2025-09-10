@@ -1,6 +1,6 @@
 // tests/daemon_network.rs
-#![cfg(feature = "network")]
 
+#[cfg(feature = "network")]
 use assert_cmd::cargo::cargo_bin;
 use daemon::{Handler, Module, handle_connection, host_allowed};
 use protocol::LATEST_VERSION;
@@ -8,17 +8,25 @@ use serial_test::serial;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Cursor, Read};
-use std::net::{IpAddr, TcpStream};
+use std::net::IpAddr;
+#[cfg(feature = "network")]
+use std::net::TcpStream;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+#[cfg(feature = "network")]
 use std::process::{Child, Command, Stdio};
-use std::sync::{Arc, mpsc};
+use std::sync::Arc;
+#[cfg(feature = "network")]
+use std::sync::mpsc;
+#[cfg(feature = "network")]
 use std::thread::sleep;
+#[cfg(feature = "network")]
 use std::time::Duration;
 use tempfile::tempdir;
 use transport::LocalPipeTransport;
 #[cfg(feature = "network")]
-use transport::TcpTransport;
+use transport::{TcpTransport, Transport};
+#[cfg(feature = "network")]
 use wait_timeout::ChildExt;
 
 #[cfg(feature = "network")]
@@ -398,6 +406,7 @@ fn anonymous_module_listing_only_shows_listed_modules() {
     assert!(!text.contains("private"));
 }
 
+#[cfg(feature = "network")]
 fn read_port(child: &mut Child) -> io::Result<u16> {
     let mut stdout = child
         .stdout
@@ -456,6 +465,7 @@ fn read_port(child: &mut Child) -> io::Result<u16> {
     }
 }
 
+#[cfg(feature = "network")]
 fn wait_for_daemon(port: u16) {
     for _ in 0..20 {
         if TcpStream::connect(("127.0.0.1", port)).is_ok() {
@@ -467,11 +477,11 @@ fn wait_for_daemon(port: u16) {
     panic!("daemon did not start");
 }
 
+#[cfg(feature = "network")]
 fn spawn_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
     let module_path = fs::canonicalize(dir.path()).unwrap();
-    let program = cargo_bin("oc-rsync");
-    let mut cmd = Command::new(program);
+    let mut cmd = Command::new(cargo_bin("oc-rsync"));
     cmd.env("LC_ALL", "C").env("LANG", "C");
     cmd.args([
         "--daemon",
@@ -495,15 +505,16 @@ fn spawn_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
     Ok((child, port, dir))
 }
 
+#[cfg(feature = "network")]
 fn spawn_temp_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
     spawn_daemon()
 }
 
+#[cfg(feature = "network")]
 fn spawn_daemon_with_timeout(timeout: u64) -> io::Result<(Child, u16, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
     let module_path = fs::canonicalize(dir.path()).unwrap();
-    let program = cargo_bin("oc-rsync");
-    let mut cmd = Command::new(program);
+    let mut cmd = Command::new(cargo_bin("oc-rsync"));
     cmd.env("LC_ALL", "C").env("LANG", "C");
     cmd.args([
         "--daemon",
