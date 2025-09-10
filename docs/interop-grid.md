@@ -8,6 +8,15 @@ For each flag set the script runs both implementations, capturing stdout, stderr
 scripts/interop-grid.sh
 ```
 
+All `rsync://` interoperability tests run with daemons bound exclusively to
+the loopback interface. The test harness allocates ports on `127.0.0.1` and
+spawns daemons on that address, requiring clients to connect using explicit
+`rsync://127.0.0.1:PORT/...` URLs. This policy is enforced in CI by
+`tests/common/daemon.rs`, which binds listeners to `127.0.0.1`, and by
+`tests/interop/run_matrix.sh` (invoked from `.github/workflows/ci.yml`), which
+verifies ports with `nc -z 127.0.0.1` and issues all client connections to
+`127.0.0.1`.
+
 Results are written to `tests/interop/interop-grid.log` for inspection alongside other interoperability fixtures.
 
 `scripts/interop/run.sh` provides a lower‑level view of these transfers.  It
