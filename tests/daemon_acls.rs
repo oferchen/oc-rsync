@@ -15,7 +15,7 @@ use common::daemon::{spawn_daemon, wait_for_daemon};
 
 #[test]
 #[serial]
-fn daemon_preserves_acls() {
+fn daemon_preserves_file_acls() {
     if !xattrs_supported() {
         eprintln!("skipping: xattrs unsupported");
         return;
@@ -37,10 +37,6 @@ fn daemon_preserves_acls() {
     acl.set(Qualifier::User(23456), ACL_WRITE);
     acl.write_acl(&src_file).unwrap();
 
-    let mut dacl = PosixACL::new(0o755);
-    dacl.set(Qualifier::User(12345), ACL_READ);
-    dacl.write_default_acl(&src).unwrap();
-
     let (mut child, port) = spawn_daemon(&srv);
     wait_for_daemon(port);
 
@@ -54,6 +50,43 @@ fn daemon_preserves_acls() {
     let acl_src = PosixACL::read_acl(&src_file).unwrap();
     let acl_dst = PosixACL::read_acl(srv.join("file")).unwrap();
     assert_eq!(acl_src.entries(), acl_dst.entries());
+
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_preserves_default_acls() {
+    if !xattrs_supported() {
+        eprintln!("skipping: xattrs unsupported");
+        return;
+    }
+    if !acls_supported() {
+        eprintln!("skipping: ACLs unsupported");
+        return;
+    }
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let srv = tmp.path().join("srv");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&srv).unwrap();
+    let src_file = src.join("file");
+    fs::write(&src_file, b"hi").unwrap();
+
+    let mut dacl = PosixACL::new(0o755);
+    dacl.set(Qualifier::User(12345), ACL_READ);
+    dacl.write_default_acl(&src).unwrap();
+
+    let (mut child, port) = spawn_daemon(&srv);
+    wait_for_daemon(port);
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
+        .assert()
+        .success();
 
     let dacl_src = PosixACL::read_default_acl(&src).unwrap();
     let dacl_dst = PosixACL::read_default_acl(&srv).unwrap();
