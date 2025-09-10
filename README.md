@@ -32,7 +32,10 @@ sudo rpm -i oc-rsync-<version>.x86_64.rpm
 
 #### Prerequisites
 
-This project requires **Rust 1.87** or newer. The source build also needs a C toolchain, compression libraries, and ACL headers:
+This project requires **Rust 1.87** or newer. This minimum supported Rust
+version (MSRV) is specified in `Cargo.toml` and enforced in CI, which builds
+and tests with Rust 1.87. The source build also needs a C toolchain,
+compression libraries, and ACL headers:
 
 - `build-essential` (provides `gcc`/`ld`)
 - `libzstd-dev`
