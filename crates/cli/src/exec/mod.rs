@@ -1,3 +1,4 @@
+// crates/cli/src/exec/mod.rs
 pub(crate) mod privileges;
 pub(crate) mod transfer;
 
