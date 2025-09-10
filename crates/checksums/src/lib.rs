@@ -1,5 +1,7 @@
 // crates/checksums/src/lib.rs
 
+#![doc = include_str!("../../../docs/crates/checksums/lib.md")]
+
 pub mod rolling;
 pub mod strong;
 

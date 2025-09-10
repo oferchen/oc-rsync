@@ -1,4 +1,5 @@
 // crates/meta/src/lib.rs
+#![doc = include_str!("../../../docs/crates/meta/lib.md")]
 #![allow(clippy::collapsible_if)]
 mod types;
 pub use types::*;

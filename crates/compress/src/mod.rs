@@ -1,4 +1,6 @@
 // crates/compress/src/mod.rs
+#![doc = include_str!("../../../docs/crates/compress/lib.md")]
+
 use std::collections::HashSet;
 use std::io::{self, Read, Write};
 use std::path::Path;

@@ -1,4 +1,5 @@
 // crates/daemon/src/lib.rs
+#![doc = include_str!("../../../docs/crates/daemon/lib.md")]
 #![allow(clippy::collapsible_if)]
 
 pub mod auth;

@@ -1,4 +1,5 @@
 // crates/engine/src/lib.rs
+#![doc = include_str!("../../../docs/crates/engine/lib.md")]
 #![allow(clippy::collapsible_if)]
 
 use std::io::{Read, Seek};
