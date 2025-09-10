@@ -2,6 +2,8 @@
 #![allow(dead_code)]
 
 use assert_cmd::cargo::{CommandCargoExt, cargo_bin};
+#[cfg(unix)]
+use nix::unistd::{Gid, Uid};
 use std::fs;
 use std::net::{TcpListener, TcpStream};
 use std::process::{Child, Command as StdCommand};
@@ -9,6 +11,10 @@ use std::thread::sleep;
 use std::time::Duration;
 
 pub fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
+    #[cfg(unix)]
+    let (uid, gid) = (Uid::current().as_raw(), Gid::current().as_raw());
+    #[cfg(not(unix))]
+    let (uid, gid) = (0, 0);
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
         .local_addr()
@@ -19,7 +25,12 @@ pub fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
         .args([
             "--daemon",
             "--module",
-            &format!("mod={}", root.display()),
+            &format!(
+                "mod={},uid={},gid={},use-chroot=no",
+                root.display(),
+                uid,
+                gid
+            ),
             "--port",
             &port.to_string(),
         ])
@@ -29,13 +40,17 @@ pub fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
 }
 
 pub fn spawn_rsync_daemon(root: &std::path::Path, extra: &str) -> (Child, u16) {
+    #[cfg(unix)]
+    let (uid, gid) = (Uid::current().as_raw(), Gid::current().as_raw());
+    #[cfg(not(unix))]
+    let (uid, gid) = (0, 0);
     let port = TcpListener::bind("127.0.0.1:0")
         .unwrap()
         .local_addr()
         .unwrap()
         .port();
     let conf = format!(
-        "uid = 0\ngid = 0\nuse chroot = false\n[mod]\n  path = {}\n{}",
+        "uid = {uid}\ngid = {gid}\nuse chroot = false\n[mod]\n  path = {}\n{}",
         root.display(),
         extra
     );
