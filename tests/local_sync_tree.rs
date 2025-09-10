@@ -1,8 +1,9 @@
 // tests/local_sync_tree.rs
 
 use assert_cmd::Command;
+use filetime::FileTime;
 #[cfg(unix)]
-use filetime::{FileTime, set_file_times};
+use filetime::set_file_times;
 #[cfg(unix)]
 use meta::mkfifo;
 #[cfg(unix)]
@@ -18,22 +19,78 @@ use std::os::unix::fs::{MetadataExt, PermissionsExt, symlink};
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 
-fn collect(dir: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
-    fn visit(base: &Path, root: &Path, map: &mut BTreeMap<PathBuf, Vec<u8>>) {
+#[derive(Debug, PartialEq, Eq)]
+struct Collected {
+    data: Vec<u8>,
+    mtime: FileTime,
+    #[cfg(unix)]
+    mode: u32,
+    #[cfg(unix)]
+    xattrs: BTreeMap<String, Vec<u8>>,
+}
+
+fn collect(dir: &Path) -> BTreeMap<PathBuf, Collected> {
+    fn visit(base: &Path, root: &Path, map: &mut BTreeMap<PathBuf, Collected>) {
         for entry in fs::read_dir(base).unwrap() {
             let entry = entry.unwrap();
             let path = entry.path();
-            if path.is_dir() {
+            let meta = fs::symlink_metadata(&path).unwrap();
+            let rel = path.strip_prefix(root).unwrap().to_path_buf();
+            if meta.is_dir() {
+                map.insert(rel.clone(), gather(&path, &meta));
                 visit(&path, root, map);
             } else {
-                let rel = path.strip_prefix(root).unwrap().to_path_buf();
-                map.insert(rel, fs::read(&path).unwrap());
+                map.insert(rel, gather(&path, &meta));
             }
         }
     }
+
+    fn gather(path: &Path, meta: &fs::Metadata) -> Collected {
+        #[cfg(unix)]
+        let mode = meta.permissions().mode();
+        let data = if meta.is_file() {
+            fs::read(path).unwrap()
+        } else if meta.file_type().is_symlink() {
+            fs::read_link(path)
+                .unwrap()
+                .as_os_str()
+                .to_string_lossy()
+                .into_owned()
+                .into_bytes()
+        } else {
+            Vec::new()
+        };
+        let mtime = FileTime::from_last_modification_time(meta);
+        #[cfg(unix)]
+        let mut xattrs = BTreeMap::new();
+        #[cfg(unix)]
+        if let Ok(names) = xattr::list(path) {
+            for name in names {
+                let key = name.to_string_lossy().into_owned();
+                if let Ok(Some(val)) = xattr::get(path, &key) {
+                    xattrs.insert(key, val);
+                }
+            }
+        }
+        Collected {
+            data,
+            mtime,
+            #[cfg(unix)]
+            mode,
+            #[cfg(unix)]
+            xattrs,
+        }
+    }
+
     let mut map = BTreeMap::new();
     visit(dir, dir, &mut map);
     map
+}
+
+fn oc_rsync() -> Command {
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    cmd.env("LC_ALL", "C").env("TZ", "UTC");
+    cmd
 }
 
 #[test]
@@ -46,8 +103,7 @@ fn sync_directory_tree() {
     fs::write(src.join("nested/b.txt"), b"beta").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("oc-rsync")
-        .unwrap()
+    oc_rsync()
         .args([&src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
@@ -71,8 +127,7 @@ fn sync_replaces_symlinked_dir_by_default() {
     symlink(&target, dst.join("sub")).unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("oc-rsync")
-        .unwrap()
+    oc_rsync()
         .args([&src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
@@ -98,8 +153,7 @@ fn sync_keep_dirlinks_preserves_symlinked_dir() {
     symlink(&target, dst.join("sub")).unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("oc-rsync")
-        .unwrap()
+    oc_rsync()
         .args(["--keep-dirlinks", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success();
@@ -124,8 +178,7 @@ fn sync_preserves_xattrs() {
     xattr::set(&file, "user.test", b"val").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("oc-rsync")
-        .unwrap()
+    oc_rsync()
         .args(["--xattrs", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
@@ -149,8 +202,7 @@ fn sync_preserves_symlink_xattrs() {
     xattr::set(src.join("link"), "user.test", b"val").unwrap();
 
     let src_arg = format!("{}/", src.display());
-    Command::cargo_bin("oc-rsync")
-        .unwrap()
+    oc_rsync()
         .args(["--links", "--xattrs", &src_arg, dst.to_str().unwrap()])
         .assert()
         .success()
