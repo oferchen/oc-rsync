@@ -6,14 +6,14 @@ use regex::Regex;
 use scopeguard::guard;
 use std::env;
 use std::ffi::{OsStr, OsString};
-use std::sync::Mutex;
 use textwrap::{Options as WrapOptions, wrap};
 
 use crate::branding;
 
 const RSYNC_HELP: &str = include_str!("../resources/rsync-help-80.txt");
 
-static RSYNC_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\brsync\b").unwrap());
+static RSYNC_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\brsync\b").unwrap_or_else(|_| unreachable!("invalid regex")));
 
 static UPSTREAM_OPTS: Lazy<Vec<(String, String)>> = Lazy::new(|| {
     let mut opts = Vec::new();
@@ -44,9 +44,6 @@ static UPSTREAM_OPTS: Lazy<Vec<(String, String)>> = Lazy::new(|| {
     }
     opts
 });
-
-#[allow(dead_code)]
-static ENV_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 pub const ARG_ORDER: &[&str] = &[
     "verbose",
@@ -225,7 +222,9 @@ pub fn render_help(_cmd: &Command) -> String {
         let haystack = s.clone();
         *s = RSYNC_RE
             .replace_all(&haystack, |caps: &regex::Captures<'_>| {
-                let m = caps.get(0).unwrap();
+                let m = caps
+                    .get(0)
+                    .unwrap_or_else(|| unreachable!("missing regex capture"));
                 let start = m.start();
                 let end = m.end();
                 let prev_char = haystack[..start].chars().last();
