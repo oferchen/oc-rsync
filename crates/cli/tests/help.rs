@@ -2,15 +2,20 @@
 use oc_rsync_cli::{branding, cli_command, render_help};
 use serial_test::serial;
 use std::env;
+use std::sync::{Mutex, OnceLock};
+
+static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 fn set_env_var(key: &str, val: &str) {
-    /* SAFETY: tests run serially. */
-    unsafe { env::set_var(key, val) }
+    let lock = ENV_LOCK.get_or_init(|| Mutex::new(()));
+    let _guard = lock.lock().unwrap();
+    unsafe { env::set_var(key, val) };
 }
 
 fn remove_env_var(key: &str) {
-    /* SAFETY: see `set_env_var`. */
-    unsafe { env::remove_var(key) }
+    let lock = ENV_LOCK.get_or_init(|| Mutex::new(()));
+    let _guard = lock.lock().unwrap();
+    unsafe { env::remove_var(key) };
 }
 
 fn with_columns<T>(cols: &str, f: impl FnOnce() -> T) -> T {

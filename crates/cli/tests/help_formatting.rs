@@ -3,15 +3,20 @@ use oc_rsync_cli::{cli_command, dump_help_body, render_help};
 use serial_test::serial;
 use std::collections::HashSet;
 use std::env;
+use std::sync::{Mutex, OnceLock};
+
+static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 fn set_env_var(key: &str, val: &str) {
-    /* SAFETY: tests are run serially so environment mutations don't race. */
-    unsafe { env::set_var(key, val) }
+    let lock = ENV_LOCK.get_or_init(|| Mutex::new(()));
+    let _guard = lock.lock().unwrap();
+    unsafe { env::set_var(key, val) };
 }
 
 fn remove_env_var(key: &str) {
-    /* SAFETY: see `set_env_var`. */
-    unsafe { env::remove_var(key) }
+    let lock = ENV_LOCK.get_or_init(|| Mutex::new(()));
+    let _guard = lock.lock().unwrap();
+    unsafe { env::remove_var(key) };
 }
 
 fn extract_options(help: &str) -> String {
