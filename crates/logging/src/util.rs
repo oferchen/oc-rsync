@@ -220,7 +220,10 @@ pub fn render_out_format(format: &str, opts: &OutFormatOptions<'_>) -> String {
                             .unwrap_or_else(|_| OffsetDateTime::now_utc());
                         let fmt =
                             format_description!("[year]/[month]/[day] [hour]:[minute]:[second]");
-                        out.push_str(&now.format(&fmt).expect("timestamp format should be valid"));
+                        let ts = now
+                            .format(&fmt)
+                            .unwrap_or_else(|_| String::from("0000/00/00 00:00:00"));
+                        out.push_str(&ts);
                     }
                     '%' => out.push('%'),
                     other => {
