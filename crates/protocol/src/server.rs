@@ -1,4 +1,5 @@
 // crates/protocol/src/server.rs
+use std::convert::TryInto;
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
@@ -152,8 +153,9 @@ impl<R: Read, W: Write> Server<R, W> {
             buf.extend_from_slice(CHALLENGE);
             buf.extend_from_slice(tok.as_bytes());
             let expected = strong_digest(&buf, StrongHash::Md5, 0);
-            let expected_arr: [u8; 16] =
-                expected[..16].try_into().expect("MD5 digests are 16 bytes");
+            let expected_arr: [u8; 16] = expected.try_into().map_err(|_| {
+                io::Error::new(io::ErrorKind::InvalidData, "MD5 digests must be 16 bytes")
+            })?;
             if expected_arr.ct_eq(&resp).unwrap_u8() != 1 {
                 return Err(io::Error::new(
                     io::ErrorKind::PermissionDenied,
