@@ -135,13 +135,9 @@ pub fn authenticate(
             ));
         }
         Ok((Some(token_str), Vec::new(), no_motd))
+    } else if token_str.is_empty() {
+        Ok((None, Vec::new(), no_motd))
     } else {
-        if token_str.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::PermissionDenied,
-                "missing token",
-            ));
-        }
         Ok((Some(token_str), Vec::new(), no_motd))
     }
 }
@@ -218,8 +214,10 @@ mod tests {
         let reader = std::io::Cursor::new(b"\n".to_vec());
         let writer = io::sink();
         let mut t = LocalPipeTransport::new(reader, writer);
-        let err = authenticate(&mut t, None, None).unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+        let (tok, allowed, no_motd) = authenticate(&mut t, None, None).unwrap();
+        assert!(tok.is_none());
+        assert!(allowed.is_empty());
+        assert!(!no_motd);
     }
 
     #[test]
