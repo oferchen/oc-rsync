@@ -571,7 +571,8 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             (false, "refuse options") => cfg.refuse_options = parse_list(&val),
             (true, "path") => {
                 if let Some(m) = current.as_mut() {
-                    m.path = PathBuf::from(val);
+                    let p = PathBuf::from(val);
+                    m.path = fs::canonicalize(&p).unwrap_or(p);
                 }
             }
             (true, "comment") => {
