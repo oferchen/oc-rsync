@@ -543,13 +543,7 @@ fn acls_roundtrip() {
         return;
     }
 
-    let mut dacl = match PosixACL::read_default_acl(&src) {
-        Ok(a) => a,
-        Err(_) => {
-            eprintln!("Skipping acls_roundtrip test: ACLs not supported");
-            return;
-        }
-    };
+    let mut dacl = PosixACL::new(0o755);
     dacl.set(Qualifier::User(12345), ACL_READ);
     if let Err(_) = dacl.write_default_acl(&src) {
         eprintln!("Skipping acls_roundtrip test: ACLs not supported");
