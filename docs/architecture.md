@@ -68,7 +68,7 @@ crate boundaries, data flow, and the key algorithms that power `oc-rsync`.
 - `lib` wires structured logging; `formatter` tweaks output styles.
 - **Design patterns**: observer pattern fans logs out to multiple sinks.
 
-### [`oc-rsync-cli`](../crates/cli)
+### [`cli`](../crates/cli)
 
 - Modules: `options`, `session`, `exec`, `daemon`, `formatter`, `utils`,
   `version`, and `branding`.

@@ -1,18 +1,21 @@
 # Project Overview
 
 ## Specifications
-The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.x are included under [spec/](spec) as authoritative references for expected behavior: [spec/rsync.1](spec/rsync.1) and [spec/rsyncd.conf.5](spec/rsyncd.conf.5).
+The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.1 are included under [spec/](spec) as authoritative references for expected behavior: [spec/rsync.1](spec/rsync.1) and [spec/rsyncd.conf.5](spec/rsyncd.conf.5).
 
 ## Crates
 - **protocol**: core frame and message types for the rsync protocol.
 - **checksums**: rolling checksum and strong hash algorithms.
+- **filelist**: encode and decode file lists for delta transfers.
 - **filters**: include/exclude rule parsing and evaluation.
 - **walk**: directory traversal utilities.
 - **meta**: serialization and application of file metadata such as permissions, timestamps, and optional xattrs/ACLs.
 - **compress**: compression codecs and negotiation helpers.
 - **engine**: delta-transfer and synchronization engine.
 - **transport**: blocking transport implementations including SSH and TCP.
-- **oc-rsync-cli**: command-line interface driving client, daemon, and probe modes.
+- **daemon**: rsync:// server implementation.
+- **cli**: command-line interface driving client, daemon, and probe modes.
+- **logging**: structured logging utilities.
 - **oc-rsync (root library)**: convenience wrapper around the engine's synchronization that
   delegates to `engine::sync` and falls back to a basic recursive copy only for
   files the engine does not yet handle.
@@ -28,16 +31,16 @@ The upstream rsync(1) and rsyncd.conf(5) man pages from rsync 3.4.x are included
   - [x] Directory traversal and checksum generation
   - [x] Local sync via CLI
 - [ ] M2—Transfer Engine
-  - [ ] Delta-transfer engine *(in progress)*
+  - [x] Delta-transfer engine
   - [ ] Resume/partial transfers *(planned)*
-- [ ] M3—Networking
-  - [ ] Network transport (SSH/TCP) *(in progress)*
+- [x] M3—Networking
+  - [x] Network transport (SSH/TCP)
 - [ ] M4—CLI Parity
   - [ ] Permissions (ownership, timestamps, modes) *(in progress)*
   - [ ] Symlink preservation *(in progress)*
-- [ ] M5—Filters & Compression
-  - [ ] Include/exclude filters *(in progress)*
-  - [ ] Compression negotiation *(in progress)*
+- [x] M5—Filters & Compression
+  - [x] Include/exclude filters
+  - [x] Compression negotiation
 - [ ] M7—Stabilization
   - [ ] Hardlink support *(planned)*
   - [ ] Sparse file handling *(planned)*
