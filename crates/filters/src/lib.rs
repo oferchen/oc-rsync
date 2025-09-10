@@ -1,5 +1,7 @@
 // crates/filters/src/lib.rs
 
+#![doc = include_str!("../../../docs/crates/filters/lib.md")]
+
 pub mod matcher;
 pub mod parser;
 pub mod perdir;

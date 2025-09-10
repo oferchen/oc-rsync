@@ -1,4 +1,6 @@
 // crates/transport/src/lib.rs
+#![doc = include_str!("../../../docs/crates/transport/lib.md")]
+
 use std::io;
 use std::time::Duration;
 

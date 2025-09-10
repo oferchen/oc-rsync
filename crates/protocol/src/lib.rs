@@ -1,5 +1,7 @@
 // crates/protocol/src/lib.rs
 
+#![doc = include_str!("../../../docs/crates/protocol/lib.md")]
+
 pub mod frames;
 pub mod handshake;
 pub mod types;

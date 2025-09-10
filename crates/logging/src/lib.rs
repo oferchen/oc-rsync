@@ -1,6 +1,6 @@
 // crates/logging/src/lib.rs
+#![doc = include_str!("../../../docs/crates/logging/lib.md")]
 #![deny(missing_docs, rust_2018_idioms)]
-#![doc = "Logging utilities for oc-rsync."]
 
 mod flags;
 mod formatter;
