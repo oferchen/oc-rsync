@@ -42,7 +42,7 @@ This document summarizes parity status across major domains of `oc-rsync`. Each 
 | --- | --- | --- | --- |
 | Permissions and ownership restoration | Implemented | [crates/meta/tests/chmod.rs](../crates/meta/tests/chmod.rs) | [crates/meta/src/unix/mod.rs](../crates/meta/src/unix/mod.rs) |
 | `--fake-super` xattr fallback | Implemented | [crates/meta/tests/fake_super.rs](../crates/meta/tests/fake_super.rs) | [crates/meta/src/unix/mod.rs](../crates/meta/src/unix/mod.rs) |
-| POSIX ACL preservation | Implemented | [crates/meta/tests/acl_roundtrip.rs](../crates/meta/tests/acl_roundtrip.rs) | [crates/meta/src/unix/mod.rs](../crates/meta/src/unix/mod.rs) |
+| POSIX ACL preservation | Partial | [crates/meta/tests/acl_roundtrip.rs](../crates/meta/tests/acl_roundtrip.rs) | [crates/meta/src/unix/mod.rs](../crates/meta/src/unix/mod.rs) |
 | Hard link detection and recreation | Implemented | [tests/hard_links.rs](../tests/hard_links.rs)<br>[crates/engine/tests/links.rs](../crates/engine/tests/links.rs) | [crates/meta/src/lib.rs](../crates/meta/src/lib.rs) |
 | Windows metadata preservation | Implemented | [tests/windows.rs](../tests/windows.rs) | [crates/meta/src/windows/mod.rs](../crates/meta/src/windows/mod.rs) |
 
