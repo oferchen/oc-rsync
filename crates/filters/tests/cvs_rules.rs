@@ -119,3 +119,25 @@ fn env_hash_patterns_are_respected() {
         env::remove_var("CVSIGNORE");
     }
 }
+
+#[test]
+fn include_overrides_nested_cvsignore() {
+    let tmp = tempdir().unwrap();
+    let root = tmp.path();
+    fs::create_dir_all(root.join("sub/nested")).unwrap();
+    fs::write(root.join("core"), b"root").unwrap();
+    fs::write(root.join("keep.txt"), b"root").unwrap();
+    fs::write(root.join("sub/nested/keep.txt"), b"sub").unwrap();
+    fs::write(root.join("sub/nested/core"), b"sub").unwrap();
+    fs::write(root.join("sub/.cvsignore"), "nested/\n").unwrap();
+
+    let rules1 = p(":C\n+ sub/nested/\n+ sub/nested/***\n");
+    let matcher1 = Matcher::new(rules1).with_root(root);
+    assert!(matcher1.is_included("sub/nested/keep.txt").unwrap());
+    assert!(matcher1.is_included("sub/nested/core").unwrap());
+
+    let rules2 = p(":C\n+ sub/nested/core\n");
+    let matcher2 = Matcher::new(rules2).with_root(root);
+    assert!(matcher2.is_included("sub/nested/core").unwrap());
+    assert!(!matcher2.is_included("sub/nested/keep.txt").unwrap());
+}
