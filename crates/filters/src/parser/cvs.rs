@@ -94,6 +94,24 @@ pub fn default_cvs_rules() -> Result<Vec<Rule>, ParseError> {
         }
     }
 
+    if let Ok(content) = env::var("CVSIGNORE") {
+        let mut buf = String::new();
+        for tok in content.split_ascii_whitespace() {
+            append_rule(&mut buf, tok);
+        }
+        let mut v = parse(&buf, &mut HashSet::new(), 0)?;
+        for rule in &mut v {
+            match rule {
+                Rule::Include(d) | Rule::Exclude(d) | Rule::Protect(d) | Rule::ImpliedDir(d) => {
+                    d.flags.perishable = true;
+                }
+                Rule::DirMerge(pd) => pd.flags.perishable = true,
+                _ => {}
+            }
+        }
+        rules.append(&mut v);
+    }
+
     if let Ok(home) = env::var("HOME") {
         let path = Path::new(&home).join(".cvsignore");
         if let Ok(content) = fs::read_to_string(path) {

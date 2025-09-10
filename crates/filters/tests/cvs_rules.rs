@@ -91,6 +91,39 @@ fn env_patterns_are_global() {
 }
 
 #[test]
+fn env_multiple_patterns_are_respected() {
+    unsafe {
+        env::set_var("CVSIGNORE", "foo bar");
+    }
+
+    let rules = p("-C\n");
+    let matcher = Matcher::new(rules);
+
+    assert!(!matcher.is_included("foo").unwrap());
+    assert!(!matcher.is_included("bar").unwrap());
+
+    unsafe {
+        env::remove_var("CVSIGNORE");
+    }
+}
+
+#[test]
+fn env_patterns_can_be_overridden() {
+    unsafe {
+        env::set_var("CVSIGNORE", "env_ignored");
+    }
+
+    let rules = p("-C\n+ env_ignored\n");
+    let matcher = Matcher::new(rules);
+
+    assert!(matcher.is_included("env_ignored").unwrap());
+
+    unsafe {
+        env::remove_var("CVSIGNORE");
+    }
+}
+
+#[test]
 fn git_directory_is_ignored_by_default_rules() {
     let tmp = tempdir().unwrap();
     let root = tmp.path();
