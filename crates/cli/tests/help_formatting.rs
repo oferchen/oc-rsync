@@ -3,6 +3,9 @@ use oc_rsync_cli::{cli_command, dump_help_body, render_help};
 use serial_test::serial;
 use std::collections::HashSet;
 use std::env;
+use std::sync::{Mutex, OnceLock};
+
+static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 fn set_env_var(key: &str, val: &str) {
     env::set_var(key, val);

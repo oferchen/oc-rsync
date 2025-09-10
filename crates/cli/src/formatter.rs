@@ -6,6 +6,7 @@ use regex::Regex;
 use scopeguard::guard;
 use std::env;
 use std::ffi::{OsStr, OsString};
+use std::sync::Mutex;
 use textwrap::{Options as WrapOptions, wrap};
 
 use crate::branding;
@@ -43,6 +44,8 @@ static UPSTREAM_OPTS: Lazy<Vec<(String, String)>> = Lazy::new(|| {
     }
     opts
 });
+
+static ENV_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 pub const ARG_ORDER: &[&str] = &[
     "verbose",
