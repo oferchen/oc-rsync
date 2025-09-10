@@ -139,18 +139,12 @@ mod tests {
     #[test]
     #[serial]
     fn env_or_option_respects_precedence() {
-        unsafe {
-            std::env::remove_var("BUILD_REVISION");
-        }
+        std::env::remove_var("BUILD_REVISION");
         assert_eq!(env_or_option("BUILD_REVISION"), Some("unknown".to_string()));
 
-        unsafe {
-            std::env::set_var("BUILD_REVISION", "runtime");
-        }
+        std::env::set_var("BUILD_REVISION", "runtime");
         assert_eq!(env_or_option("BUILD_REVISION"), Some("runtime".to_string()));
-        unsafe {
-            std::env::remove_var("BUILD_REVISION");
-        }
+        std::env::remove_var("BUILD_REVISION");
 
         assert_eq!(env_or_option("NON_EXISTENT_KEY"), None);
     }
@@ -158,9 +152,7 @@ mod tests {
     #[test]
     #[serial]
     fn program_name_defaults_when_unset() {
-        unsafe {
-            std::env::remove_var("OC_RSYNC_NAME");
-        }
+        std::env::remove_var("OC_RSYNC_NAME");
         if option_env!("OC_RSYNC_NAME").is_none() {
             assert_eq!(program_name(), "oc-rsync");
         }

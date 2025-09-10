@@ -5,13 +5,11 @@ use std::collections::HashSet;
 use std::env;
 
 fn set_env_var(key: &str, val: &str) {
-    /* SAFETY: tests are run serially so environment mutations don't race. */
-    unsafe { env::set_var(key, val) }
+    env::set_var(key, val);
 }
 
 fn remove_env_var(key: &str) {
-    /* SAFETY: see `set_env_var`. */
-    unsafe { env::remove_var(key) }
+    env::remove_var(key);
 }
 
 fn extract_options(help: &str) -> String {
