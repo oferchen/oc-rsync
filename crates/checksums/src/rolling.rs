@@ -112,10 +112,10 @@ pub fn rolling_checksum_scalar(data: &[u8], seed: u32) -> u32 {
 #[doc(hidden)]
 #[allow(unused_unsafe)]
 #[allow(unsafe_op_in_unsafe_fn)]
-/// # Safety
-/// The calling CPU must support SSE4.2. Callers must verify support with
-/// `is_x86_feature_detected!("sse4.2")` before invoking this function.
-/// The `data` slice must be valid for reads.
+#[doc = "# Safety\n\
+The calling CPU must support SSE4.2. Callers must verify support with\n\
+`is_x86_feature_detected!(\"sse4.2\")` before invoking this function.\n\
+The `data` slice must be valid for reads."]
 pub unsafe fn rolling_checksum_sse42(data: &[u8], seed: u32) -> u32 {
     use std::arch::x86_64::*;
 
@@ -179,10 +179,10 @@ pub unsafe fn rolling_checksum_sse42(data: &[u8], seed: u32) -> u32 {
 #[doc(hidden)]
 #[allow(unused_unsafe)]
 #[allow(unsafe_op_in_unsafe_fn)]
-/// # Safety
-/// The calling CPU must support AVX2. Callers must verify support with
-/// `is_x86_feature_detected!("avx2")` before invoking this function.
-/// The `data` slice must be valid for reads.
+#[doc = "# Safety\n\
+The calling CPU must support AVX2. Callers must verify support with\n\
+`is_x86_feature_detected!(\"avx2\")` before invoking this function.\n\
+The `data` slice must be valid for reads."]
 pub unsafe fn rolling_checksum_avx2(data: &[u8], seed: u32) -> u32 {
     use std::arch::x86_64::*;
 
@@ -253,11 +253,11 @@ pub unsafe fn rolling_checksum_avx2(data: &[u8], seed: u32) -> u32 {
 #[doc(hidden)]
 #[allow(unused_unsafe)]
 #[allow(unsafe_op_in_unsafe_fn)]
-/// # Safety
-/// Requires a CPU with the `avx512f` and `avx512bw` features. Callers must
-/// verify support with `is_x86_feature_detected!("avx512f")` and
-/// `is_x86_feature_detected!("avx512bw")` before invoking. The `data` slice
-/// must be valid for reads.
+#[doc = "# Safety\n\
+Requires a CPU with the `avx512f` and `avx512bw` features. Callers must\n\
+verify support with `is_x86_feature_detected!(\"avx512f\")` and\n\
+`is_x86_feature_detected!(\"avx512bw\")` before invoking. The `data` slice\n\
+must be valid for reads."]
 pub unsafe fn rolling_checksum_avx512(data: &[u8], seed: u32) -> u32 {
     use std::arch::x86_64::*;
 
