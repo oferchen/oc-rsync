@@ -1,17 +1,18 @@
 // tests/copy_as.rs
+#[cfg(all(unix, feature = "root"))]
 use assert_cmd::Command;
-#[cfg(unix)]
+#[cfg(all(unix, feature = "root"))]
 use nix::unistd::{Gid, Uid, User, chown};
-#[cfg(unix)]
+#[cfg(all(unix, feature = "root"))]
 use std::os::unix::fs::MetadataExt;
+#[cfg(all(unix, feature = "root"))]
 use tempfile::tempdir;
-#[cfg(unix)]
+#[cfg(all(unix, feature = "root"))]
 use users::get_current_uid;
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "root"))]
 fn can_chown() -> bool {
     if get_current_uid() != 0 {
-        eprintln!("skipping copy_as test: requires root or CAP_CHOWN");
         return false;
     }
     let dir = tempdir().unwrap();
@@ -19,20 +20,16 @@ fn can_chown() -> bool {
     std::fs::write(&probe, b"probe").unwrap();
     match chown(&probe, Some(Uid::from_raw(1)), Some(Gid::from_raw(1))) {
         Ok(_) => true,
-        Err(nix::errno::Errno::EPERM) => {
-            eprintln!("skipping copy_as test: lacks CAP_CHOWN");
-            false
-        }
+        Err(nix::errno::Errno::EPERM) => false,
         Err(err) => panic!("unexpected chown error: {err}"),
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "root"))]
 #[test]
+#[ignore = "requires root or CAP_CHOWN"]
 fn copy_as_sets_owner_and_group() {
-    if !can_chown() {
-        return;
-    }
+    assert!(can_chown(), "requires root or CAP_CHOWN");
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
@@ -52,12 +49,11 @@ fn copy_as_sets_owner_and_group() {
     assert_eq!(meta.gid(), 1);
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "root"))]
 #[test]
+#[ignore = "requires root or CAP_CHOWN"]
 fn copy_as_uses_default_group() {
-    if !can_chown() {
-        return;
-    }
+    assert!(can_chown(), "requires root or CAP_CHOWN");
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
@@ -82,12 +78,11 @@ fn copy_as_uses_default_group() {
     assert_eq!(meta.gid(), default_gid);
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "root"))]
 #[test]
+#[ignore = "requires root or CAP_CHOWN"]
 fn copy_as_preserves_mode() {
-    if !can_chown() {
-        return;
-    }
+    assert!(can_chown(), "requires root or CAP_CHOWN");
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
 

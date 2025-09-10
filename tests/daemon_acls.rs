@@ -1,7 +1,7 @@
 // tests/daemon_acls.rs
 #![cfg(all(unix, feature = "acl"))]
 
-use assert_cmd::{Command, cargo::CommandCargoExt};
+use assert_cmd::Command;
 use serial_test::serial;
 use std::fs;
 use tempfile::tempdir;

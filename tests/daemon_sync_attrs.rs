@@ -1,7 +1,7 @@
 // tests/daemon_sync_attrs.rs
 #![cfg(unix)]
 
-use assert_cmd::{Command, cargo::CommandCargoExt};
+use assert_cmd::Command;
 use serial_test::serial;
 use std::fs;
 use tempfile::tempdir;
@@ -9,19 +9,18 @@ use tempfile::tempdir;
 mod common;
 use common::daemon::{spawn_daemon, wait_for_daemon};
 
+#[cfg(feature = "root")]
 #[test]
 #[serial]
 #[cfg_attr(not(target_os = "linux"), ignore = "requires Linux uid/gid semantics")]
+#[ignore = "requires root privileges"]
 fn daemon_preserves_uid_gid_perms() {
     use nix::fcntl::AT_FDCWD;
     use nix::sys::stat::{FchmodatFlags, Mode, fchmodat};
     use nix::unistd::{Gid, Uid, chown};
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
-    if !Uid::effective().is_root() {
-        eprintln!("skipping: requires root privileges");
-        return;
-    }
+    assert!(Uid::effective().is_root(), "requires root privileges");
 
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
