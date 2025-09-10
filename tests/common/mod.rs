@@ -13,6 +13,8 @@ pub fn oc_cmd() -> Command {
     cmd
 }
 
+pub mod daemon;
+
 pub struct EnvVarGuard {
     key: OsString,
     old: Option<OsString>,
