@@ -284,6 +284,16 @@ pub fn render_help(_cmd: &Command) -> String {
     out
 }
 
+fn set_env_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
+    // SAFETY: our tests serialize access to environment variables using `serial_test`.
+    unsafe { std::env::set_var(key, value) }
+}
+
+fn remove_env_var<K: AsRef<OsStr>>(key: K) {
+    // SAFETY: our tests serialize access to environment variables using `serial_test`.
+    unsafe { std::env::remove_var(key) }
+}
+
 fn with_env_var<K, V, F, R>(key: K, value: V, f: F) -> R
 where
     K: AsRef<OsStr>,
@@ -292,12 +302,12 @@ where
 {
     let key_os: OsString = key.as_ref().to_os_string();
     let old = env::var_os(&key_os);
-    unsafe { env::set_var(&key_os, value) };
-    let _guard = guard((key_os.clone(), old), |(key, old)| unsafe {
+    set_env_var(&key_os, value);
+    let _guard = guard((key_os.clone(), old), |(key, old)| {
         if let Some(v) = old {
-            env::set_var(&key, v);
+            set_env_var(&key, v);
         } else {
-            env::remove_var(&key);
+            remove_env_var(&key);
         }
     });
     f()
