@@ -1,5 +1,7 @@
 // crates/checksums/src/rolling.rs
 
+#![doc = include_str!("../../../docs/rolling.md")]
+
 pub trait RollingChecksum: Send + Sync {
     fn checksum(&self, data: &[u8], seed: u32) -> u32;
 }
@@ -110,6 +112,10 @@ pub fn rolling_checksum_scalar(data: &[u8], seed: u32) -> u32 {
 #[doc(hidden)]
 #[allow(unused_unsafe)]
 #[allow(unsafe_op_in_unsafe_fn)]
+/// # Safety
+/// The calling CPU must support SSE4.2. Callers must verify support with
+/// `is_x86_feature_detected!("sse4.2")` before invoking this function.
+/// The `data` slice must be valid for reads.
 pub unsafe fn rolling_checksum_sse42(data: &[u8], seed: u32) -> u32 {
     use std::arch::x86_64::*;
 
@@ -173,6 +179,10 @@ pub unsafe fn rolling_checksum_sse42(data: &[u8], seed: u32) -> u32 {
 #[doc(hidden)]
 #[allow(unused_unsafe)]
 #[allow(unsafe_op_in_unsafe_fn)]
+/// # Safety
+/// The calling CPU must support AVX2. Callers must verify support with
+/// `is_x86_feature_detected!("avx2")` before invoking this function.
+/// The `data` slice must be valid for reads.
 pub unsafe fn rolling_checksum_avx2(data: &[u8], seed: u32) -> u32 {
     use std::arch::x86_64::*;
 
@@ -243,6 +253,11 @@ pub unsafe fn rolling_checksum_avx2(data: &[u8], seed: u32) -> u32 {
 #[doc(hidden)]
 #[allow(unused_unsafe)]
 #[allow(unsafe_op_in_unsafe_fn)]
+/// # Safety
+/// Requires a CPU with the `avx512f` and `avx512bw` features. Callers must
+/// verify support with `is_x86_feature_detected!("avx512f")` and
+/// `is_x86_feature_detected!("avx512bw")` before invoking. The `data` slice
+/// must be valid for reads.
 pub unsafe fn rolling_checksum_avx512(data: &[u8], seed: u32) -> u32 {
     use std::arch::x86_64::*;
 
@@ -373,11 +388,12 @@ mod tests {
     fn simd_equals_scalar() {
         let data = b"hello world";
         let scalar = rolling_checksum_scalar(data, 0);
-        unsafe {
-            assert_eq!(rolling_checksum_sse42(data, 0), scalar);
-            assert_eq!(rolling_checksum_avx2(data, 0), scalar);
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        {
+            assert_eq!(SSE42.checksum(data, 0), scalar);
+            assert_eq!(AVX2.checksum(data, 0), scalar);
             #[cfg(all(feature = "nightly", rustversion = "nightly"))]
-            assert_eq!(rolling_checksum_avx512(data, 0), scalar);
+            assert_eq!(AVX512.checksum(data, 0), scalar);
         }
     }
 
@@ -387,15 +403,14 @@ mod tests {
         for (i, b) in data.iter_mut().enumerate() {
             *b = ((i as u32).wrapping_mul(31).wrapping_add(7)) as u8;
         }
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         for len in 0..=data.len() {
             let slice = &data[..len];
             let scalar = rolling_checksum_scalar(slice, 1);
-            unsafe {
-                assert_eq!(rolling_checksum_sse42(slice, 1), scalar);
-                assert_eq!(rolling_checksum_avx2(slice, 1), scalar);
-                #[cfg(all(feature = "nightly", rustversion = "nightly"))]
-                assert_eq!(rolling_checksum_avx512(slice, 1), scalar);
-            }
+            assert_eq!(SSE42.checksum(slice, 1), scalar);
+            assert_eq!(AVX2.checksum(slice, 1), scalar);
+            #[cfg(all(feature = "nightly", rustversion = "nightly"))]
+            assert_eq!(AVX512.checksum(slice, 1), scalar);
         }
     }
 }
