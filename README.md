@@ -64,7 +64,8 @@ defaults to the system year. Set this variable when you need reproducible
 builds across years.
 
 If `libacl1-dev` isn't available, disable ACL support with the `no-acl`
-feature set:
+feature set, which retains extended attributes and compression
+(`xattr`, `zlib`, and `zstd`):
 
 ```bash
 cargo build --no-default-features --features no-acl
