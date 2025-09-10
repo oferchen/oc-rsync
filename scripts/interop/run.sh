@@ -31,15 +31,20 @@ cmp_trees() {
   tmp="$(mktemp)"
   find "$a" "$b" -mindepth 1 -printf "%P\0" | sort -z | uniq -z >"$tmp"
   while IFS= read -r -d '' paths; do
-    local stat_a stat_b
+    local stat_a stat_b xattr_a xattr_b acl_a acl_b
     if ! stat_a=$(stat -c "%f %u %g %s %Y" "$a/$paths" 2>/dev/null); then
       stat_a="MISSING"
     fi
     if ! stat_b=$(stat -c "%f %u %g %s %Y" "$b/$paths" 2>/dev/null); then
       stat_b="MISSING"
     fi
-    if [[ "$stat_a" != "$stat_b" ]]; then
-      printf "%s\n  %s\n  %s\n" "$paths" "$stat_a" "$stat_b" >>"$diff_file"
+    xattr_a=$(getfattr -d -m - "$a/$paths" 2>/dev/null | sed '1d' | sort | tr '\n' ' ' || true)
+    xattr_b=$(getfattr -d -m - "$b/$paths" 2>/dev/null | sed '1d' | sort | tr '\n' ' ' || true)
+    acl_a=$(getfacl --absolute-names --numeric "$a/$paths" 2>/dev/null | sed '1d' | sort | tr '\n' ' ' || true)
+    acl_b=$(getfacl --absolute-names --numeric "$b/$paths" 2>/dev/null | sed '1d' | sort | tr '\n' ' ' || true)
+    if [[ "$stat_a" != "$stat_b" || "$xattr_a" != "$xattr_b" || "$acl_a" != "$acl_b" ]]; then
+      printf "%s\n  stat: %s\n  stat: %s\n  xattr: %s\n  xattr: %s\n  acl: %s\n  acl: %s\n" \
+        "$paths" "$stat_a" "$stat_b" "$xattr_a" "$xattr_b" "$acl_a" "$acl_b" >>"$diff_file"
     fi
   done <"$tmp"
   rm -f "$tmp"
@@ -51,6 +56,19 @@ cmp_trees() {
 
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
+
+# Ensure required tools are available
+ensure_tools() {
+  local apt="apt-get"
+  if command -v sudo >/dev/null 2>&1; then
+    apt="sudo apt-get"
+  fi
+  if ! command -v getfattr >/dev/null 2>&1 || ! command -v getfacl >/dev/null 2>&1; then
+    $apt update >/dev/null
+    $apt install -y attr acl >/dev/null
+  fi
+}
+ensure_tools
 
 # Build oc-rsync if the binary is missing
 if [ ! -x "$OC_RSYNC" ]; then

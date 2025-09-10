@@ -51,7 +51,7 @@ jobs:
 
       - name: Install system dependencies (Linux only)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev attr acl
 
       - name: Lint
         run: make lint
@@ -86,7 +86,7 @@ jobs:
           cache: true
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev libpopt-dev libxxhash-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential libzstd-dev zlib1g-dev libacl1-dev libpopt-dev libxxhash-dev attr acl
 
       - name: Pre-flight check
         run: scripts/preflight.sh
