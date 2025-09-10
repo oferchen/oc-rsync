@@ -3,11 +3,10 @@ use assert_cmd::Command;
 use filters::{Matcher, parse_with_options};
 use std::collections::HashSet;
 use std::fs;
-use std::process::Command as StdCommand;
 use tempfile::tempdir;
 use walk::walk;
 mod util;
-use util::setup_files_from_env;
+use util::{compare_trees, setup_files_from_env};
 mod common;
 use common::read_golden;
 
@@ -147,11 +146,5 @@ fn files_from_dirs_matches_rsync() {
 
     let golden = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/golden/files_from/dirs_matches_rsync");
-    let diff = StdCommand::new("diff")
-        .arg("-r")
-        .arg(&golden)
-        .arg(&ours_dst)
-        .status()
-        .unwrap();
-    assert!(diff.success(), "directory trees differ");
+    assert!(compare_trees(&golden, &ours_dst), "directory trees differ");
 }

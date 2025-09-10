@@ -6,6 +6,10 @@ use std::fs;
 use std::process::Command as StdCommand;
 use tempfile::tempdir;
 
+#[path = "../util/mod.rs"]
+mod util;
+use util::compare_trees;
+
 #[test]
 #[ignore = "requires rsync"]
 fn complex_filter_cases_match_rsync() {
@@ -72,11 +76,5 @@ fn complex_filter_cases_match_rsync() {
     } else {
         std::path::Path::new("tests/golden/filter_complex/expected")
     };
-    let diff = StdCommand::new("diff")
-        .arg("-r")
-        .arg(diff_target)
-        .arg(&ours_dst)
-        .output()
-        .unwrap();
-    assert!(diff.status.success(), "directory trees differ");
+    assert!(compare_trees(diff_target, &ours_dst), "directory trees differ");
 }
