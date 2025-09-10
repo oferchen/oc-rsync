@@ -3,7 +3,7 @@
 #![allow(clippy::collapsible_if)]
 
 use std::io::{Read, Seek};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use checksums::ChecksumConfig;
 use filters::ParseError;
@@ -42,6 +42,8 @@ pub enum EngineError {
     MaxAlloc,
     #[error("{1}")]
     Exit(protocol::ExitCode, String),
+    #[error("partial file missing: {0:?}")]
+    MissingPartial(PathBuf),
     #[error("{0}")]
     Other(String),
 }
