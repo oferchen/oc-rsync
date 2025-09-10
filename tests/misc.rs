@@ -429,16 +429,7 @@ fn resumes_from_partial_file_with_temp_dir() {
     assert!(!dst_dir.join("a.txt.partial").exists());
 }
 
-#[test]
-#[test]
 #[cfg(unix)]
-#[test]
-#[cfg(unix)]
-#[test]
-#[cfg(unix)]
-#[test]
-#[cfg(unix)]
-#[test]
 #[test]
 fn config_flag_prints_message() {
     let dir = tempdir().unwrap();
