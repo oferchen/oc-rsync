@@ -4,7 +4,7 @@ use std::fs;
 use tempfile::tempdir;
 
 #[test]
-fn checksum_seed_flag_transfers_files() {
+fn checksum_seed_transfers_to_directory() {
     let dir = tempdir().unwrap();
     let src_dir = dir.path().join("src");
     let dst_dir = dir.path().join("dst");
@@ -25,8 +25,17 @@ fn checksum_seed_flag_transfers_files() {
 
     let out = fs::read(dst_dir.join("a.txt")).unwrap();
     assert_eq!(out, vec![0u8; 2048]);
+}
 
+#[test]
+fn checksum_seed_transfers_to_file() {
+    let dir = tempdir().unwrap();
+    let src_dir = dir.path().join("src");
+    fs::create_dir_all(&src_dir).unwrap();
+    let src_file = src_dir.join("a.txt");
+    fs::write(&src_file, vec![0u8; 2048]).unwrap();
     let dst_file = dir.path().join("a.txt");
+
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args([

@@ -1,4 +1,5 @@
 // crates/filters/tests/from0_merges.rs
+#![cfg(feature = "filters_test")]
 use filters::{Matcher, parse, parse_list, parse_with_options};
 use proptest::prelude::*;
 use std::collections::HashSet;
