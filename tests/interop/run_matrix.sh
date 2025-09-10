@@ -47,6 +47,16 @@ fi
 
 OC_RSYNC="$ROOT/target/debug/oc-rsync"
 
+OC_STDOUT="$(mktemp)"
+OC_STDERR="$(mktemp)"
+UP_STDOUT="$(mktemp)"
+UP_STDERR="$(mktemp)"
+
+cleanup_tmpfiles() {
+  rm -f "$OC_STDOUT" "$OC_STDERR" "$UP_STDOUT" "$UP_STDERR"
+}
+trap cleanup_tmpfiles EXIT
+
 ensure_build_deps() {
   local apt="apt-get"
   if command -v sudo >/dev/null 2>&1; then
@@ -171,7 +181,7 @@ for ver in "${RSYNC_VERSIONS[@]}"; do
       timeout 1 "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://127.0.0.1:$port/mod" >/dev/null 2>&1 || true
     fi
     set +e
-    "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://127.0.0.1:$port/mod" > /tmp/oc.stdout 2> /tmp/oc.stderr
+    "$OC_RSYNC" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://127.0.0.1:$port/mod" > "$OC_STDOUT" 2> "$OC_STDERR"
     status_oc=$?
     set -e
     if [[ "$name" == vanished ]]; then
@@ -196,7 +206,7 @@ for ver in "${RSYNC_VERSIONS[@]}"; do
       timeout 1 "$UPSTREAM" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://127.0.0.1:$port/mod" >/dev/null 2>&1 || true
     fi
     set +e
-    "$UPSTREAM" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://127.0.0.1:$port/mod" > /tmp/up.stdout 2> /tmp/up.stderr
+    "$UPSTREAM" "${COMMON_FLAGS[@]}" "${extra[@]}" "$src/" "rsync://127.0.0.1:$port/mod" > "$UP_STDOUT" 2> "$UP_STDERR"
     status_up=$?
     set -e
     if [[ "$name" == vanished ]]; then
@@ -208,11 +218,11 @@ for ver in "${RSYNC_VERSIONS[@]}"; do
     rm -rf "$rootdir" "$src"
 
     # compare outputs and exit codes
-    if ! diff -u /tmp/oc.stdout /tmp/up.stdout; then
+    if ! diff -u "$OC_STDOUT" "$UP_STDOUT"; then
       echo "stdout mismatch for $name" >&2
       exit 1
     fi
-    if ! diff -u /tmp/oc.stderr /tmp/up.stderr; then
+    if ! diff -u "$OC_STDERR" "$UP_STDERR"; then
       echo "stderr mismatch for $name" >&2
       exit 1
     fi
