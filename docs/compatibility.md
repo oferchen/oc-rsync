@@ -20,7 +20,7 @@ through 32, corresponding to upstream releases 3.0.9, 3.1.3, and 3.4.1.
 | Linux (armv7) | cross-compiled in CI |
 | FreeBSD | cross-compiled in CI |
 | macOS | builds and basic local sync verified |
-| Windows | under active development; path and permission handling incomplete |
+| Windows | under active development; path normalization and permission/ACL handling incomplete |
 
 ## Cross-platform tests
 
