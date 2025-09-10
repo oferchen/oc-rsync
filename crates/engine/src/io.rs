@@ -1,5 +1,7 @@
 // crates/engine/src/io.rs
 
+#![doc = include_str!("docs/io.md")]
+
 use std::fs::File;
 use std::path::Path;
 
@@ -44,16 +46,25 @@ pub fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
                 fst_length: len as libc::off_t,
                 fst_bytesalloc: 0,
             };
+            // SAFETY: `fd` is obtained from a valid `File` and `fstore` is a
+            // properly initialized `fstore_t` structure. We check the return
+            // value for errors.
             let ret = libc::fcntl(fd, libc::F_PREALLOCATE, &fstore);
             if ret == -1 {
                 fstore.fst_flags = libc::F_ALLOCATEALL;
+                // SAFETY: Same as above; the descriptors and pointers remain
+                // valid and we handle any error codes.
                 if libc::fcntl(fd, libc::F_PREALLOCATE, &fstore) == -1 {
+                    // SAFETY: `fd` is valid and the length is in range for
+                    // `off_t`. Any error is propagated.
                     if libc::ftruncate(fd, len as libc::off_t) == -1 {
                         return Err(std::io::Error::last_os_error());
                     }
                     return Ok(());
                 }
             }
+            // SAFETY: Final resize uses the same valid descriptor and checked
+            // length; errors are surfaced to the caller.
             if libc::ftruncate(fd, len as libc::off_t) == -1 {
                 Err(std::io::Error::last_os_error())
             } else {
