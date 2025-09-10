@@ -288,13 +288,11 @@ pub fn render_help(_cmd: &Command) -> String {
 }
 
 fn set_env_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
-    let _guard = ENV_LOCK.lock().unwrap();
-    unsafe { std::env::set_var(key, value) };
+    env::set_var(key, value);
 }
 
 fn remove_env_var<K: AsRef<OsStr>>(key: K) {
-    let _guard = ENV_LOCK.lock().unwrap();
-    unsafe { std::env::remove_var(key) };
+    env::remove_var(key);
 }
 
 fn with_env_var<K, V, F, R>(key: K, value: V, f: F) -> R
