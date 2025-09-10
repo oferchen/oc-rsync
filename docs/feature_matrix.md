@@ -1,6 +1,6 @@
 # Feature Matrix
 
-This table tracks the implementation status of rsync 3.4.x command-line options.
+This table tracks the implementation status of rsync 3.4.1 command-line options.
 Behavioral differences from upstream rsync are tracked in [gaps.md](gaps.md).
 
 Classic `rsync` protocol versions 30–32 are supported.
