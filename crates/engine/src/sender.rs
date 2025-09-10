@@ -198,10 +198,10 @@ impl Sender {
         } else {
             None
         };
-        let basis_path = if (self.opts.partial || self.opts.append || self.opts.append_verify)
-            && existing_partial.is_some()
-        {
-            existing_partial.clone().unwrap()
+        let basis_path = if self.opts.partial || self.opts.append || self.opts.append_verify {
+            existing_partial
+                .clone()
+                .ok_or_else(|| EngineError::MissingPartial(partial_path.clone()))?
         } else if self.opts.fuzzy && !dest.exists() {
             fuzzy_match(&dest).unwrap_or_else(|| dest.clone())
         } else {
