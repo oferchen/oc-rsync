@@ -8,11 +8,15 @@ use std::sync::{Mutex, OnceLock};
 static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 fn set_env_var(key: &str, val: &str) {
-    env::set_var(key, val);
+    unsafe {
+        env::set_var(key, val);
+    }
 }
 
 fn remove_env_var(key: &str) {
-    env::remove_var(key);
+    unsafe {
+        env::remove_var(key);
+    }
 }
 
 fn extract_options(help: &str) -> String {
