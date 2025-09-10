@@ -10,6 +10,34 @@ use std::process::{Child, Command as StdCommand};
 use std::thread::sleep;
 use std::time::Duration;
 
+pub struct DaemonGuard(Child);
+
+impl DaemonGuard {
+    pub fn spawn(mut cmd: StdCommand) -> Self {
+        Self(cmd.spawn().unwrap())
+    }
+}
+
+impl std::ops::Deref for DaemonGuard {
+    type Target = Child;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for DaemonGuard {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Drop for DaemonGuard {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
 pub struct Daemon {
     child: Child,
     pub port: u16,
