@@ -4,6 +4,7 @@
 use assert_cmd::Command;
 use serial_test::serial;
 use std::fs;
+use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 
 use meta::{acls_supported, xattrs_supported};
@@ -12,6 +13,19 @@ mod common;
 #[cfg(feature = "root")]
 use common::daemon::spawn_rsync_daemon;
 use common::daemon::{spawn_daemon, wait_for_daemon};
+
+fn setup_acl_dirs<F>(populate: F) -> (tempfile::TempDir, PathBuf, PathBuf)
+where
+    F: FnOnce(&Path),
+{
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let srv = tmp.path().join("srv");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&srv).unwrap();
+    populate(&src);
+    (tmp, src, srv)
+}
 
 #[test]
 #[serial]
@@ -223,17 +237,13 @@ fn daemon_ignores_acls_without_flag() {
         eprintln!("skipping: ACLs unsupported");
         return;
     }
-    let tmp = tempdir().unwrap();
-    let src = tmp.path().join("src");
-    let srv = tmp.path().join("srv");
-    fs::create_dir_all(&src).unwrap();
-    fs::create_dir_all(&srv).unwrap();
-    let src_file = src.join("file");
-    fs::write(&src_file, b"hi").unwrap();
-
-    let mut acl = PosixACL::read_acl(&src_file).unwrap();
-    acl.set(Qualifier::User(12345), ACL_READ);
-    acl.write_acl(&src_file).unwrap();
+    let (_tmp, src, srv) = setup_acl_dirs(|src| {
+        let src_file = src.join("file");
+        fs::write(&src_file, b"hi").unwrap();
+        let mut acl = PosixACL::read_acl(&src_file).unwrap();
+        acl.set(Qualifier::User(12345), ACL_READ);
+        acl.write_acl(&src_file).unwrap();
+    });
 
     let (mut child, port) = spawn_daemon(&srv);
     wait_for_daemon(port);
@@ -247,6 +257,47 @@ fn daemon_ignores_acls_without_flag() {
 
     let acl_dst = PosixACL::read_acl(srv.join("file")).unwrap();
     assert!(acl_dst.get(Qualifier::User(12345)).is_none());
+
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+#[serial]
+fn daemon_ignores_default_acls_without_flag() {
+    if !acls_supported() {
+        eprintln!("skipping: ACLs unsupported");
+        return;
+    }
+    let (_tmp, src, srv) = setup_acl_dirs(|src| {
+        let mut dacl = PosixACL::read_default_acl(src).unwrap();
+        dacl.set(Qualifier::User(12345), ACL_READ);
+        dacl.write_default_acl(src).unwrap();
+
+        let sub = src.join("sub");
+        fs::create_dir(&sub).unwrap();
+        let src_file = sub.join("file");
+        fs::write(&src_file, b"hi").unwrap();
+    });
+
+    let (mut child, port) = spawn_daemon(&srv);
+    wait_for_daemon(port);
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([&src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
+        .assert()
+        .success();
+
+    let dacl_dst = PosixACL::read_default_acl(&srv).unwrap();
+    assert!(dacl_dst.get(Qualifier::User(12345)).is_none());
+
+    let dacl_dst_sub = PosixACL::read_default_acl(srv.join("sub")).unwrap();
+    assert!(dacl_dst_sub.get(Qualifier::User(12345)).is_none());
+
+    let acl_dst_file = PosixACL::read_acl(srv.join("sub/file")).unwrap();
+    assert!(acl_dst_file.get(Qualifier::User(12345)).is_none());
 
     let _ = child.kill();
     let _ = child.wait();
