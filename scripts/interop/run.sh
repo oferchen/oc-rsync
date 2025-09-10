@@ -25,7 +25,24 @@ N=${#FLAGS[@]}
 
 cmp_trees() {
   local a="$1" b="$2" diff_file="$3"
-  "$UPSTREAM" -an --delete -rlptgoD --acls --xattrs "$a/" "$b/" | tee "$diff_file"
+  local LC_ALL=C
+  : >"$diff_file"
+  local paths tmp
+  tmp="$(mktemp)"
+  find "$a" "$b" -mindepth 1 -printf "%P\0" | sort -z | uniq -z >"$tmp"
+  while IFS= read -r -d '' paths; do
+    local stat_a stat_b
+    if ! stat_a=$(stat -c "%f %u %g %s %Y" "$a/$paths" 2>/dev/null); then
+      stat_a="MISSING"
+    fi
+    if ! stat_b=$(stat -c "%f %u %g %s %Y" "$b/$paths" 2>/dev/null); then
+      stat_b="MISSING"
+    fi
+    if [[ "$stat_a" != "$stat_b" ]]; then
+      printf "%s\n  %s\n  %s\n" "$paths" "$stat_a" "$stat_b" >>"$diff_file"
+    fi
+  done <"$tmp"
+  rm -f "$tmp"
   if [[ -s "$diff_file" ]]; then
     echo "Trees differ" >&2
     return 1

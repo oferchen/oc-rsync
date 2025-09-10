@@ -51,4 +51,15 @@ for ((mask=0; mask< (1<<N); mask++)); do
     exit 1
   fi
 
+  dir_diff="$OUT_DIR/${prefix}.dir.diff"
+  if [[ ! -f "$dir_diff" ]]; then
+    echo "missing metadata diff for $combo" >&2
+    exit 1
+  fi
+  if [[ -s "$dir_diff" ]]; then
+    echo "metadata differs for $combo" >&2
+    cat "$dir_diff" >&2
+    exit 1
+  fi
+
 done
