@@ -51,7 +51,7 @@ This document summarizes parity status across major domains of `oc-rsync`. Each 
 | --- | --- | --- | --- |
 | zstd and zlib codecs | Implemented | [crates/compress/tests/codecs.rs](../crates/compress/tests/codecs.rs) | [crates/compress/src/mod.rs](../crates/compress/src/mod.rs) |
 | `--skip-compress` suffix handling | Implemented | [tests/skip_compress.rs](../tests/skip_compress.rs) | [crates/cli/src/client.rs](../crates/cli/src/client.rs) |
-| LZ4 codec | Missing | — | — |
+| LZ4 codec | Intentionally out of scope | — | — |
 
 ## Daemon
 | Feature | Status | Tests | Source |
