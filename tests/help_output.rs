@@ -1,12 +1,12 @@
 // tests/help_output.rs
-use assert_cmd::Command;
 use std::collections::HashSet;
 use std::fs;
+mod common;
+use common::oc_cmd;
 
 #[test]
 fn dump_help_body_lists_unique_options() {
-    let output = Command::cargo_bin("oc-rsync")
-        .unwrap()
+    let output = oc_cmd()
         .arg("--dump-help-body")
         .assert()
         .success()
@@ -28,11 +28,8 @@ fn dump_help_body_lists_unique_options() {
 }
 #[test]
 fn help_output_matches_golden() {
-    let output = Command::cargo_bin("oc-rsync")
-        .unwrap()
+    let output = oc_cmd()
         .env("COLUMNS", "80")
-        .env("LC_ALL", "C")
-        .env("LANG", "C")
         .arg("--help")
         .assert()
         .success()
@@ -45,11 +42,8 @@ fn help_output_matches_golden() {
 
 #[test]
 fn dump_help_body_60_matches_golden() {
-    let output = Command::cargo_bin("oc-rsync")
-        .unwrap()
+    let output = oc_cmd()
         .env("COLUMNS", "60")
-        .env("LC_ALL", "C")
-        .env("LANG", "C")
         .arg("--dump-help-body")
         .assert()
         .success()
@@ -62,11 +56,8 @@ fn dump_help_body_60_matches_golden() {
 
 #[test]
 fn dump_help_body_100_matches_golden() {
-    let output = Command::cargo_bin("oc-rsync")
-        .unwrap()
+    let output = oc_cmd()
         .env("COLUMNS", "100")
-        .env("LC_ALL", "C")
-        .env("LANG", "C")
         .arg("--dump-help-body")
         .assert()
         .success()
@@ -79,10 +70,7 @@ fn dump_help_body_100_matches_golden() {
 
 #[test]
 fn unknown_option_matches_snapshot() {
-    let output = Command::cargo_bin("oc-rsync")
-        .unwrap()
-        .env("LC_ALL", "C")
-        .env("LANG", "C")
+    let output = oc_cmd()
         .arg("--bad-option")
         .arg("src")
         .arg("dst")
@@ -97,10 +85,7 @@ fn unknown_option_matches_snapshot() {
 
 #[test]
 fn invalid_numeric_value_matches_snapshot() {
-    let output = Command::cargo_bin("oc-rsync")
-        .unwrap()
-        .env("LC_ALL", "C")
-        .env("LANG", "C")
+    let output = oc_cmd()
         .arg("--timeout=abc")
         .arg("src")
         .arg("dst")

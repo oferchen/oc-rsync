@@ -1,10 +1,17 @@
 // tests/common/mod.rs
 #![allow(dead_code)]
 
+use assert_cmd::Command;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::Path;
+
+pub fn oc_cmd() -> Command {
+    let mut cmd = Command::cargo_bin("oc-rsync").unwrap();
+    cmd.env("LC_ALL", "C").env("LANG", "C");
+    cmd
+}
 
 pub struct EnvVarGuard {
     key: OsString,
