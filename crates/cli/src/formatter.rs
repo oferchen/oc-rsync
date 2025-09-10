@@ -285,12 +285,12 @@ pub fn render_help(_cmd: &Command) -> String {
 }
 
 fn set_env_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
-    // SAFETY: our tests serialize access to environment variables using `serial_test`.
+    /* SAFETY: our tests serialize access to environment variables using `serial_test`. */
     unsafe { std::env::set_var(key, value) }
 }
 
 fn remove_env_var<K: AsRef<OsStr>>(key: K) {
-    // SAFETY: our tests serialize access to environment variables using `serial_test`.
+    /* SAFETY: our tests serialize access to environment variables using `serial_test`. */
     unsafe { std::env::remove_var(key) }
 }
 
