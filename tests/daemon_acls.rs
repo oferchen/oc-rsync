@@ -49,7 +49,8 @@ fn sync_daemon_acls_server() -> (tempfile::TempDir, PathBuf, PathBuf) {
     dacl.set(Qualifier::User(12345), ACL_READ);
     dacl.write_default_acl(&src).unwrap();
 
-    let (mut child_oc, port_oc) = spawn_daemon(&srv_oc);
+    let daemon_oc = spawn_daemon(&srv_oc);
+    let port_oc = daemon_oc.port;
     wait_for_daemon(port_oc);
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -57,18 +58,14 @@ fn sync_daemon_acls_server() -> (tempfile::TempDir, PathBuf, PathBuf) {
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_oc}/mod")])
         .assert()
         .success();
-    let _ = child_oc.kill();
-    let _ = child_oc.wait();
-
-    let (mut child_rs, port_rs) = spawn_rsync_daemon(&srv_rs, "");
+    let daemon_rs = spawn_rsync_daemon(&srv_rs, "");
+    let port_rs = daemon_rs.port;
     wait_for_daemon(port_rs);
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_rs}/mod")])
         .assert()
         .success();
-    let _ = child_rs.kill();
-    let _ = child_rs.wait();
 
     (tmp, srv_oc, srv_rs)
 }
@@ -95,7 +92,8 @@ fn sync_daemon_acls_client() -> (tempfile::TempDir, PathBuf, PathBuf) {
     dacl.set(Qualifier::User(12345), ACL_READ);
     dacl.write_default_acl(&src).unwrap();
 
-    let (mut child_oc, port_oc) = spawn_rsync_daemon(&srv_oc, "");
+    let daemon_oc = spawn_rsync_daemon(&srv_oc, "");
+    let port_oc = daemon_oc.port;
     wait_for_daemon(port_oc);
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -107,18 +105,14 @@ fn sync_daemon_acls_client() -> (tempfile::TempDir, PathBuf, PathBuf) {
         ])
         .assert()
         .success();
-    let _ = child_oc.kill();
-    let _ = child_oc.wait();
-
-    let (mut child_rs, port_rs) = spawn_rsync_daemon(&srv_rs, "");
+    let daemon_rs = spawn_rsync_daemon(&srv_rs, "");
+    let port_rs = daemon_rs.port;
     wait_for_daemon(port_rs);
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_rs}/mod")])
         .assert()
         .success();
-    let _ = child_rs.kill();
-    let _ = child_rs.wait();
 
     (tmp, srv_oc, srv_rs)
 }
@@ -147,7 +141,8 @@ fn daemon_preserves_file_acls() {
     acl.set(Qualifier::User(23456), ACL_WRITE);
     acl.write_acl(&src_file).unwrap();
 
-    let (mut child, port) = spawn_daemon(&srv);
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
@@ -160,9 +155,6 @@ fn daemon_preserves_file_acls() {
     let acl_src = PosixACL::read_acl(&src_file).unwrap();
     let acl_dst = PosixACL::read_acl(srv.join("file")).unwrap();
     assert_eq!(acl_src.entries(), acl_dst.entries());
-
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]
@@ -188,7 +180,8 @@ fn daemon_preserves_default_acls() {
     dacl.set(Qualifier::User(12345), ACL_READ);
     dacl.write_default_acl(&src).unwrap();
 
-    let (mut child, port) = spawn_daemon(&srv);
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
@@ -201,9 +194,6 @@ fn daemon_preserves_default_acls() {
     let dacl_src = PosixACL::read_default_acl(&src).unwrap();
     let dacl_dst = PosixACL::read_default_acl(&srv).unwrap();
     assert_eq!(dacl_src.entries(), dacl_dst.entries());
-
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]
@@ -230,7 +220,8 @@ fn daemon_preserves_acls_rr_client() {
     dacl.set(Qualifier::User(12345), ACL_READ);
     dacl.write_default_acl(&src).unwrap();
 
-    let (mut child, port) = spawn_daemon(&srv);
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
@@ -247,9 +238,6 @@ fn daemon_preserves_acls_rr_client() {
     let dacl_src = PosixACL::read_default_acl(&src).unwrap();
     let dacl_dst = PosixACL::read_default_acl(&srv).unwrap();
     assert_eq!(dacl_src.entries(), dacl_dst.entries());
-
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]
@@ -273,7 +261,8 @@ fn daemon_removes_file_acls() {
     acl.set(Qualifier::User(12345), ACL_READ);
     acl.write_acl(&srv_file).unwrap();
 
-    let (mut child, port) = spawn_daemon(&srv);
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
@@ -285,9 +274,6 @@ fn daemon_removes_file_acls() {
 
     let acl_dst = PosixACL::read_acl(&srv_file).unwrap();
     assert!(acl_dst.get(Qualifier::User(12345)).is_none());
-
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]
@@ -309,7 +295,8 @@ fn daemon_removes_default_acls() {
     dacl.set(Qualifier::User(12345), ACL_READ);
     dacl.write_default_acl(&srv).unwrap();
 
-    let (mut child, port) = spawn_daemon(&srv);
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
@@ -321,9 +308,6 @@ fn daemon_removes_default_acls() {
 
     let dacl_dst = PosixACL::read_default_acl(&srv).unwrap();
     assert!(dacl_dst.entries().is_empty());
-
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]
@@ -341,7 +325,8 @@ fn daemon_ignores_acls_without_flag() {
         acl.write_acl(&src_file).unwrap();
     });
 
-    let (mut child, port) = spawn_daemon(&srv);
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
@@ -353,9 +338,6 @@ fn daemon_ignores_acls_without_flag() {
 
     let acl_dst = PosixACL::read_acl(srv.join("file")).unwrap();
     assert!(acl_dst.get(Qualifier::User(12345)).is_none());
-
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]
@@ -376,7 +358,8 @@ fn daemon_ignores_default_acls_without_flag() {
         fs::write(&src_file, b"hi").unwrap();
     });
 
-    let (mut child, port) = spawn_daemon(&srv);
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
@@ -394,9 +377,6 @@ fn daemon_ignores_default_acls_without_flag() {
 
     let acl_dst_file = PosixACL::read_acl(srv.join("sub/file")).unwrap();
     assert!(acl_dst_file.get(Qualifier::User(12345)).is_none());
-
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]
@@ -423,7 +403,8 @@ fn daemon_inherits_directory_default_acls() {
     let sub = src.join("sub");
     fs::create_dir(&sub).unwrap();
 
-    let (mut child, port) = spawn_daemon(&srv);
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
@@ -441,9 +422,6 @@ fn daemon_inherits_directory_default_acls() {
         (src_dacl.entries(), src_sub_dacl.entries()),
         (dst_dacl.entries(), dst_sub_dacl.entries())
     );
-
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]
@@ -472,7 +450,8 @@ fn daemon_inherits_file_acls_from_default() {
     let src_file = sub.join("file");
     fs::write(&src_file, b"hi").unwrap();
 
-    let (mut child, port) = spawn_daemon(&srv);
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
@@ -485,9 +464,6 @@ fn daemon_inherits_file_acls_from_default() {
     let acl_src_file = PosixACL::read_acl(&src_file).unwrap();
     let acl_dst_file = PosixACL::read_acl(srv.join("sub/file")).unwrap();
     assert_eq!(acl_src_file.entries(), acl_dst_file.entries());
-
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]
@@ -512,7 +488,8 @@ fn daemon_inherits_default_acls_rr_client() {
     let src_file = sub.join("file");
     fs::write(&src_file, b"hi").unwrap();
 
-    let (mut child, port) = spawn_daemon(&srv);
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
@@ -533,9 +510,6 @@ fn daemon_inherits_default_acls_rr_client() {
     let acl_src_file = PosixACL::read_acl(&src_file).unwrap();
     let acl_dst_file = PosixACL::read_acl(srv.join("sub/file")).unwrap();
     assert_eq!(acl_src_file.entries(), acl_dst_file.entries());
-
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[cfg(feature = "root")]
