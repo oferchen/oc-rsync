@@ -32,7 +32,7 @@ use wait_timeout::ChildExt;
 #[cfg(feature = "network")]
 mod common;
 #[cfg(feature = "network")]
-use common::oc_cmd;
+use common::{daemon::Daemon, oc_cmd};
 
 struct MultiReader {
     parts: Vec<Vec<u8>>,
@@ -478,7 +478,7 @@ fn wait_for_daemon(port: u16) {
 }
 
 #[cfg(feature = "network")]
-fn spawn_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
+fn spawn_daemon() -> io::Result<(Daemon, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
     let module_path = fs::canonicalize(dir.path()).unwrap();
     let mut cmd = Command::new(cargo_bin("oc-rsync"));
@@ -502,16 +502,16 @@ fn spawn_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
             return Err(e);
         }
     };
-    Ok((child, port, dir))
+    Ok((Daemon::new(child, port), dir))
 }
 
 #[cfg(feature = "network")]
-fn spawn_temp_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
+fn spawn_temp_daemon() -> io::Result<(Daemon, tempfile::TempDir)> {
     spawn_daemon()
 }
 
 #[cfg(feature = "network")]
-fn spawn_daemon_with_timeout(timeout: u64) -> io::Result<(Child, u16, tempfile::TempDir)> {
+fn spawn_daemon_with_timeout(timeout: u64) -> io::Result<(Daemon, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
     let module_path = fs::canonicalize(dir.path()).unwrap();
     let mut cmd = Command::new(cargo_bin("oc-rsync"));
@@ -537,7 +537,7 @@ fn spawn_daemon_with_timeout(timeout: u64) -> io::Result<(Child, u16, tempfile::
             return Err(e);
         }
     };
-    Ok((child, port, dir))
+    Ok((Daemon::new(child, port), dir))
 }
 
 #[cfg(feature = "network")]
@@ -545,7 +545,8 @@ fn spawn_daemon_with_timeout(timeout: u64) -> io::Result<(Child, u16, tempfile::
 #[serial]
 #[ignore = "requires network access"]
 fn daemon_blocks_path_traversal() {
-    let (mut child, port, dir) = spawn_temp_daemon().expect("spawn daemon");
+    let (daemon, dir) = spawn_temp_daemon().expect("spawn daemon");
+    let port = daemon.port;
     wait_for_daemon(port);
     let parent = dir.path().parent().unwrap().to_path_buf();
     let secret = parent.join("secret");
@@ -560,8 +561,6 @@ fn daemon_blocks_path_traversal() {
         .unwrap();
     assert!(!output.status.success());
     assert!(!dest.path().join("secret").exists());
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[cfg(feature = "network")]
@@ -569,7 +568,8 @@ fn daemon_blocks_path_traversal() {
 #[serial]
 #[ignore = "requires network access"]
 fn daemon_drops_privileges_and_restricts_file_access() {
-    let (mut child, port, dir) = spawn_temp_daemon().expect("spawn daemon");
+    let (daemon, dir) = spawn_temp_daemon().expect("spawn daemon");
+    let port = daemon.port;
     wait_for_daemon(port);
     let secret = dir.path().join("secret");
     fs::write(&secret, b"top secret").unwrap();
@@ -585,8 +585,6 @@ fn daemon_drops_privileges_and_restricts_file_access() {
         .unwrap();
     assert!(!output.status.success());
     assert!(!dest.path().join("secret").exists());
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[cfg(feature = "network")]
@@ -594,7 +592,8 @@ fn daemon_drops_privileges_and_restricts_file_access() {
 #[serial]
 #[ignore = "requires network access"]
 fn daemon_enforces_timeout() {
-    let (mut child, port, _dir) = spawn_daemon_with_timeout(1).expect("spawn daemon");
+    let (daemon, _dir) = spawn_daemon_with_timeout(1).expect("spawn daemon");
+    let port = daemon.port;
     wait_for_daemon(port);
     let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
     sleep(Duration::from_secs(2));
@@ -606,6 +605,4 @@ fn daemon_enforces_timeout() {
         Ok(0) => (),
         Ok(_) => panic!("unexpected data"),
     }
-    let _ = child.kill();
-    let _ = child.wait();
 }

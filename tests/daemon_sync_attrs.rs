@@ -38,7 +38,8 @@ fn daemon_preserves_uid_gid_perms() {
     .unwrap();
     chown(&file, Some(Uid::from_raw(1)), Some(Gid::from_raw(1))).unwrap();
 
-    let (mut child, port) = spawn_daemon(&srv);
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
     wait_for_daemon(port);
 
     let src_arg = format!("{}/", src.display());
@@ -52,9 +53,6 @@ fn daemon_preserves_uid_gid_perms() {
     assert_eq!(meta.permissions().mode() & 0o777, 0o741);
     assert_eq!(meta.uid(), 1);
     assert_eq!(meta.gid(), 1);
-
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]
@@ -70,7 +68,8 @@ fn daemon_preserves_hard_links_rr_client() {
     fs::write(&f1, b"hi").unwrap();
     let f2 = src.join("b");
     fs::hard_link(&f1, &f2).unwrap();
-    let (mut child, port) = spawn_daemon(&srv);
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
     wait_for_daemon(port);
     let src_arg = format!("{}/", src.display());
     let dest = format!("rsync://127.0.0.1:{port}/mod");
@@ -82,6 +81,4 @@ fn daemon_preserves_hard_links_rr_client() {
     let meta1 = fs::symlink_metadata(srv.join("a")).unwrap();
     let meta2 = fs::symlink_metadata(srv.join("b")).unwrap();
     assert_eq!(meta1.ino(), meta2.ino());
-    let _ = child.kill();
-    let _ = child.wait();
 }

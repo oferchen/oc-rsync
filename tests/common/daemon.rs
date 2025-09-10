@@ -10,20 +10,49 @@ use std::process::{Child, Command as StdCommand};
 use std::thread::sleep;
 use std::time::Duration;
 
-pub fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
+pub struct Daemon {
+    child: Child,
+    pub port: u16,
+}
+
+impl std::ops::Deref for Daemon {
+    type Target = Child;
+    fn deref(&self) -> &Self::Target {
+        &self.child
+    }
+}
+
+impl std::ops::DerefMut for Daemon {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.child
+    }
+}
+
+impl Drop for Daemon {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+impl Daemon {
+    pub fn new(child: Child, port: u16) -> Self {
+        Daemon { child, port }
+    }
+}
+
+pub fn spawn_daemon(root: &std::path::Path) -> Daemon {
     #[cfg(unix)]
     let (uid, gid) = (Uid::current().as_raw(), Gid::current().as_raw());
     #[cfg(not(unix))]
     let (uid, gid) = (0, 0);
-    let port = TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
     let child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
             "--daemon",
+            "--no-detach",
             "--module",
             &format!(
                 "mod={},uid={},gid={},use-chroot=no",
@@ -36,19 +65,17 @@ pub fn spawn_daemon(root: &std::path::Path) -> (Child, u16) {
         ])
         .spawn()
         .unwrap();
-    (child, port)
+    drop(listener);
+    Daemon { child, port }
 }
 
-pub fn spawn_rsync_daemon(root: &std::path::Path, extra: &str) -> (Child, u16) {
+pub fn spawn_rsync_daemon(root: &std::path::Path, extra: &str) -> Daemon {
     #[cfg(unix)]
     let (uid, gid) = (Uid::current().as_raw(), Gid::current().as_raw());
     #[cfg(not(unix))]
     let (uid, gid) = (0, 0);
-    let port = TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
     let conf = format!(
         "uid = {uid}\ngid = {gid}\nuse chroot = false\n[mod]\n  path = {}\n{}",
         root.display(),
@@ -67,7 +94,8 @@ pub fn spawn_rsync_daemon(root: &std::path::Path, extra: &str) -> (Child, u16) {
         ])
         .spawn()
         .unwrap();
-    (child, port)
+    drop(listener);
+    Daemon { child, port }
 }
 
 pub fn wait_for_daemon(port: u16) {

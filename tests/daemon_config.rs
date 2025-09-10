@@ -42,7 +42,7 @@ fn wait_for_daemon(port: u16) {
     panic!("daemon did not start");
 }
 
-fn spawn_daemon(config: &str) -> (Child, u16, tempfile::TempDir) {
+fn spawn_daemon(config: &str) -> (ChildGuard, u16, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let cfg_path = dir.path().join("rsyncd.conf");
     fs::write(&cfg_path, config).unwrap();
@@ -54,7 +54,7 @@ fn spawn_daemon(config: &str) -> (Child, u16, tempfile::TempDir) {
         .spawn()
         .unwrap();
     let port = read_port(&mut child);
-    (child, port, dir)
+    (ChildGuard(child), port, dir)
 }
 
 struct ChildGuard(Child);
@@ -235,18 +235,16 @@ fn daemon_config_motd_suppression() {
 #[serial]
 fn daemon_config_host_filtering() {
     let allow_cfg = "port = 0\nhosts allow = 127.0.0.1\n[data]\n    path = /tmp\n";
-    let (mut child, port, _tmp) = spawn_daemon(allow_cfg);
+    let (_daemon, port, _tmp) = spawn_daemon(allow_cfg);
     wait_for_daemon(port);
     let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
     stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
     let mut buf = [0u8; 4];
     stream.read_exact(&mut buf).unwrap();
     assert_eq!(u32::from_be_bytes(buf), LATEST_VERSION);
-    let _ = child.kill();
-    let _ = child.wait();
 
     let deny_cfg = "port = 0\nhosts deny = 127.0.0.1\n[data]\n    path = /tmp\n";
-    let (mut child, port, _tmp) = spawn_daemon(deny_cfg);
+    let (_daemon, port, _tmp) = spawn_daemon(deny_cfg);
     wait_for_daemon(port);
     let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
     stream
@@ -255,8 +253,6 @@ fn daemon_config_host_filtering() {
     stream.write_all(&LATEST_VERSION.to_be_bytes()).unwrap();
     let res = stream.read(&mut buf);
     assert!(res.is_err() || res.unwrap() == 0);
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]
@@ -313,16 +309,15 @@ fn daemon_config_custom_port() {
     let cfg = format!("port = {port}\n[data]\n    path = {}\n", data.display());
     let cfg_path = dir.path().join("rsyncd.conf");
     fs::write(&cfg_path, cfg).unwrap();
-    let mut child = StdCommand::cargo_bin("oc-rsync")
+    let child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
         .stderr(Stdio::null())
         .spawn()
         .unwrap();
+    let _guard = ChildGuard(child);
     wait_for_daemon(port);
     TcpStream::connect(("127.0.0.1", port)).unwrap();
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]
@@ -338,8 +333,7 @@ fn daemon_config_read_only_module_rejects_writes() {
         "port = 0\n[data]\n    path = {}\n    read only = yes\n",
         data_dir.display()
     );
-    let (child, port, _tmp) = spawn_daemon(&config);
-    let _child = ChildGuard(child);
+    let (_child, port, _tmp) = spawn_daemon(&config);
     wait_for_daemon(port);
     let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
@@ -374,8 +368,7 @@ fn daemon_config_write_only_module_rejects_reads() {
         "port = 0\n[data]\n    path = {}\n    write only = yes\n",
         data_dir.display()
     );
-    let (child, port, _tmp) = spawn_daemon(&config);
-    let _child = ChildGuard(child);
+    let (_child, port, _tmp) = spawn_daemon(&config);
     wait_for_daemon(port);
     let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
     t.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
