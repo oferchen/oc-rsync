@@ -3,19 +3,27 @@ use oc_rsync_cli::{branding, cli_command, render_help};
 use serial_test::serial;
 use std::env;
 
+fn set_env_var(key: &str, val: &str) {
+    // SAFETY: tests run serially.
+    unsafe { env::set_var(key, val) }
+}
+
+fn remove_env_var(key: &str) {
+    // SAFETY: see `set_env_var`.
+    unsafe { env::remove_var(key) }
+}
+
 fn with_columns<T>(cols: &str, f: impl FnOnce() -> T) -> T {
     let prev = env::var("COLUMNS");
-    unsafe {
-        env::set_var("COLUMNS", cols);
-    }
+    set_env_var("COLUMNS", cols);
     let out = f();
     match prev {
-        Ok(v) => unsafe {
-            env::set_var("COLUMNS", v);
-        },
-        Err(_) => unsafe {
-            env::remove_var("COLUMNS");
-        },
+        Ok(v) => {
+            set_env_var("COLUMNS", &v);
+        }
+        Err(_) => {
+            remove_env_var("COLUMNS");
+        }
     }
     out
 }
@@ -23,9 +31,7 @@ fn with_columns<T>(cols: &str, f: impl FnOnce() -> T) -> T {
 #[test]
 #[serial]
 fn help_columns_80() {
-    unsafe {
-        env::set_var("COLUMNS", "80");
-    }
+    set_env_var("COLUMNS", "80");
     let out = render_help(&cli_command());
     let mut lines = out.lines();
     assert_eq!(
@@ -36,17 +42,13 @@ fn help_columns_80() {
     assert!(lines.next().unwrap().is_empty());
     assert!(out.contains("Usage:"));
     assert!(out.contains("--verbose, -v"));
-    unsafe {
-        env::remove_var("COLUMNS");
-    }
+    remove_env_var("COLUMNS");
 }
 
 #[test]
 #[serial]
 fn help_columns_120() {
-    unsafe {
-        env::set_var("COLUMNS", "120");
-    }
+    set_env_var("COLUMNS", "120");
     let out = render_help(&cli_command());
     let mut lines = out.lines();
     assert_eq!(
@@ -56,9 +58,7 @@ fn help_columns_120() {
     assert_eq!(lines.next().unwrap(), branding::brand_tagline());
     assert!(lines.next().unwrap().is_empty());
     assert!(out.contains("--verbose, -v"));
-    unsafe {
-        env::remove_var("COLUMNS");
-    }
+    remove_env_var("COLUMNS");
 }
 
 #[test]

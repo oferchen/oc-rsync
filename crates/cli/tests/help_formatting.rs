@@ -4,6 +4,16 @@ use serial_test::serial;
 use std::collections::HashSet;
 use std::env;
 
+fn set_env_var(key: &str, val: &str) {
+    // SAFETY: tests are run serially so environment mutations don't race.
+    unsafe { env::set_var(key, val) }
+}
+
+fn remove_env_var(key: &str) {
+    // SAFETY: see `set_env_var`.
+    unsafe { env::remove_var(key) }
+}
+
 fn extract_options(help: &str) -> String {
     let mut out = String::new();
     let mut in_opts = false;
@@ -43,13 +53,9 @@ fn dump_help_body_lists_unique_options() {
 #[serial]
 fn help_wrapping_matches_upstream_80() {
     let cmd = cli_command();
-    unsafe {
-        env::set_var("COLUMNS", "80");
-    }
+    set_env_var("COLUMNS", "80");
     let ours = render_help(&cmd);
-    unsafe {
-        env::remove_var("COLUMNS");
-    }
+    remove_env_var("COLUMNS");
     let upstream = include_str!("../../../tests/golden/help/rsync-help-80.txt");
     assert_eq!(extract_options(&ours), extract_options(upstream));
 }
@@ -58,13 +64,9 @@ fn help_wrapping_matches_upstream_80() {
 #[serial]
 fn help_wrapping_matches_upstream_100() {
     let cmd = cli_command();
-    unsafe {
-        env::set_var("COLUMNS", "100");
-    }
+    set_env_var("COLUMNS", "100");
     let ours = render_help(&cmd);
-    unsafe {
-        env::remove_var("COLUMNS");
-    }
+    remove_env_var("COLUMNS");
     let upstream = include_str!("../../../tests/golden/help/rsync-help-100.txt");
     assert_eq!(extract_options(&ours), extract_options(upstream));
 }
@@ -75,13 +77,9 @@ fn dump_help_body_matches_render_help() {
     let cmd = cli_command();
     let body = dump_help_body(&cmd);
 
-    unsafe {
-        env::set_var("COLUMNS", "80");
-    }
+    set_env_var("COLUMNS", "80");
     let full = render_help(&cmd);
-    unsafe {
-        env::remove_var("COLUMNS");
-    }
+    remove_env_var("COLUMNS");
 
     assert_eq!(body, extract_options(&full));
 }
