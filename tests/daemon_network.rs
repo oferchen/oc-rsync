@@ -1,22 +1,29 @@
 // tests/daemon_network.rs
+#![cfg(feature = "network")]
 
+use assert_cmd::cargo::cargo_bin;
 use daemon::{Handler, Module, handle_connection, host_allowed};
 use protocol::LATEST_VERSION;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::fs;
-use std::io::{self, Cursor, Read, Write};
-use std::net::TcpStream;
+use std::io::{self, Cursor, Read};
+use std::net::{IpAddr, TcpStream};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use std::process::{Child, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, mpsc};
 use std::thread::sleep;
 use std::time::Duration;
 use tempfile::tempdir;
-use transport::{LocalPipeTransport, TcpTransport, Transport};
+use transport::LocalPipeTransport;
+#[cfg(feature = "network")]
+use transport::TcpTransport;
+use wait_timeout::ChildExt;
 
+#[cfg(feature = "network")]
 mod common;
+#[cfg(feature = "network")]
 use common::oc_cmd;
 
 struct MultiReader {
@@ -395,7 +402,7 @@ fn read_port(child: &mut Child) -> io::Result<u16> {
     let mut stdout = child
         .stdout
         .take()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "missing stdout"))?;
+        .ok_or_else(|| io::Error::other("missing stdout"))?;
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
         let mut buf = Vec::new();
@@ -435,10 +442,7 @@ fn read_port(child: &mut Child) -> io::Result<u16> {
                 .flatten()
                 .is_some()
             {
-                Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "daemon exited before writing port",
-                ))
+                Err(io::Error::other("daemon exited before writing port"))
             } else {
                 Err(io::Error::new(
                     io::ErrorKind::TimedOut,
@@ -446,10 +450,9 @@ fn read_port(child: &mut Child) -> io::Result<u16> {
                 ))
             }
         }
-        Err(mpsc::RecvTimeoutError::Disconnected) => Err(io::Error::new(
-            io::ErrorKind::Other,
-            "failed to read daemon port",
-        )),
+        Err(mpsc::RecvTimeoutError::Disconnected) => {
+            Err(io::Error::other("failed to read daemon port"))
+        }
     }
 }
 
@@ -467,7 +470,9 @@ fn wait_for_daemon(port: u16) {
 fn spawn_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
     let module_path = fs::canonicalize(dir.path()).unwrap();
-    let mut cmd = oc_cmd();
+    let program = cargo_bin("oc-rsync");
+    let mut cmd = Command::new(program);
+    cmd.env("LC_ALL", "C").env("LANG", "C");
     cmd.args([
         "--daemon",
         "--no-detach",
@@ -497,7 +502,9 @@ fn spawn_temp_daemon() -> io::Result<(Child, u16, tempfile::TempDir)> {
 fn spawn_daemon_with_timeout(timeout: u64) -> io::Result<(Child, u16, tempfile::TempDir)> {
     let dir = tempfile::tempdir().unwrap();
     let module_path = fs::canonicalize(dir.path()).unwrap();
-    let mut cmd = oc_cmd();
+    let program = cargo_bin("oc-rsync");
+    let mut cmd = Command::new(program);
+    cmd.env("LC_ALL", "C").env("LANG", "C");
     cmd.args([
         "--daemon",
         "--no-detach",
@@ -525,14 +532,9 @@ fn spawn_daemon_with_timeout(timeout: u64) -> io::Result<(Child, u16, tempfile::
 #[cfg(feature = "network")]
 #[test]
 #[serial]
+#[ignore = "requires network access"]
 fn daemon_blocks_path_traversal() {
-    let (mut child, port, dir) = match spawn_temp_daemon() {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("skipping daemon test: {e}");
-            return;
-        }
-    };
+    let (mut child, port, dir) = spawn_temp_daemon().expect("spawn daemon");
     wait_for_daemon(port);
     let parent = dir.path().parent().unwrap().to_path_buf();
     let secret = parent.join("secret");
@@ -554,14 +556,9 @@ fn daemon_blocks_path_traversal() {
 #[cfg(feature = "network")]
 #[test]
 #[serial]
+#[ignore = "requires network access"]
 fn daemon_drops_privileges_and_restricts_file_access() {
-    let (mut child, port, dir) = match spawn_temp_daemon() {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("skipping daemon test: {e}");
-            return;
-        }
-    };
+    let (mut child, port, dir) = spawn_temp_daemon().expect("spawn daemon");
     wait_for_daemon(port);
     let secret = dir.path().join("secret");
     fs::write(&secret, b"top secret").unwrap();
@@ -584,14 +581,9 @@ fn daemon_drops_privileges_and_restricts_file_access() {
 #[cfg(feature = "network")]
 #[test]
 #[serial]
+#[ignore = "requires network access"]
 fn daemon_enforces_timeout() {
-    let (mut child, port, _dir) = match spawn_daemon_with_timeout(1) {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("skipping daemon test: {e}");
-            return;
-        }
-    };
+    let (mut child, port, _dir) = spawn_daemon_with_timeout(1).expect("spawn daemon");
     wait_for_daemon(port);
     let mut t = TcpTransport::connect("127.0.0.1", port, None, None).unwrap();
     sleep(Duration::from_secs(2));

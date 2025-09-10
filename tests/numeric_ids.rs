@@ -1,21 +1,22 @@
 // tests/numeric_ids.rs
 
+#[cfg(all(unix, feature = "root"))]
 use assert_cmd::Command;
+#[cfg(all(unix, feature = "root"))]
 use std::fs;
+#[cfg(all(unix, feature = "root"))]
 use tempfile::tempdir;
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "root"))]
 use nix::unistd::{Gid, Uid, chown};
-#[cfg(unix)]
+#[cfg(all(unix, feature = "root"))]
 use std::os::unix::fs::MetadataExt;
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "root"))]
 #[test]
+#[ignore = "requires root or CAP_CHOWN"]
 fn numeric_ids_matches_rsync() {
-    if !Uid::effective().is_root() {
-        eprintln!("skipping numeric_ids_matches_rsync: requires root or CAP_CHOWN",);
-        return;
-    }
+    assert!(Uid::effective().is_root(), "requires root or CAP_CHOWN");
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
     let ours = tmp.path().join("ours");

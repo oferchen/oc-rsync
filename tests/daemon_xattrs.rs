@@ -1,7 +1,7 @@
 // tests/daemon_xattrs.rs
 #![cfg(all(unix, feature = "xattr"))]
 
-use assert_cmd::{Command, cargo::CommandCargoExt};
+use assert_cmd::Command;
 use serial_test::serial;
 use std::fs;
 use tempfile::tempdir;

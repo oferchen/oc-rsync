@@ -1,5 +1,5 @@
 // tests/daemon_privileges.rs
-#![cfg(unix)]
+#![cfg(all(unix, feature = "root"))]
 
 use daemon::{chroot_and_drop_privileges, drop_privileges};
 use serial_test::serial;
@@ -12,7 +12,7 @@ use common::oc_cmd;
 
 #[test]
 #[serial]
-#[ignore]
+#[ignore = "requires root privileges"]
 fn chroot_drops_privileges() {
     use nix::sys::wait::waitpid;
     use nix::unistd::{ForkResult, fork, getegid, geteuid};
@@ -37,7 +37,7 @@ fn chroot_drops_privileges() {
 
 #[test]
 #[serial]
-#[ignore]
+#[ignore = "requires root privileges"]
 fn chroot_requires_root() {
     use nix::sys::wait::waitpid;
     use nix::unistd::{ForkResult, fork, geteuid};
@@ -63,6 +63,7 @@ fn chroot_requires_root() {
 
 #[test]
 #[serial]
+#[ignore = "requires root privileges"]
 fn chroot_and_drop_privileges_rejects_missing_dir() {
     let _ = oc_cmd();
     let missing = Path::new("/does/not/exist");
@@ -74,7 +75,7 @@ fn chroot_and_drop_privileges_rejects_missing_dir() {
 
 #[test]
 #[serial]
-#[ignore]
+#[ignore = "requires root privileges"]
 fn drop_privileges_requires_root() {
     use nix::sys::wait::waitpid;
     use nix::unistd::{ForkResult, fork};
@@ -97,6 +98,7 @@ fn drop_privileges_requires_root() {
 
 #[test]
 #[serial]
+#[ignore = "requires root privileges"]
 fn drop_privileges_changes_ids() {
     use nix::sys::wait::waitpid;
     use nix::unistd::{ForkResult, fork, getegid, geteuid};

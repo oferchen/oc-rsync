@@ -7,8 +7,6 @@ use tempfile::tempdir;
 
 #[cfg(unix)]
 use std::os::unix::fs::{PermissionsExt, symlink};
-#[cfg(unix)]
-use std::path::Path;
 use std::path::PathBuf;
 
 #[test]
