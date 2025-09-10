@@ -4,12 +4,12 @@ use serial_test::serial;
 use std::env;
 
 fn set_env_var(key: &str, val: &str) {
-    // SAFETY: tests run serially.
+    /* SAFETY: tests run serially. */
     unsafe { env::set_var(key, val) }
 }
 
 fn remove_env_var(key: &str) {
-    // SAFETY: see `set_env_var`.
+    /* SAFETY: see `set_env_var`. */
     unsafe { env::remove_var(key) }
 }
 
