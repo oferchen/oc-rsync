@@ -9,7 +9,9 @@ use tempfile::tempdir;
 use meta::{acls_supported, xattrs_supported};
 use posix_acl::{ACL_READ, ACL_WRITE, PosixACL, Qualifier};
 mod common;
-use common::daemon::{spawn_daemon, spawn_rsync_daemon, wait_for_daemon};
+#[cfg(feature = "root")]
+use common::daemon::spawn_rsync_daemon;
+use common::daemon::{spawn_daemon, wait_for_daemon};
 
 #[test]
 #[serial]
@@ -287,6 +289,7 @@ fn daemon_inherits_default_acls_rr_client() {
     let _ = child.wait();
 }
 
+#[cfg(feature = "root")]
 #[test]
 #[serial]
 fn daemon_acls_match_rsync_server() {
@@ -348,6 +351,7 @@ fn daemon_acls_match_rsync_server() {
     assert_eq!(dacl_oc.entries(), dacl_rs.entries());
 }
 
+#[cfg(feature = "root")]
 #[test]
 #[serial]
 fn daemon_acls_match_rsync_client() {
