@@ -1,6 +1,6 @@
 # Interoperability Grid
 
-`scripts/interop-grid.sh` compares `oc-rsync` with the stock `rsync` binary across a grid of common options. Every combination of `--archive`, `--compress`, and `--delete` is executed against a small local tree.
+`scripts/interop-grid.sh` compares `oc-rsync` with stock `rsync` binaries across a grid of common options. Every combination of `--archive`, `--compress`, and `--delete` is executed against a small local tree.
 
 For each flag set the script runs both implementations, capturing stdout, stderr, and exit codes. After each transfer the source tree is compared against the destination using `rsync -aiXn` to verify metadata including permissions, timestamps, and xattrs. Any output or non‑zero exit status causes the script to fail, and differences are noted in the report.
 
@@ -19,11 +19,18 @@ verifies ports with `nc -z 127.0.0.1` and issues all client connections to
 
 Results are written to `tests/interop/interop-grid.log` for inspection alongside other interoperability fixtures.
 
+`scripts/interop/build_upstream.sh` downloads and builds upstream `rsync`
+releases (currently 3.0.9, 3.1.3, and 3.4.1) with checksum verification.  The
+`scripts/interop/start_daemons.sh` helper spawns daemons for these releases,
+binding each to `127.0.0.1` on sequential ports so tests can exercise the
+`rsync://` transport.
+
 `scripts/interop/run.sh` provides a lower‑level view of these transfers.  It
-records each `rsync` invocation's stdout, stderr, and exit code in versioned
-files under `tests/interop/streams/`.  The companion
-`scripts/interop/validate.sh` compares the captured streams from `oc-rsync` and
-upstream `rsync`, failing fast on any mismatch in output or exit status.
+invokes `build_upstream.sh` for each supported release and records every
+invocation's stdout, stderr, and exit code in versioned files under
+`tests/interop/streams/`.  The companion `scripts/interop/validate.sh` compares
+the captured streams from `oc-rsync` and upstream `rsync`, failing fast on any
+mismatch in output or exit status.
 
 ## Extended matrix coverage
 

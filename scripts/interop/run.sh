@@ -4,24 +4,16 @@ set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 OUT_DIR="$ROOT/tests/interop/streams"
 OC_RSYNC="$ROOT/target/debug/oc-rsync"
-# Use a specific upstream rsync if provided. If missing, download and verify a
-# pinned release. This script requires the rsync-3.4.1 binary; it will exit if
-# the download or verification fails.
-UPSTREAM="${RSYNC_BIN:-}"
-if [[ -z "$UPSTREAM" ]]; then
-  UPSTREAM_DIR="$ROOT/target/upstream"
-  mkdir -p "$UPSTREAM_DIR"
-  pushd "$UPSTREAM_DIR" >/dev/null
-  "$ROOT/scripts/fetch-rsync.sh" >/dev/null
-  popd >/dev/null
-  UPSTREAM="$UPSTREAM_DIR/rsync-3.4.1/rsync"
-  if [[ ! -x "$UPSTREAM" ]]; then
-    echo "Pinned upstream rsync binary not found: $UPSTREAM" >&2
-    exit 1
-  fi
-fi
+
 FLAGS=(--archive --compress --delete)
 N=${#FLAGS[@]}
+
+# List of upstream versions to exercise. Override with RSYNC_VERSIONS env var
+# (space-separated).
+VERSIONS=(3.0.9 3.1.3 3.4.1)
+if [[ -n ${RSYNC_VERSIONS:-} ]]; then
+  read -r -a VERSIONS <<<"$RSYNC_VERSIONS"
+fi
 
 cmp_trees() {
   local a="$1" b="$2" diff_file="$3"
@@ -70,6 +62,7 @@ ensure_tools() {
 }
 ensure_tools
 
+
 # Build oc-rsync if the binary is missing
 if [ ! -x "$OC_RSYNC" ]; then
   ensure_build_deps() {
@@ -85,7 +78,6 @@ if [ ! -x "$OC_RSYNC" ]; then
 fi
 
 OC_VER="$($OC_RSYNC --version 2>/dev/null | head -n1 | awk '{print $2}')"
-UP_VER="$($UPSTREAM --version | head -n1 | awk '{print $3}')"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -94,43 +86,52 @@ SRC="$TMP/src"
 mkdir -p "$SRC"
 echo data > "$SRC/file.txt"
 
-for ((mask=0; mask< (1<<N); mask++)); do
-  args=()
-  for ((i=0; i<N; i++)); do
-    if ((mask & (1<<i))); then
-      args+=("${FLAGS[i]}")
-    fi
+for ver in "${VERSIONS[@]}"; do
+  UPSTREAM="$("$ROOT/scripts/interop/build_upstream.sh" "$ver" | tail -n1)"
+  if [[ ! -x "$UPSTREAM" ]]; then
+    echo "Failed to build rsync $ver" >&2
+    exit 1
+  fi
+  UP_VER="$($UPSTREAM --version | head -n1 | awk '{print $3}')"
+
+  for ((mask=0; mask< (1<<N); mask++)); do
+    args=()
+    for ((i=0; i<N; i++)); do
+      if ((mask & (1<<i))); then
+        args+=("${FLAGS[i]}")
+      fi
+    done
+    combo="${args[*]:-(none)}"
+    prefix="${combo// /_}"
+
+    RSYNC_DST="$TMP/rsync_dst"
+    OC_DST="$TMP/oc_dst"
+    mkdir -p "$RSYNC_DST" "$OC_DST"
+
+    set +e
+    "$UPSTREAM" "${args[@]}" "$SRC/" "$RSYNC_DST/" >"$OUT_DIR/${prefix}.rsync-${UP_VER}.stdout" 2>"$OUT_DIR/${prefix}.rsync-${UP_VER}.stderr"
+    echo $? >"$OUT_DIR/${prefix}.rsync-${UP_VER}.exit"
+    set -e
+
+    set +e
+    "$OC_RSYNC" "${args[@]}" "$SRC/" "$OC_DST/" >"$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.stdout" 2>"$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.stderr"
+    echo $? >"$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.exit"
+    set -e
+
+    RSYNC_STDOUT="$OUT_DIR/${prefix}.rsync-${UP_VER}.stdout"
+    RSYNC_STDERR="$OUT_DIR/${prefix}.rsync-${UP_VER}.stderr"
+    RSYNC_EXIT="$OUT_DIR/${prefix}.rsync-${UP_VER}.exit"
+    OC_STDOUT="$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.stdout"
+    OC_STDERR="$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.stderr"
+    OC_EXIT="$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.exit"
+
+    diff "$RSYNC_STDOUT" "$OC_STDOUT"
+    diff "$RSYNC_STDERR" "$OC_STDERR"
+    diff "$RSYNC_EXIT" "$OC_EXIT"
+
+    DIR_DIFF="$OUT_DIR/${prefix}.dir.diff"
+    cmp_trees "$RSYNC_DST" "$OC_DST" "$DIR_DIFF"
+
+    rm -rf "$RSYNC_DST" "$OC_DST"
   done
-  combo="${args[*]:-(none)}"
-  prefix="${combo// /_}"
-
-  RSYNC_DST="$TMP/rsync_dst"
-  OC_DST="$TMP/oc_dst"
-  mkdir -p "$RSYNC_DST" "$OC_DST"
-
-  set +e
-  "$UPSTREAM" "${args[@]}" "$SRC/" "$RSYNC_DST/" >"$OUT_DIR/${prefix}.rsync-${UP_VER}.stdout" 2>"$OUT_DIR/${prefix}.rsync-${UP_VER}.stderr"
-  echo $? >"$OUT_DIR/${prefix}.rsync-${UP_VER}.exit"
-  set -e
-
-  set +e
-  "$OC_RSYNC" "${args[@]}" "$SRC/" "$OC_DST/" >"$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.stdout" 2>"$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.stderr"
-  echo $? >"$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.exit"
-  set -e
-
-  RSYNC_STDOUT="$OUT_DIR/${prefix}.rsync-${UP_VER}.stdout"
-  RSYNC_STDERR="$OUT_DIR/${prefix}.rsync-${UP_VER}.stderr"
-  RSYNC_EXIT="$OUT_DIR/${prefix}.rsync-${UP_VER}.exit"
-  OC_STDOUT="$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.stdout"
-  OC_STDERR="$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.stderr"
-  OC_EXIT="$OUT_DIR/${prefix}.oc-rsync-${OC_VER}.exit"
-
-  diff "$RSYNC_STDOUT" "$OC_STDOUT"
-  diff "$RSYNC_STDERR" "$OC_STDERR"
-  diff "$RSYNC_EXIT" "$OC_EXIT"
-
-  DIR_DIFF="$OUT_DIR/${prefix}.dir.diff"
-  cmp_trees "$RSYNC_DST" "$OC_DST" "$DIR_DIFF"
-
-  rm -rf "$RSYNC_DST" "$OC_DST"
 done
