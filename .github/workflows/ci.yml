@@ -168,27 +168,34 @@ jobs:
           mkdir -p target/debug
           cp target/release/oc-rsync target/debug/oc-rsync
 
-      - name: Fetch upstream rsync 3.4.1
-        run: |
-          mkdir -p target/upstream
-          pushd target/upstream >/dev/null
-          ../../scripts/fetch-rsync.sh
-          echo "RSYNC_BIN=$(pwd)/rsync-3.4.1/rsync" >> $GITHUB_ENV
-          popd >/dev/null
+      - name: Build upstream rsync releases
+        run: scripts/interop/build_upstream.sh
+
+      - name: Start upstream daemons
+        run: scripts/interop/start_daemons.sh
 
       - name: Collect interop snapshots
-        env:
-          RSYNC_BIN: ${{ env.RSYNC_BIN }}
         run: scripts/interop/run.sh
 
       - name: Install cargo-nextest
         run: cargo install cargo-nextest --locked
 
       - name: Run interop tests
-        run: cargo nextest run --workspace --no-fail-fast --features "cli nightly interop" --run-ignored=only-tests
+        run: |
+          for ver in 3.0.9 3.1.3 3.4.1; do
+            RSYNC_BIN="$(pwd)/target/upstream/rsync-$ver/rsync" \
+              cargo nextest run --workspace --no-fail-fast --features "cli nightly interop" --run-ignored=only-tests;
+          done
 
       - name: Run upstream interop matrix
         run: tests/interop/run_matrix.sh
+
+      - name: Stop upstream daemons
+        if: always()
+        run: |
+          if [ -f target/upstream/daemons.pids ]; then
+            xargs -r kill < target/upstream/daemons.pids || true
+          fi
   build-matrix:
     needs: [lint, test-linux]
     strategy:
