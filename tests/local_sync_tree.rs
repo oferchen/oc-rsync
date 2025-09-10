@@ -230,7 +230,7 @@ fn sync_preserves_acls() {
     acl.set(Qualifier::User(12345), ACL_READ);
     acl.write_acl(&file).unwrap();
 
-    let mut dacl = PosixACL::read_default_acl(&src).unwrap();
+    let mut dacl = PosixACL::new(0o755);
     dacl.set(Qualifier::User(12345), ACL_READ);
     dacl.write_default_acl(&src).unwrap();
 
@@ -306,7 +306,7 @@ fn sync_acls_match_rsync() {
     let mut acl = PosixACL::read_acl(&file).unwrap();
     acl.set(Qualifier::User(12345), ACL_READ);
     acl.write_acl(&file).unwrap();
-    let mut dacl = PosixACL::read_default_acl(&src).unwrap();
+    let mut dacl = PosixACL::new(0o755);
     dacl.set(Qualifier::User(12345), ACL_READ);
     dacl.write_default_acl(&src).unwrap();
 
