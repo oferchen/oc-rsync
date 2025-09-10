@@ -3,6 +3,48 @@ use assert_cmd::{Command as TestCommand, cargo::cargo_bin};
 use std::{fs, process::Command as StdCommand};
 use tempfile::tempdir;
 
+struct LogFileTestBuilder {
+    log_format: String,
+}
+
+impl LogFileTestBuilder {
+    fn new() -> Self {
+        Self {
+            log_format: String::new(),
+        }
+    }
+
+    fn log_format(mut self, fmt: &str) -> Self {
+        self.log_format = fmt.to_owned();
+        self
+    }
+
+    fn run(self) -> String {
+        let tmp = tempdir().unwrap();
+        let src = tmp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(src.join("f"), b"hi").unwrap();
+        let dst = tmp.path().join("dst");
+        fs::create_dir_all(&dst).unwrap();
+        let log = tmp.path().join("log.txt");
+        let src_arg = format!("{}/", src.display());
+        let dst_arg = dst.to_str().unwrap();
+
+        TestCommand::cargo_bin("oc-rsync")
+            .unwrap()
+            .arg("--log-file")
+            .arg(&log)
+            .arg(format!("--log-file-format={}", self.log_format))
+            .arg("--out-format=%o %n")
+            .arg(&src_arg)
+            .arg(dst_arg)
+            .assert()
+            .success();
+
+        fs::read_to_string(log).unwrap()
+    }
+}
+
 #[test]
 fn log_file_writes_messages() {
     let tmp = tempdir().unwrap();
@@ -56,41 +98,46 @@ fn log_file_format_json_writes_json() {
 }
 
 #[test]
-fn log_file_format_tokens() {
-    let tmp = tempdir().unwrap();
-    let src_dir = tmp.path().join("src");
-    fs::create_dir_all(&src_dir).unwrap();
-    fs::write(src_dir.join("f"), b"hi").unwrap();
-    let dst = tmp.path().join("dst");
-    fs::create_dir_all(&dst).unwrap();
-    let log = tmp.path().join("log.txt");
-    let src_arg = format!("{}/", src_dir.display());
-    let dst_arg = dst.to_str().unwrap();
-    TestCommand::cargo_bin("oc-rsync")
-        .unwrap()
-        .args([
-            "--log-file",
-            log.to_str().unwrap(),
-            "--log-file-format=%t [%p] %o %f",
-            "--out-format=%o %n",
-            &src_arg,
-            dst_arg,
-        ])
-        .assert()
-        .success();
-    let contents = fs::read_to_string(&log).unwrap();
-    let line = contents.lines().find(|l| l.contains("send")).unwrap();
+fn log_file_format_token_t() {
+    let contents = LogFileTestBuilder::new().log_format("%t").run();
+    let line = contents.lines().find(|l| !l.starts_with("info::")).unwrap();
     let parts: Vec<_> = line.split_whitespace().collect();
-    let date = parts[0];
-    let time = parts[1];
-    let pid = parts[2].trim_matches(|c| c == '[' || c == ']');
-    let op = parts[parts.len() - 2];
-    let file = parts[parts.len() - 1];
-    assert!(date.contains('/'));
-    assert!(time.contains(':'));
-    assert!(pid.parse::<u32>().is_ok());
-    assert_eq!(op, "send");
-    assert_eq!(file, "f");
+    assert_eq!(parts.len(), 2);
+    assert!(parts[0].contains('/'), "{}", line);
+    assert!(parts[1].contains(':'), "{}", line);
+}
+
+#[test]
+fn log_file_format_token_p() {
+    let contents = LogFileTestBuilder::new().log_format("%p").run();
+    let line = contents
+        .lines()
+        .find(|l| !l.starts_with("info::"))
+        .unwrap()
+        .trim();
+    assert!(line.parse::<u32>().is_ok(), "{}", line);
+}
+
+#[test]
+fn log_file_format_token_o() {
+    let contents = LogFileTestBuilder::new().log_format("%o").run();
+    let line = contents
+        .lines()
+        .find(|l| !l.starts_with("info::"))
+        .unwrap()
+        .trim();
+    assert_eq!(line, "send");
+}
+
+#[test]
+fn log_file_format_token_f() {
+    let contents = LogFileTestBuilder::new().log_format("%f").run();
+    let line = contents
+        .lines()
+        .find(|l| !l.starts_with("info::"))
+        .unwrap()
+        .trim();
+    assert_eq!(line, "f");
 }
 
 #[test]
