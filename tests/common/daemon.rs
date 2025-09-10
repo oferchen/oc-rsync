@@ -76,6 +76,7 @@ pub fn spawn_daemon(root: &std::path::Path) -> Daemon {
     let (uid, gid) = (0, 0);
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
+    drop(listener);
     let child = StdCommand::cargo_bin("oc-rsync")
         .unwrap()
         .args([
@@ -93,7 +94,6 @@ pub fn spawn_daemon(root: &std::path::Path) -> Daemon {
         ])
         .spawn()
         .unwrap();
-    drop(listener);
     Daemon { child, port }
 }
 
@@ -104,6 +104,7 @@ pub fn spawn_rsync_daemon(root: &std::path::Path, extra: &str) -> Daemon {
     let (uid, gid) = (0, 0);
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
+    drop(listener);
     let conf = format!(
         "uid = {uid}\ngid = {gid}\nuse chroot = false\n[mod]\n  path = {}\n{}",
         root.display(),
@@ -122,7 +123,6 @@ pub fn spawn_rsync_daemon(root: &std::path::Path, extra: &str) -> Daemon {
         ])
         .spawn()
         .unwrap();
-    drop(listener);
     Daemon { child, port }
 }
 
