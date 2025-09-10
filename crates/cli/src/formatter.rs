@@ -45,6 +45,7 @@ static UPSTREAM_OPTS: Lazy<Vec<(String, String)>> = Lazy::new(|| {
     opts
 });
 
+#[allow(dead_code)]
 static ENV_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 pub const ARG_ORDER: &[&str] = &[
@@ -287,12 +288,14 @@ pub fn render_help(_cmd: &Command) -> String {
     out
 }
 
+#[allow(unused_unsafe)]
 fn set_env_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
-    env::set_var(key, value);
+    unsafe { env::set_var(key, value) };
 }
 
+#[allow(unused_unsafe)]
 fn remove_env_var<K: AsRef<OsStr>>(key: K) {
-    env::remove_var(key);
+    unsafe { env::remove_var(key) };
 }
 
 fn with_env_var<K, V, F, R>(key: K, value: V, f: F) -> R
