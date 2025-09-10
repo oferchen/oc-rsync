@@ -9,14 +9,8 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 use tempfile::tempdir;
 
-struct ChildGuard(Child);
-
-impl Drop for ChildGuard {
-    fn drop(&mut self) {
-        let _ = self.0.kill();
-        let _ = self.0.wait();
-    }
-}
+mod common;
+use common::daemon::DaemonGuard;
 
 fn wait_for_daemon(port: u16, timeout: Duration) {
     let start = Instant::now();
@@ -69,24 +63,20 @@ fn read_port(child: &mut Child, timeout: Duration) -> u16 {
 #[test]
 fn starts_daemon() {
     let tmp = tempdir().unwrap();
-    let mut child = ChildGuard(
-        Command::cargo_bin("oc-rsyncd")
-            .unwrap()
-            .env("OC_RSYNC_BIN", cargo_bin("oc-rsync"))
-            .args([
-                "--no-detach",
-                "--port=0",
-                "--address=127.0.0.1",
-                "--module",
-                &format!("data={}", tmp.path().display()),
-            ])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap(),
-    );
+    let mut cmd = Command::cargo_bin("oc-rsyncd").unwrap();
+    cmd.env("OC_RSYNC_BIN", cargo_bin("oc-rsync"))
+        .args([
+            "--no-detach",
+            "--port=0",
+            "--address=127.0.0.1",
+            "--module",
+            &format!("data={}", tmp.path().display()),
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = DaemonGuard::spawn(cmd);
 
-    let port = read_port(&mut child.0, Duration::from_secs(5));
+    let port = read_port(&mut child, Duration::from_secs(5));
 
     wait_for_daemon(port, Duration::from_secs(5));
 }
@@ -106,24 +96,20 @@ fn accepts_config_option() {
     )
     .unwrap();
 
-    let mut child = ChildGuard(
-        Command::cargo_bin("oc-rsyncd")
-            .unwrap()
-            .env("OC_RSYNC_BIN", cargo_bin("oc-rsync"))
-            .args([
-                "--no-detach",
-                "--port=0",
-                "--address=127.0.0.1",
-                "--config",
-                cfg_path.to_str().unwrap(),
-            ])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap(),
-    );
+    let mut cmd = Command::cargo_bin("oc-rsyncd").unwrap();
+    cmd.env("OC_RSYNC_BIN", cargo_bin("oc-rsync"))
+        .args([
+            "--no-detach",
+            "--port=0",
+            "--address=127.0.0.1",
+            "--config",
+            cfg_path.to_str().unwrap(),
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = DaemonGuard::spawn(cmd);
 
-    let port = read_port(&mut child.0, Duration::from_secs(5));
+    let port = read_port(&mut child, Duration::from_secs(5));
 
     wait_for_daemon(port, Duration::from_secs(5));
     assert!(pid_file.exists());

@@ -17,7 +17,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use transport::{LocalPipeTransport, TcpTransport, Transport};
 mod common;
-use common::with_env_var;
+use common::{daemon::DaemonGuard, with_env_var};
 
 fn read_port(child: &mut Child) -> u16 {
     let stdout = child.stdout.as_mut().unwrap();
@@ -42,28 +42,17 @@ fn wait_for_daemon(port: u16) {
     panic!("daemon did not start");
 }
 
-fn spawn_daemon(config: &str) -> (ChildGuard, u16, tempfile::TempDir) {
+fn spawn_daemon(config: &str) -> (DaemonGuard, u16, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let cfg_path = dir.path().join("rsyncd.conf");
     fs::write(&cfg_path, config).unwrap();
-    let mut child = StdCommand::cargo_bin("oc-rsync")
-        .unwrap()
-        .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
+    let mut cmd = StdCommand::cargo_bin("oc-rsync").unwrap();
+    cmd.args(["--daemon", "--config", cfg_path.to_str().unwrap()])
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
+        .stderr(Stdio::null());
+    let mut child = DaemonGuard::spawn(cmd);
     let port = read_port(&mut child);
-    (ChildGuard(child), port, dir)
-}
-
-struct ChildGuard(Child);
-
-impl Drop for ChildGuard {
-    fn drop(&mut self) {
-        let _ = self.0.kill();
-        let _ = self.0.wait();
-    }
+    (child, port, dir)
 }
 
 struct MultiReader {
@@ -309,13 +298,10 @@ fn daemon_config_custom_port() {
     let cfg = format!("port = {port}\n[data]\n    path = {}\n", data.display());
     let cfg_path = dir.path().join("rsyncd.conf");
     fs::write(&cfg_path, cfg).unwrap();
-    let child = StdCommand::cargo_bin("oc-rsync")
-        .unwrap()
-        .args(["--daemon", "--config", cfg_path.to_str().unwrap()])
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    let _guard = ChildGuard(child);
+    let mut cmd = StdCommand::cargo_bin("oc-rsync").unwrap();
+    cmd.args(["--daemon", "--config", cfg_path.to_str().unwrap()])
+        .stderr(Stdio::null());
+    let _guard = DaemonGuard::spawn(cmd);
     wait_for_daemon(port);
     TcpStream::connect(("127.0.0.1", port)).unwrap();
 }
