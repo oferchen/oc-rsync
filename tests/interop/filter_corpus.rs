@@ -8,6 +8,10 @@ use std::path::Path;
 use std::process::Command as StdCommand;
 use tempfile::tempdir;
 
+#[path = "../util/mod.rs"]
+mod util;
+use util::compare_trees;
+
 fn setup_basic(src: &Path) {
     fs::create_dir_all(src.join("keep/sub")).unwrap();
     fs::create_dir_all(src.join("keep/tmp")).unwrap();
@@ -118,14 +122,8 @@ fn filter_corpus_parity() {
         } else {
             golden_dir.as_path()
         };
-        let diff = StdCommand::new("diff")
-            .arg("-r")
-            .arg(diff_target)
-            .arg(&ours_dst)
-            .output()
-            .unwrap();
         assert!(
-            diff.status.success(),
+            compare_trees(diff_target, &ours_dst),
             "directory trees differ for {:?}",
             path
         );
@@ -172,13 +170,7 @@ fn perdir_rules_excludes_filter_files() {
     let ours_out = ours_cmd.output().unwrap();
     assert!(ours_out.status.success());
 
-    let diff = StdCommand::new("diff")
-        .arg("-r")
-        .arg(&rsync_dst)
-        .arg(&ours_dst)
-        .output()
-        .unwrap();
-    assert!(diff.status.success(), "directory trees differ");
+    assert!(compare_trees(&rsync_dst, &ours_dst), "directory trees differ");
 
     assert!(!ours_dst.join(".rsync-filter").exists());
     assert!(!ours_dst.join("sub/.rsync-filter").exists());
@@ -232,13 +224,7 @@ fn ignores_parent_rsync_filter_with_ff() {
 
     assert_eq!(rsync_output, ours_output);
 
-    let diff = StdCommand::new("diff")
-        .arg("-r")
-        .arg(&rsync_dst)
-        .arg(&ours_dst)
-        .output()
-        .unwrap();
-    assert!(diff.status.success(), "directory trees differ");
+    assert!(compare_trees(&rsync_dst, &ours_dst), "directory trees differ");
 }
 
 #[test]
@@ -300,13 +286,10 @@ fn perdir_sign_parity() {
         } else {
             golden_dir.as_path()
         };
-        let diff = StdCommand::new("diff")
-            .arg("-r")
-            .arg(diff_target)
-            .arg(&ours_dst)
-            .output()
-            .unwrap();
-        assert!(diff.status.success(), "directory trees differ");
+        assert!(
+            compare_trees(diff_target, &ours_dst),
+            "directory trees differ"
+        );
 
         assert!(ours_dst.join("sub/keep.tmp").exists());
         assert!(!ours_dst.join("sub/other.tmp").exists());
@@ -354,13 +337,7 @@ fn perdir_stack_parity() {
     let ours_out = ours_cmd.output().unwrap();
     assert!(ours_out.status.success());
 
-    let diff = StdCommand::new("diff")
-        .arg("-r")
-        .arg(&rsync_dst)
-        .arg(&ours_dst)
-        .output()
-        .unwrap();
-    assert!(diff.status.success(), "directory trees differ");
+    assert!(compare_trees(&rsync_dst, &ours_dst), "directory trees differ");
 
     assert!(ours_dst.join("sub/keep.tmp").exists());
     assert!(ours_dst.join("sub/nested/keep.tmp").exists());
