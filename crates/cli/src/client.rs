@@ -255,17 +255,9 @@ fn run_single(
         StrongHash::Md4
     };
 
-    let src_trailing = match &src {
-        RemoteSpec::Local(p) => p.trailing_slash,
-        RemoteSpec::Remote { path, .. } => path.trailing_slash,
-    };
     let src_path = match &src {
         RemoteSpec::Local(p) => &p.path,
         RemoteSpec::Remote { path, .. } => &path.path,
-    };
-    let dst_is_dir = match &dst {
-        RemoteSpec::Local(p) => p.path.is_dir(),
-        RemoteSpec::Remote { .. } => true,
     };
     if opts.relative {
         let rel = if src_path.is_absolute() {
@@ -277,15 +269,14 @@ fn run_single(
             RemoteSpec::Local(p) => p.path.push(rel),
             RemoteSpec::Remote { path, .. } => path.path.push(rel),
         }
-    } else if !src_trailing && dst_is_dir {
-        let name = src_path
-            .file_name()
-            .map(|s| s.to_owned())
-            .ok_or_else(|| EngineError::Other("source path missing file name".into()))?;
-        match &mut dst {
-            RemoteSpec::Local(p) => p.path.push(&name),
-            RemoteSpec::Remote { path, .. } => path.path.push(&name),
+    }
+    match &mut dst {
+        RemoteSpec::Local(p) if !p.path.is_dir() => {
+            if let Some(parent) = p.path.parent() {
+                p.path = parent.to_path_buf();
+            }
         }
+        _ => {}
     }
 
     let compress_choice = match opts.compress_choice.as_deref() {

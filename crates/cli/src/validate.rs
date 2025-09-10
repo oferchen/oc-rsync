@@ -63,17 +63,12 @@ pub fn validate_paths(opts: &ClientOpts) -> Result<(Vec<OsString>, OsString)> {
         .cloned()
         .ok_or_else(|| EngineError::Other("missing SRC or DST".into()))?;
     let srcs = opts.paths[..opts.paths.len() - 1].to_vec();
-    if opts.fuzzy && srcs.len() == 1 {
-        if let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(&dst_arg) {
-            if ps.path.is_dir() {
-                return Err(EngineError::Other("Not a directory".into()));
-            }
-        }
-    }
     if srcs.len() > 1 {
         if let Ok(RemoteSpec::Local(ps)) = parse_remote_spec(dst_arg.as_os_str()) {
-            if !ps.path.is_dir() {
-                return Err(EngineError::Other("destination must be a directory".into()));
+            if ps.path.exists() && !ps.path.is_dir() {
+                return Err(EngineError::Other(
+                    "destination must be a directory when copying more than 1 file".into(),
+                ));
             }
         }
     }
