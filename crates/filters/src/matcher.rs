@@ -281,6 +281,7 @@ impl Matcher {
         let mut include: Option<bool> = None;
         let mut descend = false;
         let mut matched_source: Option<PathBuf> = None;
+        let mut decided = false;
         for rule in ordered.iter() {
             match rule {
                 Rule::Protect(data) => {
@@ -307,12 +308,14 @@ impl Matcher {
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
                     if rule_match {
-                        include = Some(true);
+                        if !decided {
+                            include = Some(true);
+                            matched_source = data.source.clone();
+                            decided = true;
+                        }
                         if may_desc {
                             descend = true;
                         }
-                        matched_source = data.source.clone();
-                        break;
                     } else if may_desc {
                         descend = true;
                     }
@@ -341,12 +344,14 @@ impl Matcher {
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
                     if rule_match {
-                        include = Some(true);
+                        if !decided {
+                            include = Some(true);
+                            matched_source = data.source.clone();
+                            decided = true;
+                        }
                         if may_desc {
                             descend = true;
                         }
-                        matched_source = data.source.clone();
-                        break;
                     } else if may_desc {
                         descend = true;
                     }
@@ -381,12 +386,14 @@ impl Matcher {
                                 descend = true;
                             }
                         } else {
-                            include = Some(true);
+                            if !decided {
+                                include = Some(true);
+                                matched_source = data.source.clone();
+                                decided = true;
+                            }
                             if may_desc {
                                 descend = true;
                             }
-                            matched_source = data.source.clone();
-                            break;
                         }
                     } else if may_desc {
                         descend = true;
@@ -416,14 +423,16 @@ impl Matcher {
                         .borrow_mut()
                         .record(data.source.as_deref(), rule_match);
                     if rule_match {
-                        include = Some(false);
-                        if data.dir_only {
-                            descend = false;
-                        } else if !descend {
-                            descend = may_desc;
+                        if !decided {
+                            include = Some(false);
+                            if !data.dir_only && !descend {
+                                descend = may_desc;
+                            }
+                            matched_source = data.source.clone();
+                            decided = true;
+                        } else if may_desc {
+                            descend = true;
                         }
-                        matched_source = data.source.clone();
-                        break;
                     } else if may_desc {
                         descend = true;
                     }
@@ -434,6 +443,9 @@ impl Matcher {
                 | Rule::NoExisting
                 | Rule::PruneEmptyDirs
                 | Rule::NoPruneEmptyDirs => {}
+            }
+            if decided && (!is_dir || descend) {
+                break;
             }
         }
 
