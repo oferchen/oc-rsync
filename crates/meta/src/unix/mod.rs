@@ -476,6 +476,17 @@ impl Metadata {
                     if is_dir { &self.default_acl } else { &[] },
                 );
             }
+        } else {
+            let cur_mode = normalize_mode(fs::symlink_metadata(path)?.permissions().mode());
+            let mut acl = posix_acl::PosixACL::new(cur_mode);
+            if let Err(err) = acl.write_acl(path) {
+                if !should_ignore_acl_error(&err) {
+                    return Err(acl_to_io(err));
+                }
+            }
+            if is_dir {
+                remove_default_acl(path)?;
+            }
         }
 
         Ok(())

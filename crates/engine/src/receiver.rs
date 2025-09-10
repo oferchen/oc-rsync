@@ -573,6 +573,18 @@ impl Receiver {
                         meta::store_fake_super(dest, meta.uid, meta.gid, meta.mode);
                     }
                 }
+            } else if !self.opts.acls {
+                #[cfg(feature = "acl")]
+                {
+                    meta::write_acl(
+                        dest,
+                        &[],
+                        &[],
+                        meta_opts.fake_super && !meta_opts.super_user,
+                        meta_opts.super_user,
+                    )
+                    .map_err(EngineError::from)?;
+                }
             }
         }
         let _ = (src, dest);
