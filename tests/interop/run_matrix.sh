@@ -67,7 +67,7 @@ ensure_build_deps() {
     $apt install -y build-essential >/dev/null
   fi
   $apt update >/dev/null
-  $apt install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev >/dev/null
+  $apt install -y libpopt-dev libzstd-dev zlib1g-dev libacl1-dev libxxhash-dev attr acl >/dev/null
 }
 
 if [[ ! -x "$OC_RSYNC" ]]; then
