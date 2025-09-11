@@ -243,7 +243,11 @@ impl Metadata {
 
         if opts.acl {
             let dacl = if is_dir {
-                Some(self.default_acl.as_slice())
+                if self.default_acl.is_empty() {
+                    None
+                } else {
+                    Some(self.default_acl.as_slice())
+                }
             } else {
                 None
             };
