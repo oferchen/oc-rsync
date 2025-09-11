@@ -31,7 +31,7 @@ fn roundtrip_acl_rw() -> std::io::Result<()> {
     acl.write_acl(&src).map_err(acl_to_io)?;
 
     let (acl_entries, _) = read_acl(&src, false)?;
-    write_acl(&dst, &acl_entries, &[], false, false)?;
+    write_acl(&dst, &acl_entries, Some(&[]), false, false)?;
     let (applied, _) = read_acl(&dst, false)?;
     assert_eq!(acl_entries, applied);
     Ok(())
@@ -54,7 +54,7 @@ fn roundtrip_default_acl_rw() -> std::io::Result<()> {
     dacl.write_default_acl(&src).map_err(acl_to_io)?;
 
     let (acl_entries, default_entries) = read_acl(&src, false)?;
-    write_acl(&dst, &acl_entries, &default_entries, false, false)?;
+    write_acl(&dst, &acl_entries, Some(&default_entries), false, false)?;
     let (acl_applied, dacl_applied) = read_acl(&dst, false)?;
     assert_eq!(acl_entries, acl_applied);
     assert_eq!(default_entries, dacl_applied);

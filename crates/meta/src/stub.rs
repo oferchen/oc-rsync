@@ -42,7 +42,7 @@ mod non_unix {
     pub fn write_acl(
         _path: &Path,
         _acl: &[()],
-        _default_acl: &[()],
+        _default_acl: Option<&[()]>,
         _fake_super: bool,
         _super_user: bool,
     ) -> io::Result<()> {

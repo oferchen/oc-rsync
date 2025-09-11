@@ -721,7 +721,7 @@ pub fn read_acl(
 pub fn write_acl(
     path: &Path,
     acl: &[posix_acl::ACLEntry],
-    default_acl: &[posix_acl::ACLEntry],
+    default_acl: Option<&[posix_acl::ACLEntry]>,
     fake_super: bool,
     super_user: bool,
 ) -> io::Result<()> {
@@ -735,11 +735,13 @@ pub fn write_acl(
     } else {
         acl
     };
-    let default_acl = if is_dir && is_trivial_acl(default_acl, 0o777) {
-        empty
-    } else {
-        default_acl
-    };
+    let default_acl = default_acl.map(|d| {
+        if is_dir && is_trivial_acl(d, 0o777) {
+            empty
+        } else {
+            d
+        }
+    });
 
     {
         if acl.is_empty() {
@@ -763,23 +765,26 @@ pub fn write_acl(
     }
 
     if is_dir {
-        if default_acl.is_empty() {
-            remove_default_acl(path)?;
-        } else {
-            let mut dacl = posix_acl::PosixACL::empty();
-            for entry in default_acl {
-                dacl.set(entry.qual, entry.perm);
-            }
-            if let Err(err) = dacl.write_default_acl(path) {
-                if !should_ignore_acl_error(&err) {
-                    return Err(acl_to_io(err));
+        if let Some(default_acl) = default_acl {
+            if default_acl.is_empty() {
+                remove_default_acl(path)?;
+            } else {
+                let mut dacl = posix_acl::PosixACL::empty();
+                for entry in default_acl {
+                    dacl.set(entry.qual, entry.perm);
+                }
+                if let Err(err) = dacl.write_default_acl(path) {
+                    if !should_ignore_acl_error(&err) {
+                        return Err(acl_to_io(err));
+                    }
                 }
             }
         }
     }
 
     if fake_super && !super_user {
-        store_fake_super_acl(path, acl, if is_dir { default_acl } else { &[] });
+        let dacl = default_acl.unwrap_or(&[]);
+        store_fake_super_acl(path, acl, if is_dir { dacl } else { &[] });
     }
 
     Ok(())
