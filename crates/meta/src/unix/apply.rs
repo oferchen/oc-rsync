@@ -13,7 +13,7 @@ use nix::sys::stat::{self, FchmodatFlags, Mode};
 use nix::unistd::{self, Gid, Uid};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
-use super::acl::{acl_to_io, remove_default_acl, should_ignore_acl_error, store_fake_super_acl};
+use super::acl::write_acl;
 use super::{gid_from_name, gid_to_name, nix_to_io, set_file_crtime, uid_from_name, uid_to_name};
 
 impl Metadata {
@@ -242,61 +242,21 @@ impl Metadata {
         }
 
         if opts.acl {
-            {
-                let cur_mode = normalize_mode(fs::symlink_metadata(path)?.permissions().mode());
-                if self.acl.is_empty() {
-                    let mut acl = posix_acl::PosixACL::new(cur_mode);
-                    if let Err(err) = acl.write_acl(path) {
-                        if !should_ignore_acl_error(&err) {
-                            return Err(acl_to_io(err));
-                        }
-                    }
-                } else {
-                    let mut acl = posix_acl::PosixACL::empty();
-                    for entry in &self.acl {
-                        acl.set(entry.qual, entry.perm);
-                    }
-                    if let Err(err) = acl.write_acl(path) {
-                        if !should_ignore_acl_error(&err) {
-                            return Err(acl_to_io(err));
-                        }
-                    }
-                }
-            }
-            if is_dir {
-                if self.default_acl.is_empty() {
-                    remove_default_acl(path)?;
-                } else {
-                    let mut dacl = posix_acl::PosixACL::empty();
-                    for entry in &self.default_acl {
-                        dacl.set(entry.qual, entry.perm);
-                    }
-                    if let Err(err) = dacl.write_default_acl(path) {
-                        if !should_ignore_acl_error(&err) {
-                            return Err(acl_to_io(err));
-                        }
-                    }
-                }
-            }
-
-            if opts.fake_super && !opts.super_user {
-                store_fake_super_acl(
-                    path,
-                    &self.acl,
-                    if is_dir { &self.default_acl } else { &[] },
-                );
-            }
+            let dacl = if is_dir {
+                Some(self.default_acl.as_slice())
+            } else {
+                None
+            };
+            write_acl(
+                path,
+                &self.acl,
+                dacl,
+                opts.fake_super && !opts.super_user,
+                opts.super_user,
+            )?;
         } else {
-            let cur_mode = normalize_mode(fs::symlink_metadata(path)?.permissions().mode());
-            let mut acl = posix_acl::PosixACL::new(cur_mode);
-            if let Err(err) = acl.write_acl(path) {
-                if !should_ignore_acl_error(&err) {
-                    return Err(acl_to_io(err));
-                }
-            }
-            if is_dir {
-                remove_default_acl(path)?;
-            }
+            let dacl = if is_dir { Some(&[][..]) } else { None };
+            write_acl(path, &[], dacl, false, false)?;
         }
 
         Ok(())
