@@ -46,26 +46,23 @@ impl Metadata {
             let mut uid = uid;
             let mut gid = gid;
             let mut mode = mode;
-            if let Ok(Some(val)) = xattr::get(path, "user.rsync.uid") {
-                if let Ok(s) = std::str::from_utf8(&val) {
-                    if let Ok(v) = s.parse::<u32>() {
-                        uid = v;
-                    }
-                }
+            if let Ok(Some(val)) = xattr::get(path, "user.rsync.uid")
+                && let Ok(s) = std::str::from_utf8(&val)
+                && let Ok(v) = s.parse::<u32>()
+            {
+                uid = v;
             }
-            if let Ok(Some(val)) = xattr::get(path, "user.rsync.gid") {
-                if let Ok(s) = std::str::from_utf8(&val) {
-                    if let Ok(v) = s.parse::<u32>() {
-                        gid = v;
-                    }
-                }
+            if let Ok(Some(val)) = xattr::get(path, "user.rsync.gid")
+                && let Ok(s) = std::str::from_utf8(&val)
+                && let Ok(v) = s.parse::<u32>()
+            {
+                gid = v;
             }
-            if let Ok(Some(val)) = xattr::get(path, "user.rsync.mode") {
-                if let Ok(s) = std::str::from_utf8(&val) {
-                    if let Ok(v) = s.parse::<u32>() {
-                        mode = normalize_mode(v);
-                    }
-                }
+            if let Ok(Some(val)) = xattr::get(path, "user.rsync.mode")
+                && let Ok(s) = std::str::from_utf8(&val)
+                && let Ok(v) = s.parse::<u32>()
+            {
+                mode = normalize_mode(v);
             }
             (uid, gid, mode)
         } else {
@@ -78,21 +75,18 @@ impl Metadata {
             match xattr::list(path) {
                 Ok(list) => {
                     for attr in list {
-                        if let Some(name) = attr.to_str() {
-                            if !opts.fake_super && name.starts_with("user.rsync.") {
-                                continue;
-                            }
-                            if name.starts_with("security.")
+                        if let Some(name) = attr.to_str()
+                            && ((!opts.fake_super && name.starts_with("user.rsync."))
+                                || name.starts_with("security.")
                                 || name == "system.posix_acl_access"
-                                || name == "system.posix_acl_default"
-                            {
-                                continue;
-                            }
+                                || name == "system.posix_acl_default")
+                        {
+                            continue;
                         }
-                        if let Some(ref filter) = opts.xattr_filter {
-                            if !filter(attr.as_os_str()) {
-                                continue;
-                            }
+                        if let Some(filter) = opts.xattr_filter.as_ref()
+                            && !filter(attr.as_os_str())
+                        {
+                            continue;
                         }
                         match xattr::get(path, &attr) {
                             Ok(Some(value)) => attrs.push((attr, value)),

@@ -71,18 +71,17 @@ pub fn copy_xattrs(
     match xattr::list_deref(src) {
         Ok(list) => {
             for attr in list {
-                if let Some(name) = attr.to_str() {
-                    if name.starts_with("security.")
+                if let Some(name) = attr.to_str()
+                    && (name.starts_with("security.")
                         || name == "system.posix_acl_access"
-                        || name == "system.posix_acl_default"
-                    {
-                        continue;
-                    }
+                        || name == "system.posix_acl_default")
+                {
+                    continue;
                 }
-                if let Some(filter) = include {
-                    if !filter(attr.as_os_str()) {
-                        continue;
-                    }
+                if let Some(filter) = include
+                    && !filter(attr.as_os_str())
+                {
+                    continue;
                 }
                 match xattr::get_deref(src, &attr) {
                     Ok(Some(value)) => attrs.push((attr, value)),
