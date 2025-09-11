@@ -45,9 +45,9 @@ fn daemon_preserves_xattrs() {
     xattr::set(&srv_file, "user.old", b"junk").unwrap();
     let keep_ok = try_set_xattr(&srv_file, "security.keep", b"dest");
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -90,9 +90,9 @@ fn daemon_preserves_symlink_xattrs_rr_client() {
     std::os::unix::fs::symlink("file", src.join("link")).unwrap();
     xattr::set(src.join("link"), "user.test", b"val").unwrap();
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -132,9 +132,9 @@ fn daemon_preserves_xattrs_rr_client() {
     xattr::set(&srv_file, "user.old", b"junk").unwrap();
     let keep_ok = try_set_xattr(&srv_file, "security.keep", b"dest");
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -187,9 +187,9 @@ fn daemon_preserves_xattrs_rr_daemon() {
     xattr::set(&srv_file, "user.old", b"junk").unwrap();
     let keep_ok = try_set_xattr(&srv_file, "security.keep", b"dest");
 
-    let daemon = spawn_rsync_daemon(&srv, "  read only = false\n");
+    let mut daemon = spawn_rsync_daemon(&srv, "  read only = false\n");
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -247,9 +247,9 @@ fn daemon_excludes_filtered_xattrs() {
     xattr::set(&srv_file, "user.secret", b"keep").unwrap();
     xattr::set(&srv_file, "user.old", b"junk").unwrap();
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -294,9 +294,9 @@ fn daemon_excludes_filtered_xattrs_rr_client() {
     xattr::set(&srv_file, "user.secret", b"keep").unwrap();
     xattr::set(&srv_file, "user.old", b"junk").unwrap();
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -337,18 +337,18 @@ fn daemon_xattrs_match_rsync_server() {
     fs::write(&file, b"hi").unwrap();
     xattr::set(&file, "user.test", b"val").unwrap();
 
-    let daemon_oc = spawn_daemon(&srv_oc);
+    let mut daemon_oc = spawn_daemon(&srv_oc);
     let port_oc = daemon_oc.port;
-    wait_for_daemon(port_oc);
+    wait_for_daemon(&mut daemon_oc);
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["-aX", &src_arg, &format!("rsync://127.0.0.1:{port_oc}/mod")])
         .assert()
         .success();
-    let daemon_rs = spawn_rsync_daemon(&srv_rs, "  read only = false\n");
+    let mut daemon_rs = spawn_rsync_daemon(&srv_rs, "  read only = false\n");
     let port_rs = daemon_rs.port;
-    wait_for_daemon(port_rs);
+    wait_for_daemon(&mut daemon_rs);
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["-aX", &src_arg, &format!("rsync://127.0.0.1:{port_rs}/mod")])

@@ -38,9 +38,9 @@ fn daemon_preserves_uid_gid_perms() {
     .unwrap();
     chown(&file, Some(Uid::from_raw(1)), Some(Gid::from_raw(1))).unwrap();
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -68,9 +68,9 @@ fn daemon_preserves_hard_links_rr_client() {
     fs::write(&f1, b"hi").unwrap();
     let f2 = src.join("b");
     fs::hard_link(&f1, &f2).unwrap();
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
     let src_arg = format!("{}/", src.display());
     let dest = format!("rsync://127.0.0.1:{port}/mod");
     Command::cargo_bin("oc-rsync")
