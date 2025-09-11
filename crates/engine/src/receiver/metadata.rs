@@ -13,10 +13,19 @@ use crate::cleanup::{atomic_rename, remove_basename_partial};
 use crate::io::io_context;
 use crate::{EngineError, Result};
 
+use filelist::Entry;
+#[cfg(feature = "acl")]
+use meta::decode_acl;
+
 use super::Receiver;
 
 impl Receiver {
-    pub(crate) fn copy_metadata_now(&self, src: &Path, dest: &Path) -> Result<()> {
+    pub(crate) fn copy_metadata_now(
+        &self,
+        src: &Path,
+        dest: &Path,
+        entry: Option<&Entry>,
+    ) -> Result<()> {
         #[cfg(unix)]
         if self.opts.write_devices && !self.opts.devices {
             if let Ok(meta) = fs::symlink_metadata(dest) {
@@ -95,7 +104,7 @@ impl Receiver {
                 acl: {
                     #[cfg(feature = "acl")]
                     {
-                        self.opts.acls
+                        self.opts.acls && entry.is_none()
                     }
                     #[cfg(not(feature = "acl"))]
                     {
@@ -146,20 +155,20 @@ impl Receiver {
                 }
             }
 
-            let meta = if meta_opts.needs_metadata() || self.opts.acls {
+            let meta = if meta_opts.needs_metadata() || (self.opts.acls && entry.is_none()) {
                 Some(meta::Metadata::from_path(src, meta_opts.clone()).map_err(EngineError::from)?)
             } else {
                 None
             };
 
-            if let Some(meta) = meta {
+            if let Some(ref meta) = meta {
                 if meta_opts.needs_metadata() {
                     meta.apply(dest, meta_opts.clone())
                         .map_err(EngineError::from)?;
                 }
                 #[cfg(feature = "acl")]
                 {
-                    if self.opts.acls {
+                    if self.opts.acls && entry.is_none() {
                         let default_acl_opt = if meta.default_acl.is_empty() {
                             None
                         } else {
@@ -181,20 +190,43 @@ impl Receiver {
                         meta::store_fake_super(dest, meta.uid, meta.gid, meta.mode);
                     }
                 }
-            } else if !self.opts.acls {
-                #[cfg(feature = "acl")]
-                {
-                    meta::write_acl(
-                        dest,
-                        &[],
-                        Some(&[]),
-                        meta_opts.fake_super && !meta_opts.super_user,
-                        meta_opts.super_user,
-                    )
-                    .map_err(EngineError::from)?;
-                }
+            }
+
+            #[cfg(feature = "acl")]
+            if self.opts.acls {
+                let (acl, default_acl) = if let Some(entry) = entry {
+                    (decode_acl(&entry.acl), decode_acl(&entry.default_acl))
+                } else if let Some(ref meta) = meta {
+                    (meta.acl.clone(), meta.default_acl.clone())
+                } else {
+                    (Vec::new(), Vec::new())
+                };
+                let default_acl_opt = if default_acl.is_empty() {
+                    None
+                } else {
+                    Some(&default_acl[..])
+                };
+                meta::write_acl(
+                    dest,
+                    &acl,
+                    default_acl_opt,
+                    meta_opts.fake_super && !meta_opts.super_user,
+                    meta_opts.super_user,
+                )
+                .map_err(EngineError::from)?;
+            } else {
+                meta::write_acl(
+                    dest,
+                    &[],
+                    Some(&[]),
+                    meta_opts.fake_super && !meta_opts.super_user,
+                    meta_opts.super_user,
+                )
+                .map_err(EngineError::from)?;
             }
         }
+        #[cfg(not(feature = "acl"))]
+        let _ = entry;
         let _ = (src, dest);
         Ok(())
     }
@@ -203,7 +235,7 @@ impl Receiver {
         if self.opts.delay_updates && self.delayed.iter().any(|(_, _, d)| d == dest) {
             return Ok(());
         }
-        self.copy_metadata_now(src, dest)
+        self.copy_metadata_now(src, dest, None)
     }
 
     pub fn finalize(&mut self) -> Result<()> {
@@ -226,7 +258,7 @@ impl Receiver {
                 chown(&dest, Some(Uid::from_raw(uid)), gid)
                     .map_err(|e| io_context(&dest, std::io::Error::from(e)))?;
             }
-            self.copy_metadata_now(&src, &dest)?;
+            self.copy_metadata_now(&src, &dest, None)?;
         }
         #[cfg(unix)]
         self.link_map.finalize()?;

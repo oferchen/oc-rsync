@@ -509,20 +509,20 @@ pub fn sync(
                     if rel.as_os_str().is_empty() {
                         #[cfg(feature = "acl")]
                         if opts.acls {
-                            receiver.copy_metadata_now(&path, &dest_path)?;
+                            receiver.copy_metadata_now(&path, &dest_path, None)?;
                         }
                         continue;
                     }
                     if opts.dirs_only {
                         fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
-                        receiver.copy_metadata_now(&path, &dest_path)?;
+                        receiver.copy_metadata_now(&path, &dest_path, None)?;
                         stats.files_created += 1;
                         stats.dirs_created += 1;
                         continue;
                     }
                     if !res.descend {
                         fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
-                        receiver.copy_metadata_now(&path, &dest_path)?;
+                        receiver.copy_metadata_now(&path, &dest_path, None)?;
                         stats.files_created += 1;
                         stats.dirs_created += 1;
                         walker.skip_current_dir();
