@@ -166,24 +166,6 @@ impl Receiver {
                     meta.apply(dest, meta_opts.clone())
                         .map_err(EngineError::from)?;
                 }
-                #[cfg(feature = "acl")]
-                {
-                    if self.opts.acls && entry.is_none() {
-                        let default_acl = if meta.default_acl.is_empty() {
-                            &[] as &[meta::ACLEntry]
-                        } else {
-                            &meta.default_acl[..]
-                        };
-                        meta::write_acl(
-                            dest,
-                            &meta.acl,
-                            Some(default_acl),
-                            meta_opts.fake_super && !meta_opts.super_user,
-                            meta_opts.super_user,
-                        )
-                        .map_err(EngineError::from)?;
-                    }
-                }
                 if self.opts.fake_super && !self.opts.super_user {
                     #[cfg(feature = "xattr")]
                     {
