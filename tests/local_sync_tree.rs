@@ -420,6 +420,50 @@ fn sync_removes_acls_match_rsync() {
 
 #[cfg(all(unix, feature = "acl"))]
 #[test]
+fn sync_preserves_dest_acls_without_flag() {
+    use posix_acl::{ACL_READ, PosixACL, Qualifier};
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+
+    let src_file = src.join("file");
+    fs::write(&src_file, b"hi").unwrap();
+    let dst_file = dst.join("file");
+    fs::write(&dst_file, b"hi").unwrap();
+
+    let time = FileTime::from_unix_time(1_000_000, 0);
+    set_file_times(&src_file, time, time).unwrap();
+    set_file_times(&dst_file, time, time).unwrap();
+
+    let mut acl = PosixACL::read_acl(&dst_file).unwrap();
+    acl.set(Qualifier::User(12345), ACL_READ);
+    acl.write_acl(&dst_file).unwrap();
+    let mut dacl = PosixACL::new(0o755);
+    dacl.set(Qualifier::User(12345), ACL_READ);
+    dacl.write_default_acl(&dst).unwrap();
+
+    let acl_before = PosixACL::read_acl(&dst_file).unwrap();
+    let dacl_before = PosixACL::read_default_acl(&dst).unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([&src_arg, dst.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let acl_after = PosixACL::read_acl(&dst_file).unwrap();
+    assert_eq!(acl_before.entries(), acl_after.entries());
+
+    let dacl_after = PosixACL::read_default_acl(&dst).unwrap();
+    assert_eq!(dacl_before.entries(), dacl_after.entries());
+}
+
+#[cfg(all(unix, feature = "acl"))]
+#[test]
 fn sync_ignores_acls_without_flag() {
     use posix_acl::{ACL_READ, PosixACL, Qualifier};
 
