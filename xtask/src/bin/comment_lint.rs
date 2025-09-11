@@ -39,10 +39,7 @@ fn check_file(path: &Path, root: &Path) -> bool {
                     eprintln!("{}:{}: doc comment", rel_str, line);
                     return false;
                 }
-            } else if text.starts_with("///") {
-                eprintln!("{}:{}: doc comment", rel_str, line);
-                return false;
-            } else {
+            } else if !text.starts_with("///") {
                 eprintln!("{}:{}: additional comments", rel_str, line);
                 return false;
             }
