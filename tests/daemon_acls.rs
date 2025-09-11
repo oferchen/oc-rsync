@@ -103,18 +103,18 @@ fn sync_daemon_acls_server() -> Option<(tempfile::TempDir, PathBuf, PathBuf)> {
         return None;
     }
 
-    let daemon_oc = spawn_daemon(&srv_oc);
+    let mut daemon_oc = spawn_daemon(&srv_oc);
     let port_oc = daemon_oc.port;
-    wait_for_daemon(port_oc);
+    wait_for_daemon(&mut daemon_oc);
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_oc}/mod")])
         .assert()
         .success();
-    let daemon_rs = spawn_rsync_daemon(&srv_rs, "");
+    let mut daemon_rs = spawn_rsync_daemon(&srv_rs, "");
     let port_rs = daemon_rs.port;
-    wait_for_daemon(port_rs);
+    wait_for_daemon(&mut daemon_rs);
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_rs}/mod")])
@@ -158,9 +158,9 @@ fn sync_daemon_acls_client() -> Option<(tempfile::TempDir, PathBuf, PathBuf)> {
         return None;
     }
 
-    let daemon_oc = spawn_rsync_daemon(&srv_oc, "");
+    let mut daemon_oc = spawn_rsync_daemon(&srv_oc, "");
     let port_oc = daemon_oc.port;
-    wait_for_daemon(port_oc);
+    wait_for_daemon(&mut daemon_oc);
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
         .unwrap()
@@ -171,9 +171,9 @@ fn sync_daemon_acls_client() -> Option<(tempfile::TempDir, PathBuf, PathBuf)> {
         ])
         .assert()
         .success();
-    let daemon_rs = spawn_rsync_daemon(&srv_rs, "");
+    let mut daemon_rs = spawn_rsync_daemon(&srv_rs, "");
     let port_rs = daemon_rs.port;
-    wait_for_daemon(port_rs);
+    wait_for_daemon(&mut daemon_rs);
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port_rs}/mod")])
@@ -207,9 +207,9 @@ fn daemon_preserves_file_acls() {
     acl.set(Qualifier::User(23456), ACL_WRITE);
     write_acl_or_skip!(acl, &src_file);
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -246,9 +246,9 @@ fn daemon_preserves_default_acls() {
     dacl.set(Qualifier::User(12345), ACL_READ);
     write_default_acl_or_skip!(dacl, &src);
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -290,9 +290,9 @@ fn daemon_preserves_nested_default_acls() {
     sub_dacl.set(Qualifier::User(23456), ACL_READ);
     write_default_acl_or_skip!(sub_dacl, &sub);
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -335,9 +335,9 @@ fn daemon_preserves_acls_rr_client() {
     dacl.set(Qualifier::User(12345), ACL_READ);
     write_default_acl_or_skip!(dacl, &src);
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -376,9 +376,9 @@ fn daemon_removes_file_acls() {
     acl.set(Qualifier::User(12345), ACL_READ);
     write_acl_or_skip!(acl, &srv_file);
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -410,9 +410,9 @@ fn daemon_removes_default_acls() {
     dacl.set(Qualifier::User(12345), ACL_READ);
     write_default_acl_or_skip!(dacl, &srv);
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -440,9 +440,9 @@ fn daemon_ignores_acls_without_flag() {
         write_acl_or_skip!(acl, &src_file);
     });
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -473,9 +473,9 @@ fn daemon_ignores_default_acls_without_flag() {
         fs::write(&src_file, b"hi").unwrap();
     });
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -518,9 +518,9 @@ fn daemon_inherits_directory_default_acls() {
     let sub = src.join("sub");
     fs::create_dir(&sub).unwrap();
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -565,9 +565,9 @@ fn daemon_inherits_file_acls_from_default() {
     let src_file = sub.join("file");
     fs::write(&src_file, b"hi").unwrap();
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -603,9 +603,9 @@ fn daemon_inherits_default_acls_rr_client() {
     let src_file = sub.join("file");
     fs::write(&src_file, b"hi").unwrap();
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
@@ -651,9 +651,9 @@ fn daemon_preserves_nested_default_acls_rr_client() {
     sub_dacl.set(Qualifier::User(23456), ACL_READ);
     write_default_acl_or_skip!(sub_dacl, &sub);
 
-    let daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&srv);
     let port = daemon.port;
-    wait_for_daemon(port);
+    wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
