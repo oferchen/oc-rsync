@@ -555,18 +555,26 @@ impl Receiver {
                                 .all(|r| matches!(r.target, meta::ChmodTarget::File))
                             {
                                 meta_opts.chmod = None;
-                                if !meta_opts.needs_metadata() {
+                                if !meta_opts.needs_metadata() && !self.opts.acls {
                                     return Ok(());
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                let meta =
-                    meta::Metadata::from_path(src, meta_opts.clone()).map_err(EngineError::from)?;
-                meta.apply(dest, meta_opts.clone())
-                    .map_err(EngineError::from)?;
+            let meta = if meta_opts.needs_metadata() || self.opts.acls {
+                Some(meta::Metadata::from_path(src, meta_opts.clone()).map_err(EngineError::from)?)
+            } else {
+                None
+            };
+
+            if let Some(meta) = meta {
+                if meta_opts.needs_metadata() {
+                    meta.apply(dest, meta_opts.clone())
+                        .map_err(EngineError::from)?;
+                }
                 #[cfg(feature = "acl")]
                 if self.opts.acls {
                     meta::write_acl(
