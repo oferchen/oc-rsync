@@ -485,10 +485,6 @@ pub fn sync(
         opts.one_file_system,
         &[],
     )?;
-    #[cfg(feature = "acl")]
-    if opts.acls {
-        receiver.copy_metadata_now(&src_root, dst)?;
-    }
     while let Some(batch) = walker.next() {
         check_time_limit(start, opts)?;
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
@@ -509,16 +505,22 @@ pub fn sync(
                     continue;
                 }
                 if entry.file_type.is_dir() {
+                    let dest_path = dst.join(rel);
+                    if rel.as_os_str().is_empty() {
+                        #[cfg(feature = "acl")]
+                        if opts.acls {
+                            receiver.copy_metadata_now(&path, &dest_path)?;
+                        }
+                        continue;
+                    }
                     if opts.dirs_only {
-                        let dest_path = dst.join(rel);
                         fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
                         receiver.copy_metadata_now(&path, &dest_path)?;
                         stats.files_created += 1;
                         stats.dirs_created += 1;
                         continue;
                     }
-                    if !res.descend && !rel.as_os_str().is_empty() {
-                        let dest_path = dst.join(rel);
+                    if !res.descend {
                         fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
                         receiver.copy_metadata_now(&path, &dest_path)?;
                         stats.files_created += 1;

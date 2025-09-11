@@ -158,15 +158,18 @@ impl Receiver {
                         .map_err(EngineError::from)?;
                 }
                 #[cfg(feature = "acl")]
-                if self.opts.acls && (!meta.acl.is_empty() || !meta.default_acl.is_empty()) {
-                    meta::write_acl(
-                        dest,
-                        &meta.acl,
-                        Some(&meta.default_acl),
-                        meta_opts.fake_super && !meta_opts.super_user,
-                        meta_opts.super_user,
-                    )
-                    .map_err(EngineError::from)?;
+                {
+                    let has_acl = !meta.acl.is_empty() || !meta.default_acl.is_empty();
+                    if self.opts.acls && has_acl {
+                        meta::write_acl(
+                            dest,
+                            &meta.acl,
+                            Some(&meta.default_acl),
+                            meta_opts.fake_super && !meta_opts.super_user,
+                            meta_opts.super_user,
+                        )
+                        .map_err(EngineError::from)?;
+                    }
                 }
                 if self.opts.fake_super && !self.opts.super_user {
                     #[cfg(feature = "xattr")]
