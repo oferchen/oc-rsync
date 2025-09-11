@@ -597,6 +597,56 @@ fn acls_roundtrip() {
 
 #[cfg(feature = "acl")]
 #[test]
+fn root_acl_roundtrip() {
+    if !tests::requires_capability(tests::CapabilityCheck::Acls) {
+        return;
+    }
+    use posix_acl::{ACL_READ, PosixACL, Qualifier};
+
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+
+    let mut acl = PosixACL::new(0o755);
+    acl.set(Qualifier::User(12345), ACL_READ);
+    if let Err(_) = acl.write_acl(&src) {
+        eprintln!("Skipping root_acl_roundtrip test: ACLs not supported");
+        return;
+    }
+
+    sync(
+        &src,
+        &dst,
+        &Matcher::default(),
+        &available_codecs(),
+        &SyncOptions {
+            acls: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let acl_src = match PosixACL::read_acl(&src) {
+        Ok(a) => a,
+        Err(_) => {
+            eprintln!("Skipping root_acl_roundtrip test: ACLs not supported");
+            return;
+        }
+    };
+    let acl_dst = match PosixACL::read_acl(&dst) {
+        Ok(a) => a,
+        Err(_) => {
+            eprintln!("Skipping root_acl_roundtrip test: ACLs not supported");
+            return;
+        }
+    };
+    assert_eq!(acl_src.entries(), acl_dst.entries());
+}
+
+#[cfg(feature = "acl")]
+#[test]
 fn acls_imply_perms() {
     if !tests::requires_capability(tests::CapabilityCheck::Acls) {
         return;
