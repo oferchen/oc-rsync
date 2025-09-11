@@ -159,12 +159,16 @@ impl Receiver {
                 }
                 #[cfg(feature = "acl")]
                 {
-                    let has_acl = !meta.acl.is_empty() || !meta.default_acl.is_empty();
-                    if self.opts.acls && has_acl {
+                    if self.opts.acls {
+                        let default_acl_opt = if meta.default_acl.is_empty() {
+                            None
+                        } else {
+                            Some(&meta.default_acl[..])
+                        };
                         meta::write_acl(
                             dest,
                             &meta.acl,
-                            Some(&meta.default_acl),
+                            default_acl_opt,
                             meta_opts.fake_super && !meta_opts.super_user,
                             meta_opts.super_user,
                         )
