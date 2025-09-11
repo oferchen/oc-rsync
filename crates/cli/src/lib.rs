@@ -15,7 +15,6 @@ mod probe;
 mod session;
 mod transport_factory;
 mod utils;
-mod validate;
 pub mod version;
 
 pub mod options {
@@ -26,13 +25,12 @@ pub use client::run;
 pub use daemon::spawn_daemon_session;
 pub use engine::EngineError;
 pub use formatter::{ARG_ORDER, dump_help_body, render_help};
-pub use options::cli_command;
+pub use options::{
+    ClientOptsBuilder, ProbeOptsBuilder, cli_command, exit_code_from_engine_error,
+    exit_code_from_error_kind, validate_paths,
+};
 pub use print::handle_clap_error;
 pub use utils::{
     PathSpec, RemoteSpec, parse_iconv, parse_logging_flags, parse_remote_spec, parse_rsh,
     print_version_if_requested,
-};
-pub use validate::{
-    ClientOptsBuilder, ProbeOptsBuilder, exit_code_from_engine_error, exit_code_from_error_kind,
-    validate_paths,
 };

@@ -1,8 +1,7 @@
 // crates/cli/src/print.rs
 use crate::branding;
 use crate::formatter::render_help;
-use crate::options::ClientOpts;
-use crate::validate::exit_code_from_error_kind;
+use crate::options::{ClientOpts, exit_code_from_error_kind};
 use engine::Stats;
 use logging::{InfoFlag, human_bytes, progress_formatter, rate_formatter};
 use protocol::ExitCode;
