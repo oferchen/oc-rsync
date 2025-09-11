@@ -1,3 +1,4 @@
+// crates/meta/src/unix/xattr.rs
 use std::ffi::OsStr;
 use std::fs;
 use std::io;
