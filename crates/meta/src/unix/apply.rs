@@ -225,10 +225,10 @@ impl Metadata {
             }
         }
 
-        if opts.crtimes {
-            if let Some(crtime) = self.crtime {
-                let _ = set_file_crtime(path, crtime);
-            }
+        if opts.crtimes
+            && let Some(crtime) = self.crtime
+        {
+            let _ = set_file_crtime(path, crtime);
         }
 
         #[cfg(feature = "xattr")]

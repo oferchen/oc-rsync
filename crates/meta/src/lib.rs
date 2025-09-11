@@ -1,6 +1,5 @@
 // crates/meta/src/lib.rs
 #![doc = include_str!("../../../docs/crates/meta/lib.md")]
-#![allow(clippy::collapsible_if)]
 mod types;
 pub use types::*;
 
@@ -254,36 +253,31 @@ pub fn apply_xattrs(
         }
     };
     for (name, value) in xattrs {
-        if let Some(filter) = include {
-            if !filter(name.as_os_str()) {
-                continue;
-            }
+        if include.is_some_and(|filter| !filter(name.as_os_str())) {
+            continue;
         }
         existing.remove(name);
-        if let Err(err) = xattr::set(path, name, value) {
-            if !should_ignore_xattr_error(&err) {
-                return Err(err);
-            }
+        if let Err(err) = xattr::set(path, name, value)
+            && !should_ignore_xattr_error(&err)
+        {
+            return Err(err);
         }
     }
     for name in existing {
-        if let Some(filter) = include_for_delete {
-            if !filter(name.as_os_str()) {
-                continue;
-            }
+        if include_for_delete.is_some_and(|filter| !filter(name.as_os_str())) {
+            continue;
         }
-        if let Some(s) = name.to_str() {
-            if s == "system.posix_acl_access"
+        if name.to_str().is_some_and(|s| {
+            s == "system.posix_acl_access"
                 || s == "system.posix_acl_default"
                 || s.starts_with("security.")
-            {
-                continue;
-            }
+        }) {
+            continue;
         }
-        if let Err(err) = xattr::remove(path, &name) {
-            if !should_ignore_xattr_error(&err) {
-                return Err(err);
-            }
+        if let Err(err) = xattr::remove(path, &name)
+            && !should_ignore_xattr_error(&err)
+        {
+            return Err(err);
         }
     }
     Ok(())
