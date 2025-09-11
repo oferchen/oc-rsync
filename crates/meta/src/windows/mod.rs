@@ -78,7 +78,7 @@ pub fn read_acl(_path: &Path, _fake_super: bool) -> io::Result<(Vec<ACLEntry>, V
 pub fn write_acl(
     _path: &Path,
     _acl: &[ACLEntry],
-    _default_acl: &[ACLEntry],
+    _default_acl: Option<&[ACLEntry]>,
     _fake_super: bool,
     _super_user: bool,
 ) -> io::Result<()> {

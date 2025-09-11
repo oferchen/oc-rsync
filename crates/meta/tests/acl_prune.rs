@@ -47,17 +47,17 @@ fn write_prunes_and_removes_default() -> std::io::Result<()> {
     let mut dacl = PosixACL::new(0o755);
     dacl.set(Qualifier::User(12345), ACL_READ);
     let default_entries = dacl.entries();
-    write_acl(&path, &[], &default_entries, false, false)?;
+    write_acl(&path, &[], Some(&default_entries), false, false)?;
     let (_, applied) = read_acl(&path, false)?;
     assert_eq!(applied, default_entries);
 
     let trivial_acl = PosixACL::new(0o755).entries();
-    write_acl(&path, &trivial_acl, &[], false, false)?;
+    write_acl(&path, &trivial_acl, Some(&[]), false, false)?;
     let (acl_after, _) = read_acl(&path, false)?;
     assert!(acl_after.is_empty());
 
     let trivial_dacl = PosixACL::new(0o777).entries();
-    write_acl(&path, &[], &trivial_dacl, false, false)?;
+    write_acl(&path, &[], Some(&trivial_dacl), false, false)?;
     let (_, d_after) = read_acl(&path, false)?;
     assert!(d_after.is_empty());
     Ok(())
@@ -72,7 +72,7 @@ fn fake_super_stores_acls() -> std::io::Result<()> {
     let mut acl = PosixACL::read_acl(&file).map_err(acl_to_io)?;
     acl.set(Qualifier::User(12345), ACL_READ);
     let entries = acl.entries();
-    write_acl(&file, &entries, &[], true, false)?;
+    write_acl(&file, &entries, Some(&[]), true, false)?;
     let stored = xattr::get(&file, "user.rsync.acl")?.unwrap();
     assert_eq!(stored, encode_acl(&entries));
 
@@ -81,7 +81,7 @@ fn fake_super_stores_acls() -> std::io::Result<()> {
     let mut dacl = PosixACL::new(0o755);
     dacl.set(Qualifier::Group(54321), ACL_READ);
     let dentries = dacl.entries();
-    write_acl(&subdir, &[], &dentries, true, false)?;
+    write_acl(&subdir, &[], Some(&dentries), true, false)?;
     let stored_d = xattr::get(&subdir, "user.rsync.dacl")?.unwrap();
     assert_eq!(stored_d, encode_acl(&dentries));
     Ok(())

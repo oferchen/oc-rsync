@@ -44,6 +44,6 @@ fn hard_link_operations_are_unsupported() {
 fn acl_operations_are_unsupported() {
     let err = read_acl(Path::new("foo"), false).unwrap_err();
     assert_eq!(err.kind(), ErrorKind::Unsupported);
-    let err = write_acl(Path::new("foo"), &[], &[], false, false).unwrap_err();
+    let err = write_acl(Path::new("foo"), &[], Some(&[]), false, false).unwrap_err();
     assert_eq!(err.kind(), ErrorKind::Unsupported);
 }

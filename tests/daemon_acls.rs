@@ -264,6 +264,55 @@ fn daemon_preserves_default_acls() {
 
 #[test]
 #[serial]
+fn daemon_preserves_nested_default_acls() {
+    if !xattrs_supported() {
+        eprintln!("skipping: xattrs unsupported");
+        return;
+    }
+    if !acls_supported() {
+        eprintln!("skipping: ACLs unsupported");
+        return;
+    }
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let srv = tmp.path().join("srv");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&srv).unwrap();
+
+    let sub = src.join("sub");
+    fs::create_dir(&sub).unwrap();
+
+    let mut root_dacl = PosixACL::new(0o755);
+    root_dacl.set(Qualifier::User(12345), ACL_READ);
+    write_default_acl_or_skip!(root_dacl, &src);
+
+    let mut sub_dacl = PosixACL::new(0o700);
+    sub_dacl.set(Qualifier::User(23456), ACL_READ);
+    write_default_acl_or_skip!(sub_dacl, &sub);
+
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
+    wait_for_daemon(port);
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
+        .assert()
+        .success();
+
+    let src_root_dacl = read_default_acl_or_skip!(&src);
+    let src_sub_dacl = read_default_acl_or_skip!(&sub);
+    let dst_root_dacl = read_default_acl_or_skip!(&srv);
+    let dst_sub_dacl = read_default_acl_or_skip!(srv.join("sub"));
+    assert_eq!(
+        (src_root_dacl.entries(), src_sub_dacl.entries()),
+        (dst_root_dacl.entries(), dst_sub_dacl.entries())
+    );
+}
+
+#[test]
+#[serial]
 fn daemon_preserves_acls_rr_client() {
     if !acls_supported() {
         eprintln!("skipping: ACLs unsupported");
@@ -576,6 +625,51 @@ fn daemon_inherits_default_acls_rr_client() {
     let acl_src_file = read_acl_or_skip!(&src_file);
     let acl_dst_file = read_acl_or_skip!(srv.join("sub/file"));
     assert_eq!(acl_src_file.entries(), acl_dst_file.entries());
+}
+
+#[test]
+#[serial]
+fn daemon_preserves_nested_default_acls_rr_client() {
+    if !acls_supported() {
+        eprintln!("skipping: ACLs unsupported");
+        return;
+    }
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let srv = tmp.path().join("srv");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&srv).unwrap();
+
+    let sub = src.join("sub");
+    fs::create_dir(&sub).unwrap();
+
+    let mut root_dacl = PosixACL::new(0o755);
+    root_dacl.set(Qualifier::User(12345), ACL_READ);
+    write_default_acl_or_skip!(root_dacl, &src);
+
+    let mut sub_dacl = PosixACL::new(0o700);
+    sub_dacl.set(Qualifier::User(23456), ACL_READ);
+    write_default_acl_or_skip!(sub_dacl, &sub);
+
+    let daemon = spawn_daemon(&srv);
+    let port = daemon.port;
+    wait_for_daemon(port);
+
+    let src_arg = format!("{}/", src.display());
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args(["--acls", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
+        .assert()
+        .success();
+
+    let src_root_dacl = read_default_acl_or_skip!(&src);
+    let src_sub_dacl = read_default_acl_or_skip!(&sub);
+    let dst_root_dacl = read_default_acl_or_skip!(&srv);
+    let dst_sub_dacl = read_default_acl_or_skip!(srv.join("sub"));
+    assert_eq!(
+        (src_root_dacl.entries(), src_sub_dacl.entries()),
+        (dst_root_dacl.entries(), dst_sub_dacl.entries())
+    );
 }
 
 #[cfg(feature = "root")]

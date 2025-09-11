@@ -567,6 +567,17 @@ impl Receiver {
                     meta::Metadata::from_path(src, meta_opts.clone()).map_err(EngineError::from)?;
                 meta.apply(dest, meta_opts.clone())
                     .map_err(EngineError::from)?;
+                #[cfg(feature = "acl")]
+                if self.opts.acls {
+                    meta::write_acl(
+                        dest,
+                        &[],
+                        Some(&meta.default_acl),
+                        meta_opts.fake_super && !meta_opts.super_user,
+                        meta_opts.super_user,
+                    )
+                    .map_err(EngineError::from)?;
+                }
                 if self.opts.fake_super && !self.opts.super_user {
                     #[cfg(feature = "xattr")]
                     {
@@ -579,7 +590,7 @@ impl Receiver {
                     meta::write_acl(
                         dest,
                         &[],
-                        &[],
+                        Some(&[]),
                         meta_opts.fake_super && !meta_opts.super_user,
                         meta_opts.super_user,
                     )
