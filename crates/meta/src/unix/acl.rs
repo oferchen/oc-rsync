@@ -206,17 +206,68 @@ pub fn write_acl(
     fake_super: bool,
     super_user: bool,
 ) -> io::Result<()> {
+    fn apply_access_acl_if_nontrivial(path: &Path, acl: &[posix_acl::ACLEntry]) -> io::Result<()> {
+        if acl.is_empty() {
+            return Ok(());
+        }
+        let mut obj = posix_acl::PosixACL::empty();
+        for e in acl {
+            obj.set(e.qual, e.perm);
+        }
+        match obj.write_acl(path) {
+            Ok(_) => Ok(()),
+            Err(err) if should_ignore_acl_error(&err) => Ok(()),
+            Err(err) => Err(acl_to_io(err)),
+        }
+    }
+
+    fn apply_default_acl_option(
+        path: &Path,
+        is_dir: bool,
+        dacl: Option<&[posix_acl::ACLEntry]>,
+    ) -> io::Result<()> {
+        if !is_dir {
+            return Ok(());
+        }
+        match dacl {
+            None => Ok(()),
+            Some(d) if d.is_empty() => remove_default_acl(path),
+            Some(d) => {
+                let mut obj = posix_acl::PosixACL::empty();
+                for e in d {
+                    obj.set(e.qual, e.perm);
+                }
+                match obj.write_default_acl(path) {
+                    Ok(_) => Ok(()),
+                    Err(err) if should_ignore_acl_error(&err) => Ok(()),
+                    Err(err) => Err(acl_to_io(err)),
+                }
+            }
+        }
+    }
+
+    fn maybe_store_fake_super(
+        path: &Path,
+        is_dir: bool,
+        fake_super: bool,
+        super_user: bool,
+        acl: &[posix_acl::ACLEntry],
+        dacl: Option<&[posix_acl::ACLEntry]>,
+    ) {
+        if fake_super && !super_user {
+            let empty: &[posix_acl::ACLEntry] = &[];
+            let d = if is_dir { dacl.unwrap_or(empty) } else { empty };
+            store_fake_super_acl(path, acl, d);
+        }
+    }
+
     let meta = fs::symlink_metadata(path)?;
     let is_dir = meta.file_type().is_dir();
     let cur_mode = normalize_mode(meta.permissions().mode());
 
     let empty: &[posix_acl::ACLEntry] = &[];
-    let acl = if is_trivial_acl(acl, cur_mode) {
-        empty
-    } else {
-        acl
-    };
-    let default_acl = default_acl.map(|d| {
+    let acl_eff = if is_trivial_acl(acl, cur_mode) { empty } else { acl };
+    let dacl_eff = default_acl.map(|d| {
         if is_dir && is_trivial_acl(d, 0o777) {
             empty
         } else {
@@ -224,49 +275,9 @@ pub fn write_acl(
         }
     });
 
-    {
-        if acl.is_empty() {
-            let mut acl_obj = posix_acl::PosixACL::new(cur_mode);
-            if let Err(err) = acl_obj.write_acl(path) {
-                if !should_ignore_acl_error(&err) {
-                    return Err(acl_to_io(err));
-                }
-            }
-        } else {
-            let mut acl_obj = posix_acl::PosixACL::empty();
-            for entry in acl {
-                acl_obj.set(entry.qual, entry.perm);
-            }
-            if let Err(err) = acl_obj.write_acl(path) {
-                if !should_ignore_acl_error(&err) {
-                    return Err(acl_to_io(err));
-                }
-            }
-        }
-    }
-
-    if is_dir {
-        if let Some(default_acl) = default_acl {
-            if default_acl.is_empty() {
-                remove_default_acl(path)?;
-            } else {
-                let mut dacl = posix_acl::PosixACL::empty();
-                for entry in default_acl {
-                    dacl.set(entry.qual, entry.perm);
-                }
-                if let Err(err) = dacl.write_default_acl(path) {
-                    if !should_ignore_acl_error(&err) {
-                        return Err(acl_to_io(err));
-                    }
-                }
-            }
-        }
-    }
-
-    if fake_super && !super_user {
-        let dacl = default_acl.unwrap_or(&[]);
-        store_fake_super_acl(path, acl, if is_dir { dacl } else { &[] });
-    }
+    apply_access_acl_if_nontrivial(path, acl_eff)?;
+    apply_default_acl_option(path, is_dir, dacl_eff)?;
+    maybe_store_fake_super(path, is_dir, fake_super, super_user, acl_eff, dacl_eff);
 
     Ok(())
 }
