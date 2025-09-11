@@ -580,7 +580,7 @@ fn daemon_inherits_directory_default_acls() {
 
 #[test]
 #[serial]
-fn daemon_inherits_file_acls_from_default() {
+fn daemon_preserves_root_sub_and_file_acls() {
     if !xattrs_supported() {
         eprintln!("skipping: xattrs unsupported");
         return;
@@ -595,12 +595,16 @@ fn daemon_inherits_file_acls_from_default() {
     fs::create_dir_all(&src).unwrap();
     fs::create_dir_all(&srv).unwrap();
 
-    let mut dacl = PosixACL::new(0o755);
-    dacl.set(Qualifier::User(12345), ACL_READ);
-    write_default_acl_or_skip!(dacl, &src);
+    let mut root_dacl = PosixACL::new(0o755);
+    root_dacl.set(Qualifier::User(12345), ACL_READ);
+    write_default_acl_or_skip!(root_dacl, &src);
 
     let sub = src.join("sub");
     fs::create_dir(&sub).unwrap();
+    let mut sub_dacl = PosixACL::new(0o700);
+    sub_dacl.set(Qualifier::User(23456), ACL_READ);
+    write_default_acl_or_skip!(sub_dacl, &sub);
+
     let src_file = sub.join("file");
     fs::write(&src_file, b"hi").unwrap();
 
@@ -614,6 +618,14 @@ fn daemon_inherits_file_acls_from_default() {
         .args(["-AX", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
         .assert()
         .success();
+
+    let src_root_dacl = read_default_acl_or_skip!(&src);
+    let dst_root_dacl = read_default_acl_or_skip!(&srv);
+    assert_eq!(src_root_dacl.entries(), dst_root_dacl.entries());
+
+    let src_sub_dacl = read_default_acl_or_skip!(&sub);
+    let dst_sub_dacl = read_default_acl_or_skip!(srv.join("sub"));
+    assert_eq!(src_sub_dacl.entries(), dst_sub_dacl.entries());
 
     let acl_src_file = read_acl_or_skip!(&src_file);
     let acl_dst_file = read_acl_or_skip!(srv.join("sub/file"));

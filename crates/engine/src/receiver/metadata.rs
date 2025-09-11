@@ -169,15 +169,15 @@ impl Receiver {
                 #[cfg(feature = "acl")]
                 {
                     if self.opts.acls && entry.is_none() {
-                        let default_acl_opt = if meta.default_acl.is_empty() {
-                            None
+                        let default_acl = if meta.default_acl.is_empty() {
+                            &[] as &[meta::ACLEntry]
                         } else {
-                            Some(&meta.default_acl[..])
+                            &meta.default_acl[..]
                         };
                         meta::write_acl(
                             dest,
                             &meta.acl,
-                            default_acl_opt,
+                            Some(default_acl),
                             meta_opts.fake_super && !meta_opts.super_user,
                             meta_opts.super_user,
                         )
@@ -201,15 +201,15 @@ impl Receiver {
                 } else {
                     (Vec::new(), Vec::new())
                 };
-                let default_acl_opt = if default_acl.is_empty() {
-                    None
+                let default_acl = if default_acl.is_empty() {
+                    &[] as &[meta::ACLEntry]
                 } else {
-                    Some(&default_acl[..])
+                    &default_acl[..]
                 };
                 meta::write_acl(
                     dest,
                     &acl,
-                    default_acl_opt,
+                    Some(default_acl),
                     meta_opts.fake_super && !meta_opts.super_user,
                     meta_opts.super_user,
                 )
