@@ -485,6 +485,10 @@ pub fn sync(
         opts.one_file_system,
         &[],
     )?;
+    #[cfg(feature = "acl")]
+    if opts.acls {
+        receiver.copy_metadata_now(&src_root, dst)?;
+    }
     while let Some(batch) = walker.next() {
         check_time_limit(start, opts)?;
         let batch = batch.map_err(|e| EngineError::Other(e.to_string()))?;
