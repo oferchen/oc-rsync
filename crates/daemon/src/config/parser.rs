@@ -283,7 +283,7 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             (false, "refuse options") => cfg.refuse_options = parse_list(&val),
             (true, "path") => {
                 if let Some(ref mut m) = current {
-                    m.path = PathBuf::from(val);
+                    m.path = fs::canonicalize(&val)?;
                 }
             }
             (true, "hosts allow") => {

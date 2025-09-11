@@ -110,6 +110,16 @@ fn parse_module_accepts_symlinked_dir() {
     assert_eq!(module.path, link);
 }
 
+#[cfg(unix)]
+#[test]
+fn parse_config_resolves_symlinked_path() {
+    let dir = tempdir().unwrap();
+    let link = dir.path().join("symlinked");
+    symlink(dir.path(), &link).unwrap();
+    let cfg = parse_config(&format!("[data]\npath={}\n", link.display())).unwrap();
+    assert_eq!(cfg.modules[0].path, std::fs::canonicalize(&link).unwrap());
+}
+
 #[test]
 fn module_builder_defaults() {
     let module = Module::builder("data", "/tmp").build();
