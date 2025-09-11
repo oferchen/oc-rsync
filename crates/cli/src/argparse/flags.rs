@@ -1,17 +1,14 @@
-// crates/cli/src/argparse.rs
+// crates/cli/src/argparse/flags.rs
 
 use std::time::{Duration, SystemTime};
 use std::{ffi::OsString, path::PathBuf};
 
-pub use crate::daemon::DaemonOpts;
-use crate::formatter;
+use crate::daemon::DaemonOpts;
 use crate::utils::{
     RshCommand, parse_duration, parse_minutes, parse_nonzero_duration, parse_rsh, parse_size,
     parse_stop_at,
 };
-#[cfg(any(test, feature = "dump-help"))]
-use clap::Arg;
-use clap::{ArgAction, Args, CommandFactory, Parser, ValueEnum};
+use clap::{ArgAction, Parser, ValueEnum};
 use logging::{DebugFlag, InfoFlag, StderrMode};
 use protocol::SUPPORTED_PROTOCOLS;
 
@@ -746,17 +743,4 @@ pub struct ProbeOpts {
     pub probe: Option<String>,
     #[arg(long, default_value_t = SUPPORTED_PROTOCOLS[0], value_name = "VER")]
     pub peer_version: u32,
-}
-pub fn cli_command() -> clap::Command {
-    let cmd = ProbeOpts::command();
-    let cmd = ClientOpts::augment_args(cmd);
-    #[cfg(any(test, feature = "dump-help"))]
-    let cmd = cmd.arg(
-        Arg::new("dump-help-body")
-            .long("dump-help-body")
-            .action(ArgAction::SetTrue)
-            .hide(true)
-            .exclusive(true),
-    );
-    formatter::apply(cmd)
 }

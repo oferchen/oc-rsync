@@ -5,10 +5,9 @@ use engine::{Result, Stats};
 
 use crate::{
     daemon::run_daemon,
-    options::ClientOpts,
+    options::{ClientOpts, ClientOptsBuilder, ProbeOptsBuilder, validate_paths},
     print, probe,
     utils::init_logging,
-    validate::{self, ClientOptsBuilder, ProbeOptsBuilder},
 };
 use logging::parse_escapes;
 
@@ -29,7 +28,7 @@ pub fn run(matches: &ArgMatches) -> Result<()> {
 }
 
 pub(crate) fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
-    let (srcs, dst_arg) = validate::validate_paths(&opts)?;
+    let (srcs, dst_arg) = validate_paths(&opts)?;
     let mut total = Stats::default();
     for src in srcs {
         let stats = run_single(opts.clone(), matches, src.as_os_str(), dst_arg.as_os_str())?;
