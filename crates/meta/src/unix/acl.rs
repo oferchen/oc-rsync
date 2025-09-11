@@ -15,21 +15,28 @@ static ACLS_SUPPORTED: OnceLock<bool> = OnceLock::new();
 pub fn acls_supported() -> bool {
     use posix_acl::{ACL_READ, PosixACL, Qualifier};
     *ACLS_SUPPORTED.get_or_init(|| {
-        let path = std::env::temp_dir().join("oc_rsync_acl_check");
-        if fs::write(&path, b"1").is_err() {
+        let tmp = std::env::temp_dir();
+        let file = tmp.join("oc_rsync_acl_check_file");
+        let dir = tmp.join("oc_rsync_acl_check_dir");
+        if fs::write(&file, b"1").is_err() || fs::create_dir(&dir).is_err() {
             return false;
         }
         let mut acl = PosixACL::new(0o644);
         acl.set(Qualifier::User(0), ACL_READ);
-        let res = acl.write_acl(&path);
-        let _ = fs::remove_file(&path);
-        match res {
+        let res_file = acl.write_acl(&file);
+        let mut dacl = PosixACL::new(0o755);
+        dacl.set(Qualifier::User(0), ACL_READ);
+        let res_dir = dacl.write_default_acl(&dir);
+        let _ = fs::remove_file(&file);
+        let _ = fs::remove_dir(&dir);
+        let supported = |res: Result<(), posix_acl::ACLError>| match res {
             Ok(_) => true,
             Err(err) => {
                 let code = err.as_io_error().and_then(|e| e.raw_os_error());
                 !matches!(code, Some(c) if c == libc::ENOTSUP || c == libc::EOPNOTSUPP)
             }
-        }
+        };
+        supported(res_file) && supported(res_dir)
     })
 }
 
