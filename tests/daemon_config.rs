@@ -116,7 +116,7 @@ fn daemon_config_authentication() {
     #[cfg(unix)]
     fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
     let cfg = format!(
-        "port = 0\nsecrets file = {}\n[data]\n    path = {}\n",
+        "port = 0\nuse chroot = no\nsecrets file = {}\n[data]\n    path = {}\n",
         secrets.display(),
         data.display()
     );
