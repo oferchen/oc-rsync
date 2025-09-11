@@ -188,9 +188,14 @@ impl Receiver {
                 } else {
                     &default_acl[..]
                 };
+                let acl = if entry.is_none() && dest.is_dir() {
+                    &[] as &[meta::ACLEntry]
+                } else {
+                    &acl[..]
+                };
                 meta::write_acl(
                     dest,
-                    &acl,
+                    acl,
                     Some(default_acl),
                     meta_opts.fake_super && !meta_opts.super_user,
                     meta_opts.super_user,
