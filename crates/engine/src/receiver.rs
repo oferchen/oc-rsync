@@ -576,10 +576,10 @@ impl Receiver {
                         .map_err(EngineError::from)?;
                 }
                 #[cfg(feature = "acl")]
-                if self.opts.acls {
+                if self.opts.acls && (!meta.acl.is_empty() || !meta.default_acl.is_empty()) {
                     meta::write_acl(
                         dest,
-                        &[],
+                        &meta.acl,
                         Some(&meta.default_acl),
                         meta_opts.fake_super && !meta_opts.super_user,
                         meta_opts.super_user,
