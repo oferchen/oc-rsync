@@ -214,15 +214,6 @@ impl Receiver {
                     meta_opts.super_user,
                 )
                 .map_err(EngineError::from)?;
-            } else {
-                meta::write_acl(
-                    dest,
-                    &[],
-                    Some(&[]),
-                    meta_opts.fake_super && !meta_opts.super_user,
-                    meta_opts.super_user,
-                )
-                .map_err(EngineError::from)?;
             }
         }
         #[cfg(not(feature = "acl"))]
