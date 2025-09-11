@@ -59,11 +59,15 @@ pub(crate) fn run_client(opts: ClientOpts, matches: &ArgMatches) -> Result<()> {
 mod tests {
     use super::*;
     use crate::utils::{RemoteSpec, parse_bool, parse_remote_spec};
+    #[allow(unused_imports)]
     use crate::{EngineError, cli_command, spawn_daemon_session};
+    #[allow(unused_imports)]
     use ::daemon::authenticate;
     use clap::{FromArgMatches, Parser};
+    #[allow(unused_imports)]
     use engine::SyncOptions;
     #[cfg(test)]
+    #[allow(unused_imports)]
     use protocol::SUPPORTED_PROTOCOLS;
     use std::ffi::OsStr;
     use std::path::PathBuf;

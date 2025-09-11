@@ -19,7 +19,9 @@ pub use daemon::{DaemonTransport, SockOpt, daemon_remote_opts, parse_sockopts};
 pub use factory::TransportFactory;
 pub use rate::RateLimitedTransport;
 #[cfg(unix)]
-pub use ssh::SshStdioTransport;
+pub use ssh::session::SshStdioTransport;
+#[cfg(unix)]
+pub use ssh::{io as ssh_io, session as ssh_session, spawn as ssh_spawn};
 pub use stdio::{LocalPipeTransport, TimeoutTransport};
 pub use tcp::TcpTransport;
 pub use temp::{TempFileGuard, TempSocketGuard};
