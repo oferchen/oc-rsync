@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use compress::Codec;
+use oc_rsync_core::compress::Codec;
 
 use crate::{AddressFamily, LocalPipeTransport, Transport};
 

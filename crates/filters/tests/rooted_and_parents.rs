@@ -1,5 +1,4 @@
 // crates/filters/tests/rooted_and_parents.rs
-#![cfg(feature = "filters_test")]
 use filters::rooted_and_parents;
 
 #[test]

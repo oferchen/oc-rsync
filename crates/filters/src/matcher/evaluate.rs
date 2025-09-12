@@ -4,7 +4,6 @@
 use super::core::{MatchResult, Matcher};
 use super::path::rule_matches;
 use crate::{parser::ParseError, rule::Rule};
-use logging::InfoFlag;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -303,7 +302,7 @@ impl Matcher {
             .unwrap_or_default();
         let stats = self.stats.borrow();
         tracing::info!(
-            target: InfoFlag::Filter.target(),
+            target: "filter",
             path = %path.display(),
             matched,
             matches = stats.matches,

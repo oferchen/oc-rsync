@@ -3,7 +3,8 @@ use std::ffi::OsString;
 
 use crate::utils::parse_remote_spec;
 use crate::{EngineError, RemoteSpec};
-use oc_rsync_core::{message::ExitCode, transfer::Result};
+use engine::Result;
+use oc_rsync_core::message::ExitCode;
 
 use super::ClientOpts;
 

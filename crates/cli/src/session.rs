@@ -1,10 +1,8 @@
 // crates/cli/src/session.rs
 
-use oc_rsync_core::{
-    message::CharsetConv,
-    transfer::{EngineError, Result},
-    transport::SshStdioTransport,
-};
+use engine::{EngineError, Result};
+use oc_rsync_core::message::CharsetConv;
+use transport::SshStdioTransport;
 
 pub(crate) fn check_session_errors(
     session: &SshStdioTransport,

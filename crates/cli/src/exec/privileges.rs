@@ -4,7 +4,8 @@ use clap::{ArgMatches, parser::ValueSource};
 
 use crate::EngineError;
 use crate::options::ClientOpts;
-use oc_rsync_core::{message::ExitCode, transfer::Result};
+use engine::Result;
+use oc_rsync_core::message::ExitCode;
 
 #[cfg(unix)]
 use nix::unistd;

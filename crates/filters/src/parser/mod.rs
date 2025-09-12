@@ -19,6 +19,7 @@ pub(crate) use util::*;
 pub use cvs::default_cvs_rules;
 pub use error::ParseError;
 pub use list::{
-    parse_file, parse_from_bytes, parse_list_file, parse_rule_list_file, parse_rule_list_from_bytes,
+    parse_file, parse_from_bytes, parse_list, parse_list_file, parse_rule_list_file,
+    parse_rule_list_from_bytes, rooted_and_parents,
 };
 pub use parse::{parse, parse_with_options};
