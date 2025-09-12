@@ -10,11 +10,12 @@ use std::path::Path;
 use std::time::Duration;
 
 use clap::ArgMatches;
-use engine::{DeleteMode, Result, Stats, StrongHash, SyncOptions};
 use logging::{InfoFlag, parse_escapes};
 use oc_rsync_core::{
     compress::{Codec, available_codecs},
+    config::{DeleteMode, SyncOptions},
     fs::{IdKind, parse_chmod, parse_chown},
+    transfer::{Result, Stats, StrongHash},
 };
 use transport::{AddressFamily, parse_sockopts};
 #[cfg(unix)]

@@ -13,9 +13,12 @@ use std::time::{Duration, Instant};
 use crate::utils::{parse_bool, parse_dparam};
 use clap::{ArgMatches, Args};
 use daemon::{self, Module, parse_config_file, parse_module};
-use engine::{EngineError, Result, SyncOptions};
 use logging::parse_escapes;
 use oc_rsync_core::message::{CharsetConv, ExitCode, negotiate_version};
+use oc_rsync_core::{
+    config::SyncOptions,
+    transfer::{EngineError, Result},
+};
 use transport::{AddressFamily, SockOpt, TcpTransport, Transport, parse_sockopts};
 
 #[derive(Args, Debug, Clone)]

@@ -6,14 +6,16 @@ use std::ffi::OsString;
 use std::time::{Duration, SystemTime};
 use std::{ffi::OsStr, io, path::PathBuf};
 
+use crate::EngineError;
 use clap::ArgMatches;
 use encoding_rs::Encoding;
-use engine::{EngineError, IdMapper, Result};
 use logging::{DebugFlag, InfoFlag, StderrMode, SubscriberConfig};
 use oc_rsync_core::{
+    config::IdMapper,
     filter::{ParseError, Rule, parse_with_options},
     fs::{IdKind, parse_id_map},
     message::CharsetConv,
+    transfer::Result,
 };
 use shell_words::split as shell_split;
 

@@ -9,7 +9,7 @@ nix = { version = "0.30.1", features = ["user", "fs", "process"] }
 protocol = { path = "../protocol" }
 ipnet = "2"
 logging = { path = "../logging" }
-meta = { path = "../meta" }
+oc-rsync-core = { path = "../core" }
 
 [target.'cfg(unix)'.dependencies]
 sd-notify = "0.4"
