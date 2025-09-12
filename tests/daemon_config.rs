@@ -1,7 +1,7 @@
 // tests/daemon_config.rs
 
 use assert_cmd::prelude::*;
-use daemon::{Handler, handle_connection, load_config, parse_config};
+use daemon::{Handler, drop_privileges, handle_connection, load_config, parse_config};
 use protocol::LATEST_VERSION;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -93,6 +93,16 @@ fn pipe_transport(token: &str, module: &str) -> LocalPipeTransport<MultiReader, 
     LocalPipeTransport::new(reader, Vec::new())
 }
 
+#[cfg(unix)]
+fn uid_gid() -> (u32, u32) {
+    unsafe { (libc::geteuid() as u32, libc::getegid() as u32) }
+}
+
+#[cfg(not(unix))]
+fn uid_gid() -> (u32, u32) {
+    (0, 0)
+}
+
 #[test]
 fn daemon_config_rsync_client() {
     let dir = tempfile::tempdir().unwrap();
@@ -125,6 +135,11 @@ fn daemon_config_authentication() {
     let mut modules = HashMap::new();
     modules.insert(module.name.clone(), module);
     let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
+    let (uid, gid) = uid_gid();
+    if drop_privileges(uid, gid).is_err() {
+        eprintln!("skipping test: cannot drop privileges");
+        return;
+    }
     let mut t = pipe_transport("secret", "data");
     handle_connection(
         &mut t,
@@ -137,8 +152,8 @@ fn daemon_config_authentication() {
         true,
         &[],
         "127.0.0.1",
-        0,
-        0,
+        uid,
+        gid,
         &handler,
         None,
     )
@@ -157,7 +172,7 @@ fn daemon_config_motd_suppression() {
     fs::write(&motd, "Hello world\n").unwrap();
 
     let cfg = format!(
-        "port = 0\nmotd file = {}\n[data]\n    path = {}\n",
+        "port = 0\nuse chroot = no\nmotd file = {}\n[data]\n    path = {}\n",
         motd.display(),
         data.display()
     );
@@ -166,6 +181,11 @@ fn daemon_config_motd_suppression() {
     let mut modules = HashMap::new();
     modules.insert(module.name.clone(), module);
     let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
+    let (uid, gid) = uid_gid();
+    if drop_privileges(uid, gid).is_err() {
+        eprintln!("skipping test: cannot drop privileges");
+        return;
+    }
     let mut t = pipe_transport("", "data");
     handle_connection(
         &mut t,
@@ -178,8 +198,8 @@ fn daemon_config_motd_suppression() {
         true,
         &[],
         "127.0.0.1",
-        0,
-        0,
+        uid,
+        gid,
         &handler,
         None,
     )
@@ -189,11 +209,18 @@ fn daemon_config_motd_suppression() {
     assert!(resp.contains("Hello world"));
 
     let cfg = format!(
-        "port = 0\nmotd file =\n[data]\n    path = {}\n",
+        "port = 0\nuse chroot = no\nmotd file =\n[data]\n    path = {}\n",
         data.display()
     );
     let cfg = parse_config(&cfg).unwrap();
-    assert!(cfg.motd_file.is_none());
+    let motd = cfg.motd_file.as_ref().and_then(|p| {
+        if p.as_os_str().is_empty() {
+            None
+        } else {
+            Some(p.as_path())
+        }
+    });
+    assert!(motd.is_none());
     let module = cfg.modules[0].clone();
     let mut modules = HashMap::new();
     modules.insert(module.name.clone(), module);
@@ -205,12 +232,12 @@ fn daemon_config_motd_suppression() {
         None,
         None,
         None,
-        cfg.motd_file.as_deref(),
+        motd,
         true,
         &[],
         "127.0.0.1",
-        0,
-        0,
+        uid,
+        gid,
         &handler,
         None,
     )
@@ -254,7 +281,7 @@ fn daemon_config_module_secrets_file() {
     #[cfg(unix)]
     fs::set_permissions(&secrets, fs::Permissions::from_mode(0o600)).unwrap();
     let cfg = format!(
-        "port = 0\n[data]\n    path = {}\n    secrets file = {}\n",
+        "port = 0\nuse chroot = no\n[data]\n    path = {}\n    secrets file = {}\n",
         data.display(),
         secrets.display()
     );
@@ -263,6 +290,11 @@ fn daemon_config_module_secrets_file() {
     let mut modules = HashMap::new();
     modules.insert(module.name.clone(), module);
     let handler: Arc<Handler> = Arc::new(|_, _| Ok(()));
+    let (uid, gid) = uid_gid();
+    if drop_privileges(uid, gid).is_err() {
+        eprintln!("skipping test: cannot drop privileges");
+        return;
+    }
     let mut t = pipe_transport("secret", "data");
     handle_connection(
         &mut t,
@@ -275,8 +307,8 @@ fn daemon_config_module_secrets_file() {
         true,
         &[],
         "127.0.0.1",
-        0,
-        0,
+        uid,
+        gid,
         &handler,
         None,
     )
