@@ -12,11 +12,7 @@ use std::os::unix::fs::PermissionsExt;
 static ACLS_SUPPORTED: OnceLock<bool> = OnceLock::new();
 
 #[cfg(feature = "acl")]
-/// Return `true` if manipulating POSIX ACLs is supported on this system.
-///
-/// The check attempts to write an access ACL to a temporary file and a default
-/// ACL to a temporary directory. If both operations succeed, ACLs are
-/// considered supported.
+#[doc = include_str!("docs/acls_supported.md")]
 pub fn acls_supported() -> bool {
     use posix_acl::{ACL_READ, PosixACL, Qualifier};
     *ACLS_SUPPORTED.get_or_init(|| {
@@ -45,9 +41,7 @@ pub fn acls_supported() -> bool {
     })
 }
 
-/// Convert a [`posix_acl::ACLError`] into a standard [`io::Error`].
-///
-/// * `err` - ACL error to convert.
+#[doc = include_str!("docs/acl_to_io.md")]
 pub(crate) fn acl_to_io(err: posix_acl::ACLError) -> io::Error {
     if let Some(e) = err.as_io_error() {
         if let Some(code) = e.raw_os_error() {
@@ -60,9 +54,7 @@ pub(crate) fn acl_to_io(err: posix_acl::ACLError) -> io::Error {
     }
 }
 
-/// Check whether an errno from an ACL operation should be ignored.
-///
-/// * `code` - The errno value returned from the OS.
+#[doc = include_str!("docs/should_ignore_acl_errno.md")]
 fn should_ignore_acl_errno(code: i32) -> bool {
     matches!(
         code,
@@ -92,18 +84,14 @@ fn should_ignore_acl_errno(code: i32) -> bool {
         }
 }
 
-/// Determine if an ACL error corresponds to an ignorable errno.
-///
-/// * `err` - The ACL error to inspect.
+#[doc = include_str!("docs/should_ignore_acl_error.md")]
 pub(crate) fn should_ignore_acl_error(err: &posix_acl::ACLError) -> bool {
     err.as_io_error()
         .and_then(|e| e.raw_os_error())
         .is_some_and(should_ignore_acl_errno)
 }
 
-/// Remove the default ACL from `path` if present.
-///
-/// * `path` - Directory from which the default ACL should be removed.
+#[doc = include_str!("docs/remove_default_acl.md")]
 pub(crate) fn remove_default_acl(path: &Path) -> io::Result<()> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
@@ -125,20 +113,12 @@ pub(crate) fn remove_default_acl(path: &Path) -> io::Result<()> {
     }
 }
 
-/// Return `true` if `entries` are equivalent to the ACL implied by `mode`.
-///
-/// * `entries` - ACL entries to compare.
-/// * `mode` - The file mode representing the trivial ACL.
+#[doc = include_str!("docs/is_trivial_acl.md")]
 fn is_trivial_acl(entries: &[posix_acl::ACLEntry], mode: u32) -> bool {
     posix_acl::PosixACL::new(mode).entries() == entries
 }
 
-/// Read access and default ACLs for a filesystem object.
-///
-/// * `path` - File or directory to inspect.
-/// * `is_dir` - Indicates whether `path` is a directory.
-/// * `fake_super` - Read ACLs from xattrs instead of the filesystem when `true`.
-/// * `mode` - Mode bits used to detect trivial ACLs.
+#[doc = include_str!("docs/read_acl_inner.md")]
 pub(crate) fn read_acl_inner(
     path: &Path,
     is_dir: bool,
@@ -216,10 +196,7 @@ pub(crate) fn read_acl_inner(
     Ok((acl, default_acl))
 }
 
-/// Convenience wrapper around [`read_acl_inner`] that infers metadata from `path`.
-///
-/// * `path` - File or directory whose ACLs should be read.
-/// * `fake_super` - Read ACLs from xattrs instead of the filesystem when `true`.
+#[doc = include_str!("docs/read_acl.md")]
 pub fn read_acl(
     path: &Path,
     fake_super: bool,
@@ -230,14 +207,7 @@ pub fn read_acl(
     read_acl_inner(path, is_dir, fake_super, mode)
 }
 
-/// Write access and default ACLs to a filesystem object and optionally store
-/// them as fake-super xattrs.
-///
-/// * `path` - Target file or directory.
-/// * `acl` - Access ACL entries to apply.
-/// * `default_acl` - Optional default ACL entries for directories.
-/// * `fake_super` - When `true`, store ACLs as xattrs instead of applying them.
-/// * `super_user` - Indicates whether the process has super-user privileges.
+#[doc = include_str!("docs/write_acl.md")]
 pub fn write_acl(
     path: &Path,
     acl: &[posix_acl::ACLEntry],
@@ -270,10 +240,7 @@ pub fn write_acl(
     Ok(())
 }
 
-/// Apply the access ACL to `path` if the provided entries are non-empty.
-///
-/// * `path` - File or directory where the ACL should be written.
-/// * `acl` - Access ACL entries to write.
+#[doc = include_str!("docs/apply_access_acl_if_nontrivial.md")]
 fn apply_access_acl_if_nontrivial(path: &Path, acl: &[posix_acl::ACLEntry]) -> io::Result<()> {
     if acl.is_empty() {
         return Ok(());
@@ -289,11 +256,7 @@ fn apply_access_acl_if_nontrivial(path: &Path, acl: &[posix_acl::ACLEntry]) -> i
     }
 }
 
-/// Apply or remove a directory's default ACL based on the provided option.
-///
-/// * `path` - Target directory.
-/// * `is_dir` - Indicates if `path` is a directory.
-/// * `dacl` - Optional default ACL entries; `Some(&[])` removes the ACL.
+#[doc = include_str!("docs/apply_default_acl_option.md")]
 fn apply_default_acl_option(
     path: &Path,
     is_dir: bool,
@@ -319,14 +282,7 @@ fn apply_default_acl_option(
     }
 }
 
-/// Store ACLs in fake-super extended attributes when required.
-///
-/// * `path` - File or directory to annotate.
-/// * `is_dir` - Indicates whether `path` is a directory.
-/// * `fake_super` - Enables fake-super behavior.
-/// * `super_user` - If `false`, ACLs are stored as xattrs.
-/// * `acl` - Access ACL entries.
-/// * `dacl` - Default ACL entries for directories.
+#[doc = include_str!("docs/maybe_store_fake_super.md")]
 fn maybe_store_fake_super(
     path: &Path,
     is_dir: bool,
@@ -342,9 +298,7 @@ fn maybe_store_fake_super(
     }
 }
 
-/// Encode ACL entries into a compact byte representation.
-///
-/// * `entries` - ACL entries to encode.
+#[doc = include_str!("docs/encode_acl.md")]
 pub fn encode_acl(entries: &[posix_acl::ACLEntry]) -> Vec<u8> {
     use posix_acl::Qualifier;
     let mut out = Vec::with_capacity(entries.len() * 9);
@@ -365,9 +319,7 @@ pub fn encode_acl(entries: &[posix_acl::ACLEntry]) -> Vec<u8> {
     out
 }
 
-/// Decode ACL entries from the byte representation produced by [`encode_acl`].
-///
-/// * `data` - Encoded ACL bytes.
+#[doc = include_str!("docs/decode_acl.md")]
 pub fn decode_acl(data: &[u8]) -> Vec<posix_acl::ACLEntry> {
     use posix_acl::Qualifier;
     let mut entries = Vec::new();
@@ -393,11 +345,7 @@ pub fn decode_acl(data: &[u8]) -> Vec<posix_acl::ACLEntry> {
     entries
 }
 
-/// Store ACLs as extended attributes for use in fake-super mode.
-///
-/// * `path` - File or directory to annotate.
-/// * `acl` - Access ACL entries to store.
-/// * `default_acl` - Default ACL entries to store.
+#[doc = include_str!("docs/store_fake_super_acl.md")]
 pub(crate) fn store_fake_super_acl(
     path: &Path,
     acl: &[posix_acl::ACLEntry],
