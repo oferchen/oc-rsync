@@ -201,6 +201,7 @@ pub fn parse_config(contents: &str) -> io::Result<DaemonConfig> {
             current = Some(Module {
                 name,
                 path: PathBuf::new(),
+                use_chroot: cfg.use_chroot.unwrap_or(true),
                 ..Module::default()
             });
             continue;
