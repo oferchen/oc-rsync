@@ -10,7 +10,7 @@ use crate::utils::{
 };
 use clap::{ArgAction, Parser, ValueEnum};
 use logging::{DebugFlag, InfoFlag, StderrMode};
-use protocol::SUPPORTED_PROTOCOLS;
+use oc_rsync_core::message::SUPPORTED_PROTOCOLS;
 
 fn parse_lowercase(value: &str) -> Result<String, String> {
     Ok(value.to_ascii_lowercase())

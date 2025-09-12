@@ -12,11 +12,13 @@ use std::time::{Duration, Instant};
 
 use crate::utils::{parse_bool, parse_dparam};
 use clap::{ArgMatches, Args};
-use daemon::{Module, parse_config_file, parse_module};
-use engine::{EngineError, Result, SyncOptions};
 use logging::parse_escapes;
-use protocol::{CharsetConv, ExitCode, negotiate_version};
-use transport::{AddressFamily, SockOpt, TcpTransport, Transport, parse_sockopts};
+use oc_rsync_core::{
+    daemon::{self, Module, parse_config_file, parse_module},
+    message::{CharsetConv, ExitCode, negotiate_version},
+    transfer::{EngineError, Result, SyncOptions},
+    transport::{AddressFamily, SockOpt, TcpTransport, Transport, parse_sockopts},
+};
 
 #[derive(Args, Debug, Clone)]
 pub struct DaemonOpts {

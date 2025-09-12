@@ -4,8 +4,10 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use clap::ArgMatches;
-use engine::Result;
-use filters::{Matcher, Rule, default_cvs_rules};
+use oc_rsync_core::{
+    filter::{self, Matcher, Rule, default_cvs_rules},
+    transfer::Result,
+};
 
 use crate::EngineError;
 use crate::utils::parse_filters;
@@ -41,7 +43,7 @@ pub(crate) fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<M
         for (idx, file) in idxs.into_iter().zip(values) {
             let rs = if file == Path::new("-") {
                 if opts.from0 {
-                    filters::parse_file(Path::new("-"), true, &mut HashSet::new(), 0)
+                    filter::parse_file(Path::new("-"), true, &mut HashSet::new(), 0)
                         .map_err(|e| EngineError::Other(format!("{:?}", e)))?
                 } else {
                     return Err(EngineError::Other(
@@ -49,7 +51,7 @@ pub(crate) fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<M
                     ));
                 }
             } else {
-                filters::parse_file(file, opts.from0, &mut HashSet::new(), 0)
+                filter::parse_file(file, opts.from0, &mut HashSet::new(), 0)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?
             };
             add_rules(idx + 1, rs);
@@ -68,7 +70,7 @@ pub(crate) fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<M
                 bytes.push(b'\n');
             }
             let rs =
-                filters::parse_rule_list_from_bytes(&bytes, opts.from0, '+', &mut vset, 0, None)
+                filter::parse_rule_list_from_bytes(&bytes, opts.from0, '+', &mut vset, 0, None)
                     .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
             add_rules(idx + 1, rs);
         }
@@ -91,7 +93,7 @@ pub(crate) fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<M
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
             let mut vset = HashSet::new();
-            let rs = filters::parse_rule_list_file(file, opts.from0, '+', &mut vset, 0)
+            let rs = filter::parse_rule_list_file(file, opts.from0, '+', &mut vset, 0)
                 .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
             add_rules(idx + 1, rs);
         }
@@ -102,7 +104,7 @@ pub(crate) fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<M
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
             let mut vset = HashSet::new();
-            let rs = filters::parse_rule_list_file(file, opts.from0, '-', &mut vset, 0)
+            let rs = filter::parse_rule_list_file(file, opts.from0, '-', &mut vset, 0)
                 .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
             add_rules(idx + 1, rs);
         }
@@ -113,7 +115,7 @@ pub(crate) fn build_matcher(opts: &ClientOpts, matches: &ArgMatches) -> Result<M
             .map_or_else(Vec::new, |v| v.collect());
         for (idx, file) in idxs.into_iter().zip(values) {
             let mut vset = HashSet::new();
-            let rs = filters::parse_rule_list_file(file, opts.from0, '+', &mut vset, 0)
+            let rs = filter::parse_rule_list_file(file, opts.from0, '+', &mut vset, 0)
                 .map_err(|e| EngineError::Other(format!("{:?}", e)))?;
             add_rules(idx + 1, rs);
         }

@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-meta = { path = "../meta", default-features = false }
+meta = { path = "../meta", default-features = false, features = ["acl"] }
 filters = { path = "../filters" }
 engine = { path = "../engine", default-features = false }
 protocol = { path = "../protocol" }
+compress = { path = "../compress" }
+transport = { path = "../transport" }
+daemon = { path = "../daemon" }

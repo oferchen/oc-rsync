@@ -1,7 +1,7 @@
 // crates/cli/tests/version.rs
 use assert_cmd::Command;
 use oc_rsync_cli::version;
-use protocol::SUPPORTED_PROTOCOLS;
+use oc_rsync_core::message::SUPPORTED_PROTOCOLS;
 
 #[test]
 fn banner_is_static() {

@@ -1,5 +1,5 @@
 // crates/cli/tests/golden.rs
-use meta::parse_chmod_spec;
+use oc_rsync_core::fs::parse_chmod_spec;
 
 #[test]
 fn invalid_mode_operator_returns_error() {

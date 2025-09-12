@@ -6,11 +6,13 @@ use crate::options::ClientOpts;
 use crate::utils::{RemoteSpec, RshCommand};
 use crate::{EngineError, spawn_daemon_session};
 
-use compress::available_codecs;
-use engine::{Result, Stats, SyncOptions, sync};
-use filters::Matcher;
-use protocol::{CAP_ACLS, CAP_CODECS, CAP_XATTRS, CharsetConv};
-use transport::{AddressFamily, SshStdioTransport};
+use oc_rsync_core::{
+    compress::available_codecs,
+    filter::Matcher,
+    message::{CAP_ACLS, CAP_CODECS, CAP_XATTRS, CharsetConv},
+    transfer::{Result, Stats, SyncOptions, sync},
+    transport::{AddressFamily, SshStdioTransport},
+};
 
 mod remote_remote;
 

@@ -8,13 +8,14 @@ use std::{ffi::OsStr, io, path::PathBuf};
 
 use clap::ArgMatches;
 use encoding_rs::Encoding;
-use filters::{Rule, parse_with_options};
 use logging::{DebugFlag, InfoFlag, StderrMode, SubscriberConfig};
-use meta::{IdKind, parse_id_map};
-use protocol::CharsetConv;
+use oc_rsync_core::{
+    filter::{ParseError, Rule, parse_with_options},
+    fs::{IdKind, parse_id_map},
+    message::CharsetConv,
+    transfer::{EngineError, IdMapper, Result},
+};
 use shell_words::split as shell_split;
-
-use engine::{EngineError, IdMapper, Result};
 
 use time::{PrimitiveDateTime, macros::format_description};
 
@@ -43,10 +44,7 @@ where
     }
 }
 
-pub(crate) fn parse_filters(
-    s: &str,
-    from0: bool,
-) -> std::result::Result<Vec<Rule>, filters::ParseError> {
+pub(crate) fn parse_filters(s: &str, from0: bool) -> std::result::Result<Vec<Rule>, ParseError> {
     let mut v = HashSet::new();
     parse_with_options(s, from0, &mut v, 0, None)
 }
