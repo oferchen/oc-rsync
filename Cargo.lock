@@ -1028,19 +1028,13 @@ dependencies = [
  "assert_cmd",
  "caps",
  "clap",
- "compress",
- "daemon",
  "encoding_rs",
- "engine",
  "filetime",
- "filters",
  "insta",
  "logging",
- "meta",
  "nix",
  "oc-rsync-core",
  "once_cell",
- "protocol",
  "regex",
  "scopeguard",
  "serial_test",
@@ -1049,7 +1043,6 @@ dependencies = [
  "textwrap",
  "time",
  "tracing",
- "transport",
  "users",
  "xattr",
 ]
@@ -1058,10 +1051,13 @@ dependencies = [
 name = "oc-rsync-core"
 version = "0.1.0"
 dependencies = [
+ "compress",
+ "daemon",
  "engine",
  "filters",
  "meta",
  "protocol",
+ "transport",
 ]
 
 [[package]]

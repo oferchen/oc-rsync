@@ -1,7 +1,7 @@
 // crates/cli/src/client/run.rs
 
 use clap::ArgMatches;
-use engine::{Result, Stats};
+use oc_rsync_core::transfer::{Result, Stats};
 
 use crate::{
     daemon::run_daemon,
@@ -60,14 +60,14 @@ mod tests {
     use crate::utils::{RemoteSpec, parse_bool, parse_remote_spec};
     #[allow(unused_imports)]
     use crate::{EngineError, cli_command, spawn_daemon_session};
-    #[allow(unused_imports)]
-    use ::daemon::authenticate;
     use clap::{FromArgMatches, Parser};
     #[allow(unused_imports)]
-    use engine::SyncOptions;
+    use oc_rsync_core::daemon::authenticate;
     #[cfg(test)]
     #[allow(unused_imports)]
-    use protocol::SUPPORTED_PROTOCOLS;
+    use oc_rsync_core::message::SUPPORTED_PROTOCOLS;
+    #[allow(unused_imports)]
+    use oc_rsync_core::transfer::SyncOptions;
     use std::ffi::OsStr;
     use std::path::PathBuf;
 

@@ -7,14 +7,7 @@ build = "build.rs"
 [dependencies]
 oc-rsync-core = { path = "../core" }
 clap = { version = "4.5.47", features = ["derive", "env"] }
-engine = { path = "../engine" }
-protocol = { path = "../protocol" }
-filters = { path = "../filters" }
-transport = { path = "../transport" }
-compress = { path = "../compress" }
 shell-words = "1.1"
-meta = { path = "../meta" }
-daemon = { path = "../daemon" }
 logging = { path = "../logging" }
 tracing = "0.1"
 encoding_rs = "0.8"

@@ -1,5 +1,5 @@
 // crates/cli/src/version.rs
-use protocol::SUPPORTED_PROTOCOLS as SUPPORTED_PROTOCOL_LIST;
+use oc_rsync_core::message::SUPPORTED_PROTOCOLS as SUPPORTED_PROTOCOL_LIST;
 
 use crate::branding;
 

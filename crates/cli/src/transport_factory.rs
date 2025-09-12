@@ -1,5 +1,5 @@
 // crates/cli/src/transport_factory.rs
-use transport::TransportFactory;
+use oc_rsync_core::transport::TransportFactory;
 
 use crate::options::ClientOpts;
 
