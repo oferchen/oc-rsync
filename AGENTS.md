@@ -1,196 +1,273 @@
-# AGENTS.md
 
-## Purpose
-This document describes the agents, their responsibilities, and how they collaborate to achieve a full-featured, production-grade, pure-Rust reimplementation of **rsync** (protocol v32), maintaining full interoperability with upstream rsync. Each agent operates as a dedicated unit of functionality, designed to isolate complexity, maximize maintainability, and enforce clean code principles. The orchestration of these agents ensures **feature parity** with upstream `rsync`. Future enhancements may be explored only after parity is achieved.
+# oc-rsync — Agents
 
----
+> **Scope:** This document describes the small, focused **agents** (scripts and jobs) that enforce parity, quality, and interoperability for **oc-rsync** (Rust 2024). Each agent has a single responsibility, deterministic I/O, and a crisp success/failure contract.
 
-## Agent Overview
-
-### 1. **ProtocolAgent**
-- **Role**: Implements the rsync v32 protocol, including message framing, multiplexing, negotiation, keep-alives, error propagation, and exit codes.
-- **Responsibilities**:
-  - Encode/decode frames (control, file list, data, checksums).
-  - Manage sender/receiver protocol phases as a finite state machine.
-  - Enforce compatibility with stock rsync across SSH and rsync:// transports.
-  - Provide hooks for fuzzing and golden test replay.
-- **Design Pattern**: **State Machine** for lifecycle phases, **Builder** for protocol negotiation settings.
+- **Repository:** https://github.com/oferchen/oc-rsync  
+- **Parity Target:** Upstream rsync **3.4.1** (protocol **32**) — **byte-for-byte** parity of user-visible behavior.  
+- **Edition:** Rust **2024** (workspace-wide).  
+- **Order of Precedence:** This doc follows the project’s consolidated brief; **no agent may change observable behavior**.
 
 ---
 
-### 2. **ChecksumAgent**
-- **Role**: Calculates rolling and strong checksums for delta transfer and data integrity.
-- **Responsibilities**:
-  - Provide legacy algorithms (MD4, MD5, SHA1) for compatibility.
-  - Additional algorithms may be considered once interoperability parity is complete.
-  - Match rsync’s block-size heuristics and checksum-seed semantics.
-  - Strategy pattern to select checksum at runtime, negotiated during protocol setup.
-- **Design Pattern**: **Strategy** pattern for checksum selection.
+## 1) Agent Model
+
+Each agent is a **self-contained tool** (usually a shell script) invoked locally or by CI:
+- **Single purpose** (“do one thing well”).  
+- **Deterministic**: honors `LC_ALL=C`, fixed `COLUMNS=80`, and pinned inputs.  
+- **No placeholders**: complete, runnable commands; non-zero exit codes on failure.  
+- **Stateless**: no persistent state besides explicit artifacts/logs under `/tmp` or `target/`.
+
+**Common environment (CI and local):**
+```sh
+export LC_ALL=C
+export COLUMNS=80
+export RUSTFLAGS=-Dwarnings
+export CARGO_TERM_COLOR=always
+```
+
+**Prerequisites (install *before* building or running agents):**
+- Ubuntu/Debian: `build-essential pkg-config curl ca-certificates openssh-client libacl1-dev libzstd-dev zlib1g-dev libxxhash-dev`
+- AlmaLinux/RHEL/Fedora: `gcc make pkgconfig curl ca-certificates openssh-clients libacl-devel libzstd-devel zlib-devel xxhash-devel`
+- Arch Linux: `base-devel pkgconf curl ca-certificates openssh acl zstd zlib xxhash`
+
+These packages enable building upstream rsync for interop and provide system libs when linking compressors/ACLs.
 
 ---
 
-### 3. **CompressionAgent**
-- **Role**: Handles data compression and decompression streams.
-- **Responsibilities**:
-   - Support zlib and zstd (compatibility-first).
-  - Further compression options may be considered after parity with upstream is reached.
-  - Parse and apply `--compress-choice`, `--compress-level`, and `--skip-compress` arguments.
-  - Maintain throughput and low latency for large trees.
-- **Design Pattern**: **Strategy** pattern for algorithm choice; **Pipeline** integration with ProtocolAgent.
+## 2) Lint & Hygiene Agents
+
+### 2.1 `comment_lint` Agent
+- **Script:** `tools/comment_lint.sh`
+- **Purpose:** Enforce the **single-header-line** rule (`// crates/...` or `// src/...`) and ban any further `//` comments in Rust files.
+- **Run locally:**
+  ```sh
+  bash tools/comment_lint.sh
+  ```
+- **Pass criteria:** No diagnostic output; exit `0`.
+- **Fail criteria:** Prints offending files; exit `1`.
+
+### 2.2 `enforce_limits` Agent
+- **Script:** `tools/enforce_limits.sh`
+- **Purpose:** Enforce **LoC caps** (target ≤400; hard **≤600** lines) and comment policy.
+- **Config:** `MAX_RUST_LINES` (default `600`).
+- **Run locally:**
+  ```sh
+  MAX_RUST_LINES=600 bash tools/enforce_limits.sh
+  ```
+
+### 2.3 `check_layers` Agent
+- **Script:** `tools/check_layers.sh`
+- **Purpose:** Enforce module **layering**: `checksums, compress, filters, meta, protocol → transport, engine, logging → cli`. No upward deps.
+- **Run locally:**
+  ```sh
+  bash tools/check_layers.sh
+  ```
+
+### 2.4 `no_placeholders` Agent
+- **Script:** `tools/no_placeholders.sh`
+- **Purpose:** Ban `todo!`, `unimplemented!`, `FIXME`, `XXX`, and obvious placeholder panics in Rust sources.
+- **Run locally:**
+  ```sh
+  bash tools/no_placeholders.sh
+  ```
 
 ---
 
-### 4. **FilterAgent**
-- **Role**: Implements rsync’s filter engine (include/exclude rules).
-- **Responsibilities**:
-  - Parse and apply `--exclude`, `--include`, `--filter`, `--cvs-exclude`.
-  - Merge per-directory `.rsync-filter` rules correctly.
-  - Enforce order-dependent evaluation semantics identical to upstream rsync.
-  - Provide fuzzing targets for parser correctness and property tests for precedence.
-- **Design Pattern**: **Interpreter** pattern for filter parsing and evaluation.
+## 3) Build & Test Agents
+
+### 3.1 `lint` Agent (fmt + clippy)
+- **Invoker:** CI job `lint` (see workflow).  
+- **Purpose:** Enforce formatting and deny warnings.
+- **Run locally:**
+  ```sh
+  cargo fmt --all -- --check
+  cargo clippy --workspace --all-targets -- -Dwarnings
+  ```
+
+### 3.2 `test-linux` Agent (coverage-gated)
+- **Purpose:** Run unit/integration tests and enforce **≥95%** line/block coverage.
+- **Run locally (example):**
+  ```sh
+  rustup component add llvm-tools-preview
+  cargo install cargo-llvm-cov
+  cargo llvm-cov --workspace --lcov --output-path coverage.lcov --fail-under-lines 95
+  ```
+- **Artifacts:** `coverage.lcov`
+
+### 3.3 `build-matrix` Agent
+- **Purpose:** Release builds for Linux/macOS/Windows (x86_64 + aarch64 as applicable).  
+- **Run locally (Linux example):**
+  ```sh
+  cargo build --release --workspace
+  ```
+
+### 3.4 `package-linux` Agent (+ SBOM)
+- **Purpose:** Build `.deb`, `.rpm`, and generate CycloneDX SBOM.
+- **Run locally (examples):**
+  ```sh
+  cargo install cargo-deb cargo-rpm
+  cargo deb --no-build
+  cargo rpm build
+  cargo install cyclonedx-bom || true
+  cyclonedx-bom -o target/sbom/oc-rsync.cdx.json
+  ```
 
 ---
 
-### 5. **FileListAgent**
-- **Role**: Builds and interprets the file list (flist).
-- **Responsibilities**:
-  - Stream file list generation and consumption.
-  - Encode delta-encoded paths, uid/gid tables, and per-file metadata.
-  - Optimize memory for very large directory trees (millions of entries).
-  - Provide round-trip testing to guarantee correctness.
-- **Design Pattern**: **Pipeline** stage integrated with WalkAgent and ProtocolAgent.
+## 4) Interoperability Agents (Loopback **rsync://127.0.0.1** Only)
+
+Interoperability agents validate **oc↔upstream** compatibility for **protocols 30/31/32** using upstream **3.0.9**, **3.1.3**, and **3.4.1**. **Network binds to 127.0.0.1 only.**
+
+> **Scripts live under:** `scripts/interop/`
+
+### 4.1 `build_upstream` Agent
+- **Script:** `scripts/interop/build_upstream.sh`
+- **Purpose:** Build upstream rsync versions locally under a controlled prefix.
+- **Usage:**
+  ```sh
+  scripts/interop/build_upstream.sh /tmp/rs-build /tmp/rs-install 3.0.9 3.1.3 3.4.1
+  ```
+- **Outputs:** `/tmp/rs-install/<ver>/bin/rsync` for each version.
+
+### 4.2 `start_daemons` Agent
+- **Script:** `scripts/interop/start_daemons.sh`
+- **Purpose:** Start upstream rsync daemons bound to `127.0.0.1` on fixed ports (8730, 8731, 8732).
+- **Usage:**
+  ```sh
+  scripts/interop/start_daemons.sh /tmp/rs-install 3.0.9 3.1.3 3.4.1
+  ```
+- **State:** Data under `/tmp/rsdata/<ver>/`; PIDs under `/tmp/rsdaemons/`.
+
+### 4.3 `run` Agent
+- **Script:** `scripts/interop/run.sh`
+- **Purpose:** Run the **oc client→upstream daemon** and **upstream client→oc daemon** matrix across proto 30/31/32 and compare directory trees.
+- **Usage:** (after building oc-rsync)
+  ```sh
+  cargo build --release -p oc-rsync
+  scripts/interop/run.sh /tmp/rs-install 3.0.9 3.1.3 3.4.1 target/release/oc-rsync
+  ```
+- **Behavior:** Generates random trees; performs transfers in both directions; diffs trees.
+
+### 4.4 `validate` Agent
+- **Script:** `scripts/interop/validate.sh`
+- **Purpose:** Sanity-check daemon logs exist and non-empty.
+- **Usage:**
+  ```sh
+  scripts/interop/validate.sh
+  ```
+
+**Expected Outcome:** All transfers succeed; directory trees and metadata match; stdout/stderr and exit codes match upstream behavior; logs present.
 
 ---
 
-### 6. **WalkAgent**
-- **Role**: Traverses filesystem trees to discover files, directories, and metadata.
-- **Responsibilities**:
-  - Perform efficient filesystem walks using platform-optimized syscalls.
-  - Collect metadata: perms, uid/gid, ns-mtime, symlinks, hardlinks, sparse, devices/FIFOs, xattrs, ACLs.
-  - Apply FilterAgent decisions during traversal to avoid unnecessary flist bloat.
-- **Design Pattern**: **Visitor** for traversing filesystem entries.
+## 5) Repository Hygiene Agents
+
+### 5.1 `no-binaries` Agent
+- **Purpose:** Fail CI if any tracked file appears binary (heuristic or `git diff --check`).  
+- **Local hint:** Use `git diff --numstat` to spot non-text additions and prevent accidental binary commits.
+
+### 5.2 `readme-version` Agent
+- **Purpose:** Verify `README.md` states “Compatible with rsync **3.4.1** (protocol **32**).”  
+- **Implementation:** Simple grep in CI.
 
 ---
 
-### 7. **MetadataAgent**
-- **Role**: Preserves and restores file metadata.
-- **Responsibilities**:
-  - Implement perms, ownership, timestamps, symlinks, hardlinks, devices, FIFOs, xattrs, and POSIX ACLs.
-  - Guarantee identical behavior to rsync for default modes.
-  - Provide opt-in strict vs relaxed metadata validation.
-  - Cross-platform support via cfg-gated implementations (Linux, macOS).
-- **Design Pattern**: **Adapter** for OS-specific metadata calls.
+## 6) Workflow Wiring (GitHub Actions Overview)
+
+> **Note:** Exact workflow YAML may evolve; the following reflects the **jobs** that invoke agents.
+
+- **lint**: runs `fmt`, `clippy`, then `tools/comment_lint.sh`, `tools/enforce_limits.sh`, `tools/check_layers.sh`, `tools/no_placeholders.sh`.
+- **test-linux**: runs `cargo llvm-cov` with `--fail-under-lines 95` and uploads `coverage.lcov`.
+- **build-matrix**: cross-OS builds to verify portability (no behavior change).
+- **package-linux**: produces `.deb`/`.rpm` and SBOM.
+- **interop-linux**: invokes `scripts/interop/*.sh` to verify oc↔upstream over loopback `rsync://` across protocols 30/31/32.
+- **no-binaries** / **readme-version**: simple grep/filters.
+
+All jobs share:
+```yaml
+env:
+  LC_ALL: C
+  COLUMNS: 80
+  RUSTFLAGS: -Dwarnings
+  CARGO_TERM_COLOR: always
+```
+
+And CI uses a concurrency group to cancel superseded runs:
+```yaml
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+```
 
 ---
 
-### 8. **TransportAgent**
-- **Role**: Handles network communication and transport protocols.
-- **Responsibilities**:
-  - Implement SSH stdio transport (rsync over remote shell).
-  - Implement rsync:// TCP daemon (port 873) with modules, secrets file, chroot, and uid/gid dropping.
-  - Implement privilege separation and path normalization to prevent traversal attacks.
-  - Manage sockets, retries, timeouts, and error recovery.
-- **Design Pattern**: **Adapter** pattern for different transports.
+## 7) Agent Contracts (Inputs/Outputs/Exit Codes)
+
+| Agent | Inputs | Outputs | Success (exit 0) | Failure (exit ≠0) |
+|---|---|---|---|---|
+| comment_lint | repo files | diagnostics (stdout) | no diagnostics | lists offending files |
+| enforce_limits | `MAX_RUST_LINES` | diagnostics | all ≤ limit | report offending files |
+| check_layers | cargo metadata | diagnostics | no upward deps | reports layering errors |
+| no_placeholders | repo files | diagnostics | none found | reports placeholder hits |
+| lint (fmt+clippy) | Rust sources | diagnostics | clean | warnings/errors |
+| test-linux | tests | `coverage.lcov` | coverage ≥95% | test/coverage failure |
+| build-matrix | sources | release artifacts | builds succeed | build failure |
+| package-linux | workspace | `.deb/.rpm` + SBOM | artifacts present | packaging failure |
+| build_upstream | versions | installed rsync | binaries present | build failure |
+| start_daemons | installed rsync | running daemons | ports alive | daemon failed |
+| run | oc binary + daemons | diff result | trees identical | diff or transfer fail |
+| validate | logs | diagnostics | logs present | logs missing/empty |
 
 ---
 
-### 9. **EngineAgent**
-- **Role**: Core sync engine orchestrating delta generation and file application.
-- **Responsibilities**:
-  - Drive sender and receiver state machines.
-  - Apply deltas to create or update local files with correct metadata.
-  - Handle resume/partials, temp files, inplace updates, deletion policies.
-  - Ensure correctness under chaotic conditions (network interruptions, vanished files).
-- **Design Pattern**: **Coordinator** with **State Machine** for sender/receiver roles.
+## 8) Running Everything Locally (Happy Path)
+
+```sh
+# 0) Prereqs
+#   (Use the package list for your OS; see §1 above)
+
+# 1) Lint & hygiene
+bash tools/comment_lint.sh
+bash tools/enforce_limits.sh
+bash tools/check_layers.sh
+bash tools/no_placeholders.sh
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -Dwarnings
+
+# 2) Tests & coverage (≥95%)
+rustup component add llvm-tools-preview
+cargo install cargo-llvm-cov
+cargo llvm-cov --workspace --lcov --output-path coverage.lcov --fail-under-lines 95
+
+# 3) Build oc-rsync
+cargo build --release -p oc-rsync
+
+# 4) Interop (loopback rsync:// only)
+scripts/interop/build_upstream.sh /tmp/rs-build /tmp/rs-install 3.0.9 3.1.3 3.4.1
+scripts/interop/start_daemons.sh /tmp/rs-install 3.0.9 3.1.3 3.4.1
+scripts/interop/run.sh /tmp/rs-install 3.0.9 3.1.3 3.4.1 target/release/oc-rsync
+scripts/interop/validate.sh
+```
+
+If any step fails, read the agent’s diagnostics (stdout/stderr). Agents are intentionally terse and specific.
 
 ---
 
-### 10. **DaemonAgent**
-- **Role**: Provides full rsync:// server implementation.
-- **Responsibilities**:
-  - Parse rsyncd.conf-equivalent configs for modules, paths, comments, permissions.
-  - Enforce chroot, uid/gid dropping, max connections, hosts allow/deny.
-  - Provide motd, logs, lock/state, and PID file management.
-  - Maintain parity with upstream rsync daemon for security and semantics.
-- **Design Pattern**: **Builder** for module configuration.
+## 9) Security & Safety Notes
+
+- **Behavioral Parity First:** No agent may alter CLI/help text, protocol, messages, or exit codes. Agents verify; they do not mutate user-visible behavior.
+- **Loopback Only for Interop:** All rsync daemons bind to `127.0.0.1` and are not exposed externally.
+- **Privileges:** Packaging installs a hardened systemd unit; development agents do not require elevated privileges beyond package installation.
+- **Determinism:** Always run with `LC_ALL=C` and `COLUMNS=80` to keep output snapshots stable.
 
 ---
 
-### 11. **CLIControllerAgent**
-- **Role**: Exposes the command-line interface.
-- **Responsibilities**:
-  - Use `clap v4` to implement all rsync flags and aliases.
-  - Provide identical help text, usage, and defaults as upstream rsync.
-  - Forward parsed arguments into a validated configuration (Builder pattern).
-  - Enhancement flags will be introduced only after achieving parity.
-- **Design Pattern**: **Builder** for options validation; **Facade** to simplify user entrypoint.
+## 10) Ownership & Maintenance
+
+- **Where:** Agents live under `tools/`, `scripts/interop/`, and CI workflow files under `.github/workflows/`.
+- **Policy:** Any change to agents must preserve their single responsibility and deterministic outputs. Keep diffs small; document intent in PR descriptions.
 
 ---
 
-### 12. **LoggingAgent**
-- **Role**: Provides unified logging and observability.
-- **Responsibilities**:
-  - Structured logs via `tracing`.
-  - Support human-readable and JSON output modes.
-  - Mirror rsync’s logging verbosity levels (`-v`, `--info`, `--debug`).
-  - Integrate with daemon log files and system logging facilities.
-- **Design Pattern**: **Observer** pattern for log sinks.
-
----
-
-### 13. **TestAgent**
-- **Role**: Automated testing and validation.
-- **Responsibilities**:
-  - Run interop tests against stock rsync (SSH + daemon).
-  - Execute golden-tree comparisons across data + metadata.
-  - Provide fuzzing targets for protocol and filters.
-  - Perform property-based tests for filter precedence and flist integrity.
-  - Run chaos and soak tests to ensure robustness under load.
-- **Design Pattern**: **Harness** with plug-in tests; fuzzing + property tests integrated.
-
----
-
-## Agent Collaboration
-
-1. **CLIControllerAgent** parses arguments → builds config.
-2. Config passed to **ProtocolAgent** + **TransportAgent** for setup.
-3. **WalkAgent** discovers files → **FilterAgent** prunes entries → **FileListAgent** encodes list → sent via **ProtocolAgent**.
-4. **EngineAgent** applies deltas using **ChecksumAgent** + **CompressionAgent**.
-5. **MetadataAgent** restores file attributes.
-6. **DaemonAgent** serves modules in rsync:// mode.
-7. **LoggingAgent** records every stage; **TestAgent** validates correctness.
-
----
-
-## Deliverables Per Agent
-- Unit tests per agent.
-- Integration tests across agents.
-- Interop matrix tests with upstream rsync.
-- Documentation in `docs/` (manpages, differences, feature_matrix).
-- Fuzz + chaos test harnesses.
-
----
-
-## Summary
-This agent architecture provides a **clean separation of responsibilities** and explicit parity with upstream rsync (validated via interop tests). Enhancements will only be considered once parity is fully realized. Each agent can be individually tested, audited, and fuzzed, ensuring both **robustness** and **maintainability**.
-
----
-
-## Development Guidelines
-
-### Coding Conventions
-- Format code with `cargo fmt --all`.
-- Lint with `cargo clippy --all-targets --all-features -- -D warnings`.
-
-### Mandatory Checks
-- Install `cargo-nextest` with `cargo install cargo-nextest --locked` if it is not already available (test beforehand).
-- Run `cargo nextest run --workspace --no-fail-fast` and
-  `cargo nextest run --workspace --no-fail-fast --features "cli nightly"`,
-  ensuring all tests pass. Interop tests behind the `interop` feature
-  require an upstream `rsync` binary and are run separately.
-- Execute `make verify-comments` to validate file header comments.
-- Use `make lint` to confirm formatting.
-
-### References
-- See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
-- CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml)
+**End of `agents.md`**
