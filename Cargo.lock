@@ -999,6 +999,7 @@ dependencies = [
  "meta",
  "nix",
  "oc-rsync-cli",
+ "oc-rsync-core",
  "pkg-config",
  "posix-acl",
  "predicates",
@@ -1037,6 +1038,7 @@ dependencies = [
  "logging",
  "meta",
  "nix",
+ "oc-rsync-core",
  "once_cell",
  "protocol",
  "regex",
@@ -1050,6 +1052,16 @@ dependencies = [
  "transport",
  "users",
  "xattr",
+]
+
+[[package]]
+name = "oc-rsync-core"
+version = "0.1.0"
+dependencies = [
+ "engine",
+ "filters",
+ "meta",
+ "protocol",
 ]
 
 [[package]]

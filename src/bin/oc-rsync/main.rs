@@ -3,6 +3,7 @@ mod stdio;
 
 use oc_rsync_cli::options::OutBuf;
 use oc_rsync_cli::{cli_command, exit_code_from_engine_error};
+use oc_rsync_core as _;
 use protocol::ExitCode;
 
 fn main() {

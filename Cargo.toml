@@ -12,6 +12,7 @@ members = [
     "crates/daemon",
     "crates/cli",
     "crates/logging",
+    "crates/core",
     "xtask",
 ]
 resolver = "2"
@@ -51,6 +52,7 @@ clap = { version = "4.5.47" }
 oc-rsync-cli = { path = "crates/cli" }
 libc = "0.2"
 meta = { path = "crates/meta", default-features = false }
+oc-rsync-core = { path = "crates/core" }
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.30.1", features = ["user", "fs"] }

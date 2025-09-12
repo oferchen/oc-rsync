@@ -5,6 +5,7 @@ edition = "2024"
 build = "build.rs"
 
 [dependencies]
+oc-rsync-core = { path = "../core" }
 clap = { version = "4.5.47", features = ["derive", "env"] }
 engine = { path = "../engine" }
 protocol = { path = "../protocol" }
