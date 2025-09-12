@@ -17,6 +17,7 @@ mod transport_factory;
 mod utils;
 pub mod version;
 
+use oc_rsync_core as _;
 pub mod options {
     pub use crate::argparse::*;
 }

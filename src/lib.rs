@@ -8,4 +8,5 @@ pub mod run;
 
 pub use config::{SyncConfig, SyncConfigBuilder};
 pub use meta;
+use oc_rsync_core as _;
 pub use run::{synchronize, synchronize_with_config};

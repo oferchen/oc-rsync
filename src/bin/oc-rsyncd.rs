@@ -2,6 +2,7 @@
 use std::ffi::OsString;
 use std::process::Command;
 
+use oc_rsync_core as _;
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 
