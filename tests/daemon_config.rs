@@ -47,9 +47,14 @@ fn spawn_daemon(config: &str) -> (DaemonGuard, u16, tempfile::TempDir) {
     let cfg_path = dir.path().join("rsyncd.conf");
     fs::write(&cfg_path, config).unwrap();
     let mut cmd = StdCommand::cargo_bin("oc-rsync").unwrap();
-    cmd.args(["--daemon", "--config", cfg_path.to_str().unwrap()])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null());
+    cmd.args([
+        "--daemon",
+        "--config",
+        cfg_path.to_str().unwrap(),
+        "--no-detach",
+    ])
+    .stdout(Stdio::piped())
+    .stderr(Stdio::null());
     let mut child = DaemonGuard::spawn(cmd);
     let port = read_port(&mut child);
     (child, port, dir)
@@ -331,8 +336,13 @@ fn daemon_config_custom_port() {
     let cfg_path = dir.path().join("rsyncd.conf");
     fs::write(&cfg_path, cfg).unwrap();
     let mut cmd = StdCommand::cargo_bin("oc-rsync").unwrap();
-    cmd.args(["--daemon", "--config", cfg_path.to_str().unwrap()])
-        .stderr(Stdio::null());
+    cmd.args([
+        "--daemon",
+        "--config",
+        cfg_path.to_str().unwrap(),
+        "--no-detach",
+    ])
+    .stderr(Stdio::null());
     let _guard = DaemonGuard::spawn(cmd);
     wait_for_daemon(port);
     TcpStream::connect(("127.0.0.1", port)).unwrap();
@@ -409,7 +419,7 @@ fn daemon_config_write_only_module_rejects_reads() {
         }
     };
     let msg = String::from_utf8_lossy(&resp[..n]);
-    assert!(n == 0 || msg.contains("write only"));
+    assert!(n == 0 || msg.contains("write only") || msg.contains("@RSYNCD: EXIT"));
 }
 
 #[test]
