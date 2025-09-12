@@ -1,6 +1,6 @@
 // crates/engine/src/receiver/metadata.rs
 #[cfg(unix)]
-use nix::unistd::{chown, Gid, Uid};
+use nix::unistd::{Gid, Uid, chown};
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, PermissionsExt};
@@ -105,11 +105,11 @@ impl Receiver {
                 },
                 #[cfg(feature = "xattr")]
                 xattr_filter: Some(Rc::new(move |name: &std::ffi::OsStr| {
-                    m1.is_xattr_included(name).unwrap_or(false)
+                    m1.is_xattr_included(name).unwrap_or(true)
                 })),
                 #[cfg(feature = "xattr")]
                 xattr_filter_delete: Some(Rc::new(move |name: &std::ffi::OsStr| {
-                    m2.is_xattr_included_for_delete(name).unwrap_or(false)
+                    m2.is_xattr_included_for_delete(name).unwrap_or(true)
                 })),
                 acl: {
                     #[cfg(feature = "acl")]
