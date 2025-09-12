@@ -3,10 +3,8 @@
 use std::io::{Read, Write};
 use std::net::TcpStream;
 
-use oc_rsync_core::{
-    message::{SUPPORTED_PROTOCOLS, negotiate_version},
-    transfer::Result,
-};
+use engine::Result;
+use oc_rsync_core::message::{SUPPORTED_PROTOCOLS, negotiate_version};
 
 use crate::{EngineError, options::ProbeOpts};
 

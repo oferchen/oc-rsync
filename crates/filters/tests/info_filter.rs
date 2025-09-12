@@ -3,7 +3,6 @@ use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 
 use filters::{Matcher, parse_file};
-use logging::InfoFlag;
 use std::collections::HashSet;
 use tempfile::NamedTempFile;
 use tracing::level_filters::LevelFilter;
@@ -49,11 +48,7 @@ fn logs_match_and_rule_count() {
     let mut filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::WARN.into())
         .from_env_lossy();
-    filter = filter.add_directive(
-        format!("{}=info", InfoFlag::Filter.target())
-            .parse()
-            .unwrap(),
-    );
+    filter = filter.add_directive("filter=info".parse().unwrap());
     let subscriber = tracing_subscriber::registry().with(filter).with(
         fmt::layer()
             .without_time()

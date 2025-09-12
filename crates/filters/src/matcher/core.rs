@@ -1,7 +1,6 @@
 // crates/filters/src/matcher/core.rs
 
 use crate::{parser::ParseError, perdir::PerDir, rule::Rule, stats::FilterStats};
-use logging::InfoFlag;
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -145,7 +144,7 @@ impl Matcher {
             .map(|p| p.display().to_string())
             .unwrap_or_default();
         tracing::info!(
-            target: InfoFlag::Filter.target(),
+            target: "filter",
             matches = stats.matches,
             misses = stats.misses,
             source = %source,

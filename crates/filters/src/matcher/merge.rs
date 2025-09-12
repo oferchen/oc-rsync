@@ -10,7 +10,6 @@ use crate::{
     perdir::PerDir,
     rule::Rule,
 };
-use logging::InfoFlag;
 use std::{
     collections::HashSet,
     fs, io,
@@ -182,7 +181,7 @@ impl Matcher {
             }
             Err(err) => {
                 tracing::warn!(
-                    target: InfoFlag::Filter.target(),
+                    target: "filter",
                     ?path,
                     ?err,
                     "unable to open",

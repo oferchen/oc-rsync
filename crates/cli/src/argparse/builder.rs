@@ -6,7 +6,7 @@ use clap::{Arg, ArgAction, ArgMatches, Args, CommandFactory, FromArgMatches, par
 
 use crate::EngineError;
 use crate::formatter;
-use oc_rsync_core::transfer::Result;
+use engine::Result;
 
 use super::{ClientOpts, ProbeOpts};
 

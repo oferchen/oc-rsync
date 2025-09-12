@@ -1,7 +1,7 @@
 // crates/cli/tests/options_block_size.rs
 
 use clap::Parser;
-use oc_rsync_core::transfer::SyncOptions;
+use engine::SyncOptions;
 
 #[derive(Parser, Debug)]
 struct Options {

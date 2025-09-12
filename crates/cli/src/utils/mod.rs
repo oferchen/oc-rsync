@@ -8,12 +8,12 @@ use std::{ffi::OsStr, io, path::PathBuf};
 
 use clap::ArgMatches;
 use encoding_rs::Encoding;
+use engine::{EngineError, IdMapper, Result};
 use logging::{DebugFlag, InfoFlag, StderrMode, SubscriberConfig};
 use oc_rsync_core::{
     filter::{ParseError, Rule, parse_with_options},
     fs::{IdKind, parse_id_map},
     message::CharsetConv,
-    transfer::{EngineError, IdMapper, Result},
 };
 use shell_words::split as shell_split;
 

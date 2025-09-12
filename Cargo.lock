@@ -536,7 +536,6 @@ version = "0.1.0"
 dependencies = [
  "globset",
  "libc",
- "logging",
  "proptest",
  "tempfile",
  "tracing",
@@ -1028,7 +1027,9 @@ dependencies = [
  "assert_cmd",
  "caps",
  "clap",
+ "daemon",
  "encoding_rs",
+ "engine",
  "filetime",
  "insta",
  "logging",
@@ -1043,6 +1044,7 @@ dependencies = [
  "textwrap",
  "time",
  "tracing",
+ "transport",
  "users",
  "xattr",
 ]
@@ -1051,13 +1053,11 @@ dependencies = [
 name = "oc-rsync-core"
 version = "0.1.0"
 dependencies = [
+ "checksums",
  "compress",
- "daemon",
- "engine",
  "filters",
  "meta",
  "protocol",
- "transport",
 ]
 
 [[package]]
@@ -1750,10 +1750,9 @@ dependencies = [
 name = "transport"
 version = "0.1.0"
 dependencies = [
- "checksums",
- "compress",
  "ipnet",
  "nix",
+ "oc-rsync-core",
  "protocol",
  "socket2",
  "tempfile",

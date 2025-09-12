@@ -10,14 +10,13 @@ use std::path::Path;
 use std::time::Duration;
 
 use clap::ArgMatches;
+use engine::{DeleteMode, Result, Stats, StrongHash, SyncOptions};
 use logging::{InfoFlag, parse_escapes};
 use oc_rsync_core::{
     compress::{Codec, available_codecs},
-    config::DeleteMode,
     fs::{IdKind, parse_chmod, parse_chown},
-    transfer::{Result, Stats, StrongHash, SyncOptions},
-    transport::{AddressFamily, parse_sockopts},
 };
+use transport::{AddressFamily, parse_sockopts};
 #[cfg(unix)]
 use users::get_user_by_uid;
 

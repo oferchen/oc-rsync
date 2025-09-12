@@ -1,6 +1,6 @@
 // crates/transport/tests/ssh_capabilities.rs
 
-use compress::Codec;
+use oc_rsync_core::compress::Codec;
 use protocol::{CAP_CODECS, LATEST_VERSION};
 use transport::{Transport, ssh::SshStdioTransport};
 

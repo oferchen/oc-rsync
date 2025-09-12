@@ -27,7 +27,7 @@ pub use tcp::TcpTransport;
 pub use temp::{TempFileGuard, TempSocketGuard};
 
 #[cfg(not(unix))]
-use compress::Codec;
+use oc_rsync_core::compress::Codec;
 
 #[cfg(not(unix))]
 pub struct SshStdioTransport;

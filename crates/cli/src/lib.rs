@@ -24,8 +24,8 @@ pub mod options {
 
 pub use client::run;
 pub use daemon::spawn_daemon_session;
+pub use engine::EngineError;
 pub use formatter::{ARG_ORDER, dump_help_body, render_help};
-pub use oc_rsync_core::transfer::EngineError;
 pub use options::{
     ClientOptsBuilder, ProbeOptsBuilder, cli_command, exit_code_from_engine_error,
     exit_code_from_error_kind, validate_paths,

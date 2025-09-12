@@ -7,8 +7,8 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use checksums::{StrongHash, strong_digest};
-use compress::{Codec, available_codecs};
+use oc_rsync_core::checksums::{StrongHash, strong_digest};
+use oc_rsync_core::compress::{self, Codec, available_codecs};
 use protocol::{CAP_CODECS, Frame, FrameHeader, Message, Msg, Tag, negotiate_version};
 
 use crate::{LocalPipeTransport, SshTransport, Transport};

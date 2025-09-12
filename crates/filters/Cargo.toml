@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 globset = "0.4"
-logging = { path = "../logging" }
 tracing = "0.1"
 
 [dev-dependencies]

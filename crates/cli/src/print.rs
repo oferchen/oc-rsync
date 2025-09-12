@@ -2,8 +2,9 @@
 use crate::branding;
 use crate::formatter::render_help;
 use crate::options::{ClientOpts, exit_code_from_error_kind};
+use engine::Stats;
 use logging::{InfoFlag, human_bytes, progress_formatter, rate_formatter};
-use oc_rsync_core::{message::ExitCode, transfer::Stats};
+use oc_rsync_core::message::ExitCode;
 
 pub fn handle_clap_error(cmd: &clap::Command, e: clap::Error) -> ! {
     use clap::error::ErrorKind;
