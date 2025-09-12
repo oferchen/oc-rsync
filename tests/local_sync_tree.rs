@@ -191,6 +191,50 @@ fn sync_preserves_xattrs() {
 
 #[cfg(unix)]
 #[test]
+fn sync_excludes_filtered_xattrs() {
+    if !meta::xattrs_supported() {
+        eprintln!("skipping: xattrs unsupported");
+        return;
+    }
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    fs::create_dir_all(&src).unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let file = src.join("file");
+    fs::write(&file, b"hi").unwrap();
+    xattr::set(&file, "user.test", b"val").unwrap();
+    xattr::set(&file, "user.secret", b"shh").unwrap();
+
+    let dst_file = dst.join("file");
+    fs::write(&dst_file, b"old").unwrap();
+    xattr::set(&dst_file, "user.old", b"junk").unwrap();
+
+    let src_arg = format!("{}/", src.display());
+    oc_rsync()
+        .args([
+            "-AX",
+            "--filter=-x user.secret",
+            &src_arg,
+            dst.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let val = xattr::get(dst.join("file"), "user.test").unwrap().unwrap();
+    assert_eq!(&val[..], b"val");
+    assert!(
+        xattr::get(dst.join("file"), "user.secret")
+            .unwrap()
+            .is_none()
+    );
+    assert!(xattr::get(dst.join("file"), "user.old").unwrap().is_none());
+}
+
+#[cfg(unix)]
+#[test]
 fn sync_preserves_symlink_xattrs() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
