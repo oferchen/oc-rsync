@@ -9,7 +9,8 @@ nix = { version = "0.30.1", default-features = false, features = ["poll", "fs"] 
 socket2 = { version = "0.5", features = ["all"] }
 ipnet = "2"
 tracing = "0.1"
-oc-rsync-core = { path = "../core" }
+compress = { path = "../compress" }
+checksums = { path = "../checksums" }
 
 [dev-dependencies]
 tempfile = "3"

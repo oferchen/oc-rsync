@@ -6,11 +6,12 @@ use crate::options::ClientOpts;
 use crate::utils::{RemoteSpec, RshCommand};
 use crate::{EngineError, spawn_daemon_session};
 
-use engine::{Result, Stats, SyncOptions, sync};
 use oc_rsync_core::{
     compress::available_codecs,
+    config::SyncOptions,
     filter::Matcher,
     message::{CAP_ACLS, CAP_CODECS, CAP_XATTRS, CharsetConv},
+    transfer::{Result, Stats, sync},
 };
 use transport::{AddressFamily, SshStdioTransport};
 

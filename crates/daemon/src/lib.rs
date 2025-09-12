@@ -16,5 +16,4 @@ pub use service::{
     host_allowed, init_logging, run_daemon, serve_module,
 };
 
-pub use meta::MetaOpts;
-pub const META_OPTS: MetaOpts = meta::META_OPTS;
+pub use oc_rsync_core::metadata::{META_OPTS, MetaOpts};

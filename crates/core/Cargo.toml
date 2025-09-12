@@ -9,3 +9,4 @@ filters = { path = "../filters" }
 protocol = { path = "../protocol" }
 compress = { path = "../compress" }
 checksums = { path = "../checksums" }
+engine = { path = "../engine", default-features = false }

@@ -1,7 +1,7 @@
 // crates/cli/src/session.rs
 
-use engine::{EngineError, Result};
 use oc_rsync_core::message::CharsetConv;
+use oc_rsync_core::transfer::{EngineError, Result};
 use transport::SshStdioTransport;
 
 pub(crate) fn check_session_errors(

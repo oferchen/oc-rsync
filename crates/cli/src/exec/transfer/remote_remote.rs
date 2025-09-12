@@ -6,8 +6,11 @@ use crate::options::ClientOpts;
 use crate::session::check_session_errors;
 use crate::utils::{PathSpec, RshCommand};
 use crate::{EngineError, spawn_daemon_session};
-use engine::{Result, Stats, SyncOptions, pipe_sessions};
-use oc_rsync_core::message::CharsetConv;
+use oc_rsync_core::{
+    config::SyncOptions,
+    message::CharsetConv,
+    transfer::{Result, Stats, pipe_sessions},
+};
 use transport::{AddressFamily, RateLimitedTransport, SshStdioTransport, daemon_remote_opts};
 
 #[allow(clippy::too_many_arguments)]

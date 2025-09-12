@@ -4,8 +4,8 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use clap::ArgMatches;
-use engine::Result;
 use oc_rsync_core::filter::{self, Matcher, Rule, default_cvs_rules};
+use oc_rsync_core::transfer::Result;
 
 use crate::EngineError;
 use crate::utils::parse_filters;

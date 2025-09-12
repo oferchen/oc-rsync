@@ -1,7 +1,7 @@
 // crates/cli/src/client/run.rs
 
 use clap::ArgMatches;
-use engine::{Result, Stats};
+use oc_rsync_core::transfer::{Result, Stats};
 
 use crate::{
     daemon::run_daemon,
@@ -64,7 +64,7 @@ mod tests {
     #[allow(unused_imports)]
     use daemon::authenticate;
     #[allow(unused_imports)]
-    use engine::SyncOptions;
+    use oc_rsync_core::config::SyncOptions;
     #[cfg(test)]
     #[allow(unused_imports)]
     use oc_rsync_core::message::SUPPORTED_PROTOCOLS;

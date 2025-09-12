@@ -5,12 +5,24 @@ pub mod fs {
     pub use meta::*;
 }
 
+pub mod metadata {
+    pub use meta::{META_OPTS, MetaOpts};
+}
+
 pub mod filter {
     pub use filters::*;
 }
 
 pub mod hardlink {
     pub use meta::{HardLinks, hard_link_id};
+}
+
+pub mod config {
+    pub use engine::{DeleteMode, IdMapper, SyncOptions};
+}
+
+pub mod transfer {
+    pub use engine::{EngineError, Result, Stats, StrongHash, pipe_sessions, sync};
 }
 
 pub mod message {
