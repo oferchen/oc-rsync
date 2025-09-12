@@ -90,19 +90,6 @@ path = "src/bin/oc-rsync/main.rs"
 name = "oc-rsyncd"
 path = "src/bin/oc-rsyncd.rs"
 
-[[bin]]
-name = "flag_matrix"
-path = "tools/flag_matrix.rs"
-
-[[bin]]
-name = "gen-completions"
-path = "tools/gen_completions.rs"
-required-features = ["cli"]
-
-[[bin]]
-name = "strip-rs-comments"
-path = "tools/strip_rs_comments.rs"
-
 # Enable extended attribute and ACL support by default so tests can run
 # without requiring feature flags. Individual crates handle runtime
 # detection of platform support.

@@ -4,7 +4,3 @@ set -euo pipefail
 pandoc -s -t man docs/cli.md -o man/oc-rsync.1
 pandoc -s -t man docs/daemon.md -o man/oc-rsyncd.conf.5
 pandoc -s -t man docs/oc-rsyncd.md -o man/oc-rsyncd.8
-
-# Generate shell completions
-cargo run --quiet --bin gen-completions -- man
-mv man/_oc-rsync man/oc-rsync.zsh
