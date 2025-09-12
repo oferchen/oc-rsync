@@ -1,6 +1,6 @@
 // crates/engine/src/receiver/metadata.rs
 #[cfg(unix)]
-use nix::unistd::{Gid, Uid, chown};
+use nix::unistd::{chown, Gid, Uid};
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::{FileTypeExt, PermissionsExt};
@@ -21,11 +21,21 @@ use super::Receiver;
 
 impl Receiver {
     pub(crate) fn copy_metadata_now(
-        &self,
+        &mut self,
         src: &Path,
         dest: &Path,
         entry: Option<&Entry>,
     ) -> Result<()> {
+        #[cfg(unix)]
+        if self.opts.hard_links {
+            if let Some(entry) = entry {
+                if let Some(id) = entry.hardlink {
+                    if !self.register_hard_link(id as u64, dest) {
+                        return Ok(());
+                    }
+                }
+            }
+        }
         #[cfg(unix)]
         if self.opts.write_devices && !self.opts.devices {
             if let Ok(meta) = fs::symlink_metadata(dest) {
@@ -203,7 +213,7 @@ impl Receiver {
                 .map_err(EngineError::from)?;
             }
         }
-        #[cfg(not(feature = "acl"))]
+        #[cfg(not(unix))]
         let _ = entry;
         let _ = (src, dest);
         Ok(())
