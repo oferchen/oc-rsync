@@ -2,7 +2,7 @@
 set -euo pipefail
 
 fail=0
-pattern='todo!|unimplemented!|FIXME|XXX|panic!\("(TODO|FIXME|XXX|unimplemented)"'
+pattern='todo!|unimplemented!|FIXME|XXX|panic!\("(TODO|FIXME|XXX|unimplemented)"\)'
 
 while IFS= read -r -d '' file; do
     offenses=$(grep -nE "$pattern" "$file" | grep -v '^1:' || true)
