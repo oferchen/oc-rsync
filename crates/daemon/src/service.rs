@@ -8,7 +8,9 @@ use std::sync::{Arc, atomic::Ordering};
 use std::time::{Duration, Instant};
 
 #[cfg(unix)]
-use nix::unistd::{ForkResult, fork, setsid};
+use crate::os::fork_daemon;
+#[cfg(unix)]
+use nix::unistd::{ForkResult, setsid};
 
 use ipnet::IpNet;
 use logging::{DebugFlag, InfoFlag, LogFormat, StderrMode, SubscriberConfig};
@@ -493,7 +495,7 @@ pub fn run_daemon(
     let _ = no_detach;
     #[cfg(unix)]
     if !no_detach {
-        match unsafe { fork() } {
+        match fork_daemon() {
             Ok(ForkResult::Parent { .. }) => return Ok(()),
             Ok(ForkResult::Child) => {
                 setsid().map_err(io::Error::other)?;
