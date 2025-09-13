@@ -1,17 +1,17 @@
 // crates/cli/src/exec/transfer.rs
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::options::ClientOpts;
 use crate::utils::{RemoteSpec, RshCommand};
-use crate::{EngineError, spawn_daemon_session};
+use crate::EngineError;
 
 use oc_rsync_core::{
     compress::available_codecs,
     config::SyncOptions,
     filter::Matcher,
-    message::{CAP_ACLS, CAP_CODECS, CAP_XATTRS, CharsetConv},
-    transfer::{Result, Stats, sync},
+    message::{CharsetConv, CAP_ACLS, CAP_CODECS, CAP_XATTRS},
+    transfer::{sync, Result, Stats},
 };
 use transport::{AddressFamily, SshStdioTransport};
 
@@ -50,23 +50,10 @@ pub(crate) fn execute_transfer(
             },
             RemoteSpec::Local(dst),
         ) => {
-            let mut _session = spawn_daemon_session(
-                &host,
-                &module,
-                opts.port,
-                opts.password_file.as_deref(),
-                opts.no_motd,
-                opts.timeout,
-                opts.connect_timeout,
-                addr_family,
-                &opts.sockopts,
-                sync_opts,
-                opts.protocol.unwrap_or(31),
-                opts.early_input.as_deref(),
-                iconv,
-            )?;
+            let remote_src =
+                PathBuf::from(format!("rsync://{host}/{module}/{}", src.path.display()));
             sync(
-                &src.path,
+                &remote_src,
                 &dst.path,
                 matcher,
                 &available_codecs(),
@@ -130,24 +117,11 @@ pub(crate) fn execute_transfer(
                 module: Some(module),
             },
         ) => {
-            let mut _session = spawn_daemon_session(
-                &host,
-                &module,
-                opts.port,
-                opts.password_file.as_deref(),
-                opts.no_motd,
-                opts.timeout,
-                opts.connect_timeout,
-                addr_family,
-                &opts.sockopts,
-                sync_opts,
-                opts.protocol.unwrap_or(31),
-                opts.early_input.as_deref(),
-                iconv,
-            )?;
+            let remote_dst =
+                PathBuf::from(format!("rsync://{host}/{module}/{}", dst.path.display()));
             sync(
                 &src.path,
-                &dst.path,
+                &remote_dst,
                 matcher,
                 &available_codecs(),
                 sync_opts,
