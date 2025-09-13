@@ -27,12 +27,10 @@ pub use client::run;
 pub use daemon::spawn_daemon_session;
 pub use formatter::{ARG_ORDER, dump_help_body, render_help};
 pub use oc_rsync_core::transfer::EngineError;
+pub use oc_rsync_core::{PathSpec, RemoteSpec, is_remote_spec, parse_remote_spec};
 pub use options::{
     ClientOptsBuilder, ProbeOptsBuilder, cli_command, exit_code_from_engine_error,
     exit_code_from_error_kind, validate_paths,
 };
 pub use print::handle_clap_error;
-pub use utils::{
-    PathSpec, RemoteSpec, parse_iconv, parse_logging_flags, parse_remote_spec, parse_rsh,
-    print_version_if_requested,
-};
+pub use utils::{parse_iconv, parse_logging_flags, parse_rsh, print_version_if_requested};

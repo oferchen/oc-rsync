@@ -4,8 +4,8 @@ use std::path::Path;
 
 use crate::options::ClientOpts;
 use crate::session::check_session_errors;
-use crate::utils::{PathSpec, RshCommand};
-use crate::{EngineError, spawn_daemon_session};
+use crate::utils::RshCommand;
+use crate::{EngineError, PathSpec, spawn_daemon_session};
 use oc_rsync_core::{
     config::SyncOptions,
     message::CharsetConv,

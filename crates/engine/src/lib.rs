@@ -13,6 +13,7 @@ mod cleanup;
 pub use cleanup::fuzzy_match;
 mod delta;
 mod receiver;
+pub mod remote;
 mod sender;
 
 pub mod batch;
@@ -31,6 +32,7 @@ pub use checksums::StrongHash;
 pub use delta::{DeltaIter, Op, compute_delta};
 pub use meta::MetaOpts;
 pub use receiver::{Receiver, ReceiverState};
+pub use remote::{PathSpec, RemoteSpec, is_remote_spec, parse_remote_spec};
 pub use sender::{Sender, SenderState};
 pub const META_OPTS: MetaOpts = meta::META_OPTS;
 
