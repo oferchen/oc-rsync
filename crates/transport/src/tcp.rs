@@ -377,6 +377,7 @@ fn borrow_fd(fd: RawFd) -> io::Result<BorrowedFd<'static>> {
             "file descriptor must be non-negative",
         ));
     }
+    // SAFETY: `fd` has been checked to be non-negative and is assumed to remain valid.
     Ok(unsafe { BorrowedFd::borrow_raw(fd) })
 }
 

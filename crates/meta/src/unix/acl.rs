@@ -101,6 +101,7 @@ pub(crate) fn remove_default_acl(path: &Path) -> io::Result<()> {
     }
 
     let c_path = CString::new(path.as_os_str().as_bytes())?;
+    // SAFETY: `c_path` is a valid, null-terminated C string.
     let ret = unsafe { acl_delete_def_file(c_path.as_ptr()) };
     if ret == 0 {
         Ok(())
