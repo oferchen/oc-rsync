@@ -40,7 +40,7 @@ fn delay_updates_defers_rename() {
     assert_eq!(fs::read(&dst_file).unwrap(), b"old");
     assert_eq!(fs::read(&tmp_path).unwrap(), b"new");
 
-    recv.copy_metadata(&src_file, &dst_file).unwrap();
+    recv.copy_metadata(&src_file, &dst_file, None).unwrap();
     recv.finalize().unwrap();
 
     assert_eq!(fs::read(&dst_file).unwrap(), b"new");

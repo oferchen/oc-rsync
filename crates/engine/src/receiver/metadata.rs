@@ -219,11 +219,24 @@ impl Receiver {
         Ok(())
     }
 
-    pub fn copy_metadata(&mut self, src: &Path, dest: &Path) -> Result<()> {
+    pub fn copy_metadata(
+        &mut self,
+        src: &Path,
+        dest: &Path,
+        entry: Option<&Entry>,
+    ) -> Result<()> {
         if self.opts.delay_updates && self.delayed.iter().any(|(_, _, d)| d == dest) {
+            #[cfg(unix)]
+            if self.opts.hard_links {
+                if let Some(entry) = entry {
+                    if let Some(id) = entry.hardlink {
+                        self.register_hard_link(id as u64, dest);
+                    }
+                }
+            }
             return Ok(());
         }
-        self.copy_metadata_now(src, dest, None)
+        self.copy_metadata_now(src, dest, entry)
     }
 
     pub fn finalize(&mut self) -> Result<()> {
