@@ -1,6 +1,7 @@
 // crates/cli/src/exec/transfer.rs
 
-use std::path::{Path, PathBuf};
+use std::ffi::OsString;
+use std::path::Path;
 
 use crate::options::ClientOpts;
 use crate::utils::{RemoteSpec, RshCommand};
@@ -51,9 +52,9 @@ pub(crate) fn execute_transfer(
             RemoteSpec::Local(dst),
         ) => {
             let remote_src =
-                PathBuf::from(format!("rsync://{host}/{module}/{}", src.path.display()));
+                OsString::from(format!("rsync://{host}/{module}/{}", src.path.display()));
             sync(
-                &remote_src,
+                Path::new(&remote_src),
                 &dst.path,
                 matcher,
                 &available_codecs(),
@@ -118,10 +119,10 @@ pub(crate) fn execute_transfer(
             },
         ) => {
             let remote_dst =
-                PathBuf::from(format!("rsync://{host}/{module}/{}", dst.path.display()));
+                OsString::from(format!("rsync://{host}/{module}/{}", dst.path.display()));
             sync(
                 &src.path,
-                &remote_dst,
+                Path::new(&remote_dst),
                 matcher,
                 &available_codecs(),
                 sync_opts,

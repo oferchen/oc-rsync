@@ -39,8 +39,9 @@ fn daemon_preserves_hard_links_in_subdir() {
         .args(["-aH", &src_arg, &dest])
         .assert()
         .success();
-
     let sub = module.join("sub");
+    assert!(sub.join("a").exists());
+    assert!(!tmp.path().join("rsync:").exists());
     let ino_a = fs::metadata(sub.join("a")).expect("stat a").ino();
     let ino_b = fs::metadata(sub.join("b")).expect("stat b").ino();
     let ino_c = fs::metadata(sub.join("c")).expect("stat c").ino();

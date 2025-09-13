@@ -249,8 +249,8 @@ pub fn sync(
         .write_batch
         .as_ref()
         .and_then(|p| OpenOptions::new().create(true).append(true).open(p).ok());
-    let src_is_remote = is_remote_spec(src);
-    let dst_is_remote = is_remote_spec(dst);
+    let src_is_remote = is_remote_spec(src.as_os_str());
+    let dst_is_remote = is_remote_spec(dst.as_os_str());
     let src_root = if src_is_remote {
         src.to_path_buf()
     } else {
