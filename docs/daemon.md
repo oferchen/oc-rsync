@@ -37,7 +37,7 @@ oc-rsyncd --config /etc/oc-rsyncd.conf
 ```
 
 The configuration syntax is documented in
-[`oc-rsyncd.conf(5)`](../man/oc-rsyncd.conf.5). A hardened systemd unit is
+[`oc-rsyncd.conf(5)`](man/oc-rsyncd.conf.5). A hardened systemd unit is
 available under
 [`packaging/systemd/oc-rsyncd.service`](../packaging/systemd/oc-rsyncd.service).
 

@@ -22,6 +22,8 @@ The Makefile offers shortcuts for common CI checks:
 - `make interop` – run the interoperability matrix with `scripts/interop.sh`.
   These tests are behind the `interop` feature and require upstream `rsync`
   binaries.
+- `tools/gen_manpages.sh` – regenerate manpages under `docs/man/` (requires
+  `help2man` and `scdoc`).
 
 ## Continuous Integration
 

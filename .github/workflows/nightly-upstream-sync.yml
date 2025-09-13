@@ -17,14 +17,14 @@ jobs:
         with:
           toolchain: 1.87
           override: true
-      - name: Install system dependencie
-        run: sudo apt-get update && sudo apt-get install -y libacl1-dev pandoc
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libacl1-dev help2man scdoc
       - name: Build oc-rsync
         run: cargo build --bin oc-rsync
       - name: Fetch upstream rsync
         run: scripts/fetch-rsync.sh
       - name: Generate oc-rsync manpages
-        run: scripts/generate-manpages.sh
+        run: tools/gen_manpages.sh
       - name: Version diff
         run: |
           rsync --version > upstream_version.txt
@@ -32,6 +32,6 @@ jobs:
           diff -u upstream_version.txt oc_rsync_version.txt || true
       - name: Manpage diff
         run: |
-          diff -u rsync-3.4.1/rsync.1 man/oc-rsync.1 || true
-          diff -u rsync-3.4.1/rsyncd.conf.5 man/oc-rsyncd.conf.5 || true
+          diff -u rsync-3.4.1/rsync.1 docs/man/oc-rsync.1 || true
+          diff -u rsync-3.4.1/rsyncd.conf.5 docs/man/oc-rsyncd.conf.5 || true
 
