@@ -22,34 +22,35 @@ fn daemon_preserves_uid_gid_perms() {
 
     assert!(Uid::effective().is_root(), "requires root privileges");
 
-    let tmp = tempdir().unwrap();
+    let tmp = tempdir().expect("create temp dir");
     let src = tmp.path().join("src");
-    let srv = tmp.path().join("srv");
-    fs::create_dir_all(&src).unwrap();
-    fs::create_dir_all(&srv).unwrap();
+    let module = tmp.path().join("mod");
+    fs::create_dir_all(&src).expect("create source dir");
+    fs::create_dir_all(&module).expect("create module dir");
     let file = src.join("file");
-    fs::write(&file, b"hi").unwrap();
+    fs::write(&file, b"hi").expect("write file");
     fchmodat(
         AT_FDCWD,
         &file,
         Mode::from_bits_truncate(0o741),
         FchmodatFlags::NoFollowSymlink,
     )
-    .unwrap();
-    chown(&file, Some(Uid::from_raw(1)), Some(Gid::from_raw(1))).unwrap();
+    .expect("chmod file");
+    chown(&file, Some(Uid::from_raw(1)), Some(Gid::from_raw(1))).expect("chown file");
 
-    let mut daemon = spawn_daemon(&srv);
+    let mut daemon = spawn_daemon(&module);
     let port = daemon.port;
     wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
     Command::cargo_bin("oc-rsync")
-        .unwrap()
+        .expect("oc-rsync binary")
+        .current_dir(&tmp)
         .args(["-a", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
         .assert()
         .success();
 
-    let meta = fs::symlink_metadata(srv.join("file")).unwrap();
+    let meta = fs::symlink_metadata(module.join("file")).expect("stat file");
     assert_eq!(meta.permissions().mode() & 0o777, 0o741);
     assert_eq!(meta.uid(), 1);
     assert_eq!(meta.gid(), 1);
@@ -59,26 +60,27 @@ fn daemon_preserves_uid_gid_perms() {
 #[serial]
 fn daemon_preserves_hard_links_rr_client() {
     use std::os::unix::fs::MetadataExt;
-    let tmp = tempdir().unwrap();
+    let tmp = tempdir().expect("create temp dir");
     let src = tmp.path().join("src");
-    let srv = tmp.path().join("srv");
-    fs::create_dir_all(&src).unwrap();
-    fs::create_dir_all(&srv).unwrap();
+    let module = tmp.path().join("mod");
+    fs::create_dir_all(&src).expect("create source dir");
+    fs::create_dir_all(&module).expect("create module dir");
     let f1 = src.join("a");
-    fs::write(&f1, b"hi").unwrap();
+    fs::write(&f1, b"hi").expect("write a");
     let f2 = src.join("b");
-    fs::hard_link(&f1, &f2).unwrap();
-    let mut daemon = spawn_daemon(&srv);
+    fs::hard_link(&f1, &f2).expect("link b to a");
+    let mut daemon = spawn_daemon(&module);
     let port = daemon.port;
     wait_for_daemon(&mut daemon);
     let src_arg = format!("{}/", src.display());
     let dest = format!("rsync://127.0.0.1:{port}/mod");
     Command::cargo_bin("oc-rsync")
-        .unwrap()
+        .expect("oc-rsync binary")
+        .current_dir(&tmp)
         .args(["-aH", &src_arg, &dest])
         .assert()
         .success();
-    let meta1 = fs::symlink_metadata(srv.join("a")).unwrap();
-    let meta2 = fs::symlink_metadata(srv.join("b")).unwrap();
+    let meta1 = fs::symlink_metadata(module.join("a")).expect("stat a");
+    let meta2 = fs::symlink_metadata(module.join("b")).expect("stat b");
     assert_eq!(meta1.ino(), meta2.ino());
 }
