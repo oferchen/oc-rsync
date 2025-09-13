@@ -36,28 +36,27 @@ pub fn group_by_inode(entries: &[InodeEntry]) -> Vec<Entry> {
     }
     let mut groups: HashMap<u64, u32> = HashMap::new();
     let mut next: u32 = 0;
-    entries
-        .iter()
-        .map(|e| {
-            let id = hard_link_id(e.dev, e.ino);
-            let hardlink = if counts.get(&id).copied().unwrap_or(0) > 1 {
-                Some(*groups.entry(id).or_insert_with(|| {
-                    let g = next;
-                    next += 1;
-                    g
-                }))
-            } else {
-                None
-            };
-            Entry {
-                path: e.path.clone(),
-                uid: e.uid,
-                gid: e.gid,
-                hardlink,
-                xattrs: e.xattrs.clone(),
-                acl: e.acl.clone(),
-                default_acl: e.default_acl.clone(),
-            }
-        })
-        .collect()
+    let mut out = Vec::with_capacity(entries.len());
+    for e in entries {
+        let id = hard_link_id(e.dev, e.ino);
+        let hardlink = if counts.get(&id).copied().unwrap_or(0) > 1 {
+            Some(*groups.entry(id).or_insert_with(|| {
+                let g = next;
+                next += 1;
+                g
+            }))
+        } else {
+            None
+        };
+        out.push(Entry {
+            path: e.path.clone(),
+            uid: e.uid,
+            gid: e.gid,
+            hardlink,
+            xattrs: e.xattrs.clone(),
+            acl: e.acl.clone(),
+            default_acl: e.default_acl.clone(),
+        });
+    }
+    out
 }

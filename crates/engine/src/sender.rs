@@ -156,15 +156,15 @@ impl Sender {
             if let Ok(dst_sum) = self.strong_file_checksum(&dest) {
                 let src_sum = self.strong_file_checksum(path)?;
                 if src_sum == dst_sum {
-                    recv.copy_metadata(path, &dest)?;
+                    recv.copy_metadata(path, &dest, None)?;
                     return Ok(false);
                 }
             } else if self.metadata_unchanged(path, &dest) {
-                recv.copy_metadata(path, &dest)?;
+                recv.copy_metadata(path, &dest, None)?;
                 return Ok(false);
             }
         } else if self.metadata_unchanged(path, &dest) {
-            recv.copy_metadata(path, &dest)?;
+            recv.copy_metadata(path, &dest, None)?;
             return Ok(false);
         }
 
@@ -357,7 +357,7 @@ impl Sender {
         if !self.opts.only_write_batch {
             recv.apply(path, &dest, rel, ops)?;
             drop(atime_guard);
-            recv.copy_metadata(path, &dest)?;
+            recv.copy_metadata(path, &dest, None)?;
         } else {
             drop(atime_guard);
             for op in ops {
