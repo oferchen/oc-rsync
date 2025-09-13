@@ -49,7 +49,8 @@ fn daemon_preserves_uid_gid_perms() {
         .args(["-a", &src_arg, &format!("rsync://127.0.0.1:{port}/mod")])
         .assert()
         .success();
-
+    assert!(module.join("file").exists());
+    assert!(!tmp.path().join("rsync:").exists());
     let meta = fs::symlink_metadata(module.join("file")).expect("stat file");
     assert_eq!(meta.permissions().mode() & 0o777, 0o741);
     assert_eq!(meta.uid(), 1);
@@ -80,6 +81,8 @@ fn daemon_preserves_hard_links_rr_client() {
         .args(["-aH", &src_arg, &dest])
         .assert()
         .success();
+    assert!(module.join("a").exists());
+    assert!(!tmp.path().join("rsync:").exists());
     let meta1 = fs::symlink_metadata(module.join("a")).expect("stat a");
     let meta2 = fs::symlink_metadata(module.join("b")).expect("stat b");
     assert_eq!(meta1.ino(), meta2.ino());

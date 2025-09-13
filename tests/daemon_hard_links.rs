@@ -40,6 +40,7 @@ fn daemon_preserves_hard_links_multiple() {
         .assert()
         .success();
 
+    assert!(module.join("a").exists());
     assert!(!tmp.path().join("rsync:").exists());
 
     let ino_a = fs::metadata(module.join("a")).expect("stat a").ino();

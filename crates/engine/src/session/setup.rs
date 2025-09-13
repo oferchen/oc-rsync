@@ -1,6 +1,7 @@
 // crates/engine/src/session/setup.rs
 
 use std::fs;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use compress::Codec;
@@ -11,9 +12,9 @@ use crate::Result;
 
 use super::SyncOptions;
 
-pub(crate) fn is_remote_spec(path: &Path) -> bool {
+pub(crate) fn is_remote_spec(path: &OsStr) -> bool {
     if let Some(s) = path.to_str() {
-        if s.starts_with("rsync://") {
+        if s.starts_with("rsync://") || s.starts_with("rsync:/") {
             return true;
         }
         if s.starts_with('[') && s.contains("]:") {
