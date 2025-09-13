@@ -1,6 +1,6 @@
 # Daemon Mode
 
-`oc-rsync` can act as a standalone daemon that listens on TCP port 873 and serves one or more exported modules. The daemon is started with `--daemon` and at least one `--module` declaration of the form `name=path`.
+`oc-rsync` can act as a standalone daemon that listens on TCP port 873 and serves one or more exported modules. The daemon is started with `--daemon` and at least one `--module` declaration of the form `name=path`. The path component may be wrapped in single or double quotes to embed commas or `=` characters.
 
 The default listener binds to all IPv4 interfaces on port 873. Supply
 `--port` to choose a different port. The `-4` and `-6` flags restrict the
@@ -93,6 +93,12 @@ Modules map a name to a directory on disk. Each module is supplied on the comman
 
 ```bash
 oc-rsync --daemon --module 'data=/srv/export'
+```
+
+Wrap the path in single or double quotes to include commas or `=` characters:
+
+```bash
+oc-rsync --daemon --module "data='/tmp/foo,bar=baz'"
 ```
 
 The integration tests spawn a daemon in exactly this manner when negotiating protocol versions.

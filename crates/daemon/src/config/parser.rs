@@ -19,30 +19,55 @@ fn parse_list(val: &str) -> Vec<String> {
 }
 
 pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
-    let mut parts = s.splitn(2, '=');
-    let name = parts
-        .next()
-        .ok_or_else(|| "missing module name".to_string())?
-        .trim();
+    let mut chars = s.chars().peekable();
+    let mut name = String::new();
+    while let Some(&c) = chars.peek() {
+        if c == '=' {
+            chars.next();
+            break;
+        }
+        name.push(c);
+        chars.next();
+    }
+    let name = name.trim();
     if name.is_empty() {
         return Err("missing module name".to_string());
     }
-    let rest = parts
-        .next()
-        .ok_or_else(|| "missing module path".to_string())?
-        .trim();
-    if rest.is_empty() {
+
+    let mut path = String::new();
+    let mut in_quotes: Option<char> = None;
+    for c in chars.by_ref() {
+        match c {
+            '\'' | '"' => {
+                if let Some(q) = in_quotes {
+                    if c == q {
+                        in_quotes = None;
+                    }
+                } else {
+                    in_quotes = Some(c);
+                }
+                path.push(c);
+            }
+            ',' if in_quotes.is_none() => {
+                break;
+            }
+            _ => path.push(c),
+        }
+    }
+    if in_quotes.is_some() {
+        return Err("unterminated quote in module path".to_string());
+    }
+    let path = path.trim();
+    if path.is_empty() {
         return Err("missing module path".to_string());
     }
-
-    let mut iter = rest.split(',');
-    let path_str = iter
-        .next()
-        .ok_or_else(|| "module path missing or malformed".to_string())?
-        .trim();
-    if path_str.is_empty() {
-        return Err("module path missing or malformed".to_string());
-    }
+    let path_str = if (path.starts_with('"') && path.ends_with('"'))
+        || (path.starts_with('\'') && path.ends_with('\''))
+    {
+        &path[1..path.len() - 1]
+    } else {
+        path
+    };
     let raw = PathBuf::from(path_str);
     let abs = if raw.is_absolute() {
         raw
@@ -50,13 +75,14 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
         env::current_dir().map_err(|e| e.to_string())?.join(raw)
     };
 
+    let rest: String = chars.collect();
     let mut module = Module {
         name: name.to_string(),
         path: abs,
         ..Module::default()
     };
 
-    for (i, opt) in iter.enumerate() {
+    for (i, opt) in rest.split(',').filter(|s| !s.trim().is_empty()).enumerate() {
         let pos = i + 1;
         let mut kv = opt.splitn(2, '=');
         let key = kv
