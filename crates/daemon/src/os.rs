@@ -2,7 +2,7 @@
 #![allow(unsafe_code)]
 
 #[cfg(unix)]
-use nix::unistd::{ForkResult, fork};
+use nix::unistd::{fork, ForkResult};
 
 #[cfg(unix)]
 /// Fork the current process.
@@ -13,7 +13,7 @@ use nix::unistd::{ForkResult, fork};
 /// responsible for performing only async-signal-safe operations before any
 /// further library calls.
 pub(crate) fn fork_daemon() -> nix::Result<ForkResult> {
-    // SAFETY: see the `Safety` section above. We do not access shared state in
-    // the child before returning to the caller.
+    /* SAFETY: see the `Safety` section above. We do not access shared state in
+    the child before returning to the caller. */
     unsafe { fork() }
 }

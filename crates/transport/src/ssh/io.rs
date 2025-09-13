@@ -4,8 +4,8 @@ use std::io::{self, Read, Write};
 use std::os::fd::{AsRawFd, BorrowedFd, RawFd};
 use std::time::Duration;
 
-use nix::fcntl::{FcntlArg, OFlag, fcntl};
-use nix::poll::{PollFd, PollFlags, PollTimeout, poll};
+use nix::fcntl::{fcntl, FcntlArg, OFlag};
+use nix::poll::{poll, PollFd, PollFlags, PollTimeout};
 
 use crate::LocalPipeTransport;
 use crate::Transport;
@@ -20,8 +20,20 @@ pub(crate) fn inner_pipe(inner: Option<&mut InnerPipe>) -> io::Result<&mut Inner
     inner.ok_or_else(|| io::Error::other("missing inner transport"))
 }
 
+/// Borrow a raw file descriptor for the duration of an operation.
+///
+/// # Safety
+/// `fd` must reference a valid, open file descriptor that remains so for the
+/// lifetime of the returned [`BorrowedFd`].
+unsafe fn borrow_fd(fd: RawFd) -> BorrowedFd<'static> {
+    unsafe {
+        /* SAFETY: caller guarantees that `fd` is a valid open file descriptor. */
+        BorrowedFd::borrow_raw(fd)
+    }
+}
+
 pub(crate) fn set_fd_blocking(fd: RawFd, blocking: bool) -> io::Result<()> {
-    let fd = unsafe { BorrowedFd::borrow_raw(fd) };
+    let fd = unsafe { borrow_fd(fd) };
     let flags = OFlag::from_bits_truncate(fcntl(fd, FcntlArg::F_GETFL).map_err(io::Error::from)?);
     let mut new_flags = flags;
     if blocking {
@@ -40,7 +52,7 @@ fn wait_fd(fd: RawFd, flags: PollFlags, timeout: Option<Duration>) -> io::Result
         }
         None => PollTimeout::NONE,
     };
-    let mut fds = [PollFd::new(unsafe { BorrowedFd::borrow_raw(fd) }, flags)];
+    let mut fds = [PollFd::new(unsafe { borrow_fd(fd) }, flags)];
     let res = poll(&mut fds, timeout).map_err(io::Error::from)?;
     if res == 0 {
         return Err(io::Error::new(
