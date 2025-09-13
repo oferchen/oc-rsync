@@ -270,6 +270,30 @@ fn daemon_excludes_filtered_xattrs() {
         .unwrap();
     assert_eq!(&secret[..], b"keep");
     assert!(xattr::get(srv.join("file"), "user.old").unwrap().is_none());
+
+    // Overwrite the destination again to ensure filtered attributes survive
+    // subsequent replacements.
+    drop(daemon);
+    let mut daemon = spawn_daemon(&srv);
+    let port = daemon.port;
+    wait_for_daemon(&mut daemon);
+    fs::write(&file, b"bye").unwrap();
+    xattr::set(&file, "user.test", b"val2").unwrap();
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "-AX",
+            "--filter=-x user.secret",
+            &src_arg,
+            &format!("rsync://127.0.0.1:{port}/mod"),
+        ])
+        .assert()
+        .success();
+
+    let secret = xattr::get(srv.join("file"), "user.secret")
+        .unwrap()
+        .unwrap();
+    assert_eq!(&secret[..], b"keep");
 }
 
 #[test]
@@ -317,6 +341,28 @@ fn daemon_excludes_filtered_xattrs_rr_client() {
         .unwrap();
     assert_eq!(&secret[..], b"keep");
     assert!(xattr::get(srv.join("file"), "user.old").unwrap().is_none());
+
+    drop(daemon);
+    let mut daemon = spawn_daemon(&srv);
+    let port = daemon.port;
+    wait_for_daemon(&mut daemon);
+    fs::write(&file, b"bye").unwrap();
+    xattr::set(&file, "user.test", b"val2").unwrap();
+    Command::cargo_bin("oc-rsync")
+        .unwrap()
+        .args([
+            "--xattrs",
+            "--filter=-x user.secret",
+            &src_arg,
+            &format!("rsync://127.0.0.1:{port}/mod"),
+        ])
+        .assert()
+        .success();
+
+    let secret = xattr::get(srv.join("file"), "user.secret")
+        .unwrap()
+        .unwrap();
+    assert_eq!(&secret[..], b"keep");
 }
 
 #[test]

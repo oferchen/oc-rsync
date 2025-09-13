@@ -249,6 +249,23 @@ pub fn apply_xattrs(
             return Err(err);
         }
     };
+
+    /* Preserve any existing attributes that are filtered out so they can be
+     * restored after the file is replaced.  These attributes fail both the
+     * transfer and deletion filters and would otherwise disappear when a file
+     * is overwritten. */
+    let mut preserved = Vec::new();
+    if include.is_some() || include_for_delete.is_some() {
+        for name in existing.iter() {
+            let inc_ok = include.map(|f| f(name.as_os_str())).unwrap_or(true);
+            let del_ok = include_for_delete
+                .map(|f| f(name.as_os_str()))
+                .unwrap_or(true);
+            if !inc_ok && !del_ok && let Ok(Some(val)) = xattr::get(path, name) {
+                preserved.push((name.clone(), val));
+            }
+        }
+    }
     for (name, value) in xattrs {
         if include.is_some_and(|filter| !filter(name.as_os_str())) {
             continue;
@@ -272,6 +289,15 @@ pub fn apply_xattrs(
             continue;
         }
         if let Err(err) = xattr::remove(path, &name)
+            && !should_ignore_xattr_error(&err)
+        {
+            return Err(err);
+        }
+    }
+    /* Re-apply any preserved attributes so that filtered xattrs survive file
+     * replacement. */
+    for (name, value) in preserved {
+        if let Err(err) = xattr::set(path, &name, &value)
             && !should_ignore_xattr_error(&err)
         {
             return Err(err);
