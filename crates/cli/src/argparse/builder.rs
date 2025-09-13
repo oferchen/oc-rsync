@@ -2,10 +2,12 @@
 
 use std::env;
 
-use clap::{Arg, ArgAction, ArgMatches, Args, CommandFactory, FromArgMatches, parser::ValueSource};
+use clap::{parser::ValueSource, ArgMatches, Args, CommandFactory, FromArgMatches};
+#[cfg(any(test, feature = "dump-help"))]
+use clap::{Arg, ArgAction};
 
-use crate::EngineError;
 use crate::formatter;
+use crate::EngineError;
 use oc_rsync_core::transfer::Result;
 
 use super::{ClientOpts, ProbeOpts};
