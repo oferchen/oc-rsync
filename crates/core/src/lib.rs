@@ -1,5 +1,7 @@
 // crates/core/src/lib.rs
 #![doc = include_str!("../../../docs/crates/core/overview.md")]
+#![forbid(unsafe_code)]
+#![deny(rust_2018_idioms, warnings)]
 
 pub mod fs {
     pub use meta::*;
