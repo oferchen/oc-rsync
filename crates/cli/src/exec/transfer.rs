@@ -19,7 +19,17 @@ use transport::{AddressFamily, SshStdioTransport};
 
 mod remote_remote;
 
-fn build_rsync_url(host: &str, module: &str, path: &PathSpec) -> OsString {
+fn build_rsync_url(host: &str, port: Option<u16>, module: &str, path: &PathSpec) -> OsString {
+    let host = if host.contains(':') {
+        format!("[{host}]")
+    } else {
+        host.to_string()
+    };
+    let host = if let Some(p) = port {
+        format!("{host}:{p}")
+    } else {
+        host
+    };
     if path.path == Path::new(".") {
         if path.trailing_slash {
             OsString::from(format!("rsync://{host}/{module}/"))
@@ -61,12 +71,13 @@ pub(crate) fn execute_transfer(
         (
             RemoteSpec::Remote {
                 host,
+                port,
                 path: src,
                 module: Some(module),
             },
             RemoteSpec::Local(dst),
         ) => {
-            let remote_src = build_rsync_url(&host, &module, &src);
+            let remote_src = build_rsync_url(&host, port, &module, &src);
             sync(
                 Path::new(&remote_src),
                 &dst.path,
@@ -78,6 +89,7 @@ pub(crate) fn execute_transfer(
         (
             RemoteSpec::Remote {
                 host,
+                port: _,
                 path: src,
                 module: None,
             },
@@ -128,11 +140,12 @@ pub(crate) fn execute_transfer(
             RemoteSpec::Local(src),
             RemoteSpec::Remote {
                 host,
+                port,
                 path: dst,
                 module: Some(module),
             },
         ) => {
-            let remote_dst = build_rsync_url(&host, &module, &dst);
+            let remote_dst = build_rsync_url(&host, port, &module, &dst);
             sync(
                 &src.path,
                 Path::new(&remote_dst),
@@ -145,6 +158,7 @@ pub(crate) fn execute_transfer(
             RemoteSpec::Local(src),
             RemoteSpec::Remote {
                 host,
+                port: _,
                 path: dst,
                 module: None,
             },
@@ -193,19 +207,23 @@ pub(crate) fn execute_transfer(
         (
             RemoteSpec::Remote {
                 host: src_host,
+                port: src_port,
                 path: src_path,
                 module: src_module,
             },
             RemoteSpec::Remote {
                 host: dst_host,
+                port: dst_port,
                 path: dst_path,
                 module: dst_module,
             },
         ) => remote_remote::remote_to_remote(
             src_host,
+            src_port,
             src_path,
             src_module,
             dst_host,
+            dst_port,
             dst_path,
             dst_module,
             opts,
@@ -239,7 +257,7 @@ mod tests {
             trailing_slash: false,
         };
         assert_eq!(
-            build_rsync_url("host", "mod", &path),
+            build_rsync_url("host", None, "mod", &path),
             OsString::from("rsync://host/mod")
         );
         let path = PathSpec {
@@ -247,7 +265,7 @@ mod tests {
             trailing_slash: true,
         };
         assert_eq!(
-            build_rsync_url("host", "mod", &path),
+            build_rsync_url("host", None, "mod", &path),
             OsString::from("rsync://host/mod/")
         );
     }
@@ -259,7 +277,7 @@ mod tests {
             trailing_slash: false,
         };
         assert_eq!(
-            build_rsync_url("host", "mod", &path),
+            build_rsync_url("host", None, "mod", &path),
             OsString::from("rsync://host/mod/a/b")
         );
         let path = PathSpec {
@@ -267,7 +285,7 @@ mod tests {
             trailing_slash: true,
         };
         assert_eq!(
-            build_rsync_url("host", "mod", &path),
+            build_rsync_url("host", None, "mod", &path),
             OsString::from("rsync://host/mod/a/b/")
         );
     }

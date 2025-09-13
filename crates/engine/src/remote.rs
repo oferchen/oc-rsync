@@ -20,6 +20,7 @@ pub enum RemoteSpec {
     Local(PathSpec),
     Remote {
         host: String,
+        port: Option<u16>,
         path: PathSpec,
         module: Option<String>,
     },
@@ -50,20 +51,56 @@ pub fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec, EngineError> {
     };
     if let Some(rest) = s.strip_prefix(b"rsync://") {
         let mut parts = rest.splitn(2, |&b| b == b'/');
-        let host = parts.next().unwrap_or(&[]);
+        let host_port = parts.next().unwrap_or(&[]);
         let mod_path = parts.next().unwrap_or(&[]);
         let mut mp = mod_path.splitn(2, |&b| b == b'/');
         let module = mp.next().unwrap_or(&[]);
         let path = mp.next().unwrap_or(&[]);
         let path = if path.is_empty() { b"." } else { path };
-        if host.is_empty() {
+        if host_port.is_empty() {
             return Err(EngineError::Other("remote host missing".into()));
         }
         if module.is_empty() {
             return Err(EngineError::Other("remote module missing".into()));
         }
+        let (host_bytes, port) = if host_port.starts_with(b"[") {
+            if let Some(end) = host_port.iter().position(|&b| b == b']') {
+                let host = &host_port[1..end];
+                let port = if host_port.get(end + 1) == Some(&b':') {
+                    let p = &host_port[end + 2..];
+                    if p.iter().all(u8::is_ascii_digit) {
+                        std::str::from_utf8(p).ok().and_then(|s| s.parse().ok())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                (host, port)
+            } else {
+                return Err(EngineError::Other("remote host missing".into()));
+            }
+        } else if let Some(idx) = host_port.iter().position(|&b| b == b':') {
+            let host = &host_port[..idx];
+            let port_bytes = &host_port[idx + 1..];
+            let port = if port_bytes.iter().all(u8::is_ascii_digit) {
+                std::str::from_utf8(port_bytes)
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+            } else {
+                None
+            };
+            if port.is_some() {
+                (host, port)
+            } else {
+                (host_port, None)
+            }
+        } else {
+            (host_port, None)
+        };
         return Ok(RemoteSpec::Remote {
-            host: bytes_to_string(host, "remote host")?,
+            host: bytes_to_string(host_bytes, "remote host")?,
+            port,
             path: PathSpec {
                 path: path_from_bytes(path),
                 trailing_slash,
@@ -84,6 +121,7 @@ pub fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec, EngineError> {
                 }
                 return Ok(RemoteSpec::Remote {
                     host: bytes_to_string(host, "remote host")?,
+                    port: None,
                     path: PathSpec {
                         path: path_from_bytes(path),
                         trailing_slash,
@@ -112,6 +150,7 @@ pub fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec, EngineError> {
         let path = if path.is_empty() { b"." } else { path };
         return Ok(RemoteSpec::Remote {
             host: bytes_to_string(host, "remote host")?,
+            port: None,
             path: PathSpec {
                 path: path_from_bytes(path),
                 trailing_slash,
@@ -140,6 +179,7 @@ pub fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec, EngineError> {
         }
         return Ok(RemoteSpec::Remote {
             host: bytes_to_string(host, "remote host")?,
+            port: None,
             path: PathSpec {
                 path: path_from_bytes(path),
                 trailing_slash,

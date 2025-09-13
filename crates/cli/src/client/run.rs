@@ -90,7 +90,9 @@ mod tests {
     fn ipv6_specs_are_remote() {
         let spec = parse_remote_spec(OsStr::new("[::1]:/tmp")).unwrap();
         match spec {
-            RemoteSpec::Remote { host, path, module } => {
+            RemoteSpec::Remote {
+                host, path, module, ..
+            } => {
                 assert_eq!(host, "::1");
                 assert!(module.is_none());
                 assert_eq!(path.path, PathBuf::from("/tmp"));
@@ -131,7 +133,9 @@ mod tests {
     fn rsync_url_specs_are_remote() {
         let spec = parse_remote_spec(OsStr::new("rsync://host/mod/path")).unwrap();
         match spec {
-            RemoteSpec::Remote { host, module, path } => {
+            RemoteSpec::Remote {
+                host, module, path, ..
+            } => {
                 assert_eq!(host, "host");
                 assert_eq!(module.as_deref(), Some("mod"));
                 assert_eq!(path.path, PathBuf::from("path"));
@@ -144,7 +148,9 @@ mod tests {
     fn rsync_url_module_specs_are_remote() {
         let spec = parse_remote_spec(OsStr::new("rsync://host/mod")).unwrap();
         match spec {
-            RemoteSpec::Remote { host, module, path } => {
+            RemoteSpec::Remote {
+                host, module, path, ..
+            } => {
                 assert_eq!(host, "host");
                 assert_eq!(module.as_deref(), Some("mod"));
                 assert_eq!(path.path, PathBuf::from("."));
@@ -157,7 +163,9 @@ mod tests {
     fn daemon_double_colon_specs_are_remote() {
         let spec = parse_remote_spec(OsStr::new("host::mod/path")).unwrap();
         match spec {
-            RemoteSpec::Remote { host, module, path } => {
+            RemoteSpec::Remote {
+                host, module, path, ..
+            } => {
                 assert_eq!(host, "host");
                 assert_eq!(module.as_deref(), Some("mod"));
                 assert_eq!(path.path, PathBuf::from("path"));
@@ -170,7 +178,9 @@ mod tests {
     fn host_path_specs_are_remote() {
         let spec = parse_remote_spec(OsStr::new("host:/tmp")).unwrap();
         match spec {
-            RemoteSpec::Remote { host, module, path } => {
+            RemoteSpec::Remote {
+                host, module, path, ..
+            } => {
                 assert_eq!(host, "host");
                 assert!(module.is_none());
                 assert_eq!(path.path, PathBuf::from("/tmp"));
