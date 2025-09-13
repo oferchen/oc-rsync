@@ -58,7 +58,7 @@ These packages enable building upstream rsync for interop and provide system lib
 
 ### 2.3 `check_layers` Agent
 - **Script:** `tools/check_layers.sh`
-- **Purpose:** Enforce module **layering**: `checksums, compress, filters, meta, protocol → transport, engine, logging → cli`. No upward deps.
+- **Purpose:** Enforce module **layering**: `checksums → compress → filters → walk → meta → protocol → engine → logging → core → transport → daemon → cli`. No upward deps.
 - **Run locally:**
   ```sh
   bash tools/check_layers.sh
