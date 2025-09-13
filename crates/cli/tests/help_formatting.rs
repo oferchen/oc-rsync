@@ -2,19 +2,6 @@
 use oc_rsync_cli::{cli_command, dump_help_body, render_help};
 use serial_test::serial;
 use std::collections::HashSet;
-use std::env;
-
-fn set_env_var(key: &str, val: &str) {
-    unsafe {
-        env::set_var(key, val);
-    }
-}
-
-fn remove_env_var(key: &str) {
-    unsafe {
-        env::remove_var(key);
-    }
-}
 
 fn extract_options(help: &str) -> String {
     let mut out = String::new();
@@ -55,9 +42,7 @@ fn dump_help_body_lists_unique_options() {
 #[serial]
 fn help_wrapping_matches_upstream_80() {
     let cmd = cli_command();
-    set_env_var("COLUMNS", "80");
-    let ours = render_help(&cmd);
-    remove_env_var("COLUMNS");
+    let ours = temp_env::with_var("COLUMNS", Some("80"), || render_help(&cmd));
     let upstream = include_str!("../../../tests/golden/help/rsync-help-80.txt");
     assert_eq!(extract_options(&ours), extract_options(upstream));
 }
@@ -66,9 +51,7 @@ fn help_wrapping_matches_upstream_80() {
 #[serial]
 fn help_wrapping_matches_upstream_100() {
     let cmd = cli_command();
-    set_env_var("COLUMNS", "100");
-    let ours = render_help(&cmd);
-    remove_env_var("COLUMNS");
+    let ours = temp_env::with_var("COLUMNS", Some("100"), || render_help(&cmd));
     let upstream = include_str!("../../../tests/golden/help/rsync-help-100.txt");
     assert_eq!(extract_options(&ours), extract_options(upstream));
 }
@@ -79,9 +62,7 @@ fn dump_help_body_matches_render_help() {
     let cmd = cli_command();
     let body = dump_help_body(&cmd);
 
-    set_env_var("COLUMNS", "80");
-    let full = render_help(&cmd);
-    remove_env_var("COLUMNS");
+    let full = temp_env::with_var("COLUMNS", Some("80"), || render_help(&cmd));
 
     assert_eq!(body, extract_options(&full));
 }
