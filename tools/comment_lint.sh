@@ -11,7 +11,10 @@ while IFS= read -r -d '' file; do
         fail=1
         continue
     fi
-    if tail -n +2 "$file" | grep -E '^[[:space:]]*//' | grep -vE '^[[:space:]]*///' >/dev/null; then
+    if tail -n +2 "$file" \
+        | grep -E '^[[:space:]]*//' \
+        | grep -vE '^[[:space:]]*///' \
+        | grep -vE '^[[:space:]]*//[[:space:]]*SAFETY:' >/dev/null; then
         echo "$file: contains // comments" >&2
         fail=1
     fi
