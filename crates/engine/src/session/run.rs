@@ -250,6 +250,7 @@ pub fn sync(
         .as_ref()
         .and_then(|p| OpenOptions::new().create(true).append(true).open(p).ok());
     let src_is_remote = is_remote_spec(src);
+    let dst_is_remote = is_remote_spec(dst);
     let src_root = if src_is_remote {
         src.to_path_buf()
     } else {
@@ -259,7 +260,7 @@ pub fn sync(
     let start = Instant::now();
     if !src_is_remote && !src_root.exists() {
         if opts.delete_missing_args {
-            if dst.exists() {
+            if !dst_is_remote && dst.exists() {
                 if let Some(max) = opts.max_delete {
                     if stats.files_deleted >= max {
                         return Err(EngineError::Other("max-delete limit exceeded".into()));
@@ -404,12 +405,12 @@ pub fn sync(
         TOTAL_FILES.store(file_cnt, Ordering::SeqCst);
     }
     if opts.dry_run {
-        if opts.delete.is_some() {
+        if !dst_is_remote && opts.delete.is_some() {
             delete_extraneous(&src_root, dst, &matcher, opts, &mut stats, start)?;
         }
         return Ok(stats);
     }
-    if !opts.only_write_batch {
+    if !opts.only_write_batch && !dst_is_remote {
         let dir = if src_root.is_file() {
             dst.parent()
         } else if !dst.exists() {
@@ -470,7 +471,7 @@ pub fn sync(
         }
         return Ok(stats);
     }
-    if matches!(opts.delete, Some(DeleteMode::Before)) {
+    if !dst_is_remote && matches!(opts.delete, Some(DeleteMode::Before)) {
         delete_extraneous(&src_root, dst, &matcher, opts, &mut stats, start)?;
     }
     let flist_xfer_start = Instant::now();
@@ -508,23 +509,29 @@ pub fn sync(
                     let dest_path = dst.join(rel);
                     if rel.as_os_str().is_empty() {
                         #[cfg(feature = "acl")]
-                        if opts.acls {
+                        if opts.acls && !dst_is_remote {
                             receiver.copy_metadata_now(&path, &dest_path, None)?;
                         }
                         continue;
                     }
                     if opts.dirs_only {
-                        fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
-                        receiver.copy_metadata_now(&path, &dest_path, None)?;
-                        stats.files_created += 1;
-                        stats.dirs_created += 1;
+                        if !dst_is_remote {
+                            fs::create_dir_all(&dest_path)
+                                .map_err(|e| io_context(&dest_path, e))?;
+                            receiver.copy_metadata_now(&path, &dest_path, None)?;
+                            stats.files_created += 1;
+                            stats.dirs_created += 1;
+                        }
                         continue;
                     }
                     if !res.descend {
-                        fs::create_dir_all(&dest_path).map_err(|e| io_context(&dest_path, e))?;
-                        receiver.copy_metadata_now(&path, &dest_path, None)?;
-                        stats.files_created += 1;
-                        stats.dirs_created += 1;
+                        if !dst_is_remote {
+                            fs::create_dir_all(&dest_path)
+                                .map_err(|e| io_context(&dest_path, e))?;
+                            receiver.copy_metadata_now(&path, &dest_path, None)?;
+                            stats.files_created += 1;
+                            stats.dirs_created += 1;
+                        }
                         walker.skip_current_dir();
                         skip_dirs.push(path.clone());
                         continue;
@@ -547,10 +554,10 @@ pub fn sync(
     }
     sender.finish();
     receiver.finalize()?;
-    if matches!(opts.delete, Some(DeleteMode::During)) {
+    if !dst_is_remote && matches!(opts.delete, Some(DeleteMode::During)) {
         delete_extraneous(&src_root, dst, &matcher, opts, &mut stats, start)?;
     }
-    if matches!(opts.delete, Some(DeleteMode::After)) {
+    if !dst_is_remote && matches!(opts.delete, Some(DeleteMode::After)) {
         delete_extraneous(&src_root, dst, &matcher, opts, &mut stats, start)?;
     }
     if let Some(mut f) = batch_file {
