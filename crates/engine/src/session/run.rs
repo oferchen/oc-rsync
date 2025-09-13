@@ -23,8 +23,9 @@ use crate::io::io_context;
 use crate::{EngineError, Receiver, Result, Sender};
 
 use super::select_codec;
-use super::setup::{count_entries, is_remote_spec};
+use super::setup::count_entries;
 use super::{DeleteMode, Stats, SyncOptions};
+use crate::is_remote_spec;
 
 fn check_time_limit(start: Instant, opts: &SyncOptions) -> Result<()> {
     if let Some(limit) = opts.stop_after {

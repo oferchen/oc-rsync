@@ -5,7 +5,8 @@ use std::path::Path;
 
 use crate::EngineError;
 use crate::options::ClientOpts;
-use crate::utils::{PathSpec, RemoteSpec, RshCommand};
+use crate::utils::RshCommand;
+use crate::{PathSpec, RemoteSpec};
 
 use oc_rsync_core::{
     compress::available_codecs,
@@ -224,8 +225,8 @@ pub(crate) fn execute_transfer(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::PathSpec;
     use crate::options::cli_command;
-    use crate::utils::PathSpec;
     use clap::FromArgMatches;
     use std::fs;
     use std::path::PathBuf;

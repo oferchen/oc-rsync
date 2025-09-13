@@ -39,3 +39,5 @@ pub mod compress {
 pub mod checksums {
     pub use checksums::*;
 }
+
+pub use engine::{PathSpec, RemoteSpec, is_remote_spec, parse_remote_spec};

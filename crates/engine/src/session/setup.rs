@@ -1,7 +1,6 @@
 // crates/engine/src/session/setup.rs
 
 use std::fs;
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use compress::Codec;
@@ -11,35 +10,6 @@ use walk::walk;
 use crate::Result;
 
 use super::SyncOptions;
-
-pub(crate) fn is_remote_spec(path: &OsStr) -> bool {
-    if let Some(s) = path.to_str() {
-        if s.starts_with("rsync://") || s.starts_with("rsync:/") {
-            return true;
-        }
-        if s.starts_with('[') && s.contains("]:") {
-            return true;
-        }
-        if s.contains("::") {
-            return true;
-        }
-        if let Some(idx) = s.find(':') {
-            if idx == 1 {
-                let bytes = s.as_bytes();
-                if bytes[0].is_ascii_alphabetic()
-                    && bytes
-                        .get(2)
-                        .map(|c| *c == b'/' || *c == b'\\')
-                        .unwrap_or(false)
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-    }
-    false
-}
 
 pub(crate) fn count_entries(
     src_root: &Path,

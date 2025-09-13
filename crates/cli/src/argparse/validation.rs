@@ -1,8 +1,7 @@
 // crates/cli/src/argparse/validation.rs
 use std::ffi::OsString;
 
-use crate::utils::parse_remote_spec;
-use crate::{EngineError, RemoteSpec};
+use crate::{EngineError, RemoteSpec, parse_remote_spec};
 use oc_rsync_core::message::ExitCode;
 use oc_rsync_core::transfer::Result;
 
