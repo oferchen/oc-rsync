@@ -1,5 +1,6 @@
 // crates/logging/src/lib.rs
 #![doc = include_str!("../../../docs/crates/logging/lib.md")]
+#![forbid(unsafe_code)]
 #![deny(missing_docs, rust_2018_idioms)]
 
 mod flags;

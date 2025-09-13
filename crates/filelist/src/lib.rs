@@ -1,6 +1,7 @@
 // crates/filelist/src/lib.rs
 
 #![doc = include_str!("../../../docs/crates/filelist/lib.md")]
+#![forbid(unsafe_code)]
 
 pub mod decoder;
 pub mod encoder;
