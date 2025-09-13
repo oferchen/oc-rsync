@@ -65,8 +65,7 @@ motd-file = /etc/oc-rsyncd.motd
 ```
 
 Each module requires a `path` directive which is resolved and canonicalised at
-startup. Unknown directives are ignored for now but using the canonical names
-from `rsyncd.conf(5)` ensures forward compatibility.
+startup. Unknown directives result in `unknown option` errors matching rsync's diagnostics, so use the canonical names from `rsyncd.conf(5)` to stay compatible.
 
 ## Example packaging
 
