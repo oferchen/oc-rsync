@@ -14,3 +14,22 @@ fn parses_rsync_module_with_root_path() {
         RemoteSpec::Local(_) => panic!("expected RemoteSpec::Remote"),
     }
 }
+
+#[test]
+fn parses_rsync_module_with_port() {
+    let spec = parse_remote_spec(OsStr::new("rsync://host:1234/mod/")).unwrap();
+    match spec {
+        RemoteSpec::Remote {
+            host,
+            port,
+            module,
+            path,
+        } => {
+            assert_eq!(host, "host");
+            assert_eq!(port, Some(1234));
+            assert_eq!(module.as_deref(), Some("mod"));
+            assert_eq!(path.path, Path::new("."));
+        }
+        RemoteSpec::Local(_) => panic!("expected RemoteSpec::Remote"),
+    }
+}
