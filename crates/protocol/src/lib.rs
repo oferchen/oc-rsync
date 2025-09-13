@@ -1,6 +1,7 @@
 // crates/protocol/src/lib.rs
 
 #![doc = include_str!("../../../docs/crates/protocol/lib.md")]
+#![forbid(unsafe_code)]
 
 pub mod frames;
 pub mod handshake;

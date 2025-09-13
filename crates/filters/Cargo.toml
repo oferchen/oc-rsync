@@ -13,3 +13,5 @@ tempfile = "3"
 proptest = "1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 libc = "0.2"
+nix = { version = "0.28", default-features = false, features = ["fs"] }
+temp-env = "0.3"

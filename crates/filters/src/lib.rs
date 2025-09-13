@@ -1,6 +1,7 @@
 // crates/filters/src/lib.rs
 
 #![doc = include_str!("../../../docs/crates/filters/lib.md")]
+#![forbid(unsafe_code)]
 
 pub mod matcher;
 pub mod parser;

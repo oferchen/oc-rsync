@@ -1,4 +1,5 @@
 // src/bin/oc-rsyncd.rs
+#![forbid(unsafe_code)]
 use std::ffi::OsString;
 use std::process::Command;
 

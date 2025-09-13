@@ -1,8 +1,9 @@
 // crates/filters/tests/cvs_rules.rs
+#![forbid(unsafe_code)]
 use filters::{Matcher, default_cvs_rules, parse};
 use std::collections::HashSet;
-use std::env;
 use std::fs;
+use temp_env::with_var;
 use tempfile::tempdir;
 
 fn p(s: &str) -> Vec<filters::Rule> {
@@ -58,69 +59,45 @@ fn cvsignore_is_scoped_per_directory() {
 fn home_patterns_are_global() {
     let home = tempdir().unwrap();
     fs::write(home.path().join(".cvsignore"), "home_ignored\n").unwrap();
-    unsafe {
-        env::set_var("HOME", home.path());
-    }
+    with_var("HOME", Some(home.path()), || {
+        let rules = p("-C\n");
+        let matcher = Matcher::new(rules);
 
-    let rules = p("-C\n");
-    let matcher = Matcher::new(rules);
-
-    assert!(!matcher.is_included("home_ignored").unwrap());
-    assert!(!matcher.is_included("sub/home_ignored").unwrap());
-
-    unsafe {
-        env::remove_var("HOME");
-    }
+        assert!(!matcher.is_included("home_ignored").unwrap());
+        assert!(!matcher.is_included("sub/home_ignored").unwrap());
+    });
 }
 
 #[test]
 fn env_patterns_are_global() {
-    unsafe {
-        env::set_var("CVSIGNORE", "env_ignored");
-    }
+    with_var("CVSIGNORE", Some("env_ignored"), || {
+        let rules = p("-C\n");
+        let matcher = Matcher::new(rules);
 
-    let rules = p("-C\n");
-    let matcher = Matcher::new(rules);
-
-    assert!(!matcher.is_included("env_ignored").unwrap());
-    assert!(!matcher.is_included("sub/env_ignored").unwrap());
-
-    unsafe {
-        env::remove_var("CVSIGNORE");
-    }
+        assert!(!matcher.is_included("env_ignored").unwrap());
+        assert!(!matcher.is_included("sub/env_ignored").unwrap());
+    });
 }
 
 #[test]
 fn env_multiple_patterns_are_respected() {
-    unsafe {
-        env::set_var("CVSIGNORE", "foo bar");
-    }
+    with_var("CVSIGNORE", Some("foo bar"), || {
+        let rules = p("-C\n");
+        let matcher = Matcher::new(rules);
 
-    let rules = p("-C\n");
-    let matcher = Matcher::new(rules);
-
-    assert!(!matcher.is_included("foo").unwrap());
-    assert!(!matcher.is_included("bar").unwrap());
-
-    unsafe {
-        env::remove_var("CVSIGNORE");
-    }
+        assert!(!matcher.is_included("foo").unwrap());
+        assert!(!matcher.is_included("bar").unwrap());
+    });
 }
 
 #[test]
 fn env_patterns_can_be_overridden() {
-    unsafe {
-        env::set_var("CVSIGNORE", "env_ignored");
-    }
+    with_var("CVSIGNORE", Some("env_ignored"), || {
+        let rules = p("-C\n+ env_ignored\n");
+        let matcher = Matcher::new(rules);
 
-    let rules = p("-C\n+ env_ignored\n");
-    let matcher = Matcher::new(rules);
-
-    assert!(matcher.is_included("env_ignored").unwrap());
-
-    unsafe {
-        env::remove_var("CVSIGNORE");
-    }
+        assert!(matcher.is_included("env_ignored").unwrap());
+    });
 }
 
 #[test]
@@ -142,15 +119,11 @@ fn default_rules_ignore_hash_prefixed_files() {
 
 #[test]
 fn env_hash_patterns_are_respected() {
-    unsafe {
-        env::set_var("CVSIGNORE", "#envpat");
-    }
-    let rules = p("-C\n");
-    let matcher = Matcher::new(rules);
-    assert!(!matcher.is_included("#envpat").unwrap());
-    unsafe {
-        env::remove_var("CVSIGNORE");
-    }
+    with_var("CVSIGNORE", Some("#envpat"), || {
+        let rules = p("-C\n");
+        let matcher = Matcher::new(rules);
+        assert!(!matcher.is_included("#envpat").unwrap());
+    });
 }
 
 #[test]

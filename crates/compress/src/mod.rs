@@ -1,5 +1,6 @@
 // crates/compress/src/mod.rs
 #![doc = include_str!("../../../docs/crates/compress/lib.md")]
+#![forbid(unsafe_code)]
 
 use std::collections::HashSet;
 use std::io::{self, Read, Write};
