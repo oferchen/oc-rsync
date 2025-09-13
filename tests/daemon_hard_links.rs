@@ -1,5 +1,6 @@
 // tests/daemon_hard_links.rs
 use assert_cmd::Command;
+use serial_test::serial;
 use std::fs;
 use tempfile::tempdir;
 
@@ -11,6 +12,7 @@ use common::daemon::{spawn_daemon, wait_for_daemon};
 
 #[cfg(unix)]
 #[test]
+#[serial]
 fn daemon_preserves_hard_links_multiple() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("src");
