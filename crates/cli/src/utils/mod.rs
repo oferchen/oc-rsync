@@ -315,7 +315,7 @@ pub enum RemoteSpec {
 }
 
 pub fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec> {
-    use std::ffi::OsString;
+    use std::ffi::OsStr;
 
     fn bytes_to_string(bytes: &[u8], what: &str) -> Result<String> {
         std::str::from_utf8(bytes)
@@ -323,8 +323,15 @@ pub fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec> {
             .map_err(|_| EngineError::Other(format!("{what} not valid UTF-8")))
     }
 
+    #[cfg(unix)]
     fn path_from_bytes(bytes: &[u8]) -> PathBuf {
-        PathBuf::from(unsafe { OsString::from_encoded_bytes_unchecked(bytes.to_vec()) })
+        use std::os::unix::ffi::OsStrExt;
+        PathBuf::from(OsStr::from_bytes(bytes))
+    }
+
+    #[cfg(not(unix))]
+    fn path_from_bytes(bytes: &[u8]) -> PathBuf {
+        PathBuf::from(String::from_utf8_lossy(bytes).into_owned())
     }
 
     let bytes = input.as_encoded_bytes();

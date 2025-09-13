@@ -2,7 +2,9 @@
 
 use std::env;
 
-use clap::{Arg, ArgAction, ArgMatches, Args, CommandFactory, FromArgMatches, parser::ValueSource};
+#[cfg(any(test, feature = "dump-help"))]
+use clap::{Arg, ArgAction};
+use clap::{ArgMatches, Args, CommandFactory, FromArgMatches, parser::ValueSource};
 
 use crate::EngineError;
 use crate::formatter;

@@ -1,6 +1,7 @@
 // crates/cli/src/lib.rs
 
 #![doc = include_str!("../../../docs/crates/cli/lib.md")]
+#![forbid(unsafe_code)]
 #![allow(clippy::collapsible_if)]
 #![deny(unsafe_op_in_unsafe_fn, rust_2018_idioms, warnings)]
 
