@@ -15,6 +15,7 @@ unsafe extern "C" {
 
 #[cfg(not(target_os = "windows"))]
 fn stdout_stream() -> io::Result<NonNull<libc::FILE>> {
+    // SAFETY: `stdout` is provided by the C runtime and assumed to be a valid pointer.
     unsafe {
         NonNull::new(stdout).ok_or_else(|| io::Error::new(ErrorKind::BrokenPipe, "stdout is null"))
     }
@@ -22,6 +23,7 @@ fn stdout_stream() -> io::Result<NonNull<libc::FILE>> {
 
 #[cfg(not(target_os = "windows"))]
 fn stderr_stream() -> io::Result<NonNull<libc::FILE>> {
+    // SAFETY: `stderr` is provided by the C runtime and assumed to be a valid pointer.
     unsafe {
         NonNull::new(stderr).ok_or_else(|| io::Error::new(ErrorKind::BrokenPipe, "stderr is null"))
     }
@@ -29,6 +31,7 @@ fn stderr_stream() -> io::Result<NonNull<libc::FILE>> {
 
 #[cfg(target_os = "windows")]
 fn stdout_stream() -> io::Result<NonNull<libc::FILE>> {
+    // SAFETY: `__acrt_iob_func` returns a valid pointer for stdout when called with index 1.
     unsafe {
         extern "C" {
             fn __acrt_iob_func(idx: libc::c_uint) -> *mut libc::FILE;
@@ -40,6 +43,7 @@ fn stdout_stream() -> io::Result<NonNull<libc::FILE>> {
 
 #[cfg(target_os = "windows")]
 fn stderr_stream() -> io::Result<NonNull<libc::FILE>> {
+    // SAFETY: `__acrt_iob_func` returns a valid pointer for stderr when called with index 2.
     unsafe {
         extern "C" {
             fn __acrt_iob_func(idx: libc::c_uint) -> *mut libc::FILE;
@@ -53,6 +57,7 @@ pub(crate) fn set_stream_buffer(stream: *mut libc::FILE, mode: libc::c_int) -> i
     if stream.is_null() {
         return Err(io::Error::new(ErrorKind::BrokenPipe, "stream is null"));
     }
+    // SAFETY: `stream` was validated as non-null and the buffer arguments are well-formed.
     let ret = unsafe { libc::setvbuf(stream, ptr::null_mut(), mode, 0) };
     if ret == 0 {
         Ok(())

@@ -20,6 +20,7 @@ struct Sse42;
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 impl RollingChecksum for Sse42 {
     fn checksum(&self, data: &[u8], seed: u32) -> u32 {
+        // SAFETY: CPU feature detection ensures SSE4.2 support and the data slice is valid.
         unsafe { rolling_checksum_sse42(data, seed) }
     }
 }
@@ -30,6 +31,7 @@ struct Avx2;
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 impl RollingChecksum for Avx2 {
     fn checksum(&self, data: &[u8], seed: u32) -> u32 {
+        // SAFETY: CPU feature detection ensures AVX2 support and the data slice is valid.
         unsafe { rolling_checksum_avx2(data, seed) }
     }
 }
@@ -48,6 +50,7 @@ struct Avx512;
 ))]
 impl RollingChecksum for Avx512 {
     fn checksum(&self, data: &[u8], seed: u32) -> u32 {
+        // SAFETY: CPU feature detection ensures AVX512 support and the data slice is valid.
         unsafe { rolling_checksum_avx512(data, seed) }
     }
 }

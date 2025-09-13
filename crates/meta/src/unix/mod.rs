@@ -157,6 +157,7 @@ pub(super) fn get_file_crtime(path: &Path) -> io::Result<Option<FileTime>> {
 
     let c_path = CString::new(path.as_os_str().as_bytes())?;
     let mut stx = MaybeUninit::<libc::statx>::zeroed();
+    // SAFETY: `c_path` is a valid C string and `stx` is properly allocated for `statx`.
     let ret = unsafe {
         statx(
             AT_FDCWD,
@@ -174,6 +175,7 @@ pub(super) fn get_file_crtime(path: &Path) -> io::Result<Option<FileTime>> {
             return Err(err);
         }
     }
+    // SAFETY: `statx` initialized `stx` on success.
     let stx = unsafe { stx.assume_init() };
     if (stx.stx_mask & STATX_BTIME) == 0 {
         Ok(None)
@@ -191,9 +193,11 @@ pub(super) fn get_file_crtime(path: &Path) -> io::Result<Option<FileTime>> {
 
     let c_path = CString::new(path.as_os_str().as_bytes())?;
     let mut st = MaybeUninit::<libc::stat>::zeroed();
+    // SAFETY: `c_path` is a valid C string and `st` points to enough space for `stat`.
     if unsafe { libc::stat(c_path.as_ptr(), st.as_mut_ptr()) } != 0 {
         return Err(io::Error::last_os_error());
     }
+    // SAFETY: `stat` populated `st` on success.
     let st = unsafe { st.assume_init() };
     let secs = st.st_birthtime;
     let nsecs = st.st_birthtime_nsec;
@@ -227,6 +231,7 @@ pub(super) fn set_file_crtime(path: &Path, crtime: FileTime) -> io::Result<()> {
     };
 
     let path = CString::new(path.as_os_str().as_bytes())?;
+    // SAFETY: `path` is a valid C string and the pointers to `attr` and `ts` are properly initialized.
     let ret = unsafe {
         setattrlist(
             path.as_ptr(),

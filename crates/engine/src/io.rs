@@ -42,6 +42,7 @@ pub fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
     #[cfg(target_os = "macos")]
     {
         use std::os::fd::AsRawFd;
+        // SAFETY: `file` provides a valid descriptor and all libc calls check their return values.
         unsafe {
             let fd = file.as_raw_fd();
             let mut fstore = libc::fstore_t {
@@ -79,6 +80,7 @@ pub fn preallocate(file: &File, len: u64) -> std::io::Result<()> {
     ))]
     {
         use std::os::fd::AsRawFd;
+        // SAFETY: `file` yields a valid descriptor and `posix_fallocate` is checked for errors.
         unsafe {
             let ret = libc::posix_fallocate(file.as_raw_fd(), 0, len as libc::off_t);
             if ret == 0 {

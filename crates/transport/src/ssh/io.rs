@@ -26,13 +26,12 @@ pub(crate) fn inner_pipe(inner: Option<&mut InnerPipe>) -> io::Result<&mut Inner
 /// `fd` must reference a valid, open file descriptor that remains so for the
 /// lifetime of the returned [`BorrowedFd`].
 unsafe fn borrow_fd(fd: RawFd) -> BorrowedFd<'static> {
-    unsafe {
-        /* SAFETY: caller guarantees that `fd` is a valid open file descriptor. */
-        BorrowedFd::borrow_raw(fd)
-    }
+    // SAFETY: caller guarantees that `fd` is a valid open file descriptor.
+    unsafe { BorrowedFd::borrow_raw(fd) }
 }
 
 pub(crate) fn set_fd_blocking(fd: RawFd, blocking: bool) -> io::Result<()> {
+    // SAFETY: `fd` must reference a valid open descriptor per `borrow_fd`'s contract.
     let fd = unsafe { borrow_fd(fd) };
     let flags = OFlag::from_bits_truncate(fcntl(fd, FcntlArg::F_GETFL).map_err(io::Error::from)?);
     let mut new_flags = flags;
@@ -52,6 +51,7 @@ fn wait_fd(fd: RawFd, flags: PollFlags, timeout: Option<Duration>) -> io::Result
         }
         None => PollTimeout::NONE,
     };
+    // SAFETY: `fd` must remain valid for the duration of the poll.
     let mut fds = [PollFd::new(unsafe { borrow_fd(fd) }, flags)];
     let res = poll(&mut fds, timeout).map_err(io::Error::from)?;
     if res == 0 {

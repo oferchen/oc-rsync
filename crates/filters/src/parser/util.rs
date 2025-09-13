@@ -96,16 +96,21 @@ mod tests {
         write!(file, "stdin data").unwrap();
         file.seek(SeekFrom::Start(0)).unwrap();
 
+        // SAFETY: duplicating `STDIN_FILENO` yields a new valid descriptor.
         let stdin_fd = unsafe { libc::dup(0) };
         assert!(stdin_fd >= 0);
 
         let file_fd = file.into_raw_fd();
+        // SAFETY: both `file_fd` and descriptor `0` are valid for `dup2`.
         assert!(unsafe { libc::dup2(file_fd, 0) } >= 0);
+        // SAFETY: `file_fd` is no longer needed after duplication.
         unsafe { libc::close(file_fd) };
 
         let data = read_path_or_stdin(Path::new("-")).unwrap();
 
+        // SAFETY: restore original stdin from `stdin_fd`.
         assert!(unsafe { libc::dup2(stdin_fd, 0) } >= 0);
+        // SAFETY: `stdin_fd` was obtained from `dup` and must be closed.
         unsafe { libc::close(stdin_fd) };
 
         assert_eq!(data, b"stdin data");
