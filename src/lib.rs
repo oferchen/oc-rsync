@@ -1,7 +1,8 @@
 // src/lib.rs
 
+#![forbid(unsafe_code)]
 #![doc = include_str!("../docs/crates/oc-rsync/lib.md")]
-#![deny(unsafe_code, rust_2018_idioms, missing_debug_implementations)]
+#![deny(rust_2018_idioms, missing_debug_implementations)]
 
 pub mod config;
 pub mod run;

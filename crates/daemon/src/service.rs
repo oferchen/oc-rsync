@@ -4,17 +4,15 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, atomic::Ordering};
+use std::sync::{atomic::Ordering, Arc};
 use std::time::{Duration, Instant};
 
 #[cfg(unix)]
-use crate::os::fork_daemon;
-#[cfg(unix)]
-use nix::unistd::{ForkResult, setsid};
+use nix::unistd::daemon;
 
 use ipnet::IpNet;
 use logging::{DebugFlag, InfoFlag, LogFormat, StderrMode, SubscriberConfig};
-use protocol::{SUPPORTED_PROTOCOLS, negotiate_version};
+use protocol::{negotiate_version, SUPPORTED_PROTOCOLS};
 #[cfg(unix)]
 use sd_notify::{self, NotifyState};
 use transport::{AddressFamily, RateLimitedTransport, TcpTransport, Transport};
@@ -40,7 +38,7 @@ pub struct PrivilegeContext {
 #[cfg(unix)]
 impl Drop for PrivilegeContext {
     fn drop(&mut self) {
-        use nix::unistd::{Gid, Uid, chroot, fchdir, setegid, seteuid};
+        use nix::unistd::{chroot, fchdir, setegid, seteuid, Gid, Uid};
         let _ = setegid(Gid::from_raw(self.gid));
         let _ = seteuid(Uid::from_raw(self.uid));
         if self.use_chroot {
@@ -160,7 +158,7 @@ pub fn chroot_and_drop_privileges(
 
 #[cfg(unix)]
 pub fn drop_privileges(uid: u32, gid: u32) -> io::Result<()> {
-    use nix::unistd::{Gid, Uid, setegid, seteuid};
+    use nix::unistd::{setegid, seteuid, Gid, Uid};
     let cur_uid = Uid::current().as_raw();
     let cur_gid = Gid::current().as_raw();
     if gid != cur_gid {
@@ -495,15 +493,7 @@ pub fn run_daemon(
     let _ = no_detach;
     #[cfg(unix)]
     if !no_detach {
-        match fork_daemon() {
-            Ok(ForkResult::Parent { .. }) => return Ok(()),
-            Ok(ForkResult::Child) => {
-                setsid().map_err(io::Error::other)?;
-            }
-            Err(e) => {
-                return Err(io::Error::other(e));
-            }
-        }
+        daemon(true, true).map_err(io::Error::other)?;
     }
     if let Some(path) = &pid_file {
         let mut f = OpenOptions::new()

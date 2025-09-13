@@ -1,12 +1,11 @@
 // crates/daemon/src/lib.rs
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![deny(rust_2018_idioms, warnings)]
 #![doc = include_str!("../../../docs/crates/daemon/lib.md")]
 #![allow(clippy::collapsible_if)]
 
 pub mod auth;
 pub mod config;
-mod os;
 pub mod service;
 
 pub use auth::{authenticate, authenticate_token, parse_auth_token};
