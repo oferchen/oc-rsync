@@ -182,7 +182,7 @@ pub fn hard_link_id(dev: u64, ino: u64) -> u64 {
 #[cfg(unix)]
 #[derive(Debug, Default)]
 pub struct HardLinks {
-    map: HashMap<u64, (PathBuf, Vec<PathBuf>)>,
+    map: HashMap<u64, Vec<PathBuf>>,
 }
 
 #[cfg(unix)]
@@ -190,29 +190,26 @@ impl HardLinks {
     pub fn register(&mut self, id: u64, path: &Path) -> bool {
         match self.map.entry(id) {
             Entry::Occupied(mut e) => {
-                let (ref first, ref mut others) = *e.get_mut();
-                if path != first && !others.iter().any(|p| p == path) {
-                    others.push(path.to_path_buf());
+                let paths = e.get_mut();
+                if !paths.iter().any(|p| p == path) {
+                    paths.push(path.to_path_buf());
                 }
                 false
             }
             Entry::Vacant(v) => {
-                v.insert((path.to_path_buf(), Vec::new()));
+                v.insert(vec![path.to_path_buf()]);
                 true
             }
         }
     }
 
     pub fn finalize(&mut self) -> io::Result<()> {
-        for (_, (first, mut others)) in std::mem::take(&mut self.map) {
-            let src = if first.exists() {
-                first
-            } else if let Some(pos) = others.iter().position(|p| p.exists()) {
-                others.remove(pos)
-            } else {
+        for (_, mut paths) in std::mem::take(&mut self.map) {
+            let Some(src_idx) = paths.iter().position(|p| p.exists()) else {
                 continue;
             };
-            for dest in others {
+            let src = paths.remove(src_idx);
+            for dest in paths {
                 if dest.exists() {
                     fs::remove_file(&dest)?;
                 }

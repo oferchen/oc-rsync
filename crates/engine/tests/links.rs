@@ -20,6 +20,8 @@ fn hard_links_grouped() {
     fs::write(&file1, b"hi").unwrap();
     let file2 = src.join("b");
     fs::hard_link(&file1, &file2).unwrap();
+    let file3 = src.join("c");
+    fs::hard_link(&file1, &file3).unwrap();
     sync(
         &src,
         &dst,
@@ -33,7 +35,9 @@ fn hard_links_grouped() {
     .unwrap();
     let meta1 = fs::symlink_metadata(dst.join("a")).unwrap();
     let meta2 = fs::symlink_metadata(dst.join("b")).unwrap();
+    let meta3 = fs::symlink_metadata(dst.join("c")).unwrap();
     assert_eq!(meta1.ino(), meta2.ino());
+    assert_eq!(meta1.ino(), meta3.ino());
 }
 
 #[test]
