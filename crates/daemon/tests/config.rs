@@ -110,6 +110,13 @@ fn parse_module_accepts_symlinked_dir() {
     assert_eq!(module.path, link);
 }
 
+#[test]
+fn parse_module_reports_unknown_option_position() {
+    let err = parse_module("data=/tmp,foo=bar").unwrap_err();
+    assert!(err.contains("foo=bar"));
+    assert!(err.contains("position 2"));
+}
+
 #[cfg(unix)]
 #[test]
 fn parse_config_resolves_symlinked_path() {

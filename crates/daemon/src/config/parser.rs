@@ -56,16 +56,17 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
         ..Module::default()
     };
 
-    for opt in iter {
+    for (i, opt) in iter.enumerate() {
+        let pos = i + 1;
         let mut kv = opt.splitn(2, '=');
         let key = kv
             .next()
-            .ok_or_else(|| "missing option key".to_string())?
+            .ok_or_else(|| format!("malformed option at position {pos}: {opt}"))?
             .trim()
             .to_lowercase();
         let val = kv
             .next()
-            .ok_or_else(|| format!("missing value for {key}"))?
+            .ok_or_else(|| format!("missing value for {key} at position {pos}"))?
             .trim();
         let key = key.replace('-', "_");
         match key.as_str() {
@@ -77,28 +78,53 @@ pub fn parse_module(s: &str) -> std::result::Result<Module, String> {
             "timeout" => {
                 let secs = val
                     .parse::<u64>()
-                    .map_err(|e| format!("invalid timeout: {e}"))?;
+                    .map_err(|e| format!("{key}={val} at position {pos}: invalid timeout: {e}"))?;
                 module.timeout = if secs == 0 {
                     None
                 } else {
                     Some(Duration::from_secs(secs))
                 };
             }
-            "use_chroot" => module.use_chroot = parse_bool(val).map_err(|e| e.to_string())?,
-            "numeric_ids" => module.numeric_ids = parse_bool(val).map_err(|e| e.to_string())?,
-            "uid" => module.uid = Some(parse_uid(val).map_err(|e| e.to_string())?),
-            "gid" => module.gid = Some(parse_gid(val).map_err(|e| e.to_string())?),
-            "read_only" => module.read_only = parse_bool(val).map_err(|e| e.to_string())?,
-            "write_only" => module.write_only = parse_bool(val).map_err(|e| e.to_string())?,
-            "list" => module.list = parse_bool(val).map_err(|e| e.to_string())?,
+            "use_chroot" => {
+                module.use_chroot =
+                    parse_bool(val).map_err(|e| format!("{key}={val} at position {pos}: {e}"))?;
+            }
+            "numeric_ids" => {
+                module.numeric_ids =
+                    parse_bool(val).map_err(|e| format!("{key}={val} at position {pos}: {e}"))?;
+            }
+            "uid" => {
+                module.uid = Some(
+                    parse_uid(val).map_err(|e| format!("{key}={val} at position {pos}: {e}"))?,
+                );
+            }
+            "gid" => {
+                module.gid = Some(
+                    parse_gid(val).map_err(|e| format!("{key}={val} at position {pos}: {e}"))?,
+                );
+            }
+            "read_only" => {
+                module.read_only =
+                    parse_bool(val).map_err(|e| format!("{key}={val} at position {pos}: {e}"))?;
+            }
+            "write_only" => {
+                module.write_only =
+                    parse_bool(val).map_err(|e| format!("{key}={val} at position {pos}: {e}"))?;
+            }
+            "list" => {
+                module.list =
+                    parse_bool(val).map_err(|e| format!("{key}={val} at position {pos}: {e}"))?;
+            }
             "max_connections" => {
-                let max = val
-                    .parse::<u32>()
-                    .map_err(|e| format!("invalid max connections: {e}"))?;
+                let max = val.parse::<u32>().map_err(|e| {
+                    format!("{key}={val} at position {pos}: invalid max connections: {e}")
+                })?;
                 module.max_connections = Some(max);
             }
             "refuse_options" => module.refuse_options = parse_list(val),
-            _ => return Err(format!("unknown option: {key}")),
+            _ => {
+                return Err(format!("unknown option {key}={val} at position {pos}"));
+            }
         }
     }
 
