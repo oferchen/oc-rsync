@@ -3,20 +3,34 @@
 use std::ffi::OsString;
 use std::path::Path;
 
-use crate::options::ClientOpts;
-use crate::utils::{RemoteSpec, RshCommand};
 use crate::EngineError;
+use crate::options::ClientOpts;
+use crate::utils::{PathSpec, RemoteSpec, RshCommand};
 
 use oc_rsync_core::{
     compress::available_codecs,
     config::SyncOptions,
     filter::Matcher,
-    message::{CharsetConv, CAP_ACLS, CAP_CODECS, CAP_XATTRS},
-    transfer::{sync, Result, Stats},
+    message::{CAP_ACLS, CAP_CODECS, CAP_XATTRS, CharsetConv},
+    transfer::{Result, Stats, sync},
 };
 use transport::{AddressFamily, SshStdioTransport};
 
 mod remote_remote;
+
+fn build_rsync_url(host: &str, module: &str, path: &PathSpec) -> OsString {
+    if path.path == Path::new(".") {
+        if path.trailing_slash {
+            OsString::from(format!("rsync://{host}/{module}/"))
+        } else {
+            OsString::from(format!("rsync://{host}/{module}"))
+        }
+    } else if path.trailing_slash {
+        OsString::from(format!("rsync://{host}/{module}/{}/", path.path.display()))
+    } else {
+        OsString::from(format!("rsync://{host}/{module}/{}", path.path.display()))
+    }
+}
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn execute_transfer(
@@ -51,8 +65,7 @@ pub(crate) fn execute_transfer(
             },
             RemoteSpec::Local(dst),
         ) => {
-            let remote_src =
-                OsString::from(format!("rsync://{host}/{module}/{}", src.path.display()));
+            let remote_src = build_rsync_url(&host, &module, &src);
             sync(
                 Path::new(&remote_src),
                 &dst.path,
@@ -118,8 +131,7 @@ pub(crate) fn execute_transfer(
                 module: Some(module),
             },
         ) => {
-            let remote_dst =
-                OsString::from(format!("rsync://{host}/{module}/{}", dst.path.display()));
+            let remote_dst = build_rsync_url(&host, &module, &dst);
             sync(
                 &src.path,
                 Path::new(&remote_dst),
@@ -216,7 +228,48 @@ mod tests {
     use crate::utils::PathSpec;
     use clap::FromArgMatches;
     use std::fs;
+    use std::path::PathBuf;
     use tempfile::tempdir;
+
+    #[test]
+    fn build_rsync_url_module_root() {
+        let path = PathSpec {
+            path: PathBuf::from("."),
+            trailing_slash: false,
+        };
+        assert_eq!(
+            build_rsync_url("host", "mod", &path),
+            OsString::from("rsync://host/mod")
+        );
+        let path = PathSpec {
+            path: PathBuf::from("."),
+            trailing_slash: true,
+        };
+        assert_eq!(
+            build_rsync_url("host", "mod", &path),
+            OsString::from("rsync://host/mod/")
+        );
+    }
+
+    #[test]
+    fn build_rsync_url_nested_paths() {
+        let path = PathSpec {
+            path: PathBuf::from("a/b"),
+            trailing_slash: false,
+        };
+        assert_eq!(
+            build_rsync_url("host", "mod", &path),
+            OsString::from("rsync://host/mod/a/b")
+        );
+        let path = PathSpec {
+            path: PathBuf::from("a/b"),
+            trailing_slash: true,
+        };
+        assert_eq!(
+            build_rsync_url("host", "mod", &path),
+            OsString::from("rsync://host/mod/a/b/")
+        );
+    }
 
     #[test]
     fn execute_transfer_local_ok() {
