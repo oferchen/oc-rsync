@@ -5,6 +5,8 @@ use std::env;
 use std::ffi::OsString;
 use std::time::{Duration, SystemTime};
 use std::{ffi::OsStr, io, path::PathBuf};
+#[cfg(unix)]
+use std::os::unix::ffi::OsStringExt;
 
 use crate::EngineError;
 use clap::ArgMatches;
@@ -323,8 +325,9 @@ pub fn parse_remote_spec(input: &OsStr) -> Result<RemoteSpec> {
             .map_err(|_| EngineError::Other(format!("{what} not valid UTF-8")))
     }
 
+    #[cfg(unix)]
     fn path_from_bytes(bytes: &[u8]) -> PathBuf {
-        PathBuf::from(unsafe { OsString::from_encoded_bytes_unchecked(bytes.to_vec()) })
+        PathBuf::from(OsString::from_vec(bytes.to_vec()))
     }
 
     let bytes = input.as_encoded_bytes();

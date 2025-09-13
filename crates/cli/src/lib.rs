@@ -2,6 +2,7 @@
 
 #![doc = include_str!("../../../docs/crates/cli/lib.md")]
 #![allow(clippy::collapsible_if)]
+#![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn, rust_2018_idioms, warnings)]
 
 mod argparse;

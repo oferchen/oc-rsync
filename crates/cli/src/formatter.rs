@@ -3,9 +3,7 @@
 use clap::Command;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use scopeguard::guard;
 use std::env;
-use std::ffi::{OsStr, OsString};
 use textwrap::{Options as WrapOptions, wrap};
 
 use crate::branding;
@@ -287,37 +285,9 @@ pub fn render_help(_cmd: &Command) -> String {
     out
 }
 
-#[allow(unused_unsafe)]
-fn set_env_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
-    unsafe { env::set_var(key, value) };
-}
-
-#[allow(unused_unsafe)]
-fn remove_env_var<K: AsRef<OsStr>>(key: K) {
-    unsafe { env::remove_var(key) };
-}
-
-fn with_env_var<K, V, F, R>(key: K, value: V, f: F) -> R
-where
-    K: AsRef<OsStr>,
-    V: AsRef<OsStr>,
-    F: FnOnce() -> R,
-{
-    let key_os: OsString = key.as_ref().to_os_string();
-    let old = env::var_os(&key_os);
-    set_env_var(&key_os, value);
-    let _guard = guard((key_os.clone(), old), |(key, old)| {
-        if let Some(v) = old {
-            set_env_var(&key, v);
-        } else {
-            remove_env_var(&key);
-        }
-    });
-    f()
-}
 
 pub fn dump_help_body(cmd: &Command) -> String {
-    let help = with_env_var("COLUMNS", "80", || render_help(cmd));
+    let help = temp_env::with_var("COLUMNS", Some("80"), || render_help(cmd));
 
     let mut out = String::new();
     let mut in_options = false;
