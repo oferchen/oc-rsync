@@ -94,7 +94,7 @@ pub fn spawn_daemon(root: &std::path::Path) -> Daemon {
             "--no-detach",
             "--module",
             &format!(
-                "mod={},uid={},gid={},use-chroot=no",
+                "mod={},uid={},gid={},use-chroot=no,read-only=no",
                 root.display(),
                 uid,
                 gid
