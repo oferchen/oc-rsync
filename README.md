@@ -121,7 +121,7 @@ Report vulnerabilities via [SECURITY.md](SECURITY.md). The daemon aims to match 
 
 ## License
 
-Dual-licensed under Apache-2.0 and MIT terms. See [LICENSE](LICENSE) for details.
+Licensed under the GNU General Public License, version 3 or (at your option) any later version. See [LICENSE](LICENSE) for details.
 
 ## Acknowledgements
 

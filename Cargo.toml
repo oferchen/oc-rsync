@@ -21,11 +21,14 @@ resolver = "2"
 upstream_version = "3.4.1"
 supported_protocols = [32, 31, 30]
 
+[workspace.package]
+license = "GPL-3.0-or-later"
+
 [package]
 name = "oc-rsync"
 version = "0.1.0"
 description = "Pure-Rust reimplementation of rsync (protocol v32)"
-license = "Apache-2.0 OR MIT"
+license.workspace = true
 edition = "2024"
 rust-version = "1.87"
 authors = ["Ofer Chen <skewers.irises.3b@icloud.com>"]
@@ -130,7 +133,7 @@ assets = [
 maintainer = "Project Maintainers <maintainers@oc-rsync.project>"
 requires = ["zlib", "libzstd"]
 summary = "Pure-Rust rsync replica"
-license = "Apache-2.0 OR MIT"
+license = "GPL-3.0-or-later"
 
 [package.metadata.rpm.targets.oc-rsync]
 path = "/usr/bin/oc-rsync"

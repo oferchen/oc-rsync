@@ -2,6 +2,7 @@
 name = "meta"
 version = "0.1.0"
 edition = "2024"
+license.workspace = true
 
 [dependencies]
 filetime = "0.2"
