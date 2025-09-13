@@ -111,6 +111,12 @@ fn parse_module_accepts_symlinked_dir() {
 }
 
 #[test]
+fn parse_module_accepts_quoted_commas_and_equals() {
+    let module = parse_module("data='/tmp/foo,bar=baz'").unwrap();
+    assert_eq!(module.path, PathBuf::from("/tmp/foo,bar=baz"));
+}
+
+#[test]
 fn parse_module_reports_unknown_option_position() {
     let err = parse_module("data=/tmp,foo=bar").unwrap_err();
     assert!(err.contains("foo=bar"));
