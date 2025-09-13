@@ -30,7 +30,7 @@ fn daemon_preserves_hard_links_multiple() {
     wait_for_daemon(&mut daemon);
 
     let src_arg = format!("{}/", src.display());
-    let dest = format!("rsync://127.0.0.1:{port}/mod");
+    let dest = format!("rsync://127.0.0.1:{port}/mod/");
     Command::cargo_bin("oc-rsync")
         .unwrap()
         .args(["-aH", &src_arg, &dest])
