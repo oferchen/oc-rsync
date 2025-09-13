@@ -7,9 +7,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, atomic::Ordering};
 use std::time::{Duration, Instant};
 
-#[cfg(unix)]
-use nix::unistd::{ForkResult, fork, setsid};
-
 use ipnet::IpNet;
 use logging::{DebugFlag, InfoFlag, LogFormat, StderrMode, SubscriberConfig};
 use protocol::{SUPPORTED_PROTOCOLS, negotiate_version};
@@ -493,15 +490,7 @@ pub fn run_daemon(
     let _ = no_detach;
     #[cfg(unix)]
     if !no_detach {
-        match unsafe { fork() } {
-            Ok(ForkResult::Parent { .. }) => return Ok(()),
-            Ok(ForkResult::Child) => {
-                setsid().map_err(io::Error::other)?;
-            }
-            Err(e) => {
-                return Err(io::Error::other(e));
-            }
-        }
+        nix::unistd::daemon(true, true).map_err(io::Error::other)?;
     }
     if let Some(path) = &pid_file {
         let mut f = OpenOptions::new()
